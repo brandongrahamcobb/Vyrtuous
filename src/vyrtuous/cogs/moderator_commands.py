@@ -23,12 +23,12 @@ from discord import app_commands
 from discord.ext import commands
 import discord
 
+from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.server_mute import ServerMute
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import Administrator, is_administrator
@@ -97,6 +97,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="admins", help="Lists admins.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
@@ -244,6 +245,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="del", help="Delete message.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
@@ -278,6 +280,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="devs", help="List devs.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def list_developers_text_command(
         self,
         ctx: commands.Context,
@@ -368,6 +371,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="ls", help="List new vegans.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
@@ -405,8 +409,7 @@ class ModeratorCommands(commands.Cog):
         )
         if old_room:
             channel_dict = await do.determine_from_target(target=channel)
-            is_owner = old_room.member_snowflake == interaction.user.id
-            await check(source=interaction, lowest_role="Administrator") or is_owner
+            await check(source=interaction, lowest_role="Administrator")
             set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
             temp_where_kwargs = {
                 "channel_snowflake": old_room.channel_snowflake,
@@ -446,9 +449,9 @@ class ModeratorCommands(commands.Cog):
     @commands.command(
         name="migrate",
         help="Migrate a temporary room to a new channel by snowflake.",
-        hidden=True,
     )
     @moderator_predicator()
+    @skip_help_discovery()
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -465,8 +468,7 @@ class ModeratorCommands(commands.Cog):
         )
         if old_room:
             channel_dict = await do.determine_from_target(target=channel)
-            is_owner = old_room.member_snowflake == ctx.author.id
-            await check(source=ctx, lowest_role="Administrator") or is_owner
+            await check(source=ctx, lowest_role="Administrator")
             set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
             temp_where_kwargs = {
                 "channel_snowflake": old_room.channel_snowflake,
@@ -576,6 +578,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name="mstage", description="Stage mute/unmute.")
     @app_commands.describe(member="Tag a member or include their ID")
+    @moderator_predicator()
     async def stage_mute_app_command(
         self,
         interaction: discord.Interaction,
@@ -609,6 +612,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="mstage", help="Stage mute/unmute.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
@@ -689,6 +693,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="roleid", help="Get role by name.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
         state = StateService(source=ctx)
         role = discord.utils.get(ctx.guild.roles, name=role_name)
@@ -698,43 +703,6 @@ class ModeratorCommands(commands.Cog):
             return await state.end(
                 warning=f"No role named `{role_name}` found in this server."
             )
-
-    @app_commands.command(name="smutes", description="List mutes.")
-    @moderator_predicator()
-    async def list_server_mutes_app_command(
-        self, interaction: discord.Interaction, target: str = None
-    ):
-        state = StateService(source=interaction)
-        do = DiscordObject(interaction=interaction)
-        is_at_home = at_home(source=interaction)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await ServerMute.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
-        await StateService.send_pages(
-            plural=ServerMute.PLURAL, pages=pages, state=state
-        )
-
-    # DONE
-    @commands.command(name="smutes", help="List mutes.")
-    @moderator_predicator()
-    async def list_server_mutes_text_command(
-        self,
-        ctx: commands.Context,
-        target: str = commands.parameter(
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
-        ),
-    ):
-        state = StateService(source=ctx)
-        do = DiscordObject(ctx=ctx)
-        is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await ServerMute.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
-        await StateService.send_pages(
-            plural=ServerMute.PLURAL, pages=pages, state=state
-        )
 
     @app_commands.command(name="summary", description="Moderation summary.")
     @app_commands.describe(
@@ -892,6 +860,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="survey", help="Get all.")
     @moderator_predicator()
+    @skip_help_discovery()
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,

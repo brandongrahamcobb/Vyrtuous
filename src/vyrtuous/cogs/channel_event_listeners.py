@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-import asyncio
 import time
 
 import discord
@@ -42,7 +41,6 @@ from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.fields.duration import DurationObject
 
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
 

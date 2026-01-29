@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +23,7 @@ from discord import app_commands
 from discord.ext import commands
 import discord
 
+from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.actions.ban import Ban
@@ -36,7 +36,6 @@ from vyrtuous.db.roles.administrator import (
     administrator_predicator,
 )
 from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.roles.guild_owner import NotGuildOwner
 from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.db.rooms.stage import Stage
@@ -70,12 +69,6 @@ from vyrtuous.service.discord_object_service import (
     DiscordObjectNotFound,
 )
 from vyrtuous.utils.guild_dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    generate_skipped_roles,
-    clean_guild_dictionary,
     flush_page,
 )
 from vyrtuous.utils.cancel_confirm import VerifyView
@@ -234,74 +227,18 @@ class AdminCommands(commands.Cog):
     async def list_administrator_roles_app_command(
         self, interaction: discord.Interaction, target: str
     ):
-        chunk_size, field_count, pages = 7, 0, []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
-
         state = StateService(source=interaction)
-
-        is_at_home = at_home(source=interaction)
-
         do = DiscordObject(interaction=interaction)
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        administrator_roles = await AdministratorRole.select(**kwargs)
-
-        for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(
-                administrator_role.guild_snowflake, {"roles": {}}
-            )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
-                administrator_role.role_snowflake, {}
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_roles = generate_skipped_roles(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_roles=skipped_roles,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for role_snowflake, entry in guild_data.get("roles", {}).items():
-                role = guild.get_role(role_snowflake)
-                if field_count >= chunk_size:
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                embed.add_field(name=role.name, value=role.mention, inline=False)
-                field_count += 1
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_roles:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_roles,
-                    title="Skipped Roles in Server",
-                )
-
+        pages = await AdministratorRole.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(
             plural=AdministratorRole.PLURAL, pages=pages, state=state
         )
 
     @commands.command(name="aroles", help="Administrator roles.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_administrator_roles_text_command(
         self,
         ctx: commands.Context,
@@ -310,67 +247,11 @@ class AdminCommands(commands.Cog):
             description="Specify one of: 'all', " "channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, pages = 7, 0, []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
-
         state = StateService(source=ctx)
-
-        is_at_home = at_home(source=ctx)
-
         do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        administrator_roles = await AdministratorRole.select(**kwargs)
-
-        for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(
-                administrator_role.guild_snowflake, {"roles": {}}
-            )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
-                administrator_role.role_snowflake, {}
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_roles = generate_skipped_roles(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_roles=skipped_roles,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for role_snowflake, role_dict in guild_data.get("roles", {}).items():
-                role = guild.get_role(role_snowflake)
-                embed, field_count = flush_page(embed, pages, title, guild.name)
-                embed.add_field(name=role.name, value=role.mention, inline=False)
-                field_count += 1
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_roles:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_roles,
-                    title="Skipped Roles in Server",
-                )
-
+        pages = await AdministratorRole.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(
             plural=AdministratorRole.PLURAL, pages=pages, state=state
         )
@@ -425,6 +306,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="cap", help="Cap alias duration for mods.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def cap_text_command(
         self,
         ctx: commands.Context,
@@ -488,6 +370,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="caps", help="List caps.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
@@ -1113,6 +996,7 @@ class AdminCommands(commands.Cog):
 
     @commands.command(name="pc", help="View permissions.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_permissions_text_command(
         self,
         ctx: commands.Context,
@@ -1417,6 +1301,43 @@ class AdminCommands(commands.Cog):
             success=f"Successfully server {action} {member_dict.get("mention", None)}."
         )
 
+    @app_commands.command(name="smutes", description="List mutes.")
+    @administrator_predicator()
+    async def list_server_mutes_app_command(
+        self, interaction: discord.Interaction, target: str = None
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        is_at_home = at_home(source=interaction)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await ServerMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(
+            plural=ServerMute.PLURAL, pages=pages, state=state
+        )
+
+    # DONE
+    @commands.command(name="smutes", help="List mutes.")
+    @administrator_predicator()
+    async def list_server_mutes_text_command(
+        self,
+        ctx: commands.Context,
+        target: str = commands.parameter(
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        ),
+    ):
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await ServerMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(
+            plural=ServerMute.PLURAL, pages=pages, state=state
+        )
+
     # DONE
     @app_commands.command(name="stage", description="Start/stop stage.")
     @app_commands.describe(
@@ -1431,7 +1352,6 @@ class AdminCommands(commands.Cog):
         duration: AppDuration = DurationObject("1h"),
     ):
         failed, pages, skipped, succeeded = [], [], [], []
-        is_modification = False
 
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
@@ -1542,6 +1462,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="stage", help="Start/stop stage")
     @administrator_predicator()
+    @skip_help_discovery()
     async def toggle_stage_text_command(
         self,
         ctx: commands.Context,
@@ -1556,7 +1477,6 @@ class AdminCommands(commands.Cog):
         ),
     ):
         failed, pages, skipped, succeeded = [], [], [], []
-        is_modification = False
 
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
@@ -1683,6 +1603,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="stages", help="List stages.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
@@ -1743,6 +1664,7 @@ class AdminCommands(commands.Cog):
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
     )
     @administrator_predicator()
+    @skip_help_discovery()
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -1783,107 +1705,11 @@ class AdminCommands(commands.Cog):
     async def list_temp_rooms_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
-
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-        temporary_rooms = await TemporaryRoom.select(**kwargs)
-
-        for temporary_room in temporary_rooms:
-            guild_dictionary.setdefault(
-                temporary_room.guild_snowflake, {"channels": {}}
-            )
-            guild_dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
-                temporary_room.channel_snowflake, {}
-            )
-            if aliases:
-                for alias in aliases:
-                    if (
-                        alias.guild_snowflake == temporary_room.guild_snowflake
-                        and alias.channel_snowflake == temporary_room.channel_snowflake
-                    ):
-                        guild_dictionary[temporary_room.guild_snowflake]["channels"][
-                            temporary_room.channel_snowflake
-                        ].setdefault(alias.category, [])
-                        guild_dictionary[temporary_room.guild_snowflake]["channels"][
-                            temporary_room.channel_snowflake
-                        ][alias.category].append(alias.alias_name)
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_data in guild_data.get(
-                "channels", {}
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines.append(f"Channel: {channel.mention}")
-                field_count += 1
-                for category, alias_names in channel_data.items():
-                    lines.append(f"{category}")
-                    field_count += 1
-                    for name in alias_names:
-                        lines.append(f"  ↳ {name}")
-                        field_count += 1
-                        if field_count >= chunk_size:
-                            embed.add_field(
-                                name="Information",
-                                value="\n".join(lines),
-                                inline=False,
-                            )
-                            embed, field_count = flush_page(
-                                embed, pages, title, guild.name
-                            )
-                            lines = []
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
+        pages = await TemporaryRoom.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(
             plural=TemporaryRoom.PLURAL, pages=pages, state=state
         )
@@ -1892,9 +1718,9 @@ class AdminCommands(commands.Cog):
     @commands.command(
         name="temps",
         help="List temporary rooms with matching command aliases.",
-        hidden=True,
     )
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
@@ -1902,107 +1728,11 @@ class AdminCommands(commands.Cog):
             description="Specify one of: `all`, channel ID/mention, " "or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
-
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-        temporary_rooms = await TemporaryRoom.select(**kwargs)
-
-        for temporary_room in temporary_rooms:
-            guild_dictionary.setdefault(
-                temporary_room.guild_snowflake, {"channels": {}}
-            )
-            guild_dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
-                temporary_room.channel_snowflake, {}
-            )
-            if aliases:
-                for alias in aliases:
-                    if (
-                        alias.guild_snowflake == temporary_room.guild_snowflake
-                        and alias.channel_snowflake == temporary_room.channel_snowflake
-                    ):
-                        guild_dictionary[temporary_room.guild_snowflake]["channels"][
-                            temporary_room.channel_snowflake
-                        ].setdefault(alias.category, [])
-                        guild_dictionary[temporary_room.guild_snowflake]["channels"][
-                            temporary_room.channel_snowflake
-                        ][alias.category].append(alias.alias_name)
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_data in guild_data.get(
-                "channels", {}
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines.append(f"Channel: {channel.mention}")
-                field_count += 1
-                for category, alias_names in channel_data.items():
-                    lines.append(f"{category}")
-                    field_count += 1
-                    for name in alias_names:
-                        lines.append(f"  ↳ {name}")
-                        field_count += 1
-                        if field_count >= chunk_size:
-                            embed.add_field(
-                                name="Information",
-                                value="\n".join(lines),
-                                inline=False,
-                            )
-                            embed, field_count = flush_page(
-                                embed, pages, title, guild.name
-                            )
-                            lines = []
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
+        pages = await TemporaryRoom.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(
             plural=TemporaryRoom.PLURAL, pages=pages, state=state
         )
@@ -2122,6 +1852,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="stream", help="Setup streaming.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -2234,95 +1965,23 @@ class AdminCommands(commands.Cog):
         target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_streaming_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=interaction)
-        title = f"{get_random_emoji()} {Streaming.PLURAL}"
-
         state = StateService(source=interaction)
-
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        streaming = await Streaming.select(**kwargs)
-
-        for stream in streaming:
-            guild_dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            guild_dictionary[stream.guild_snowflake]["channels"][
-                stream.channel_snowflake
-            ] = {
-                "enabled": stream.enabled,
-                "entry_type": stream.entry_type,
-                "snowflakes": stream.snowflakes,
-            }
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
+        pages = await Streaming.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(
+            plural=Streaming.PLURAL, pages=pages, state=state
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, entry in guild_data.get("channels", {}).items():
-                channel = guild.get_channel(channel_snowflake)
-                status = "\u2705" if entry["enabled"] else "\u26d4"
-                lines.append(
-                    f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
-                )
-                if isinstance(
-                    object_dict.get("object", None), discord.abc.GuildChannel
-                ):
-                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
-        await StateService.send_pages(plural=Streaming.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="streams", help="List streaming routes.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -2331,91 +1990,20 @@ class AdminCommands(commands.Cog):
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=ctx)
-        title = f"{get_random_emoji()} {Streaming.PLURAL}"
-
         state = StateService(source=ctx)
-
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        streaming = await Streaming.select(**kwargs)
-
-        for stream in streaming:
-            guild_dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            guild_dictionary[stream.guild_snowflake]["channels"][
-                stream.channel_snowflake
-            ] = {
-                "enabled": stream.enabled,
-                "entry_type": stream.entry_type,
-                "snowflakes": stream.snowflakes,
-            }
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
+        pages = await Streaming.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(
+            plural=Streaming.PLURAL, pages=pages, state=state
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, entry in guild_data.get("channels", {}).items():
-                channel = guild.get_channel(channel_snowflake)
-                status = "\u2705" if entry["enabled"] else "\u26d4"
-                lines.append(
-                    f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
-                )
-                if isinstance(
-                    object_dict.get("object", None), discord.abc.GuildChannel
-                ):
-                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-        await StateService.send_pages(plural=Streaming.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="vr", description="Start/stop video-only room.")
     @app_commands.describe(channel="Tag a channel or include the ID")
     @administrator_predicator()
+    @skip_help_discovery()
     async def toggle_video_room_app_command(
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
@@ -2450,6 +2038,7 @@ class AdminCommands(commands.Cog):
 
     @commands.command(name="vr", help="Start/stop video-only room.")
     @administrator_predicator()
+    @skip_help_discovery()
     async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
@@ -2491,114 +2080,24 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         target="Specify one of: `all`, channel ID/mention, or server ID."
     )
+    @skip_help_discovery()
     @administrator_predicator()
     async def list_video_rooms_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {VideoRoom.PLURAL}"
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
-
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-        video_rooms = await VideoRoom.select(**kwargs)
-
-        for video_room in video_rooms:
-            guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[video_room.guild_snowflake]["channels"].setdefault(
-                video_room.channel_snowflake, {}
-            )
-            if aliases:
-                for alias in aliases:
-                    if (
-                        alias.guild_snowflake == video_room.guild_snowflake
-                        and alias.channel_snowflake == video_room.channel_snowflake
-                    ):
-                        guild_dictionary[video_room.guild_snowflake]["channels"][
-                            video_room.channel_snowflake
-                        ].setdefault(alias.category, [])
-                        guild_dictionary[video_room.guild_snowflake]["channels"][
-                            video_room.channel_snowflake
-                        ][alias.category].append(alias.alias_name)
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
+        pages = await VideoRoom.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(
+            plural=VideoRoom.PLURAL, pages=pages, state=state
         )
 
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_data in guild_data.get(
-                "channels", {}
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines.append(f"Channel: {channel.mention}")
-                field_count += 1
-                for category, alias_names in channel_data.items():
-                    lines.append(f"{category}")
-                    field_count += 1
-                    for name in alias_names:
-                        lines.append(f"  ↳ {name}")
-                        field_count += 1
-                        if field_count >= chunk_size:
-                            embed.add_field(
-                                name="Information",
-                                value="\n".join(lines),
-                                inline=False,
-                            )
-                            embed, field_count = flush_page(
-                                embed, pages, title, guild.name
-                            )
-                            lines = []
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
-        await StateService.send_pages(plural=VideoRoom.PLURAL, pages=pages, state=state)
-
     # DONE
-    @commands.command(name="vrs", help="List video rooms.")
+    @commands.command(name="vrs", help="List video rooms.",)
     @administrator_predicator()
+    @skip_help_discovery()
     async def list_video_rooms_text_command(
         self,
         ctx: commands.Context,
@@ -2607,106 +2106,14 @@ class AdminCommands(commands.Cog):
             description="Include `all`, channel or server ID."
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {VideoRoom.PLURAL}"
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
-
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-        video_rooms = await VideoRoom.select(**kwargs)
-
-        for video_room in video_rooms:
-            guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[video_room.guild_snowflake]["channels"].setdefault(
-                video_room.channel_snowflake, {}
-            )
-            if aliases:
-                for alias in aliases:
-                    if (
-                        alias.guild_snowflake == video_room.guild_snowflake
-                        and alias.channel_snowflake == video_room.channel_snowflake
-                    ):
-                        guild_dictionary[video_room.guild_snowflake]["channels"][
-                            video_room.channel_snowflake
-                        ].setdefault(alias.category, [])
-                        guild_dictionary[video_room.guild_snowflake]["channels"][
-                            video_room.channel_snowflake
-                        ][alias.category].append(alias.alias_name)
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
+        pages = await VideoRoom.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(
+            plural=VideoRoom.PLURAL, pages=pages, state=state
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_data in guild_data.get(
-                "channels", {}
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines.append(f"Channel: {channel.mention}")
-                field_count += 1
-                for category, alias_names in channel_data.items():
-                    lines.append(f"{category}")
-                    field_count += 1
-                    for name in alias_names:
-                        lines.append(f"  ↳ {name}")
-                        field_count += 1
-                        if field_count >= chunk_size:
-                            embed.add_field(
-                                name="Information",
-                                value="\n".join(lines),
-                                inline=False,
-                            )
-                            embed, field_count = flush_page(
-                                embed, pages, title, guild.name
-                            )
-                            lines = []
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
-        await StateService.send_pages(plural=VideoRoom.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="xalias", description="Delete alias.")

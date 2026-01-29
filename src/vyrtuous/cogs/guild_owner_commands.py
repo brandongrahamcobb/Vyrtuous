@@ -20,6 +20,7 @@ from discord import app_commands
 from discord.ext import commands
 import discord
 
+from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.administrator import Administrator, AdministratorRole
 from vyrtuous.db.roles.guild_owner import guild_owner_predicator
@@ -46,6 +47,7 @@ class GuildOwnerCommands(commands.Cog):
     # DONE
     @app_commands.command(name="arole", description="Role -> Administrator.")
     @guild_owner_predicator()
+    @skip_help_discovery()
     async def grant_administrator_by_role_app_command(
         self, interaction: discord.Interaction, role: AppRoleSnowflake
     ):
@@ -162,6 +164,7 @@ class GuildOwnerCommands(commands.Cog):
     # DONE
     @commands.command(name="arole", help="Role -> Administrator.")
     @guild_owner_predicator()
+    @skip_help_discovery()
     async def grant_administrator_by_role_text_command(
         self, ctx: commands.Context, role: RoleSnowflake
     ):
@@ -272,6 +275,7 @@ class GuildOwnerCommands(commands.Cog):
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")
     @app_commands.describe(member="Tag a member or include their ID")
     @guild_owner_predicator()
+    @skip_help_discovery()
     async def invincibility_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
@@ -299,6 +303,7 @@ class GuildOwnerCommands(commands.Cog):
     # DONE
     @commands.command(name="hero", help="Grant/revoke invincibility.")
     @guild_owner_predicator()
+    @skip_help_discovery()
     async def invincibility_text_command(
         self,
         ctx: commands.Context,

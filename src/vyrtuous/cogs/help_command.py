@@ -32,6 +32,11 @@ from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.inc.helpers import PERMISSION_TYPES
 
+def skip_help_discovery():
+    async def predicate(ctx):
+        return True
+    predicate._skip_help_discovery = True
+    return commands.check(predicate)
 
 class HelpCommand(commands.Cog):
 
@@ -70,7 +75,7 @@ class HelpCommand(commands.Cog):
                         lines.append(f"• {line}")
             return lines
 
-    async def get_available_commands(self, bot, user_highest) -> list[commands.Command]:
+    async def get_available_commands(self, all, bot, user_highest) -> list[commands.Command]:
         available = []
         for command in bot.commands:
             try:
@@ -78,7 +83,12 @@ class HelpCommand(commands.Cog):
                 if PERMISSION_TYPES.index(user_highest) >= PERMISSION_TYPES.index(
                     perm_level
                 ):
-                    available.append(command)
+                    fail = False
+                    for check in command.checks:
+                        if hasattr(check, "_skip_help_discovery") and not all:
+                            fail = True
+                    if not fail:
+                        available.append(command)
             except Exception as e:
                 logger.warning(
                     f"Exception while evaluating command {command}: {str(e).capitalize()}"
@@ -185,7 +195,7 @@ class HelpCommand(commands.Cog):
         state = StateService(source=interaction)
         bot = interaction.client
         pages, param_details, parameters = [], [], []
-        if command_name:
+        if command_name and command_name != "all":
             kind, obj = await self.resolve_command_or_alias(interaction, command_name)
             if not kind:
                 return await state.end(
@@ -249,13 +259,16 @@ class HelpCommand(commands.Cog):
                     inline=False,
                 )
                 return await state.end(success=embed)
+        all = False
+        if command_name and command_name == "all":
+            all = True
         user_highest = await resolve_highest_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
             member_snowflake=interaction.user.id,
         )
         all_commands = await self.get_available_commands(
-            bot=bot, user_highest=user_highest
+            all=all, bot=bot, user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
@@ -388,13 +401,16 @@ class HelpCommand(commands.Cog):
                     inline=False,
                 )
                 return await state.end(success=embed)
+        all = False
+        if command_name and command_name == "all":
+            all = True
         user_highest = await resolve_highest_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
         )
         all_commands = await self.get_available_commands(
-            bot=bot, user_highest=user_highest
+            all=all, bot=bot, user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
@@ -452,7 +468,6 @@ class HelpCommand(commands.Cog):
         if not pages:
             return await state.end(warning="No commands available to you.")
         return await state.end(success=pages)
-
 
 async def setup(bot: DiscordBot):
     cog = HelpCommand(bot)

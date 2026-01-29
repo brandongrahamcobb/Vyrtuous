@@ -35,6 +35,7 @@ from vyrtuous.utils.guild_dictionary import (
     generate_skipped_set_pages,
     generate_skipped_guilds,
     generate_skipped_members,
+    generate_skipped_roles,
     clean_guild_dictionary,
     flush_page,
 )
@@ -307,3 +308,63 @@ class AdministratorRole(DatabaseFactory):
         logger.info(
             f"Revoked administrator from member ({member_snowflake}) in guild ({guild_snowflake})."
         )
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, pages = 7, 0, []
+        guild_dictionary = {}
+        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
+
+        kwargs = object_dict.get("columns", None)
+
+        administrator_roles = await AdministratorRole.select(**kwargs)
+
+        for administrator_role in administrator_roles:
+            guild_dictionary.setdefault(
+                administrator_role.guild_snowflake, {"roles": {}}
+            )
+            guild_dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
+                administrator_role.role_snowflake, {}
+            )
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_roles = generate_skipped_roles(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_guilds=skipped_guilds,
+            skipped_roles=skipped_roles,
+        )
+
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for role_snowflake, entry in guild_data.get("roles", {}).items():
+                role = guild.get_role(role_snowflake)
+                if field_count >= chunk_size:
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                embed.add_field(name=role.name, value=role.mention, inline=False)
+                field_count += 1
+            pages.append(embed)
+
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_roles:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_roles,
+                    title="Skipped Roles in Server",
+                )
+        return pages

@@ -20,9 +20,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.role import Role
-from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.roles.administrator import AdministratorRole
 from vyrtuous.db.roles.guild_owner import GuildOwner
 

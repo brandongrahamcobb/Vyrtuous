@@ -68,7 +68,6 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
-        target = "user"
         expired_bans = await Ban.select(expired=True)
         if expired_bans:
             for expired_ban in expired_bans:
@@ -429,7 +428,7 @@ class ScheduledTasks(commands.Cog):
             set_kwargs = {
                 "reset": True
             }
-            if text_mute.last_muted < now - timedelta(weeks=1):
+            if not text_mute.reset and text_mute.last_muted < now - timedelta(weeks=1):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(
@@ -471,7 +470,7 @@ class ScheduledTasks(commands.Cog):
             set_kwargs = {
                 "reset": True
             }
-            if ban.last_kicked < now - timedelta(weeks=1):
+            if not ban.reset and ban.last_kicked < now - timedelta(weeks=1):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(

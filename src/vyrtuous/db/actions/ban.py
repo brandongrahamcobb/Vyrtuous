@@ -218,30 +218,31 @@ class Ban(DatabaseFactory):
     
     @classmethod
     async def ban_overwrites(cls, member, after):
-        kwargs = {
-            "channel_snowflake": after.channel.id,
-            "guild_snowflake": after.channel.guild.id,
-            "member_snowflake": member.id
-        }
-        ban = await Ban.select(**kwargs)
-        if ban:
-            targets = []
-            for target, overwrite in after.channel.overwrites.items():
-                if any(v is not None for v in overwrite):
-                    if isinstance(target, discord.Member):
-                        targets.append(target)
-            if member not in targets:
-                try:
-                    await after.channel.set_permissions(member, view_channel=False, reason="Reinstating active ban.")
-                except discord.Forbidden as e:
-                    logger.warning(e)
-                if member.voice and member.voice.channel and member.voice.channel.id == after.channel.id:
+        if after:
+            kwargs = {
+                "channel_snowflake": after.channel.id,
+                "guild_snowflake": after.channel.guild.id,
+                "member_snowflake": member.id
+            }
+            ban = await Ban.select(**kwargs)
+            if ban:
+                targets = []
+                for target, overwrite in after.channel.overwrites.items():
+                    if any(v is not None for v in overwrite):
+                        if isinstance(target, discord.Member):
+                            targets.append(target)
+                if member not in targets:
                     try:
-                        await member.move_to(None, reason="Reinstating active ban.")
-                        set_kwargs = {
-                            "last_kicked": datetime.now(timezone.utc),
-                            "reset": False
-                        }
-                        await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
+                        await after.channel.set_permissions(member, view_channel=False, reason="Reinstating active ban.")
                     except discord.Forbidden as e:
                         logger.warning(e)
+                    if member.voice and member.voice.channel and member.voice.channel.id == after.channel.id:
+                        try:
+                            await member.move_to(None, reason="Reinstating active ban.")
+                            set_kwargs = {
+                                "last_kicked": datetime.now(timezone.utc),
+                                "reset": False
+                            }
+                            await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
+                        except discord.Forbidden as e:
+                            logger.warning(e)

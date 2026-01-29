@@ -27,7 +27,15 @@ from vyrtuous.utils.data import Data
 from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.message_service import PaginatorService
-
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.guild_dictionary import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    clean_guild_dictionary,
+    flush_page,
+)
 
 class Streaming(DatabaseFactory):
 
@@ -302,3 +310,83 @@ class Streaming(DatabaseFactory):
                     )
                     embeds.append(reason_embed)
         return embeds
+
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        title = f"{get_random_emoji()} {Streaming.PLURAL}"
+
+        kwargs = object_dict.get("columns", None)
+
+        streaming = await Streaming.select(**kwargs)
+
+        for stream in streaming:
+            guild_dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
+            guild_dictionary[stream.guild_snowflake]["channels"][
+                stream.channel_snowflake
+            ] = {
+                "enabled": stream.enabled,
+                "entry_type": stream.entry_type,
+                "snowflakes": stream.snowflakes,
+            }
+
+        skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
+
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for channel_snowflake, entry in guild_data.get("channels", {}).items():
+                channel = guild.get_channel(channel_snowflake)
+                status = "\u2705" if entry["enabled"] else "\u26d4"
+                lines.append(
+                    f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
+                )
+                if isinstance(
+                    object_dict.get("object", None), discord.abc.GuildChannel
+                ):
+                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
+                field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+            if lines:
+                embed.add_field(
+                    name="Information", value="\n".join(lines), inline=False
+                )
+            pages.append(embed)
+
+        if is_at_home:
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+        return pages
