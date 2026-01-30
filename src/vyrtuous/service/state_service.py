@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
 from datetime import datetime, timezone
 import asyncio
 import uuid
@@ -32,6 +31,8 @@ from vyrtuous.service.message_service import MessageService, PaginatorService
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.time_to_complete import TimeToComplete
+from vyrtuous.utils.author import resolve_author
+from vyrtuous.utils.source import DiscordSourceNotFound
 
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
 
@@ -49,24 +50,25 @@ class StateService:
 
     def __init__(
         self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
+        *,
+        ctx: commands.Context = None,
+        interaction: discord.Interaction = None,
+        message: discord.Message = None,
     ):
+        if (ctx is None) == (interaction is None) == (message is None):
+            raise DiscordSourceNotFound()
         self.bot = DiscordBot.get_instance()
         self.config = self.bot.config
         self.message_service = MessageService(self.bot)
         self.counter = TimeToComplete()
-        self.source = source
+        self.bot = DiscordBot.get_instance()
+        self._source = ctx or interaction or message
         self._reported_users = set()
         self.is_ephemeral = False
-        self.start_time = self._get_start_time(source)
+        self.start_time = self._get_start_time(self._source)
         self.message = None
         self.paginator = None
-        if isinstance(source, commands.Context):
-            self.submitter_id = source.author.id
-        elif isinstance(source, discord.Interaction):
-            self.submitter_id = source.user.id
-        elif isinstance(source, discord.Message):
-            self.submitter_id = source.author.id
+        self.submitter_id = resolve_author(self._source).id
 
     def _get_start_time(self, source):
         if isinstance(source, commands.Context):
@@ -119,7 +121,7 @@ class StateService:
         if isinstance(message_obj, list) and message_obj:
             self.paginator = PaginatorService(
                 bot=self.bot,
-                channel_source=self.source,
+                channel_source=self._source,
                 pages=message_obj,
             )
             self.message = await self.paginator.start()
@@ -176,17 +178,17 @@ class StateService:
         }
         if file is not None:
             kwargs["file"] = file
-        if isinstance(self.source, discord.Interaction) and not paginated:
-            if not self.source.response.is_done():
-                await self.source.response.defer(ephemeral=True)
+        if isinstance(self._source, discord.Interaction) and not paginated:
+            if not self._source.response.is_done():
+                await self._source.response.defer(ephemeral=True)
                 self.is_ephemeral = True
-            return await self.source.followup.send(**kwargs)
-        elif isinstance(self.source, discord.Interaction) and paginated:
-            if not self.source.response.is_done():
-                await self.source.response.defer(ephemeral=True)
-            return await self.source.followup.send(**kwargs)
+            return await self._source.followup.send(**kwargs)
+        elif isinstance(self._source, discord.Interaction) and paginated:
+            if not self._source.response.is_done():
+                await self._source.response.defer(ephemeral=True)
+            return await self._source.followup.send(**kwargs)
         else:
-            return await self.source.channel.send(**kwargs)
+            return await self._source.channel.send(**kwargs)
 
     async def _add_reactions(self, show_error_emoji: bool, paginated: bool):
         if not self.message or self.is_ephemeral:
@@ -249,8 +251,8 @@ class StateService:
         embed.add_field(name="Health", value=self.health_type, inline=True)
         embed.add_field(name="Speed", value=f"{self.elapsed:.2f} sec.", inline=True)
         embed.add_field(name="Success", value=str(self.success), inline=True)
-        if isinstance(self.source, discord.Interaction):
-            await self.source.followup.send(
+        if isinstance(self._source, discord.Interaction):
+            await self._source.followup.send(
                 f"{user.mention}, here is the info", embed=embed, ephemeral=True
             )
         else:
@@ -283,11 +285,11 @@ class StateService:
         online_developer_mentions = []
         member = self.bot.get_user(self.config["discord_owner_id"])
         online_developer_mentions.append(member.mention)
-        if self.source.guild:
-            developers = await Developer.select(guild_snowflake=self.source.guild.id)
+        if self._source.guild:
+            developers = await Developer.select(guild_snowflake=self._source.guild.id)
             message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {reference}"
             for dev in developers:
-                member = self.source.guild.get_member(dev.member_snowflake)
+                member = self._source.guild.get_member(dev.member_snowflake)
                 if member and member.status != discord.Status.offline:
                     online_developer_mentions.append(member.mention)
                     try:

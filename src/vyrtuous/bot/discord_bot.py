@@ -21,33 +21,24 @@ import asyncpg
 import discord
 
 from vyrtuous.inc.helpers import DISCORD_COGS
-from vyrtuous.utils.logger import logger
 
 
 class DiscordBot(commands.Bot):
 
     _instance = None
 
-    def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs):  # oauth_token,
-        try:
-            DiscordBot._instance = self
-            intents = discord.Intents.all()
-            super().__init__(
-                command_prefix=config["discord_command_prefix"],
-                help_command=None,
-                intents=intents,
-                **kwargs,
-            )
-            self.config = config
-            self.db_pool = db_pool
-            print(self.config["discord_testing_guild_snowflake"])
-            self.testing_guild_snowflake = self.config[
-                "discord_testing_guild_snowflake"
-            ]
-        except Exception as e:
-            logger.error(
-                f"Error during Discord bot initialization: {str(e).capitalize()}"
-            )
+    def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs):
+        DiscordBot._instance = self
+        intents = discord.Intents.all()
+        super().__init__(
+            command_prefix=config["discord_command_prefix"],
+            help_command=None,
+            intents=intents,
+            **kwargs,
+        )
+        self.config = config
+        self.db_pool = db_pool
+        self.testing_guild_snowflake = self.config["discord_testing_guild_snowflake"]
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:

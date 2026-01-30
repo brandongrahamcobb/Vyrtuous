@@ -148,3 +148,29 @@ class Cap(DatabaseFactory):
                     title="Skipped Servers",
                 )
         return pages
+
+    @classmethod
+    async def toggle_cap(cls, category, channel_dict, hours):
+        seconds = int(hours) * 3600
+        where_kwargs = channel_dict.get("columns", None)
+        where_kwargs.update({"category": category})
+        cap = await Cap.select(**where_kwargs)
+        if cap and seconds:
+            await Cap.update(
+                set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs
+            )
+            return f"Cap `{category}` modified for {channel_dict.get("mention", None)}."
+        elif cap:
+            await Cap.delete(**where_kwargs)
+            return (
+                f"Cap of type {category} "
+                f"and channel {channel_dict.get("mention", None)} deleted successfully."
+            )
+        else:
+            where_kwargs.update({"duration_seconds": seconds})
+            cap = Cap(**where_kwargs)
+            await cap.create()
+            return (
+                f"Cap `{category}` created for "
+                f"{channel_dict.get("mention", None)} successfully."
+            )

@@ -21,12 +21,12 @@ from typing import Union
 from discord.ext import commands
 import discord
 
-from vyrtuous.db.roles.administrator import is_administrator_wrapper
-from vyrtuous.db.roles.coordinator import is_coordinator_wrapper
-from vyrtuous.db.roles.developer import is_developer_wrapper
-from vyrtuous.db.roles.guild_owner import is_guild_owner_wrapper
-from vyrtuous.db.roles.moderator import is_moderator_wrapper
-from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
+from vyrtuous.db.roles.administrator import is_administrator
+from vyrtuous.db.roles.coordinator import is_coordinator
+from vyrtuous.db.roles.developer import is_developer
+from vyrtuous.db.roles.guild_owner import is_guild_owner
+from vyrtuous.db.roles.moderator import is_moderator
+from vyrtuous.db.roles.sysadmin import is_sysadmin
 from vyrtuous.inc.helpers import PERMISSION_TYPES
 from vyrtuous.utils.highest_role import resolve_highest_role
 
@@ -39,23 +39,38 @@ class HasEqualOrLowerRole(commands.CheckFailure):
 
 
 async def check(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
+    snowflake_kwargs,
     lowest_role: str = None,
-    member_snowflake: int = None,
 ) -> str:
     verifications = (
-        ("Sysadmin", is_sysadmin_wrapper),
-        ("Developer", is_developer_wrapper),
-        ("Guild Owner", is_guild_owner_wrapper),
-        ("Administrator", is_administrator_wrapper),
-        ("Coordinator", is_coordinator_wrapper),
-        ("Moderator", is_moderator_wrapper),
+        ("Sysadmin", is_sysadmin),
+        ("Developer", is_developer),
+        ("Guild Owner", is_guild_owner),
+        ("Administrator", is_administrator),
+        ("Coordinator", is_coordinator),
+        ("Moderator", is_moderator),
     )
+    channel_snowflake = snowflake_kwargs.get("channel_snowflake", None)
+    guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+    member_snowflake = snowflake_kwargs.get("member_snowflake", None)
     passed_lowest = False
     for role_name, verify in verifications:
         try:
-            if await verify(source):
-                return role_name
+            if role_name in ("Sysadmin", "Developer"):
+                if await verify(member_snowflake=member_snowflake):
+                    return role_name
+            elif role_name in ("Guild Owner", "Administrator"):
+                if await verify(
+                    guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+                ):
+                    return role_name
+            else:
+                if await verify(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=member_snowflake,
+                ):
+                    return role_name
         except commands.CheckFailure:
             if lowest_role is not None and passed_lowest:
                 raise
@@ -69,25 +84,25 @@ async def has_equal_or_lower_role_wrapper(
     member_snowflake: int,
     sender_snowflake: int,
 ) -> bool:
-    kwargs = {
+    snowflake_kwargs = {
         "channel_snowflake": source.channel.id,
         "guild_snowflake": source.guild.id,
         "member_snowflake": sender_snowflake,
     }
     return await has_equal_or_lower_role(
-        kwargs=kwargs, member_snowflake=member_snowflake
+        snowflake_kwargs=snowflake_kwargs, member_snowflake=member_snowflake
     )
 
 
 async def has_equal_or_lower_role(
-    kwargs,
+    snowflake_kwargs,
     member_snowflake: int,
 ) -> bool:
-    sender_name = await resolve_highest_role(**kwargs)
+    sender_name = await resolve_highest_role(**snowflake_kwargs)
     sender_rank = PERMISSION_TYPES.index(sender_name)
-    kwargs.update({"member_snowflake": member_snowflake})
-    target_kwargs = kwargs
-    target_name = await resolve_highest_role(**target_kwargs)
+    snowflake_kwargs.update({"member_snowflake": member_snowflake})
+    where_kwargs = snowflake_kwargs
+    target_name = await resolve_highest_role(**where_kwargs)
     target_rank = PERMISSION_TYPES.index(target_name)
     if sender_rank <= target_rank:
         raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])

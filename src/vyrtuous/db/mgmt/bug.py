@@ -23,7 +23,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.author import resolve_author
+from vyrtuous.db.roles.developer import Developer
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.guild_dictionary import (
     generate_skipped_dict_pages,
@@ -83,7 +83,7 @@ class Bug(DatabaseFactory):
         self.resolved = resolved
         self.updated_at: datetime = updated_at or datetime.now(timezone.utc)
 
-    async def create_embed(self, action, member_snowflake, source):
+    async def create_embed(self, action, member_snowflake):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(self.channel_snowflake)
         guild = bot.get_guild(self.guild_snowflake)
@@ -91,7 +91,6 @@ class Bug(DatabaseFactory):
             msg = await channel.fetch_message(self.message_snowflake)
         except discord.NotFound:
             logger.warning(f"Message reference not found ({self.message_snowflake}).")
-        author = resolve_author(source=source)
         member = bot.get_user(member_snowflake)
         user_mentions = []
         for member_snowflake in self.member_snowflakes:
@@ -102,7 +101,6 @@ class Bug(DatabaseFactory):
                 f"**Guild:** {guild.name}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Message:** {msg.jump_url}\n"
-                f"**By:** {author.mention}\n"
                 f"**Assigned devs:** {', '.join(user_mentions)}"
             ),
             color=discord.Color.blue(),
@@ -111,13 +109,13 @@ class Bug(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_pages(cls, filter, kwargs, is_at_home):
+    async def build_pages(cls, filter, where_kwargs, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         title = f"{get_random_emoji()} Developer Logs"
 
-        bugs = await Bug.select(**kwargs)
+        bugs = await Bug.select(**where_kwargs)
 
         for bug in bugs:
             guild_dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
@@ -165,7 +163,7 @@ class Bug(DatabaseFactory):
                     f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
                 )
                 lines.append(f"**Message:** {msg.jump_url}")
-                if kwargs.get("id", None) == str(entry["id"]):
+                if where_kwargs.get("id", None) == str(entry["id"]):
                     lines.append(
                         f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
                     )
@@ -209,3 +207,39 @@ class Bug(DatabaseFactory):
                     title="Skipped Messages in Server",
                 )
         return pages
+
+    @classmethod
+    async def assign_bug_to_developer(cls, reference, member_dict):
+        where_kwargs = member_dict.get("columns", None)
+
+        developer = await Developer.select(**where_kwargs, singular=True)
+        if not developer:
+            return (
+                f"Developer not found for target ({member_dict.get("mention", None)})."
+            )
+
+        bug = await Bug.select(id=reference, resolved=False, singular=True)
+        if not bug:
+            return f"Unresolved issue not found for reference: {reference}."
+        member_snowflakes = bug.member_snowflakes
+        where_kwargs = {"id": bug.id}
+        member_snowflakes = bug.member_snowflakes
+        if developer.member_snowflake in bug.member_snowflakes:
+            member_snowflakes.remove(developer.member_snowflake)
+            set_kwargs = {"member_snowflakes": member_snowflakes}
+            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            embed = await bug.create_embed(
+                action="unassigned",
+                member_snowflake=developer.member_snowflake,
+            )
+            return embed
+        else:
+            member_snowflakes.append(developer.member_snowflake)
+            set_kwargs = {"member_snowflakes": member_snowflakes}
+            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            embed = await bug.create_embed(
+                action="assigned",
+                member_snowflake=developer.member_snowflake,
+            )
+            await member_dict.get("object", None).send(embed=embed)
+            return embed

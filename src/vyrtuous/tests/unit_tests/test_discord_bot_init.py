@@ -13,10 +13,10 @@ async def test_discord_bot_init():
         discord_bot = DiscordBot.get_instance()
     except RuntimeError as e:
         assert isinstance(e, RuntimeError)
+    try:
+        discord_bot = DiscordBot()
+    except Exception as e:
+        assert isinstance(e, Exception)
     discord_bot = DiscordBot(config=config, db_pool=db_pool)
     await discord_bot.setup_hook()
-    # try:
-    #     # discord_bot = DiscordBot(config=None, db_pool=db_pool)
-    # except Exception as e:
-    #     assert isinstance(e, Exception)
     assert discord_bot

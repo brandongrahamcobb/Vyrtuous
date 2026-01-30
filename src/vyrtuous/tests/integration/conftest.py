@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import asyncio
 import asyncpg
 import pytest
@@ -62,6 +63,7 @@ def context(bot, message, prefix):
     ctx.command = bot.get_command(command_name)
     view.skip_ws()
     return ctx
+
 
 def interaction(context):
     interaction = Interaction(context=context)

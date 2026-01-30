@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from datetime import datetime, timezone
 
 from discord.ext import commands
@@ -31,6 +32,7 @@ from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.logger import logger
+
 
 class Aliases(commands.Cog):
 
@@ -92,11 +94,15 @@ class Aliases(commands.Cog):
         await ban.create()
 
         is_channel_scope = False
-        channel = message.guild.get_channel(action_information["action_channel_snowflake"])
+        channel = message.guild.get_channel(
+            action_information["action_channel_snowflake"]
+        )
         if channel:
             try:
                 await channel.set_permissions(
-                    member, view_channel=False, reason=action_information["action_reason"]
+                    member,
+                    view_channel=False,
+                    reason=action_information["action_reason"],
                 )
                 if (
                     member.voice
@@ -104,15 +110,19 @@ class Aliases(commands.Cog):
                     and member.voice.channel.id == channel.id
                 ):
                     is_channel_scope = True
-                    await member.move_to(None, reason=action_information["action_reason"])
+                    await member.move_to(
+                        None, reason=action_information["action_reason"]
+                    )
                     where_kwargs = {
-                        "channel_snowflake": action_information["action_channel_snowflake"],
+                        "channel_snowflake": action_information[
+                            "action_channel_snowflake"
+                        ],
                         "guild_snowflake": action_information["action_guild_snowflake"],
-                        "member_snowflake": action_information["action_member_snowflake"]
+                        "member_snowflake": action_information[
+                            "action_member_snowflake"
+                        ],
                     }
-                    set_kwargs = {
-                        "last_kicked": datetime.now(timezone.utc)
-                    }
+                    set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
@@ -135,7 +145,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_vegan_alias(
         self, alias, action_information, member, message, state
     ):
@@ -163,7 +172,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_flag_alias(
         self, alias, action_information, member, message, state
     ):
@@ -197,7 +205,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_role_alias(
         self, alias, action_information, member, message, state
     ):
@@ -232,7 +239,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_text_mute_alias(
         self, alias, action_information, member, message, state
     ):
@@ -247,7 +253,9 @@ class Aliases(commands.Cog):
         )
         await text_mute.create()
 
-        channel = message.guild.get_channel(action_information["action_channel_snowflake"])
+        channel = message.guild.get_channel(
+            action_information["action_channel_snowflake"]
+        )
         if channel:
             try:
                 await channel.set_permissions(
@@ -277,7 +285,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_voice_mute_alias(
         self, alias, action_information, member, message, state
     ):
@@ -323,7 +330,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_carnist_alias(
         self, alias, action_information, member, message, state
     ):
@@ -358,8 +364,10 @@ class Aliases(commands.Cog):
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
         )
-        
-        channel = message.guild.get_channel(action_information["action_channel_snowflake"])
+
+        channel = message.guild.get_channel(
+            action_information["action_channel_snowflake"]
+        )
         if channel:
             try:
                 await channel.set_permissions(member, view_channel=None)
@@ -384,7 +392,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_unflag_alias(
         self, alias, action_information, member, message, state
     ):
@@ -417,7 +424,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_unmute_alias(
         self, alias, action_information, member, message, state
     ):
@@ -452,7 +458,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_unrole_alias(
         self, alias, action_information, member, message, state
     ):
@@ -487,7 +492,6 @@ class Aliases(commands.Cog):
 
         return await state.end(success=embed)
 
-    # DONE
     async def handle_untextmute_alias(
         self, alias, action_information, member, message, state
     ):
@@ -497,7 +501,9 @@ class Aliases(commands.Cog):
             member_snowflake=action_information["action_member_snowflake"],
         )
 
-        channel = message.guild.get_channel(action_information["action_channel_snowflake"])
+        channel = message.guild.get_channel(
+            action_information["action_channel_snowflake"]
+        )
         if channel:
             try:
                 await channel.set_permissions(

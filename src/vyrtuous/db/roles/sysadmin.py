@@ -39,7 +39,7 @@ async def is_sysadmin_wrapper(
 ):
     member = resolve_author(source=source)
     member_snowflake = member.id
-    return is_sysadmin(member_snowflake)
+    return await is_sysadmin(member_snowflake)
 
 
 def sysadmin_predicator():
@@ -54,7 +54,7 @@ def sysadmin_predicator():
     return commands.check(predicate)
 
 
-def is_sysadmin(member_snowflake: int) -> bool:
+async def is_sysadmin(member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
     if int(bot.config["discord_owner_id"]) == member_snowflake:
         return True

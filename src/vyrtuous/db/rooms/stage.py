@@ -21,10 +21,12 @@ from typing import Optional
 import time
 
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.fields.duration import DurationObject
+from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.guild_dictionary import (
     generate_skipped_dict_pages,
@@ -34,6 +36,19 @@ from vyrtuous.utils.guild_dictionary import (
     clean_guild_dictionary,
     flush_page,
 )
+from vyrtuous.utils.check import (
+    check,
+)
+from vyrtuous.utils.logger import logger
+from vyrtuous.db.roles.administrator import is_administrator
+from vyrtuous.db.roles.coordinator import is_coordinator
+from vyrtuous.db.roles.developer import is_developer
+from vyrtuous.db.roles.guild_owner import is_guild_owner
+from vyrtuous.db.roles.moderator import (
+    is_moderator,
+)
+from vyrtuous.db.roles.sysadmin import is_sysadmin
+from vyrtuous.utils.check import has_equal_or_lower_role
 
 
 class Stage(DatabaseFactory):
@@ -170,3 +185,220 @@ class Stage(DatabaseFactory):
                     title="Skipped Channels in Server",
                 )
         return pages
+
+    @classmethod
+    async def toggle_stage(cls, channel_dict, duration, snowflake_kwargs):
+        bot = DiscordBot.get_instance()
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
+        guild = bot.get_guild(guild_snowflake)
+        failed, pages, skipped, succeeded = [], [], [], []
+        kwargs = channel_dict.get("columns", None)
+
+        stage = await Stage.select(**kwargs)
+        if stage:
+            title = f"{get_random_emoji()} Stage Ended in {channel_dict.get("mention", None)}"
+            await Stage.delete(**kwargs)
+            for member in channel_dict.get("object", None).members:
+                await VoiceMute.delete(
+                    **kwargs,
+                    member_snowflake=member.id,
+                    target="room",
+                )
+                voice_mute = await VoiceMute.select(
+                    **kwargs,
+                    member_snowflake=member.id,
+                    target="user",
+                )
+                if not voice_mute and member.voice and member.voice.mute:
+                    try:
+                        await member.edit(
+                            mute=False,
+                            reason="Stage ended — no user-specific mute found",
+                        )
+                        succeeded.append(member)
+                    except discord.Forbidden as e:
+                        logger.warning(
+                            f"Unable to undo voice-mute "
+                            f"for member {member.display_name} ({member.id}) in "
+                            f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
+                            f"guild {guild.name} ({guild.id}). "
+                            f"{str(e).capitalize()}"
+                        )
+                        failed.append(member)
+            description_lines = [
+                f"**Channel:** {channel_dict.get("mention", None)}",
+                f"**Unmuted:** {len(succeeded)} users",
+            ]
+            if failed:
+                description_lines.append(f"**Failed:** {len(failed)}")
+            embed = discord.Embed(
+                description="\n".join(description_lines),
+                title=title,
+                color=discord.Color.blurple(),
+            )
+            pages.append(embed)
+        else:
+            stage = Stage(
+                **kwargs,
+                expires_in=duration.expires_in,
+            )
+            await stage.create()
+            for member in channel_dict.get("object", None).members:
+                if (
+                    await check(
+                        snowflake_kwargs=snowflake_kwargs,
+                        lowest_role="Coordinator",
+                    )
+                    or member.id == member_snowflake
+                ):
+                    skipped.append(member)
+                    continue
+                voice_mute = await VoiceMute(
+                    **kwargs,
+                    expires_in=duration.expires_in,
+                    member_snowflake=member.id,
+                    target="room",
+                    reason="Stage mute",
+                )
+                await voice_mute.create()
+                try:
+                    if member.voice and member.voice.channel.id == channel_dict.get(
+                        "id", None
+                    ):
+                        await member.edit(mute=True)
+                    succeeded.append(member)
+                except Exception as e:
+                    logger.warning(
+                        f"Unable to voice-mute "
+                        f"member {member.display_name} ({member.id}) "
+                        f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
+                        f"in guild {guild.name} ({guild.id}). "
+                        f"{str(e).capitalize()}"
+                    )
+                    failed.append(member)
+            description_lines = [
+                f"**Channel:** {channel_dict.get("mention", None)}",
+                f"**Expires:** {duration}",
+                f"**Muted:** {len(succeeded)} users",
+                f"**Skipped:** {len(skipped)}",
+            ]
+            if failed:
+                description_lines.append(f"**Failed:** {len(failed)}")
+            embed = discord.Embed(
+                description="\n".join(description_lines),
+                title=f"{get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
+                color=discord.Color.blurple(),
+            )
+            pages.append(embed)
+        return pages
+
+    @classmethod
+    async def survey(cls, channel_dict, guild_snowflake):
+
+        chunk_size, pages = 7, []
+        (
+            sysadmins,
+            developers,
+            guild_owners,
+            administrators,
+            coordinators,
+            moderators,
+        ) = ([], [], [], [], [], [])
+
+        for member in channel_dict.get("object", None).members:
+            try:
+                if await is_sysadmin(member.id):
+                    sysadmins.append(member)
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
+            try:
+                if await is_developer(member.id):
+                    developers.append(member)
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
+            try:
+                if await is_guild_owner(guild_snowflake, member.id):
+                    guild_owners.append(member)
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
+            try:
+                if await is_administrator(guild_snowflake, member.id):
+                    administrators.append(member)
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
+            try:
+                if await is_coordinator(
+                    channel_dict.get("id", None), guild_snowflake, member.id
+                ):
+                    coordinators.append(member)
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
+            try:
+                if await is_moderator(
+                    channel_dict.get("id", None), guild_snowflake, member.id
+                ):
+                    moderators.append(member)
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
+        sysadmins_chunks = [
+            sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
+        ]
+        guild_owners_chunks = [
+            guild_owners[i : i + chunk_size]
+            for i in range(0, len(guild_owners), chunk_size)
+        ]
+        developers_chunks = [
+            developers[i : i + chunk_size]
+            for i in range(0, len(developers), chunk_size)
+        ]
+        administrators_chunks = [
+            administrators[i : i + chunk_size]
+            for i in range(0, len(administrators), chunk_size)
+        ]
+        coordinators_chunks = [
+            coordinators[i : i + chunk_size]
+            for i in range(0, len(coordinators), chunk_size)
+        ]
+        moderators_chunks = [
+            moderators[i : i + chunk_size]
+            for i in range(0, len(moderators), chunk_size)
+        ]
+        roles_chunks = [
+            ("Sysadmins", sysadmins, sysadmins_chunks),
+            ("Developers", developers, developers_chunks),
+            ("Guild Owners", guild_owners, guild_owners_chunks),
+            ("Administrators", administrators, administrators_chunks),
+            ("Coordinators", coordinators, coordinators_chunks),
+            ("Moderators", moderators, moderators_chunks),
+        ]
+        max_pages = max(len(c[2]) for c in roles_chunks)
+        for page in range(max_pages):
+            embed = discord.Embed(
+                title=f"{get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
+                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
+                color=discord.Color.blurple(),
+            )
+            for role_name, role_list, chunks in roles_chunks:
+                chunk = chunks[page] if page < len(chunks) else []
+                embed.add_field(
+                    name=f"{role_name} ({len(chunk)}/{len(role_list)})",
+                    value=", ".join(u.mention for u in chunk) if chunk else "*None*",
+                    inline=False,
+                )
+            pages.append(embed)
+        return pages
+
+    @classmethod
+    async def toggle_stage_mute(cls, channel_dict, member_dict, snowflake_kwargs):
+        await has_equal_or_lower_role(
+            snowflake_kwargs=snowflake_kwargs,
+            member_snowflake=member_dict.get("id", None),
+        )
+        where_kwargs = channel_dict.get("columns", None)
+        stage = await Stage.select(**where_kwargs)
+        if stage:
+            await member_dict.get("object", None).edit(
+                mute=not member_dict.get("object", None).voice.mute
+            )
+            return f"Successfully toggled the mute for {member_dict.get("mention", None)} in {channel_dict.get("mention", None)}."

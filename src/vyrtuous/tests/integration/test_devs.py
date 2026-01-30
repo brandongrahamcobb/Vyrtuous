@@ -21,11 +21,7 @@ from typing import Optional
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    send_message,
-    setup
-)
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -78,7 +74,11 @@ async def test_devs(bot, command: Optional[str], target):
     assert captured.content
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     mod_commands = bot.get_cog("ModeratorCommands")

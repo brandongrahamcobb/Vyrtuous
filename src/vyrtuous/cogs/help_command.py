@@ -32,11 +32,14 @@ from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.inc.helpers import PERMISSION_TYPES
 
+
 def skip_help_discovery():
     async def predicate(ctx):
         return True
+
     predicate._skip_help_discovery = True
     return commands.check(predicate)
+
 
 class HelpCommand(commands.Cog):
 
@@ -75,7 +78,9 @@ class HelpCommand(commands.Cog):
                         lines.append(f"• {line}")
             return lines
 
-    async def get_available_commands(self, all, bot, user_highest) -> list[commands.Command]:
+    async def get_available_commands(
+        self, all, bot, user_highest
+    ) -> list[commands.Command]:
         available = []
         for command in bot.commands:
             try:
@@ -192,7 +197,7 @@ class HelpCommand(commands.Cog):
     async def help_app_command(
         self, interaction: discord.Interaction, command_name: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         bot = interaction.client
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
@@ -227,9 +232,7 @@ class HelpCommand(commands.Cog):
                         is_optional = param.default != inspect.Parameter.empty
                         usage_parts.append(f"[{name}]" if is_optional else f"<{name}>")
                         if param_desc:
-                            param_details.append(
-                                f"**{name}**: {param_desc}"
-                            )
+                            param_details.append(f"**{name}**: {param_desc}")
                         else:
                             param_details.append(f"**{name}**")
                     embed.add_field(
@@ -333,10 +336,10 @@ class HelpCommand(commands.Cog):
     @commands.command(name="help")
     @moderator_predicator()
     async def help_text_command(self, ctx, *, command_name: str = None):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         bot = ctx.bot
         pages, param_details, parameters = [], [], []
-        if command_name:
+        if command_name and command_name != "all":
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)
             if not kind:
                 return await state.end(
@@ -368,9 +371,7 @@ class HelpCommand(commands.Cog):
                         is_optional = param.default != inspect.Parameter.empty
                         usage_parts.append(f"[{name}]" if is_optional else f"<{name}>")
                         if param_desc:
-                            param_details.append(
-                                f"**{name}**: {param_desc}"
-                            )
+                            param_details.append(f"**{name}**: {param_desc}")
                         else:
                             param_details.append(f"**{name}**")
                     embed.add_field(
@@ -468,6 +469,7 @@ class HelpCommand(commands.Cog):
         if not pages:
             return await state.end(warning="No commands available to you.")
         return await state.end(success=pages)
+
 
 async def setup(bot: DiscordBot):
     cog = HelpCommand(bot)

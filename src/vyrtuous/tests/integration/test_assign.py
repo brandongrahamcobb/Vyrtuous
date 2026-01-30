@@ -54,16 +54,20 @@ async def test_assign(bot, command: Optional[str], reference, member):
     ref = reference.format(
         uuid=UUID,
     )
-    m = member.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE
-    )
+    m = member.format(member_snowflake=DUMMY_MEMBER_SNOWFLAKE)
     full = f"{command} {ref} {m}"
     captured = await send_message(bot=bot, content=full)
     assert captured.content
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     sysadmin_commands = bot.get_cog("SysadminCommands")
-    command = await sysadmin_commands.assign_bug_to_developer_text_command(ctx, reference=ref, member=m)
+    command = await sysadmin_commands.assign_bug_to_developer_text_command(
+        ctx, reference=ref, member=m
+    )

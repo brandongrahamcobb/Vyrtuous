@@ -106,8 +106,14 @@ async def test_bugs(bot, command: Optional[str], target, filter):
     assert captured
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     dev_commands = bot.get_cog("DevCommands")
-    command = await dev_commands.list_bugs_text_command(ctx, target=formatted, filter=filter)
+    command = await dev_commands.list_bugs_text_command(
+        ctx, target=formatted, filter=filter
+    )

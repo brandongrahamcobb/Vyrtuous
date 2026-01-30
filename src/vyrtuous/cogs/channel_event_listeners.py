@@ -110,7 +110,6 @@ class ChannelEventListeners(commands.Cog):
         where_kwargs = {"room_name": before.id}
         await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
-    # Done
     @commands.Cog.listener()
     async def on_voice_state_update(
         self,

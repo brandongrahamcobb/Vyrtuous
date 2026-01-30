@@ -44,12 +44,11 @@ class DevCommands(commands.Cog):
         self.bot = bot
         self.message_service = MessageService(self.bot)
 
-    # DONE
     @app_commands.command(name="backup", description="DB backup.")
     @developer_predicator()
     async def backup_app_command(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         db = Database(config=self.bot.config, directory="/app/backups")
         try:
             db.create_backup_directory()
@@ -58,11 +57,10 @@ class DevCommands(commands.Cog):
             return await state.end(warning=str(e).capitalize())
         return await state.end(success=discord.File(db.file_name))
 
-    # DONE
     @commands.command(name="backup", help="DB backup.")
     @developer_predicator()
     async def backup_text_command(self, ctx: commands.Context):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         db = Database(config=self.bot.config, directory="/app/backups")
         try:
             db.create_backup_directory()
@@ -74,7 +72,7 @@ class DevCommands(commands.Cog):
     @app_commands.command(name="cogs", description="Lists cogs.")
     @developer_predicator()
     async def list_cogs_app_command(self, interaction: discord.Interaction):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"Cogs for {interaction.guild.me.name}",
@@ -100,7 +98,7 @@ class DevCommands(commands.Cog):
     @commands.command(name="cogs", help="Lists cogs.")
     @developer_predicator()
     async def list_cogs_text_command(self, ctx: commands.Context):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"Cogs for {ctx.guild.me.name}",
@@ -139,7 +137,7 @@ class DevCommands(commands.Cog):
         action: str,
         notes: str = None,
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
 
         bug = await Bug.select(id=reference, resolved=False, singular=True)
         if not bug:
@@ -184,7 +182,7 @@ class DevCommands(commands.Cog):
             default=None, description="Optionally specify notes."
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
 
         bug = await Bug.select(id=reference, resolved=False, singular=True)
         if not bug:
@@ -223,18 +221,18 @@ class DevCommands(commands.Cog):
         target: str = None,
         filter: str = None,
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         try:
             target_uuid = UUID(str(target))
-            kwargs = {"id": target_uuid}
+            where_kwargs = {"id": target_uuid}
         except Exception as e:
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
-            kwargs = object_dict.get("columns", None)
+            where_kwargs = object_dict.get("columns", None)
         pages = await Bug.build_pages(
-            filter=filter, kwargs=kwargs, is_at_home=is_at_home
+            filter=filter, where_kwargs=where_kwargs, is_at_home=is_at_home
         )
         await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
 
@@ -252,29 +250,28 @@ class DevCommands(commands.Cog):
             description="Optionally specify `resolved` or `unresolved`.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         try:
             target_uuid = UUID(str(target))
-            kwargs = {"id": target_uuid}
+            where_kwargs = {"id": target_uuid}
         except Exception as e:
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
-            kwargs = object_dict.get("columns", None)
+            where_kwargs = object_dict.get("columns", None)
         pages = await Bug.build_pages(
-            filter=filter, kwargs=kwargs, is_at_home=is_at_home
+            filter=filter, where_kwargs=where_kwargs, is_at_home=is_at_home
         )
         await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
 
-    # DONE
     @app_commands.command(
         name="load", description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"
     )
     @developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         try:
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
@@ -283,13 +280,12 @@ class DevCommands(commands.Cog):
             )
         return await state.end(success=f"Successfully loaded {module}.")
 
-    # DONE
     @commands.command(
         name="load", help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"
     )
     @developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         try:
             await self.bot.load_extension(module)
         except commands.ExtensionError as e:
@@ -297,16 +293,14 @@ class DevCommands(commands.Cog):
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
         return await state.end(success=f"Successfully loaded {module}.")
-    
-    @app_commands.command(name='ow', description="List overwrites for a channel.")
+
+    @app_commands.command(name="ow", description="List overwrites for a channel.")
     @app_commands.describe(channel="Specify the ID or mention.")
     @developer_predicator()
     async def list_overwrites_app_command(
-        self,
-        interaction: discord.Interaction,
-        channel: str
+        self, interaction: discord.Interaction, channel: str
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=channel)
         member_count, role_count, total_count = 0, 0, 0
@@ -318,13 +312,15 @@ class DevCommands(commands.Cog):
                 else:
                     role_count += 1
         embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
-        embed.add_field(name="Channel", value=object_dict.get("name", None), inline=False)
+        embed.add_field(
+            name="Channel", value=object_dict.get("name", None), inline=False
+        )
         embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
         embed.add_field(name="Member overwrites", value=str(member_count), inline=False)
         embed.add_field(name="Total overwrites", value=str(total_count), inline=False)
         return await state.end(success=embed)
 
-    @commands.command(name='ow')
+    @commands.command(name="ow")
     @developer_predicator()
     async def overwrites(
         self,
@@ -332,9 +328,9 @@ class DevCommands(commands.Cog):
         channel: str = commands.parameter(
             default=None,
             description="Specify the ID or mention.",
-        )
+        ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         object_dict = await do.determine_from_target(target=channel)
         member_count, role_count, total_count = 0, 0, 0
@@ -346,36 +342,33 @@ class DevCommands(commands.Cog):
                 else:
                     role_count += 1
         embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
-        embed.add_field(name="Channel", value=object_dict.get("name", None), inline=False)
+        embed.add_field(
+            name="Channel", value=object_dict.get("name", None), inline=False
+        )
         embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
         embed.add_field(name="Member overwrites", value=str(member_count), inline=False)
         embed.add_field(name="Total overwrites", value=str(total_count), inline=False)
         return await state.end(success=embed)
 
-
-    # DONE
     @app_commands.command(name="ping", description="Ping me!")
     @developer_predicator()
     async def ping_app_command(self, interaction: discord.Interaction):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         return await state.end(success="Pong!")
 
-    # DONE
     @commands.command(name="ping", help="Ping me!")
     @developer_predicator()
     async def ping_text_command(self, ctx: commands.Context):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         return await state.end(success="Pong!")
 
-    # DONE
     @app_commands.command(
         name="reload", description="Reloads a cog by name 'vyrtuous.cog.<cog_name>'."
     )
-    @app_commands.check(at_home)
     @developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         try:
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
@@ -384,13 +377,12 @@ class DevCommands(commands.Cog):
             )
         return await state.end(success=f"Successfully reloaded {module}.")
 
-    # DONE
     @commands.command(
         name="reload", help="Reloads a cog by name 'vyrtuous.cog.<cog_name>'."
     )
     @developer_predicator()
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
@@ -399,7 +391,6 @@ class DevCommands(commands.Cog):
             )
         return await state.end(success=f"Successfully reloaded {module}.")
 
-    # DONE
     @app_commands.command(name="sync", description="Sync app commands.")
     @developer_predicator()
     async def sync_app_command(
@@ -408,7 +399,7 @@ class DevCommands(commands.Cog):
         spec: Optional[Literal["~", "*", "^"]] = None,
     ):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         guilds = interaction.client.guilds
         synced = []
         if not guilds:
@@ -440,7 +431,6 @@ class DevCommands(commands.Cog):
                 ret += 1
         return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
-    # DONE
     @commands.command(name="sync", help="Sync app commands.")
     @developer_predicator()
     async def sync_text_command(
@@ -450,7 +440,7 @@ class DevCommands(commands.Cog):
         *,
         guilds: commands.Greedy[discord.Object] = None,
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         synced = []
         if not guilds:
             if spec == "~":
@@ -481,14 +471,13 @@ class DevCommands(commands.Cog):
                 ret += 1
         return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
-    # DONE
     @app_commands.command(
         name="unload", description="Unloads a cog by name 'vyrtuous.cog.<cog_name>'."
     )
     @developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         try:
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
@@ -497,13 +486,12 @@ class DevCommands(commands.Cog):
             )
         return await state.end(success=f"Successfully unloaded {module}.")
 
-    # DONE
     @commands.command(
         name="unload", help="Unloads a cog by name 'vyrtuous.cog.<cog_name>'."
     )
     @developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:

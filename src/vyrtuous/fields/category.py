@@ -40,7 +40,6 @@ class CategoryObject:
 
     @category.setter
     def category(self, new_cat):
-        print(new_cat)
         dir_paths = []
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")

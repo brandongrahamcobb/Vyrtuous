@@ -33,6 +33,8 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 @pytest.mark.parametrize(
     "command, category, alias_name, channel_snowflake, role_snowflake",
     [
+        ("!alias", "role", "testrole", "fail_channel", "fail_role"),
+        ("!alias", "role", "testrole", "fail_channel", None),
         ("!alias", "vmute", "testmute", "{channel_snowflake}", None),
         ("!alias", "flag", "testflag", "{channel_snowflake}", None),
         ("!alias", "vegan", "testvegan", "{channel_snowflake}", None),
@@ -41,7 +43,9 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!alias", "role", "testrole", "{channel_snowflake}", "{role_snowflake}"),
     ],
 )
-async def test_alias(bot, command: Optional[str], category, alias_name, channel_snowflake, role_snowflake):
+async def test_alias(
+    bot, command: Optional[str], category, alias_name, channel_snowflake, role_snowflake
+):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
@@ -70,18 +74,12 @@ async def test_alias(bot, command: Optional[str], category, alias_name, channel_
     channel = channel_snowflake.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
     )
-    kwargs = {
-        "category": category,
-        "alias_name": alias_name,
-        "channel": channel
-    }
+    kwargs = {"category": category, "alias_name": alias_name, "channel": channel}
     if role_snowflake:
         role = role_snowflake.format(
             role_snowflake=ROLE_SNOWFLAKE,
         )
-        kwargs.update({
-            "role": role
-        })
+        kwargs.update({"role": role})
         full = f"{command} {category} {alias_name} {channel} {role}"
     else:
         full = f"{command} {category} {alias_name} {channel}"
@@ -89,7 +87,11 @@ async def test_alias(bot, command: Optional[str], category, alias_name, channel_
     assert captured
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     admin_commands = bot.get_cog("AdminCommands")

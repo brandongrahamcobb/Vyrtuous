@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import discord
@@ -34,6 +34,7 @@ from vyrtuous.utils.guild_dictionary import (
     clean_guild_dictionary,
     flush_page,
 )
+from vyrtuous.utils.logger import logger
 
 
 class VoiceMute(DatabaseFactory):
@@ -234,4 +235,108 @@ class VoiceMute(DatabaseFactory):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
+        return pages
+
+    @classmethod
+    async def room_mute(cls, channel_dict, guild_snowflake, reason, snowflake_kwargs):
+        bot = DiscordBot.get_instance()
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
+        muted_members, pages, skipped_members, failed_members = [], [], [], []
+        guild = bot.get_guild(guild_snowflake)
+        where_kwargs = channel_dict.get("columns", None)
+
+        for member in channel_dict.get("object", None).members:
+            if member.id == member_snowflake:
+                continue
+            voice_mute = await VoiceMute.select(
+                **where_kwargs,
+                target="user",
+            )
+            if voice_mute:
+                skipped_members.append(member)
+                continue
+            if member.voice and member.voice.channel:
+                if member.voice.channel.id == channel_dict.get("id", None):
+                    try:
+                        await member.edit(mute=True)
+                    except Exception as e:
+                        logger.warning(
+                            f"Unable to voice-mute member "
+                            f"{member.display_name} ({member.id}) in channel "
+                            f"{channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in guild "
+                            f"{guild.name} ({guild.id}). "
+                            f"{str(e).capitalize()}"
+                        )
+                        failed_members.append(member)
+            expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
+            voice_mute = VoiceMute(
+                expires_in=expires_in,
+                member_snowflake=member.id,
+                reason=reason,
+                target="user",
+                **where_kwargs,
+            )
+            await voice_mute.create()
+            muted_members.append(member)
+        description_lines = [
+            f"**Channel:** {channel_dict.get("mention", None)}",
+            f"**Muted:** {len(muted_members)} users",
+            f"**Failed:** {len(failed_members)} users",
+            f'**Skipped:** {len(channel_dict.get('object', None).members) \
+                - len(muted_members) \
+                - len(failed_members)
+            }',
+        ]
+        embed = discord.Embed(
+            description="\n".join(description_lines),
+            title=f"{get_random_emoji()} Room Mute Summary",
+            color=discord.Color.blurple(),
+        )
+        pages.append(embed)
+        return pages
+
+    @classmethod
+    async def room_unmute(cls, channel_dict, guild_snowflake):
+        unmuted_members, pages, skipped_members, failed_members = [], [], [], []
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        where_kwargs = channel_dict.get("columns", None)
+
+        for member in channel_dict.get("object", None).members:
+            voice_mute = await VoiceMute.select(target="user", **where_kwargs)
+            if not voice_mute:
+                skipped_members.append(member)
+                continue
+            if member.voice and member.voice.channel:
+                if member.voice.channel.id == channel_dict.get("id", None):
+                    try:
+                        await member.edit(mute=False)
+                    except Exception as e:
+                        logger.warning(
+                            f"Unable to undo voice-mute "
+                            f"for member {member.display_name} ({member.id}) "
+                            f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
+                            f"in guild {guild.name} "
+                            f"({guild.id}). "
+                            f"{str(e).capitalize()}"
+                        )
+                        failed_members.append(member)
+            await VoiceMute.delete(target="user", **where_kwargs)
+            unmuted_members.append(member)
+        description_lines = [
+            f"**Channel:** {channel_dict.get("mention", None)}",
+            f"**Unmuted:** {len(unmuted_members)} users",
+            f"**Failed:** {len(failed_members)} users",
+            f'**Skipped:** {len(channel_dict.get('object', None).members) \
+                - len(unmuted_members) \
+                - len(failed_members)
+            }',
+        ]
+        embed = discord.Embed(
+            description="\n".join(description_lines),
+            title=f"{get_random_emoji()} Room Unmute Summary",
+            color=discord.Color.blurple(),
+        )
+        pages.append(embed)
         return pages

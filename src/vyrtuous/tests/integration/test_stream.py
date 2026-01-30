@@ -33,18 +33,28 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     [
         ("!stream", "{source_channel_snowflake}", "create", "all", None),
         (
-            "!stream", "{source_channel_snowflake}", "modify", "channel", "{target_channel_snowflake}"
+            "!stream",
+            "{source_channel_snowflake}",
+            "modify",
+            "channel",
+            "{target_channel_snowflake}",
         ),
         ("!stream", "{source_channel_snowflake}", "delete", None, None),
         ("!stream", "<#{source_channel_snowflake}>", "create", "all", None),
         ("!stream", "<#{source_channel_snowflake}>", "modify", None, None),
         ("!stream", "<#{source_channel_snowflake}>", "delete", None, None),
         (
-            "!stream", "{source_channel_snowflake}", "create", "channel", "{target_channel_snowflake}"
+            "!stream",
+            "{source_channel_snowflake}",
+            "create",
+            "channel",
+            "{target_channel_snowflake}",
         ),
     ],
 )
-async def test_stream(bot, command: Optional[str], source_channel, action, target, type):
+async def test_stream(
+    bot, command: Optional[str], source_channel, action, target, type
+):
     """
     Setup, modify or teardown a streaming route, modifying the
     the PostgresSQL database 'vyrtuous' in the table 'streaming'.
@@ -70,18 +80,11 @@ async def test_stream(bot, command: Optional[str], source_channel, action, targe
     [{emoji} Streaming Route modified for Channel1]
     """
     snowflakes = None
-    sc = source_channel.format(
-        source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE
-    )
-    kwargs = {
-        "channel": sc,
-        "action": action
-    }
+    sc = source_channel.format(source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE)
+    kwargs = {"channel": sc, "action": action}
     full = f"{command} {sc} {action}"
     if type:
-        kwargs.update({
-            "entry_type": type
-        })
+        kwargs.update({"entry_type": type})
         full = f"{command} {sc} {action} {type}"
     if target:
         tc = target.format(
@@ -93,7 +96,11 @@ async def test_stream(bot, command: Optional[str], source_channel, action, targe
     assert captured
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     admin_commands = bot.get_cog("AdminCommands")

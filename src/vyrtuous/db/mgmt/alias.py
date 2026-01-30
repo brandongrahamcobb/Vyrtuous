@@ -31,7 +31,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.fields.duration import DurationObject
-from vyrtuous.utils.check import has_equal_or_lower_role
+from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.guild_dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -195,13 +195,10 @@ class Alias(DatabaseFactory):
                 "action_member_snowflake": member_snowflake,
             }
         )
-        action_executor_role = await has_equal_or_lower_role(
-            member_snowflake=member_snowflake,
-            kwargs={
-                "channel_snowflake": self.channel_snowflake,
-                "guild_snowflake": self.guild_snowflake,
-                "member_snowflake": author_snowflake,
-            },
+        action_executor_role = await resolve_highest_role(
+            channel_snowflake=self.channel_snowflake,
+            guild_snowflake=self.guild_snowflake,
+            member_snowflake=author_snowflake,
         )
         action_information.update({"action_executor_role": action_executor_role})
         action_information = await self.build_duration_information(
@@ -257,9 +254,7 @@ class Alias(DatabaseFactory):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, dictionary in guild_data.get(
-                "channels", {}
-            ).items():
+            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
                 for category, alias_data in dictionary["aliases"].items():
@@ -303,3 +298,68 @@ class Alias(DatabaseFactory):
                     title="Skipped Channels in Server",
                 )
         return pages
+
+    @classmethod
+    async def delete_alias(cls, alias_name, snowflake_kwargs):
+        bot = DiscordBot.get_instance()
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+
+        where_kwargs = {"alias_name": alias_name, "guild_snowflake": guild_snowflake}
+        alias = await Alias.select(singular=True, **where_kwargs)
+        if not alias:
+            return "No aliases found for `{alias_name}`."
+
+        guild = bot.get_guild(guild_snowflake)
+        channel = guild.get_channel(alias.channel_snowflake)
+
+        if getattr(alias, "role_snowflake"):
+            await Role.delete(
+                guild_snowflake=guild_snowflake, role_snowflake=alias.role_snowflake
+            )
+            reason = "Removing hide role."
+            role = guild.get_role(alias.role_snowflake)
+            if role:
+                await role.delete(reason=reason)
+            msg = (
+                f"Alias `{alias.alias_name}` of type "
+                f"`{alias.category}` for channel {channel.mention} "
+                f" and role {alias.role_mention} deleted successfully."
+            )
+        else:
+            msg = (
+                f"Alias `{alias.alias_name}` of type "
+                f"`{alias.category}` for channel {channel.mention} "
+                f"deleted successfully."
+            )
+        await Alias.delete(**where_kwargs)
+        return msg
+
+    @classmethod
+    async def create_alias(cls, alias_name, category, channel_dict, role_dict):
+        where_kwargs = {}
+        where_kwargs.update(channel_dict.get("columns", None))
+        msg = (
+            f"Alias `{alias_name}` of type `{category}` "
+            f"created successfully for channel {channel_dict.get("mention", None)}."
+        )
+        alias = await Alias.select(
+            category=category,
+            **where_kwargs,
+        )
+        if alias:
+            return (
+                f"Alias of type `{category}` "
+                f"already exists for this channel {channel_dict.get("mention", None)}."
+            )
+        if role_dict:
+            where_kwargs.update(role_dict.get("columns", None))
+            role_obj = Role(**where_kwargs)
+            await role_obj.create()
+            msg = (
+                f"Alias `{alias_name}` of type `{category}` "
+                f"created successfully "
+                f"with role {role_dict.get("mention", None)}."
+            )
+        alias = Alias(alias_name=alias_name, category=str(category), **where_kwargs)
+        await alias.create()
+        return msg

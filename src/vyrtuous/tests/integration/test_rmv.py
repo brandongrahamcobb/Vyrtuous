@@ -63,8 +63,14 @@ async def test_rmv(bot, command: Optional[str], source_channel, target_channel):
     assert captured.content
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     admin_commands = bot.get_cog("AdminCommands")
-    command = await admin_commands.room_move_all_text_command(ctx, source_channel=sc, target_channel=tc)
+    command = await admin_commands.room_move_all_text_command(
+        ctx, source_channel=sc, target_channel=tc
+    )

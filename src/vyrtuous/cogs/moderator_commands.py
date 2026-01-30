@@ -27,20 +27,16 @@ from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.actions.flag import Flag
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
-from vyrtuous.db.roles.administrator import Administrator, is_administrator
-from vyrtuous.db.roles.coordinator import Coordinator, is_coordinator
-from vyrtuous.db.roles.developer import Developer, is_developer
-from vyrtuous.db.roles.guild_owner import is_guild_owner
+from vyrtuous.db.roles.administrator import Administrator
+from vyrtuous.db.roles.coordinator import Coordinator
+from vyrtuous.db.roles.developer import Developer
 from vyrtuous.db.roles.moderator import (
     Moderator,
-    is_moderator,
     moderator_predicator,
 )
-from vyrtuous.db.roles.sysadmin import is_sysadmin
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
@@ -53,18 +49,15 @@ from vyrtuous.fields.snowflake import (
 )
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.check import (
-    check,
     has_equal_or_lower_role_wrapper,
     HasEqualOrLowerRole,
 )
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.moderation_view import ModerationView
 from vyrtuous.utils.duration_modal import DurationModal
 from vyrtuous.utils.reason_modal import ReasonModal
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
@@ -83,7 +76,7 @@ class ModeratorCommands(commands.Cog):
     async def list_administrators_app_command(
         self, interaction: discord.Interaction, target: str
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
@@ -94,7 +87,6 @@ class ModeratorCommands(commands.Cog):
             plural=Administrator.PLURAL, pages=pages, state=state
         )
 
-    # DONE
     @commands.command(name="admins", help="Lists admins.")
     @moderator_predicator()
     @skip_help_discovery()
@@ -106,7 +98,7 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: `all`, " "channel ID/mention or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=str(target))
@@ -125,14 +117,13 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await Ban.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="bans", description="List bans.")
     @moderator_predicator()
     async def list_bans_text_command(
@@ -142,14 +133,13 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await Ban.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
 
-    # DONE
     @app_commands.command(name="cmds", description="List aliases.")
     @app_commands.describe(
         target="Specify one of: 'all', channel ID/mention, or server ID."
@@ -158,14 +148,13 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await Alias.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Alias.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="cmds", help="List aliases.")
     @moderator_predicator()
     async def list_commands_text_command(
@@ -175,7 +164,7 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
@@ -190,7 +179,7 @@ class ModeratorCommands(commands.Cog):
     async def list_coordinators_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
@@ -201,7 +190,6 @@ class ModeratorCommands(commands.Cog):
             plural=Coordinator.PLURAL, pages=pages, state=state
         )
 
-    # DONE
     @commands.command(name="coords", help="Lists coords.")
     @moderator_predicator()
     async def list_coordinators_text_command(
@@ -211,7 +199,7 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
@@ -222,15 +210,13 @@ class ModeratorCommands(commands.Cog):
             plural=Coordinator.PLURAL, pages=pages, state=state
         )
 
-    # DONE
     @app_commands.command(name="del", description="Delete message.")
     @app_commands.describe(message="Message ID")
     @moderator_predicator()
     async def delete_message_app_command(
         self, interaction: discord.Interaction, message: AppMessageSnowflake
     ):
-        state = StateService(source=interaction)
-
+        state = StateService(interaction=interaction)
         for channel_obj in interaction.guild.channels:
             msg = await channel_obj.fetch_message(message)
         else:
@@ -239,10 +225,8 @@ class ModeratorCommands(commands.Cog):
             await msg.delete()
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
-
         return await state.end(success=f"Message `{message}` deleted successfully.")
 
-    # DONE
     @commands.command(name="del", help="Delete message.")
     @moderator_predicator()
     @skip_help_discovery()
@@ -251,8 +235,7 @@ class ModeratorCommands(commands.Cog):
         ctx: commands.Context,
         message: MessageSnowflake = commands.parameter(description="Message snowflake"),
     ):
-        state = StateService(source=ctx)
-
+        state = StateService(ctx=ctx)
         for channel_obj in ctx.guild.channels:
             msg = await channel_obj.fetch_message(message)
         else:
@@ -261,23 +244,20 @@ class ModeratorCommands(commands.Cog):
             await msg.delete()
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
-
         return await state.end(success=f"Message `{message}` deleted successfully.")
 
-    # DONE
     @app_commands.command(name="devs", description="List devs.")
     @app_commands.describe(target="Specify one of: 'all', or server ID.")
     @moderator_predicator()
     async def list_developers_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await Developer.build_pages(object_dict=object_dict)
         await StateService.send_pages(plural=Developer.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="devs", help="List devs.")
     @moderator_predicator()
     @skip_help_discovery()
@@ -289,7 +269,7 @@ class ModeratorCommands(commands.Cog):
             description="'all', a specific server or user mention/ID"
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await Developer.build_pages(object_dict=object_dict)
@@ -310,7 +290,7 @@ class ModeratorCommands(commands.Cog):
                 sender_snowflake=interaction.user.id,
             )
         except HasEqualOrLowerRole as e:
-            state = StateService(source=interaction)
+            state = StateService(interaction=interaction)
             return await state.end(warning=str(e).capitalize())
         view = ModerationView(
             interaction=interaction,
@@ -322,20 +302,18 @@ class ModeratorCommands(commands.Cog):
             content="Select a channel and a category", view=view, ephemeral=True
         )
 
-    # DONE
     @app_commands.command(name="flags", description="List flags.")
     @moderator_predicator()
     async def list_flags_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await Flag.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Flag.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="flags", help="List flags.")
     @moderator_predicator()
     async def list_flags_text_command(
@@ -345,14 +323,13 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await Flag.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Flag.PLURAL, pages=pages, state=state)
 
-    # DONE
     @app_commands.command(name="ls", description="List new vegans.")
     @app_commands.describe(
         target="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID."
@@ -361,14 +338,13 @@ class ModeratorCommands(commands.Cog):
     async def list_new_vegans_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await Vegan.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="ls", help="List new vegans.")
     @moderator_predicator()
     @skip_help_discovery()
@@ -380,14 +356,13 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await Vegan.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
 
-    # DONE
     @app_commands.command(
         name="migrate", description="Migrate a temporary room to a new channel."
     )
@@ -401,51 +376,23 @@ class ModeratorCommands(commands.Cog):
         old_name: str,
         channel: AppChannelSnowflake,
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
+        snowflake_kwargs = {
+            "channel_snowflake": interaction.channel.id,
+            "guild_snowflake": interaction.guild.id,
+            "member_snowflake": interaction.user.id,
+        }
         do = DiscordObject(interaction=interaction)
-
-        old_room = await TemporaryRoom.select(
-            guild_snowflake=interaction.guild.id, room_name=old_name
+        channel_dict = await do.determine_from_target(target=channel)
+        await TemporaryRoom.migrate_temporary_room(
+            channel_dict=channel_dict,
+            old_name=old_name,
+            snowflake_kwargs=snowflake_kwargs,
         )
-        if old_room:
-            channel_dict = await do.determine_from_target(target=channel)
-            await check(source=interaction, lowest_role="Administrator")
-            set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
-            temp_where_kwargs = {
-                "channel_snowflake": old_room.channel_snowflake,
-                "guild_snowflake": interaction.guild.id,
-                "room_name": channel_dict.get("name", None),
-            }
-            where_kwargs = {
-                "channel_snowflake": old_room.channel_snowflake,
-                "guild_snowflake": interaction.guild.id,
-            }
-            kwargs = {
-                "set_kwargs": set_kwargs,
-                "where_kwargs": where_kwargs,
-            }
-            await TemporaryRoom.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=temp_where_kwargs,
-            )
-            await Alias.update(**kwargs)
-            await Ban.update(**kwargs)
-            await Cap.update(**kwargs)
-            await Coordinator.update(**kwargs)
-            await Flag.update(**kwargs)
-            await Moderator.update(**kwargs)
-            await Stage.update(**kwargs)
-            await TextMute.update(**kwargs)
-            await Vegan.update(**kwargs)
-            await VoiceMute.update(**kwargs)
-            return await state.end(
-                success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
-            )
         return await state.end(
-            warning=f"No temporary rooms found called `{old_name}` in {interaction.guild.name}."
+            success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
         )
 
-    # DONE
     @commands.command(
         name="migrate",
         help="Migrate a temporary room to a new channel by snowflake.",
@@ -460,51 +407,21 @@ class ModeratorCommands(commands.Cog):
             description="Tag a channel or include its ID."
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
+        snowflake_kwargs = {
+            "channel_snowflake": ctx.channel.id,
+            "guild_snowflake": ctx.guild.id,
+            "member_snowflake": ctx.author.id,
+        }
         do = DiscordObject(ctx=ctx)
-
-        old_room = await TemporaryRoom.select(
-            guild_snowflake=ctx.guild.id, room_name=old_name
+        channel_dict = await do.determine_from_target(target=channel)
+        msg = await TemporaryRoom.migrate_temporary_room(
+            channel_dict=channel_dict,
+            old_name=old_name,
+            snowflake_kwargs=snowflake_kwargs,
         )
-        if old_room:
-            channel_dict = await do.determine_from_target(target=channel)
-            await check(source=ctx, lowest_role="Administrator")
-            set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
-            temp_where_kwargs = {
-                "channel_snowflake": old_room.channel_snowflake,
-                "guild_snowflake": ctx.guild.id,
-                "room_name": channel_dict.get("name", None),
-            }
-            where_kwargs = {
-                "channel_snowflake": old_room.channel_snowflake,
-                "guild_snowflake": ctx.guild.id,
-            }
-            kwargs = {
-                "set_kwargs": set_kwargs,
-                "where_kwargs": where_kwargs,
-            }
-            await TemporaryRoom.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=temp_where_kwargs,
-            )
-            await Alias.update(**kwargs)
-            await Ban.update(**kwargs)
-            await Cap.update(**kwargs)
-            await Coordinator.update(**kwargs)
-            await Flag.update(**kwargs)
-            await Moderator.update(**kwargs)
-            await Stage.update(**kwargs)
-            await TextMute.update(**kwargs)
-            await Vegan.update(**kwargs)
-            return await state.end(
-                success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
-            )
+        return await state.end(success=msg)
 
-        return await state.end(
-            warning=f"No temporary rooms found called `{old_name}` in {ctx.guild.name}."
-        )
-
-    # DONE
     @app_commands.command(name="mods", description="Lists mods.")
     @app_commands.describe(
         target="Specify one of: 'all', channel ID/mention, or server ID."
@@ -513,7 +430,7 @@ class ModeratorCommands(commands.Cog):
     async def list_moderators_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
@@ -522,7 +439,6 @@ class ModeratorCommands(commands.Cog):
         )
         await StateService.send_pages(plural=Moderator.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="mods", help="Lists mods.")
     @moderator_predicator()
     async def list_moderators_text_command(
@@ -532,7 +448,7 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
@@ -541,13 +457,12 @@ class ModeratorCommands(commands.Cog):
         )
         await StateService.send_pages(plural=Moderator.PLURAL, pages=pages, state=state)
 
-    # DONE
     @app_commands.command(name="mutes", description="List mutes.")
     @moderator_predicator()
     async def list_mutes_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
@@ -556,7 +471,6 @@ class ModeratorCommands(commands.Cog):
         )
         await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="mutes", help="List mutes.")
     @moderator_predicator()
     async def list_mutes_text_command(
@@ -566,7 +480,7 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
@@ -575,7 +489,6 @@ class ModeratorCommands(commands.Cog):
         )
         await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
 
-    # DONE
     @app_commands.command(name="mstage", description="Stage mute/unmute.")
     @app_commands.describe(member="Tag a member or include their ID")
     @moderator_predicator()
@@ -585,31 +498,22 @@ class ModeratorCommands(commands.Cog):
         member: AppMemberSnowflake,
         channel: AppChannelSnowflake,
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
+        snowflake_kwargs = {
+            "channel_snowflake": interaction.channel.id,
+            "guild_snowflake": interaction.guild.id,
+            "member_snowflake": interaction.user.id,
+        }
         do = DiscordObject(interaction=interaction)
-
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role_wrapper(
-            source=interaction,
-            member_snowflake=member_dict.get("id", None),
-            sender_snowflake=interaction.user.id,
+        msg = await Stage.toggle_stage_mute(
+            channel_dict=channel_dict,
+            member_dict=member_dict,
+            snowflake_kwargs=snowflake_kwargs,
         )
-        kwargs = channel_dict.get("columns", None)
+        await state.end(success=msg)
 
-        stage = await Stage.select(**kwargs)
-        if not stage:
-            return await state.end(
-                warning=f"No active stage found in {channel_dict.get("mention", None)}."
-            )
-        try:
-            await member_dict.get("object", None).edit(
-                mute=not member_dict.get("object", None).voice.mute
-            )
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
-
-    # DONE
     @commands.command(name="mstage", help="Stage mute/unmute.")
     @moderator_predicator()
     @skip_help_discovery()
@@ -623,29 +527,21 @@ class ModeratorCommands(commands.Cog):
             description="Tag a channel or include its ID."
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
+        snowflake_kwargs = {
+            "channel_snowflake": ctx.channel.id,
+            "guild_snowflake": ctx.guild.id,
+            "member_snowflake": ctx.author.id,
+        }
         do = DiscordObject(ctx=ctx)
-
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role_wrapper(
-            source=ctx,
-            member_snowflake=member_dict.get("id", None),
-            sender_snowflake=ctx.author.id,
+        msg = await Stage.toggle_stage_mute(
+            channel_dict=channel_dict,
+            member_dict=member_dict,
+            snowflake_kwargs=snowflake_kwargs,
         )
-        kwargs = channel_dict.get("columns", None)
-
-        stage = await Stage.select(**kwargs)
-        if not stage:
-            return await state.end(
-                warning=f"No active stage found in {channel_dict.get("mention", None)}."
-            )
-        try:
-            await member_dict.get("object", None).edit(
-                mute=not member_dict.get("object", None).voice.mute
-            )
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
+        await state.end(success=msg)
 
     @app_commands.command(name="reason", description="Modify a reason.")
     @app_commands.describe(member="The ID or mention of the member.")
@@ -662,7 +558,7 @@ class ModeratorCommands(commands.Cog):
                 sender_snowflake=interaction.user.id,
             )
         except HasEqualOrLowerRole as e:
-            state = StateService(source=interaction)
+            state = StateService(interaction=interaction)
             return await state.end(warning=str(e).capitalize())
         view = ModerationView(
             interaction=interaction,
@@ -674,14 +570,13 @@ class ModeratorCommands(commands.Cog):
             content="Select a channel and a category", view=view, ephemeral=True
         )
 
-    # DONE
     @app_commands.command(name="roleid", description="Get role by name.")
     @app_commands.describe(role_name="The name of the role to look up")
     @moderator_predicator()
     async def get_role_id_app_command(
         self, interaction: discord.Interaction, role_name: str
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         role = discord.utils.get(interaction.guild.roles, name=role_name)
         if role:
             return await state.end(success=f"Role `{role.name}` has ID `{role.id}`.")
@@ -690,12 +585,11 @@ class ModeratorCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
-    # DONE
     @commands.command(name="roleid", help="Get role by name.")
     @moderator_predicator()
     @skip_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
             return await state.end(success=f"Role `{role.name}` has ID `{role.id}`.")
@@ -717,7 +611,7 @@ class ModeratorCommands(commands.Cog):
         pages = []
         dir_paths = []
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         member_dict = await do.determine_from_target(target=member)
@@ -741,7 +635,7 @@ class ModeratorCommands(commands.Cog):
         pages = []
         dir_paths = []
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         member_dict = await do.determine_from_target(target=member)
@@ -754,111 +648,21 @@ class ModeratorCommands(commands.Cog):
                     pages.extend(object_pages)
         await StateService.send_pages(plural="infractions", pages=pages, state=state)
 
-    @app_commands.command(name="survey", description="Get all.")
+    @app_commands.command(name="survey", description="Survey stage members.")
     @app_commands.describe(channel="Tag a voice/stage channel")
     @moderator_predicator()
     async def stage_survey_app_command(
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
-        chunk_size, pages = 7, []
-        sysadmins = developers = guild_owners = administrators = coordinators = (
-            moderators
-        ) = []
-
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
-
         channel_dict = await do.determine_from_target(target=channel)
+        pages = await Stage.survey(
+            channel_dict=channel_dict, guild_snowflake=interaction.guild.id
+        )
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
-        for member in channel_dict.get("object", None).members:
-            try:
-                if is_sysadmin(member.id):
-                    sysadmins.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_developer(member.id):
-                    developers.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_guild_owner(interaction.guild.id, member.id):
-                    guild_owners.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_administrator(interaction.guild.id, member.id):
-                    administrators.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_coordinator(
-                    channel_dict.get("id", None), interaction.guild.id, member.id
-                ):
-                    coordinators.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_moderator(
-                    channel_dict.get("id", None), interaction.guild.id, member.id
-                ):
-                    moderators.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-        sysadmins_chunks = [
-            sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
-        ]
-        guild_owners_chunks = [
-            guild_owners[i : i + chunk_size]
-            for i in range(0, len(guild_owners), chunk_size)
-        ]
-        developers_chunks = [
-            developers[i : i + chunk_size]
-            for i in range(0, len(developers), chunk_size)
-        ]
-        administrators_chunks = [
-            administrators[i : i + chunk_size]
-            for i in range(0, len(administrators), chunk_size)
-        ]
-        coordinators_chunks = [
-            coordinators[i : i + chunk_size]
-            for i in range(0, len(coordinators), chunk_size)
-        ]
-        moderators_chunks = [
-            moderators[i : i + chunk_size]
-            for i in range(0, len(moderators), chunk_size)
-        ]
-        roles_chunks = [
-            ("Sysadmins", sysadmins, sysadmins_chunks),
-            ("Developers", developers, developers_chunks),
-            ("Guild Owners", guild_owners, guild_owners_chunks),
-            ("Administrators", administrators, administrators_chunks),
-            ("Coordinators", coordinators, coordinators_chunks),
-            ("Moderators", moderators, moderators_chunks),
-        ]
-        max_pages = max(len(c[2]) for c in roles_chunks)
-        for page in range(max_pages):
-            embed = discord.Embed(
-                title=f"{get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
-                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
-                color=discord.Color.blurple(),
-            )
-            for role_name, role_list, chunks in roles_chunks:
-                chunk = chunks[page] if page < len(chunks) else []
-                embed.add_field(
-                    name=f"{role_name} ({len(chunk)}/{len(role_list)})",
-                    value=", ".join(u.mention for u in chunk) if chunk else "*None*",
-                    inline=False,
-                )
-            pages.append(embed)
-
-        if pages:
-            return await state.end(success=pages)
-        else:
-            return await state.end(warning="No permissions found.")
-
-    # DONE
-    @commands.command(name="survey", help="Get all.")
+    @commands.command(name="survey", help="Survey stage members.")
     @moderator_predicator()
     @skip_help_discovery()
     async def stage_survey_text_command(
@@ -868,103 +672,14 @@ class ModeratorCommands(commands.Cog):
             description="Tag a channel or include its ID."
         ),
     ):
-        chunk_size, pages = 7, []
-        sysadmins = developers = guild_owners = administrators = coordinators = (
-            moderators
-        ) = []
-
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
-
         channel_dict = await do.determine_from_target(target=channel)
-        for member in channel_dict.get("object", None).members:
-            try:
-                if is_sysadmin(member.id):
-                    sysadmins.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_developer(member.id):
-                    developers.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_guild_owner(ctx.guild.id, member.id):
-                    guild_owners.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_administrator(ctx.guild.id, member.id):
-                    administrators.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_coordinator(
-                    channel_dict.get("id", None), ctx.guild.id, member.id
-                ):
-                    coordinators.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-            try:
-                if await is_moderator(
-                    channel_dict.get("id", None), ctx.guild.id, member.id
-                ):
-                    moderators.append(member)
-            except commands.CheckFailure as e:
-                logger.warning(str(e).capitalize())
-        sysadmins_chunks = [
-            sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
-        ]
-        guild_owners_chunks = [
-            guild_owners[i : i + chunk_size]
-            for i in range(0, len(guild_owners), chunk_size)
-        ]
-        developers_chunks = [
-            developers[i : i + chunk_size]
-            for i in range(0, len(developers), chunk_size)
-        ]
-        administrators_chunks = [
-            administrators[i : i + chunk_size]
-            for i in range(0, len(administrators), chunk_size)
-        ]
-        coordinators_chunks = [
-            coordinators[i : i + chunk_size]
-            for i in range(0, len(coordinators), chunk_size)
-        ]
-        moderators_chunks = [
-            moderators[i : i + chunk_size]
-            for i in range(0, len(moderators), chunk_size)
-        ]
-        roles_chunks = [
-            ("Sysadmins", sysadmins, sysadmins_chunks),
-            ("Developers", developers, developers_chunks),
-            ("Guild Owners", guild_owners, guild_owners_chunks),
-            ("Administrators", administrators, administrators_chunks),
-            ("Coordinators", coordinators, coordinators_chunks),
-            ("Moderators", moderators, moderators_chunks),
-        ]
-        max_pages = max(len(c[2]) for c in roles_chunks)
-        for page in range(max_pages):
-            embed = discord.Embed(
-                title=f"{get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
-                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
-                color=discord.Color.blurple(),
-            )
-            for role_name, role_list, chunks in roles_chunks:
-                chunk = chunks[page] if page < len(chunks) else []
-                embed.add_field(
-                    name=f"{role_name} ({len(chunk)}/{len(role_list)})",
-                    value=", ".join(u.mention for u in chunk) if chunk else "*None*",
-                    inline=False,
-                )
-            pages.append(embed)
+        pages = await Stage.survey(
+            channel_dict=channel_dict, guild_snowflake=ctx.guild.id
+        )
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
-        if pages:
-            return await state.end(success=pages)
-        else:
-            return await state.end(warning="No permissions found.")
-
-    # DONE
     @app_commands.command(name="tmutes", description="List text-mutes.")
     @app_commands.describe(
         target="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID."
@@ -973,7 +688,7 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
@@ -982,7 +697,6 @@ class ModeratorCommands(commands.Cog):
         )
         await StateService.send_pages(plural=TextMute.PLURAL, pages=pages, state=state)
 
-    # DONE
     @commands.command(name="tmutes", help="List text-mutes.")
     @moderator_predicator()
     async def list_text_mutes_text_command(
@@ -992,7 +706,7 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)

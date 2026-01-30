@@ -39,7 +39,6 @@ class SysadminCommands(commands.Cog):
         self.bot = bot
         self.message_service = MessageService(self.bot)
 
-    # DONE
     @app_commands.command(name="assign", description="Assign developer.")
     @app_commands.describe(
         reference="Include an issue reference ID",
@@ -52,49 +51,14 @@ class SysadminCommands(commands.Cog):
         reference: str,
         member: AppMemberSnowflake,
     ):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
-
         member_dict = await do.determine_from_target(target=member)
-        kwargs = member_dict.get("columns", None)
+        embed = await Bug.assign_bug_to_developer(
+            reference=reference, member_dict=member_dict
+        )
+        return await state.end(success=embed)
 
-        developer = await Developer.select(**kwargs, singular=True)
-        if not developer:
-            return await state.end(
-                warning=f"Developer not found for target ({member})."
-            )
-
-        bug = await Bug.select(id=reference, resolved=False, singular=True)
-        if not bug:
-            return await state.end(
-                warning=f"Unresolved issue not found for reference: {reference}."
-            )
-        member_snowflakes = bug.member_snowflakes
-        where_kwargs = {"id": bug.id}
-        member_snowflakes = bug.member_snowflakes
-        if developer.member_snowflake in bug.member_snowflakes:
-            member_snowflakes.remove(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="unassigned",
-                member_snowflake=developer.member_snowflake,
-                source=interaction,
-            )
-            return await state.end(success=embed)
-        else:
-            member_snowflakes.append(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="assigned",
-                member_snowflake=developer.member_snowflake,
-                source=interaction,
-            )
-            await member_dict.get("object", None).send(embed=embed)
-            return await state.end(success=embed)
-
-    # DONE
     @commands.command(name="assign", help="Assign developer.")
     @sysadmin_predicator()
     async def assign_bug_to_developer_text_command(
@@ -107,78 +71,33 @@ class SysadminCommands(commands.Cog):
             description="Tag a member or include their ID"
         ),
     ):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
-
         member_dict = await do.determine_from_target(target=member)
-        kwargs = member_dict.get("columns", None)
+        embed = await Bug.assign_bug_to_developer(
+            reference=reference, member_dict=member_dict
+        )
+        return await state.end(success=embed)
 
-        developer = await Developer.select(**kwargs, singular=True)
-        if not developer:
-            return await state.end(
-                warning=f"Developer not found for target ({member})."
-            )
-
-        bug = await Bug.select(id=reference, resolved=False, singular=True)
-        if not bug:
-            return await state.end(
-                warning=f"Unresolved issue not found for reference: {reference}."
-            )
-        member_snowflakes = bug.member_snowflakes
-        where_kwargs = {"id": bug.id}
-        member_snowflakes = bug.member_snowflakes
-        if developer.member_snowflake in bug.member_snowflakes:
-            member_snowflakes.remove(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="unassigned",
-                member_snowflake=developer.member_snowflake,
-                source=ctx,
-            )
-            return await state.end(success=embed)
-        else:
-            member_snowflakes.append(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="assigned",
-                member_snowflake=developer.member_snowflake,
-                source=ctx,
-            )
-            await member_dict.get("object", None).send(embed=embed)
-            return await state.end(success=embed)
-
-    # DONE
     @app_commands.command(name="dev", description="Grant/revoke devs.")
     @app_commands.describe(member="Tag a member or include their ID")
     @sysadmin_predicator()
     async def toggle_developer_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
-        action = None
-
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
+        snowflake_kwargs = {
+            "channel_snowflake": interaction.channel.id,
+            "guild_snowflake": interaction.guild.id,
+            "member_snowflake": interaction.user.id,
+        }
         do = DiscordObject(interaction=interaction)
-
         member_dict = await do.determine_from_target(target=member)
-        kwargs = member_dict.get("columns", None)
-
-        developer = await Developer.select(**kwargs)
-
-        if developer:
-            await Developer.delete(**kwargs)
-            action = "revoked"
-        else:
-            developer = Developer(**kwargs)
-            await developer.create()
-            action = "granted"
-
-        return await state.end(
-            success=f"Developer access for {member_dict.get("mention", None)} has been {action} in {interaction.guild.name}."
+        msg = await Developer.toggle_developer(
+            member_dict=member_dict, snowflake_kwargs=snowflake_kwargs
         )
+        return await state.end(success=msg)
 
-    # DONE
     @commands.command(name="dev", help="Grant/revoke devs.")
     @sysadmin_predicator()
     async def toggle_developer_text_command(
@@ -188,27 +107,18 @@ class SysadminCommands(commands.Cog):
             description="Tag a member or include their ID"
         ),
     ):
-        action = None
-
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
+        snowflake_kwargs = {
+            "channel_snowflake": ctx.channel.id,
+            "guild_snowflake": ctx.guild.id,
+            "member_snowflake": ctx.author.id,
+        }
         do = DiscordObject(ctx=ctx)
-
         member_dict = await do.determine_from_target(target=member)
-        kwargs = member_dict.get("columns", None)
-
-        developer = await Developer.select(**kwargs)
-
-        if developer:
-            await Developer.delete(**kwargs)
-            action = "revoked"
-        else:
-            developer = Developer(**kwargs)
-            await developer.create()
-            action = "granted"
-
-        return await state.end(
-            success=f"Developer access for {member_dict.get("mention", None)} has been {action} in {ctx.guild.name}."
+        msg = await Developer.toggle_developer(
+            member_dict=member_dict, snowflake_kwargs=snowflake_kwargs
         )
+        return await state.end(success=msg)
 
 
 async def setup(bot: DiscordBot):

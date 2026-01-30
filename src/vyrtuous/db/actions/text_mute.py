@@ -51,7 +51,14 @@ class TextMute(DatabaseFactory):
         "guild_snowflake",
         "member_snowflake",
     ]
-    OPTIONAL_ARGS = ["created_at", "expires_in", "last_muted", "reason", "reset", "updated_at"]
+    OPTIONAL_ARGS = [
+        "created_at",
+        "expires_in",
+        "last_muted",
+        "reason",
+        "reset",
+        "updated_at",
+    ]
 
     TABLE_NAME = "active_text_mutes"
 
@@ -225,7 +232,7 @@ class TextMute(DatabaseFactory):
         kwargs = {
             "channel_snowflake": message.channel.id,
             "guild_snowflake": message.guild.id,
-            "member_snowflake": message.author.id
+            "member_snowflake": message.author.id,
         }
         text_mute = await TextMute.select(**kwargs)
         if text_mute:
@@ -244,7 +251,7 @@ class TextMute(DatabaseFactory):
                     )
                     set_kwargs = {
                         "last_muted": datetime.now(timezone.utc),
-                        "reset": False
+                        "reset": False,
                     }
                     await TextMute.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                 except discord.Forbidden as e:

@@ -34,6 +34,17 @@ from vyrtuous.utils.guild_dictionary import (
     flush_page,
 )
 
+from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.mgmt.cap import Cap
+from vyrtuous.db.roles.coordinator import Coordinator
+from vyrtuous.db.actions.flag import Flag
+from vyrtuous.db.roles.moderator import Moderator
+from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.roles.vegan import Vegan
+from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.rooms.stage import Stage
+
+
 class TemporaryRoom(DatabaseFactory):
 
     ACT = "temp"
@@ -80,7 +91,7 @@ class TemporaryRoom(DatabaseFactory):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
-        
+
         kwargs = object_dict.get("columns", None)
 
         aliases = await Alias.select(**kwargs)
@@ -172,3 +183,57 @@ class TemporaryRoom(DatabaseFactory):
                     title="Skipped Servers",
                 )
         return pages
+
+    @classmethod
+    async def migrate_temporary_room(cls, channel_dict, old_name, snowflake_kwargs):
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        old_room = await TemporaryRoom.select(
+            guild_snowflake=guild_snowflake, room_name=old_name
+        )
+        set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
+        temp_where_kwargs = {
+            "channel_snowflake": old_room.channel_snowflake,
+            "guild_snowflake": guild_snowflake,
+            "room_name": channel_dict.get("name", None),
+        }
+        where_kwargs = {
+            "channel_snowflake": old_room.channel_snowflake,
+            "guild_snowflake": guild_snowflake,
+        }
+        kwargs = {
+            "set_kwargs": set_kwargs,
+            "where_kwargs": where_kwargs,
+        }
+        await TemporaryRoom.update(
+            set_kwargs=set_kwargs,
+            where_kwargs=temp_where_kwargs,
+        )
+        await Alias.update(**kwargs)
+        await Ban.update(**kwargs)
+        await Cap.update(**kwargs)
+        await Coordinator.update(**kwargs)
+        await Flag.update(**kwargs)
+        await Moderator.update(**kwargs)
+        await Stage.update(**kwargs)
+        await TextMute.update(**kwargs)
+        await VoiceMute.update(**kwargs)
+        await Vegan.update(**kwargs)
+        return f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
+
+    @classmethod
+    async def toggle_temporary_room(cls, channel_dict):
+        action = None
+        kwargs = {}
+        kwargs.update(channel_dict.get("columns", None))
+        temporary_room = await TemporaryRoom.select(**kwargs, singular=True)
+        if temporary_room:
+            await TemporaryRoom.delete(**kwargs)
+            action = "removed"
+        else:
+            temporary_room = TemporaryRoom(
+                **kwargs,
+                room_name=channel_dict.get("name", None),
+            )
+            await temporary_room.create()
+            action = "created"
+        return f"Temporary room {action} in {channel_dict.get("mention", None)}."

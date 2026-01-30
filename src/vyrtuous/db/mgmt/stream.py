@@ -37,6 +37,7 @@ from vyrtuous.utils.guild_dictionary import (
     flush_page,
 )
 
+
 class Streaming(DatabaseFactory):
 
     ACTION_TYPES = ["create", "delete", "modify"]
@@ -311,7 +312,6 @@ class Streaming(DatabaseFactory):
                     embeds.append(reason_embed)
         return embeds
 
-
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
@@ -390,3 +390,67 @@ class Streaming(DatabaseFactory):
                     title="Skipped Servers",
                 )
         return pages
+
+    @classmethod
+    async def modify_stream(
+        cls,
+        action,
+        channel_dict,
+        channel_mentions,
+        entry_type,
+        failed_snowflakes,
+        resolved_channels,
+        snowflake_kwargs,
+    ):
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        channel_kwargs = channel_dict.get("columns", None)
+        where_kwargs = {
+            "channel_snowflake": channel_kwargs["channel_snowflake"],
+            "entry_type": entry_type,
+            "guild_snowflake": guild_snowflake,
+        }
+        if action is None and entry_type is None:
+            stream = await Streaming.select(**channel_kwargs)
+            enabled = not stream[0].enabled
+            action = "enabled" if enabled else "disabled"
+            set_kwargs = {"enabled": enabled}
+            await Streaming.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        if action and entry_type:
+            match action.lower():
+                case "create" | "modify":
+                    resolved_channels = []
+                    if action.lower() == "create":
+                        stream = Streaming(
+                            **channel_kwargs,
+                            enabled=True,
+                            entry_type=entry_type,
+                            snowflakes=resolved_channels,
+                        )
+                        await stream.create()
+                        action = "created"
+                    else:
+                        set_kwargs = {"snowflakes": resolved_channels}
+                        await Streaming.update(
+                            set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                        )
+                        action = "modified"
+                case "delete":
+                    await Streaming.delete(**channel_kwargs)
+                    action = "deleted"
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict.get("mention", None)}",
+            color=0x00FF00,
+        )
+        if channel_mentions:
+            embed.add_field(
+                name="Processed Channels",
+                value=", ".join(channel_mentions),
+                inline=False,
+            )
+        if failed_snowflakes:
+            embed.add_field(
+                name="Failed IDs",
+                value=", ".join(str(s) for s in failed_snowflakes),
+                inline=False,
+            )
+        return [embed]

@@ -56,7 +56,7 @@ class DurationModal(discord.ui.Modal):
         if cap:
             action_channel_cap = cap.duration_seconds
         else:
-            action_channel_cap = DurationObject('8h').to_seconds()
+            action_channel_cap = DurationObject("8h").to_seconds()
         expires_in_timedelta = DurationObject(self.duration.value).to_timedelta()
         if (
             self.action_information["action_existing"]

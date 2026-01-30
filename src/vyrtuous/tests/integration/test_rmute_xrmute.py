@@ -71,9 +71,15 @@ async def test_rmute_xrmute(bot, command: Optional[str], channel):
     assert captured.content
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     coord_commands = bot.get_cog("CoordinatorCommands")
-    command = await coord_commands.room_mute_text_command(ctx, channel=c, reason="test_reason")
+    command = await coord_commands.room_mute_text_command(
+        ctx, channel=c, reason="test_reason"
+    )
     command = await coord_commands.room_unmute_text_command(ctx, channel=c)

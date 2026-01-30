@@ -67,15 +67,17 @@ async def test_xalias(bot, command: Optional[str], alias_name):
     >>> !xalias testban
     [{emoji} Alias `testban` deleted]
     """
-    kwargs = {
-        "alias_name": alias_name
-    }
+    kwargs = {"alias_name": alias_name}
     full = f"{command} {alias_name}"
     captured = await send_message(bot=bot, content=full)
     assert captured
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     admin_commands = bot.get_cog("AdminCommands")

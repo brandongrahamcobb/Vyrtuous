@@ -55,16 +55,20 @@ async def test_aroles(bot, command: Optional[str], specifier):
     >>> !aroles 10000000000000500
     [{emoji} Administrator Roles\n Guild1]
     """
-    formatted = specifier.format(
-        guild_snowflake=GUILD_SNOWFLAKE
-    )
+    formatted = specifier.format(guild_snowflake=GUILD_SNOWFLAKE)
     full = f"{command} {formatted}"
     captured = await send_message(bot=bot, content=full)
     assert captured.content
     objects = setup(bot)
     msg = build_message(
-        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     admin_commands = bot.get_cog("AdminCommands")
-    command = await admin_commands.list_administrator_roles_text_command(ctx, target=formatted)
+    command = await admin_commands.list_administrator_roles_text_command(
+        ctx, target=formatted
+    )

@@ -51,7 +51,14 @@ class Ban(DatabaseFactory):
         "guild_snowflake",
         "member_snowflake",
     ]
-    OPTIONAL_ARGS = ["created_at", "expires_in", "last_kicked", "reason", "reset", "updated_at"]
+    OPTIONAL_ARGS = [
+        "created_at",
+        "expires_in",
+        "last_kicked",
+        "reason",
+        "reset",
+        "updated_at",
+    ]
 
     TABLE_NAME = "active_bans"
 
@@ -215,14 +222,14 @@ class Ban(DatabaseFactory):
                     title="Skipped Members in Server",
                 )
         return pages
-    
+
     @classmethod
     async def ban_overwrites(cls, member, after):
         if after:
             kwargs = {
                 "channel_snowflake": after.channel.id,
                 "guild_snowflake": after.channel.guild.id,
-                "member_snowflake": member.id
+                "member_snowflake": member.id,
             }
             ban = await Ban.select(**kwargs)
             if ban:
@@ -233,15 +240,21 @@ class Ban(DatabaseFactory):
                             targets.append(target)
                 if member not in targets:
                     try:
-                        await after.channel.set_permissions(member, view_channel=False, reason="Reinstating active ban.")
+                        await after.channel.set_permissions(
+                            member, view_channel=False, reason="Reinstating active ban."
+                        )
                     except discord.Forbidden as e:
                         logger.warning(e)
-                    if member.voice and member.voice.channel and member.voice.channel.id == after.channel.id:
+                    if (
+                        member.voice
+                        and member.voice.channel
+                        and member.voice.channel.id == after.channel.id
+                    ):
                         try:
                             await member.move_to(None, reason="Reinstating active ban.")
                             set_kwargs = {
                                 "last_kicked": datetime.now(timezone.utc),
-                                "reset": False
+                                "reset": False,
                             }
                             await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                         except discord.Forbidden as e:

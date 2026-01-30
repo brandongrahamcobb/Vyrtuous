@@ -36,6 +36,7 @@ from vyrtuous.utils.guild_dictionary import (
     flush_page,
 )
 
+
 class VideoRoom(DatabaseFactory):
 
     COOLDOWN = timedelta(minutes=30)
@@ -163,7 +164,6 @@ class VideoRoom(DatabaseFactory):
                 VideoRoom.cancel_task(key)
                 break
 
-
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
@@ -259,3 +259,22 @@ class VideoRoom(DatabaseFactory):
                     skipped=skipped_guilds,
                     title="Skipped Servers",
                 )
+
+    @classmethod
+    async def toggle_video_room(cls, channel_dict):
+        kwargs = channel_dict.get("columns", None)
+        video_room = await VideoRoom.select(**kwargs, singular=True)
+        if video_room:
+            action = "removed"
+            VideoRoom.video_rooms = [
+                vr
+                for vr in VideoRoom.video_rooms
+                if vr.channel_snowflake != video_room.channel_snowflake
+            ]
+            await VideoRoom.delete(**kwargs)
+        else:
+            video_room = VideoRoom(**kwargs)
+            await video_room.create()
+            VideoRoom.video_rooms.append(video_room)
+            action = "created"
+        return f"Video-only room {action} in {channel_dict.get("mention", None)}."

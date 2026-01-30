@@ -72,12 +72,14 @@ class GenericEventListeners(commands.Cog):
             )
             if not alias:
                 return
-            state = StateService(source=message)
+            state = StateService(message=message)
             member_obj = message.guild.get_member(int(args[1]))
             member_snowflake = member_obj.id
             action_information = await alias.build_action_information(
                 author_snowflake=message.author.id,
-                duration=DurationObject(args[2]) if len(args) > 2 else DurationObject("8h"),
+                duration=(
+                    DurationObject(args[2]) if len(args) > 2 else DurationObject("8h")
+                ),
                 member_snowflake=member_snowflake,
                 reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
                 state=state,
@@ -91,12 +93,13 @@ class GenericEventListeners(commands.Cog):
             )
         except Exception as e:
             import traceback
+
             logger.info(traceback.format_exc())
             return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        state = StateService(source=ctx)
+        state = StateService(ctx=ctx)
         logger.error(str(error))
         if isinstance(error, commands.BadArgument):
             return await state.end(error=str(error))
@@ -108,7 +111,7 @@ class GenericEventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
-        state = StateService(source=interaction)
+        state = StateService(interaction=interaction)
         logger.error(str(error))
         if isinstance(error, app_commands.BadArgument):
             return await state.end(error=str(error))

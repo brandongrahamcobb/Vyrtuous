@@ -224,3 +224,22 @@ class Moderator(DatabaseFactory):
                     title="Skipped Members in Server",
                 )
         return pages
+
+    @classmethod
+    async def toggle_moderator(cls, channel_dict, member_dict, snowflake_kwargs):
+
+        where_kwargs = {}
+        where_kwargs.update(channel_dict.get("columns", None))
+        where_kwargs.update(member_dict.get("columns", None))
+        moderator = await Moderator.select(**where_kwargs)
+        if moderator:
+            await Moderator.delete(**where_kwargs)
+            action = "revoked"
+        else:
+            moderator = Moderator(**where_kwargs)
+            await moderator.create()
+            action = "granted"
+        return (
+            f"Moderator access for {member_dict.get("mention", None)} has been "
+            f"{action} in {channel_dict.get("mention", None)}."
+        )

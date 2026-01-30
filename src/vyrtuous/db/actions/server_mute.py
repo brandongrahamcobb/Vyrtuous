@@ -32,6 +32,9 @@ from vyrtuous.utils.guild_dictionary import (
     clean_guild_dictionary,
     flush_page,
 )
+from vyrtuous.utils.check import (
+    has_equal_or_lower_role,
+)
 
 
 class ServerMute(DatabaseFactory):
@@ -144,3 +147,35 @@ class ServerMute(DatabaseFactory):
                     title="Skipped Members in Server",
                 )
         return pages
+
+    @classmethod
+    async def toggle_server_mute(cls, member_dict, reason, snowflake_kwargs):
+        bot = DiscordBot.get_instance()
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        guild = bot.get_guild(guild_snowflake)
+        await has_equal_or_lower_role(
+            snowflake_kwargs=snowflake_kwargs,
+            member_snowflake=member_dict.get("id", None),
+        )
+        where_kwargs = member_dict.get("columns", None)
+
+        server_mute = await ServerMute.select(**where_kwargs)
+        if not server_mute:
+            server_mute = ServerMute(
+                **where_kwargs,
+                reason=reason,
+            )
+            await server_mute.create()
+            action = "muted"
+            should_be_muted = True
+        else:
+            await ServerMute.delete(**where_kwargs)
+            action = "unmuted"
+            should_be_muted = False
+
+        if (
+            member_dict.get("object", None).voice
+            and member_dict.get("object", None).voice.channel
+        ):
+            await member_dict.get("object", None).edit(mute=should_be_muted)
+        return f"Successfully server {action} {member_dict.get("mention", None)} in {guild.name}."

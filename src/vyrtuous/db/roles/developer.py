@@ -100,7 +100,7 @@ class Developer(DatabaseFactory):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), (discord.Guild, discord.Member)) else ''}"
         kwargs = object_dict.get("columns", None)
 
         developers = await Developer.select(**kwargs)
@@ -143,6 +143,24 @@ class Developer(DatabaseFactory):
                     field_count = 0
                     lines = []
             if lines:
-                embed.add_field(name="Information", value="\n".join(lines), inline=False)
+                embed.add_field(
+                    name="Information", value="\n".join(lines), inline=False
+                )
             pages.append(embed)
             return pages
+
+    @classmethod
+    async def toggle_developer(cls, member_dict, snowflake_kwargs):
+        bot = DiscordBot.get_instance()
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        guild = bot.get_guild(guild_snowflake)
+        where_kwargs = member_dict.get("columns", None)
+        developer = await Developer.select(**where_kwargs)
+        if developer:
+            await Developer.delete(**where_kwargs)
+            action = "revoked"
+        else:
+            developer = Developer(**where_kwargs)
+            await developer.create()
+            action = "granted"
+        return f"Developer access for {member_dict.get("mention", None)} has been {action} in {guild.name}."

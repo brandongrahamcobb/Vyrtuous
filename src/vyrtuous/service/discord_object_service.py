@@ -25,6 +25,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 
 from vyrtuous.utils.logger import logger
+from vyrtuous.utils.source import DiscordSourceNotFound
 
 
 class DiscordObjectNotFound(commands.CheckFailure):
@@ -34,14 +35,6 @@ class DiscordObjectNotFound(commands.CheckFailure):
         super().__init__(
             message=message
             or f"Unable to resolve a valid channel, guild, member or role for target (`{target}`)."
-        )
-
-
-class DiscordSourceNotFound(commands.CheckFailure):
-
-    def __init__(self):
-        super().__init__(
-            message="Unable to resolve a valid Discord object due to missing ctx (commands.Context) or interaction (discord.Interaction)."
         )
 
 

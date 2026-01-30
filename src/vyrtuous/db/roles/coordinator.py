@@ -221,3 +221,21 @@ class Coordinator(DatabaseFactory):
                     title="Skipped Members in Server",
                 )
         return pages
+
+    @classmethod
+    async def toggle_coordinator(cls, channel_dict, member_dict, snowflake_kwargs):
+        where_kwargs = {}
+        where_kwargs.update(channel_dict.get("columns", None))
+        where_kwargs.update(member_dict.get("columns", None))
+        coordinator = await Coordinator.select(**where_kwargs)
+        if coordinator:
+            await Coordinator.delete(**where_kwargs)
+            action = "revoked"
+        else:
+            coordinator = Coordinator(**where_kwargs)
+            await coordinator.create()
+            action = "granted"
+        return (
+            f"Coordinator access has been {action} for {member_dict.get("mention", None)} "
+            f"in {channel_dict.get("mention", None)}."
+        )

@@ -53,30 +53,27 @@ class GuildEventListeners(commands.Cog):
         after_role_snowflakes = {r.id for r in after.roles}
         added_roles = after_role_snowflakes - before_role_snowflakes
         removed_roles = before_role_snowflakes - after_role_snowflakes
+        snowflake_kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "member_snowflake": before.id,
+            "role_snowflake": added_roles[0],
+        }
         if added_roles:
-            await AdministratorRole.added_role(
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=added_roles[0],
-            )
+            await AdministratorRole.added_role(snowflake_kwargs=snowflake_kwargs)
             logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
-            await AdministratorRole.removed_role(
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=removed_roles[0],
-            )
+            await AdministratorRole.removed_role(snowflake_kwargs=snowflake_kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
         guild_snowflake = role.guild.id
+        snowflake_kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "role_snowflake": role.id,
+        }
         for member in role.members:
-            await AdministratorRole.removed_role(
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member.id,
-                role_snowflake=role.id,
-            )
+            await AdministratorRole.removed_role(snowflake_kwargs=snowflake_kwargs)
             logger.info(f"Removed role ({role.id}) from server ({role.guild.name}).")
 
 
