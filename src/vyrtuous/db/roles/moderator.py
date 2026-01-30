@@ -227,7 +227,11 @@ class Moderator(DatabaseFactory):
 
     @classmethod
     async def toggle_moderator(cls, channel_dict, member_dict, snowflake_kwargs):
-
+        from vyrtuous.utils.check import has_equal_or_lower_role
+        await has_equal_or_lower_role(
+            snowflake_kwargs=snowflake_kwargs,
+            member_snowflake=member_dict.get("id", None),
+        )
         where_kwargs = {}
         where_kwargs.update(channel_dict.get("columns", None))
         where_kwargs.update(member_dict.get("columns", None))

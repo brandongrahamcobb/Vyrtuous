@@ -157,7 +157,7 @@ CREATE TABLE temporary_rooms (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake, room_name)
 );
-
+UPDATE active_bans SET reset = TRUE WHERE guild_snowflake = '801609515391778826' AND channel_snowflake = '1222056499959042108';
 
 
 

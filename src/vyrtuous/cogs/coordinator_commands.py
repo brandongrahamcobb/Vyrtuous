@@ -65,10 +65,6 @@ class CoordinatorCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
-            snowflake_kwargs=snowflake_kwargs,
-            member_snowflake=member_dict.get("id", None),
-        )
         msg = await Moderator.toggle_moderator(
             channel_dict=channel_dict,
             member_dict=member_dict,
@@ -97,10 +93,6 @@ class CoordinatorCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
-            snowflake_kwargs=snowflake_kwargs,
-            member_snowflake=member_dict.get("id", None),
-        )
         msg = await Moderator.toggle_moderator(
             channel_dict=channel_dict,
             member_dict=member_dict,

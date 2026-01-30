@@ -19,8 +19,7 @@ class Clear:
     async def clear(
         cls,
         category,
-        guild_snowflake,
-        kwargs,
+        where_kwargs,
         object_dict,
         snowflake_kwargs,
         target,
@@ -41,10 +40,10 @@ class Clear:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if "member" in obj.SCOPES:
                         if str(category) == "all":
-                            await obj.delete(**kwargs)
+                            await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
                         elif str(category).lower() == obj.CATEGORY:
-                            await obj.delete(**kwargs)
+                            await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Guild Owner")
@@ -52,10 +51,10 @@ class Clear:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if "channel" in obj.SCOPES:
                         if category == "all":
-                            await obj.delete(**kwargs)
+                            await obj.delete(**where_kwargs)
                             msg = f"Deleted all database information for {object_dict.get('mention')}."
                         elif str(category).lower() == obj.CATEGORY:
-                            await obj.delete(**kwargs)
+                            await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Guild Owner")
@@ -65,10 +64,10 @@ class Clear:
                         scope in obj.SCOPES for scope in ("guild", "channel", "member")
                     ):
                         if str(category).lower() == "all":
-                            await obj.delete(**kwargs)
+                            await obj.delete(**where_kwargs)
                             msg = f"Deleted all database information for {object_dict.get('name')}."
                         elif str(category).lower() == obj.CATEGORY:
-                            await obj.delete(**kwargs)
+                            await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('name', None)}."
                         elif isinstance(obj, AdministratorRole):
                             administrator_roles = AdministratorRole.select(
@@ -84,7 +83,7 @@ class Clear:
         ):
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
-                    await obj.delete(**kwargs)
+                    await obj.delete(**where_kwargs)
                     msg = "Deleted all database entries."
                     if isinstance(obj, AdministratorRole):
                         administrator_roles = AdministratorRole.select(
