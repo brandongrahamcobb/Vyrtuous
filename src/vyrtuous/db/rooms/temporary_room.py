@@ -85,23 +85,17 @@ class TemporaryRoom(DatabaseFactory):
         self.room_name = room_name
         self.updated_at = updated_at
 
+
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
-
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-        temporary_rooms = await TemporaryRoom.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        aliases = await Alias.select(**where_kwargs)
+        temporary_rooms = await TemporaryRoom.select(**where_kwargs)
         for temporary_room in temporary_rooms:
-            guild_dictionary.setdefault(
+            dictionary.setdefault(
                 temporary_room.guild_snowflake, {"channels": {}}
             )
-            guild_dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
+            dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
                 temporary_room.channel_snowflake, {}
             )
             if aliases:
@@ -110,12 +104,23 @@ class TemporaryRoom(DatabaseFactory):
                         alias.guild_snowflake == temporary_room.guild_snowflake
                         and alias.channel_snowflake == temporary_room.channel_snowflake
                     ):
-                        guild_dictionary[temporary_room.guild_snowflake]["channels"][
+                        dictionary[temporary_room.guild_snowflake]["channels"][
                             temporary_room.channel_snowflake
                         ].setdefault(alias.category, [])
-                        guild_dictionary[temporary_room.guild_snowflake]["channels"][
+                        dictionary[temporary_room.guild_snowflake]["channels"][
                             temporary_room.channel_snowflake
                         ][alias.category].append(alias.alias_name)
+        return dictionary
+        
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
+
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await TemporaryRoom.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)

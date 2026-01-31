@@ -109,17 +109,12 @@ class Bug(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_pages(cls, filter, where_kwargs, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} Developer Logs"
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
         bugs = await Bug.select(**where_kwargs)
-
         for bug in bugs:
-            guild_dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
-            messages = guild_dictionary[bug.guild_snowflake]["messages"]
+            dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
+            messages = dictionary[bug.guild_snowflake]["messages"]
             messages.setdefault(
                 bug.message_snowflake,
                 {
@@ -134,6 +129,15 @@ class Bug(DatabaseFactory):
                 bug.member_snowflakes
             )
             messages[bug.message_snowflake]["notes"].append(bug.notes)
+        return dictionary
+    
+    @classmethod
+    async def build_pages(cls, filter, where_kwargs, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        title = f"{get_random_emoji()} Developer Logs"
+
+        guild_dictionary = await Bug.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)

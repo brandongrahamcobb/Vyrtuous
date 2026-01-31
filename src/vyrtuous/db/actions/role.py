@@ -183,27 +183,31 @@ class Role(DatabaseFactory):
             return
 
     @classmethod
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        roles = await Role.select(**where_kwargs)
+        for role in roles:
+            dictionary.setdefault(role.guild_snowflake, {"members": {}})
+            dictionary[role.guild_snowflake]["members"].setdefault(
+                role.member_snowflake, {"roles": {}}
+            )
+            dictionary[role.guild_snowflake]["members"][role.member_snowflake][
+                "roles"
+            ].setdefault(role.channel_snowflake, {})
+            dictionary[role.guild_snowflake]["members"][role.member_snowflake][
+                "roles"
+            ][role.channel_snowflake] = {"role": role.role_snowflake}
+        return dictionary
+    
+    @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
         thumbnail = False
-        kwargs = object_dict.get("columns", None)
+        where_kwargs = object_dict.get("columns", None)
         title = f"{get_random_emoji()} {Role.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
-        roles = await Role.select(**kwargs)
-
-        for role in roles:
-            guild_dictionary.setdefault(role.guild_snowflake, {"members": {}})
-            guild_dictionary[role.guild_snowflake]["members"].setdefault(
-                role.member_snowflake, {"roles": {}}
-            )
-            guild_dictionary[role.guild_snowflake]["members"][role.member_snowflake][
-                "roles"
-            ].setdefault(role.channel_snowflake, {})
-            guild_dictionary[role.guild_snowflake]["members"][role.member_snowflake][
-                "roles"
-            ][role.channel_snowflake] = {"role": role.role_snowflake}
+        guild_dictionary = await Role.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

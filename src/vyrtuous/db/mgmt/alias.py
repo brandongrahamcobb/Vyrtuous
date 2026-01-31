@@ -214,31 +214,36 @@ class Alias(DatabaseFactory):
         return action_information
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
+    async def build_dictionary(cls, where_kwargs):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} Command Aliases"
-
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-
+        dictionary = {}
+        aliases = await Alias.select(**where_kwargs)
         for alias in aliases:
-            guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
-            guild_dictionary[alias.guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
+            dictionary[alias.guild_snowflake]["channels"].setdefault(
                 alias.channel_snowflake, {"aliases": {}}
             )
-            guild_dictionary[alias.guild_snowflake]["channels"][
+            dictionary[alias.guild_snowflake]["channels"][
                 alias.channel_snowflake
             ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
             if alias.category == "role":
                 guild = bot.get_guild(alias.guild_snowflake)
                 if guild:
                     role = guild.get_role(alias.role_snowflake)
-                    guild_dictionary[alias.guild_snowflake]["channels"][
+                    dictionary[alias.guild_snowflake]["channels"][
                         alias.channel_snowflake
                     ]["aliases"][alias.category][alias.alias_name] = role.mention
+        return dictionary
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        title = f"{get_random_emoji()} Command Aliases"
+
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await Alias.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)

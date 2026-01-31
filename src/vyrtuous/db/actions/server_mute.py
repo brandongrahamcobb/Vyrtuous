@@ -74,21 +74,25 @@ class ServerMute(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        server_mutes = await ServerMute.select(**where_kwargs)
+        for server_mute in server_mutes:
+            dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
+            dictionary[server_mute.guild_snowflake]["members"].setdefault(
+                server_mute.member_snowflake, {"server_mutes": {}}
+            )
+        return dictionary
+
+    @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
         thumbnail = False
         title = f"{get_random_emoji()} {ServerMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
+        where_kwargs = object_dict.get("columns", None)
 
-        server_mutes = await ServerMute.select(**kwargs)
-
-        for server_mute in server_mutes:
-            guild_dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[server_mute.guild_snowflake]["members"].setdefault(
-                server_mute.member_snowflake, {"server_mutes": {}}
-            )
+        guild_dictionary = await ServerMute.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

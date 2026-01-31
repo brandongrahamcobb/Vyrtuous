@@ -112,31 +112,36 @@ class Flag(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        flags = await Flag.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        flags = await Flag.select(**where_kwargs)
         for flag in flags:
-            guild_dictionary.setdefault(flag.guild_snowflake, {"members": {}})
-            guild_dictionary[flag.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(flag.guild_snowflake, {"members": {}})
+            dictionary[flag.guild_snowflake]["members"].setdefault(
                 flag.member_snowflake, {"flags": {}}
             )
-            guild_dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
+            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
                 "flags"
             ].setdefault(flag.channel_snowflake, {})
-            guild_dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
+            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
                 "flags"
             ][flag.channel_snowflake].update(
                 {
                     "reason": flag.reason,
                 }
             )
+        return dictionary
+    
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        thumbnail = False
+        title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await Flag.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

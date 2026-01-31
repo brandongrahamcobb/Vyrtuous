@@ -139,25 +139,18 @@ class VoiceMute(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        voice_mutes = await VoiceMute.select(target="user", **kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        voice_mutes = await VoiceMute.select(target="user", **where_kwargs)
         for voice_mute in voice_mutes:
-            guild_dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[voice_mute.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
+            dictionary[voice_mute.guild_snowflake]["members"].setdefault(
                 voice_mute.member_snowflake, {"voice_mutes": {}}
             )
-            guild_dictionary[voice_mute.guild_snowflake]["members"][
+            dictionary[voice_mute.guild_snowflake]["members"][
                 voice_mute.member_snowflake
             ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
-            guild_dictionary[voice_mute.guild_snowflake]["members"][
+            dictionary[voice_mute.guild_snowflake]["members"][
                 voice_mute.member_snowflake
             ]["voice_mutes"][voice_mute.channel_snowflake].update(
                 {
@@ -165,6 +158,17 @@ class VoiceMute(DatabaseFactory):
                     "expires_in": DurationObject.from_expires_in(voice_mute.expires_in),
                 }
             )
+        return dictionary
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        thumbnail = False
+        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await VoiceMute.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

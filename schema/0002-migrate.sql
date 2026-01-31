@@ -134,9 +134,10 @@ CREATE TABLE roles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     channel_snowflake BIGINT NOT NULL,
     guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
     role_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake)
 );
 
 

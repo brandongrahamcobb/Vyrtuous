@@ -74,22 +74,27 @@ class Cap(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        caps = await Cap.select(**where_kwargs)
+        for cap in caps:
+            dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
+            dictionary[cap.guild_snowflake]["channels"].setdefault(
+                cap.channel_snowflake, {"caps": {}}
+            )
+            dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
+                "caps"
+            ][cap.category] = cap.duration_seconds
+        return dictionary
+    
+    @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
         title = f"{get_random_emoji()} {Cap.PLURAL}"
-        kwargs = object_dict.get("columns", None)
+        where_kwargs = object_dict.get("columns", None)
 
-        caps = await Cap.select(**kwargs)
-        for cap in caps:
-            guild_dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
-            guild_dictionary[cap.guild_snowflake]["channels"].setdefault(
-                cap.channel_snowflake, {"caps": {}}
-            )
-            guild_dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
-                "caps"
-            ][cap.category] = cap.duration_seconds
+        guild_dictionary = await Cap.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)

@@ -130,30 +130,34 @@ class Ban(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        kwargs = object_dict.get("columns", None)
-        title = f"{get_random_emoji()} {Ban.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-
-        bans = await Ban.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        bans = await Ban.select(**where_kwargs)
         for ban in bans:
-            guild_dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-            guild_dictionary[ban.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(ban.guild_snowflake, {"members": {}})
+            dictionary[ban.guild_snowflake]["members"].setdefault(
                 ban.member_snowflake, {"bans": {}}
             )
-            guild_dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
                 "bans"
             ].setdefault(ban.channel_snowflake, {})
-            guild_dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
                 "bans"
             ][ban.channel_snowflake] = {
                 "reason": ban.reason,
                 "expires_in": DurationObject.from_expires_in(ban.expires_in),
             }
+        return dictionary
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        thumbnail = False
+        where_kwargs = object_dict.get("columns", None)
+        title = f"{get_random_emoji()} {Ban.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+
+        guild_dictionary = await Ban.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

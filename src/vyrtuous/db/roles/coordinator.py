@@ -136,29 +136,33 @@ class Coordinator(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        coordinators = await Coordinator.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        coordinators = await Coordinator.select(**where_kwargs)
         for coordinator in coordinators:
-            guild_dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
-            guild_dictionary[coordinator.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
+            dictionary[coordinator.guild_snowflake]["members"].setdefault(
                 coordinator.member_snowflake, {"coordinators": {}}
             )
-            guild_dictionary[coordinator.guild_snowflake]["members"][
+            dictionary[coordinator.guild_snowflake]["members"][
                 coordinator.member_snowflake
             ]["coordinators"].setdefault(coordinator.channel_snowflake, {})
-            guild_dictionary[coordinator.guild_snowflake]["members"][
+            dictionary[coordinator.guild_snowflake]["members"][
                 coordinator.member_snowflake
             ]["coordinators"][coordinator.channel_snowflake].update(
                 {"placeholder": "placeholder"}
             )
+        return dictionary
+    
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        thumbnail = False
+        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await Coordinator.build_guild_dictionary(where_kwargs=where_kwargs)        
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

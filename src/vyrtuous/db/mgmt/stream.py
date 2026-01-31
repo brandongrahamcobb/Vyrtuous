@@ -313,25 +313,29 @@ class Streaming(DatabaseFactory):
         return embeds
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {Streaming.PLURAL}"
-
-        kwargs = object_dict.get("columns", None)
-
-        streaming = await Streaming.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        streaming = await Streaming.select(**where_kwargs)
         for stream in streaming:
-            guild_dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            guild_dictionary[stream.guild_snowflake]["channels"][
+            dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
+            dictionary[stream.guild_snowflake]["channels"][
                 stream.channel_snowflake
             ] = {
                 "enabled": stream.enabled,
                 "entry_type": stream.entry_type,
                 "snowflakes": stream.snowflakes,
             }
+        return dictionary
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        title = f"{get_random_emoji()} {Streaming.PLURAL}"
+
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await Streaming.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)

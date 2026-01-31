@@ -106,28 +106,33 @@ class Stage(DatabaseFactory):
             await bot.get_channel(self.channel_snowflake).send(embed=embed)
 
     @classmethod
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        stages = await Stage.select(**where_kwargs)
+        for stage in stages:
+            dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
+            dictionary[stage.guild_snowflake]["channels"].setdefault(
+                stage.channel_snowflake, {}
+            )
+            dictionary[stage.guild_snowflake]["channels"][
+                stage.channel_snowflake
+            ].setdefault("stages", {})
+            dictionary[stage.guild_snowflake]["channels"][
+                stage.channel_snowflake
+            ]["stages"].update(
+                {"expires_in": DurationObject.from_expires_in(stage.expires_in)}
+            )
+        return dictionary
+
+    @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         title = f"{get_random_emoji()} Stages"
-        kwargs = object_dict.get("columns", None)
+        where_kwargs = object_dict.get("columns", None)
 
-        stages = await Stage.select(**kwargs)
-
-        for stage in stages:
-            guild_dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
-            guild_dictionary[stage.guild_snowflake]["channels"].setdefault(
-                stage.channel_snowflake, {}
-            )
-            guild_dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ].setdefault("stages", {})
-            guild_dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ]["stages"].update(
-                {"expires_in": DurationObject.from_expires_in(stage.expires_in)}
-            )
+        guild_dictionary = await Stage.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)

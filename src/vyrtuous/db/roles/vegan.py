@@ -90,24 +90,28 @@ class Vegan(DatabaseFactory):
         return embed
 
     @classmethod
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        vegans = await Vegan.select(**where_kwargs)
+        for vegan in vegans:
+            dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
+            dictionary[vegan.guild_snowflake]["members"].setdefault(
+                vegan.member_snowflake, {"vegans": {}}
+            )
+            dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
+                "vegans"
+            ].setdefault({"placeholder": {}})
+        return dictionary
+    
+    @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
         thumbnail = False
         title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
+        where_kwargs = object_dict.get("columns", None)
 
-        vegans = await Vegan.select(**kwargs)
-
-        for vegan in vegans:
-            guild_dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-            guild_dictionary[vegan.guild_snowflake]["members"].setdefault(
-                vegan.member_snowflake, {"vegans": {}}
-            )
-            guild_dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
-                "vegans"
-            ].setdefault({"placeholder": {}})
+        guild_dictionary = await Vegan.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

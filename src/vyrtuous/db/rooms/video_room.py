@@ -165,20 +165,13 @@ class VideoRoom(DatabaseFactory):
                 break
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {VideoRoom.PLURAL}"
-
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-        video_rooms = await VideoRoom.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        aliases = await Alias.select(**where_kwargs)
+        video_rooms = await VideoRoom.select(**where_kwargs)
         for video_room in video_rooms:
-            guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[video_room.guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
+            dictionary[video_room.guild_snowflake]["channels"].setdefault(
                 video_room.channel_snowflake, {}
             )
             if aliases:
@@ -187,12 +180,23 @@ class VideoRoom(DatabaseFactory):
                         alias.guild_snowflake == video_room.guild_snowflake
                         and alias.channel_snowflake == video_room.channel_snowflake
                     ):
-                        guild_dictionary[video_room.guild_snowflake]["channels"][
+                        dictionary[video_room.guild_snowflake]["channels"][
                             video_room.channel_snowflake
                         ].setdefault(alias.category, [])
-                        guild_dictionary[video_room.guild_snowflake]["channels"][
+                        dictionary[video_room.guild_snowflake]["channels"][
                             video_room.channel_snowflake
                         ][alias.category].append(alias.alias_name)
+        return dictionary
+    
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        title = f"{get_random_emoji()} {VideoRoom.PLURAL}"
+
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await VideoRoom.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)

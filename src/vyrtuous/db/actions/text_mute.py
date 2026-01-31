@@ -130,25 +130,18 @@ class TextMute(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {TextMute.PLURAL}"
-        kwargs = object_dict.get("columns", None)
-
-        text_mutes = await TextMute.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        text_mutes = await TextMute.select(**where_kwargs)
         for text_mute in text_mutes:
-            guild_dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[text_mute.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
+            dictionary[text_mute.guild_snowflake]["members"].setdefault(
                 text_mute.member_snowflake, {"text_mutes": {}}
             )
-            guild_dictionary[text_mute.guild_snowflake]["members"][
+            dictionary[text_mute.guild_snowflake]["members"][
                 text_mute.member_snowflake
             ]["text_mutes"].setdefault(text_mute.channel_snowflake, {})
-            guild_dictionary[text_mute.guild_snowflake]["members"][
+            dictionary[text_mute.guild_snowflake]["members"][
                 text_mute.member_snowflake
             ]["text_mutes"][text_mute.channel_snowflake].update(
                 {
@@ -156,6 +149,17 @@ class TextMute(DatabaseFactory):
                     "expires_in": DurationObject.from_expires_in(text_mute.expires_in),
                 }
             )
+        return dictionary
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        thumbnail = False
+        title = f"{get_random_emoji()} {TextMute.PLURAL}"
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await TextMute.build_dictionary(where_kwargs=where_kwargs)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)

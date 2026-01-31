@@ -139,29 +139,33 @@ class Moderator(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        moderators = await Moderator.select(**kwargs)
-
+    async def build_dictionary(cls, where_kwargs):
+        dictionary = {}
+        moderators = await Moderator.select(**where_kwargs)
         for moderator in moderators:
-            guild_dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
-            guild_dictionary[moderator.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
+            dictionary[moderator.guild_snowflake]["members"].setdefault(
                 moderator.member_snowflake, {"moderators": {}}
             )
-            guild_dictionary[moderator.guild_snowflake]["members"][
+            dictionary[moderator.guild_snowflake]["members"][
                 moderator.member_snowflake
             ]["moderators"].setdefault(moderator.channel_snowflake, {})
-            guild_dictionary[moderator.guild_snowflake]["members"][
+            dictionary[moderator.guild_snowflake]["members"][
                 moderator.member_snowflake
             ]["moderators"][moderator.channel_snowflake].update(
                 {"placeholder": "placeholder"}
             )
+        return dictionary
+    
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        thumbnail = False
+        title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        where_kwargs = object_dict.get("columns", None)
+
+        guild_dictionary = await Moderator.build_dictionary(where_kwargs=where_kwargs)        
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
