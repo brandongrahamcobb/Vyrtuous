@@ -224,23 +224,23 @@ class Ban(DatabaseFactory):
         return pages
 
     @classmethod
-    async def ban_overwrites(cls, member, after):
-        if after:
+    async def ban_overwrites(cls, channel, member):
+        if channel:
             kwargs = {
-                "channel_snowflake": after.channel.id,
-                "guild_snowflake": after.channel.guild.id,
+                "channel_snowflake": channel.id,
+                "guild_snowflake": channel.guild.id,
                 "member_snowflake": member.id,
             }
             ban = await Ban.select(**kwargs, singular=True)
             if ban:
                 targets = []
-                for target, overwrite in after.channel.overwrites.items():
-                    if any(v is not None for v in overwrite):
+                for target, overwrite in channel.overwrites.items():
+                    if any(value is not None for value in overwrite._values.values()):
                         if isinstance(target, discord.Member):
                             targets.append(target)
                 if member not in targets:
                     try:
-                        await after.channel.set_permissions(
+                        await channel.set_permissions(
                             member, view_channel=False, reason="Reinstating active ban."
                         )
                     except discord.Forbidden as e:
@@ -248,7 +248,7 @@ class Ban(DatabaseFactory):
                     if (
                         member.voice
                         and member.voice.channel
-                        and member.voice.channel.id == after.channel.id
+                        and member.voice.channel.id == channel.id
                     ):
                         try:
                             await member.move_to(None, reason="Reinstating active ban.")

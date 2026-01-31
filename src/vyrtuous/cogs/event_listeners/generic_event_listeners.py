@@ -22,6 +22,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
@@ -51,20 +52,22 @@ class GenericEventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         try:
+            if not message.guild:
+                return
+            await Ban.ban_overwrites(channel=message.channel, member=message.author)
+            await TextMute.text_mute_overwrite(message=message)
             args = (
                 message.content[len(self.config["discord_command_prefix"]) :]
                 .strip()
                 .split()
             )
-            if not message.guild:
-                return
             if not args:
                 return
             if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             if self.config["release_mode"] and message.author.id == self.bot.user.id:
                 return
-            await TextMute.text_mute_overwrite(message=message)
+            state = StateService(message=message)
             alias = await Alias.select(
                 alias_name=args[0],
                 guild_snowflake=message.guild.id,
@@ -72,16 +75,18 @@ class GenericEventListeners(commands.Cog):
             )
             if not alias:
                 return
-            state = StateService(message=message)
-            member_obj = message.guild.get_member(int(args[1]))
+            member_obj = message.guild.get_member(int(''.join(c for c in args[1] if c.isdigit())))
             member_snowflake = member_obj.id
+            reason = "No reason provided."
+            if alias.category == "flag":
+                reason = " ".join(args[2:])
             action_information = await alias.build_action_information(
                 author_snowflake=message.author.id,
                 duration=(
-                    DurationObject(args[2]) if len(args) > 2 else DurationObject("8h")
+                    DurationObject(args[2]) if len(args) > 2 and alias.category not in ("flag", "vegan") else DurationObject("8h")
                 ),
                 member_snowflake=member_snowflake,
-                reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
+                reason=" ".join(args[3:]) if len(args) > 3 and alias.category not in ("flag", "vegan") else reason,
                 state=state,
             )
             await alias.handlers[alias.category](

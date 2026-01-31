@@ -412,7 +412,7 @@ class ScheduledTasks(commands.Cog):
                     f"Guild owner ({guild_owner.member_snowflake}) added to the db."
                 )
 
-    @tasks.loop(hours=1)
+    @tasks.loop(seconds=30)
     async def temporarily_cleanup_overwrites(self):
         now = datetime.now(timezone.utc)
         text_mutes = await TextMute.select()
@@ -426,7 +426,8 @@ class ScheduledTasks(commands.Cog):
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
-            if not text_mute.reset and text_mute.last_muted < now - timedelta(weeks=1):
+            # if not text_mute.reset and text_mute.last_muted < now - timedelta(weeks=1):
+            if not text_mute.reset and text_mute.last_muted < now - timedelta(seconds=1):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(
@@ -466,7 +467,8 @@ class ScheduledTasks(commands.Cog):
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
-            if not ban.reset and ban.last_kicked < now - timedelta(weeks=1):
+            # if not ban.reset and ban.last_kicked < now - timedelta(weeks=1):
+            if not ban.reset and ban.last_kicked < now - timedelta(seconds=1):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(

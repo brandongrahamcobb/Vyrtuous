@@ -126,6 +126,7 @@ class ChannelEventListeners(commands.Cog):
         if member.id == self.bot.user.id:
             return
         allowed = True
+        await Ban.ban_overwrites(channel=after.channel, member=member)
         if before.channel == after.channel:
             if before.mute == after.mute:
                 if before.self_mute == after.self_mute:
@@ -135,7 +136,6 @@ class ChannelEventListeners(commands.Cog):
         if not allowed:
             return
         await VideoRoom.reinforce_video_room(member=member, before=before, after=after)
-        await Ban.ban_overwrites(member=member, after=after)
         # member_role = await role_check_with_specifics(after.channel, member)
 
         target = "user"

@@ -230,29 +230,26 @@ class TextMute(DatabaseFactory):
     @classmethod
     async def text_mute_overwrite(cls, message):
         kwargs = {
-            "channel_snowflake": message.channel.id,
-            "guild_snowflake": message.guild.id,
-            "member_snowflake": message.author.id,
+            'channel_snowflake': message.channel.id,
+            'guild_snowflake': message.guild.id,
+            'member_snowflake': message.author.id,
         }
         text_mute = await TextMute.select(**kwargs, singular=True)
         if text_mute:
             targets = []
             for target, overwrite in message.channel.overwrites.items():
-                if any(v is not None for v in overwrite):
-                    if isinstance(target, discord.Member):
+                if isinstance(target, discord.Member):
+                    if any(value is not None for value in overwrite._values.values()):
                         targets.append(target)
             if message.author not in targets:
                 try:
-                    await message.channel.set_permissions(
-                        target=message.author,
-                        send_messages=False,
-                        add_reactions=False,
-                        reason="Reinstating active text-mute overwrite.",
-                    )
+                    await message.channel.set_permissions(target=message.author, send_messages=False, add_reactions=False, reason='Reinstating active text-mute overwrite.')
                     set_kwargs = {
-                        "last_muted": datetime.now(timezone.utc),
-                        "reset": False,
+                        'last_muted': datetime.now(timezone.utc),
+                        'reset': False,
                     }
                     await TextMute.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                 except discord.Forbidden as e:
-                    logger.warning(e)
+                    logger.warning('set_permissions forbidden error=%s', e)
+        logger.info('exit text_mute_overwrite')
+
