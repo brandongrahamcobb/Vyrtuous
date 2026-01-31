@@ -130,19 +130,19 @@ ALTER TABLE temporary_rooms RENAME CONSTRAINT temporary_rooms_pkey1 TO temporary
 
 ALTER TABLE active_caps
 RENAME COLUMN moderation_type TO category;
+DROP TABLE roles;
 CREATE TABLE roles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     channel_snowflake BIGINT NOT NULL,
     guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
     role_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake)
 );
 
 
 
-INSERT INTO active_bans (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, updated_at)
-VALUES (1222056499959042108, NOW(), NULL, 801609515391778826, 910422339810914334, 'Stalking', NOW());
 DELETE FROM command_aliases WHERE category = 'unban';
 DELETE FROM command_aliases WHERE category = 'unvmute';
 DELETE FROM command_aliases WHERE category = 'unflag';
@@ -161,15 +161,3 @@ UPDATE active_bans SET reset = TRUE WHERE guild_snowflake = '801609515391778826'
 
 
 
-
-
-/*
-ALTER TABLE active_bans
-DROP CONSTRAINT active_bans_pkey,
-ADD CONSTRAINT active_bans_pkey
-PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake);
-ALTER TABLE active_text_mutes
-DROP CONSTRAINT active_text_mutes_pkey,
-ADD CONSTRAINT active_text_mutes_pkey
-PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake);
-*/
