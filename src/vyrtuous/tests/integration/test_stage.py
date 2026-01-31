@@ -34,7 +34,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!stage", "{channel_snowflake}"),
     ],
 )
-async def test_stage(bot, command: Optional[str], channel):
+async def test_stage(bot, command: str, channel):
     """
     Create or teardown a stage by accessing
     the PostgresSQL database 'vyrtuous' in the table 'video_rooms'.

@@ -35,7 +35,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!temp", "{channel_snowflake}"),
     ],
 )
-async def test_temp(bot, command: Optional[str], channel):
+async def test_temp(bot, command: str, channel):
     """
     Create or teardown a temporary room by accessing
     the PostgresSQL database 'vyrtuous' in the table 'temporary_rooms'.

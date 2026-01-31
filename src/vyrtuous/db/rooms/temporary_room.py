@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 
 import discord
 
@@ -43,6 +43,7 @@ from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.rooms.stage import Stage
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class TemporaryRoom(DatabaseFactory):
@@ -66,14 +67,15 @@ class TemporaryRoom(DatabaseFactory):
     ]
 
     TABLE_NAME = "temporary_rooms"
+    lines, pages = [], []
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         room_name: str,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -81,21 +83,17 @@ class TemporaryRoom(DatabaseFactory):
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
-        self.is_temp_room: Optional[bool] = True
+        self.is_temp_room: bool = True
         self.room_name = room_name
         self.updated_at = updated_at
 
-
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         aliases = await Alias.select(**where_kwargs)
         temporary_rooms = await TemporaryRoom.select(**where_kwargs)
         for temporary_room in temporary_rooms:
-            dictionary.setdefault(
-                temporary_room.guild_snowflake, {"channels": {}}
-            )
+            dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
             dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
                 temporary_room.channel_snowflake, {}
             )
@@ -120,32 +118,30 @@ class TemporaryRoom(DatabaseFactory):
         )
         if is_at_home:
             if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
+                TemporaryRoom.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_channels,
+                        title="Skipped Channels in Server",
+                    )
                 )
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                TemporaryRoom.pages.extend(
+                    pages=generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
-        return cleaned_dictionary, pages
-        
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
         title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
 
         where_kwargs = object_dict.get("columns", None)
-
-        dictionary, pages = await TemporaryRoom.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        dictionary = await TemporaryRoom.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -157,36 +153,42 @@ class TemporaryRoom(DatabaseFactory):
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                lines.append(f"Channel: {channel.mention}")
+                TemporaryRoom.lines.append(f"Channel: {channel.mention}")
                 field_count += 1
                 for category, alias_names in channel_data.items():
-                    lines.append(f"{category}")
+                    TemporaryRoom.lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
-                        lines.append(f"  ↳ {name}")
+                        TemporaryRoom.lines.append(f"  ↳ {name}")
                         field_count += 1
-                        if field_count >= chunk_size:
+                        if field_count >= CHUNK_SIZE:
                             embed.add_field(
                                 name="Information",
-                                value="\n".join(lines),
+                                value="\n".join(TemporaryRoom.lines),
                                 inline=False,
                             )
-                            embed, field_count = flush_page(
-                                embed, pages, title, guild.name
+                            embed = flush_page(
+                                embed, TemporaryRoom.pages, title, guild.name
                             )
-                            lines = []
-                if field_count >= chunk_size:
+                            TemporaryRoom.lines = []
+                            field_count = 0
+                if field_count >= CHUNK_SIZE:
                     embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
+                        name="Information",
+                        value="\n".join(TemporaryRoom.lines),
+                        inline=False,
                     )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
+                    embed = flush_page(embed, TemporaryRoom.pages, title, guild.name)
+                    TemporaryRoom.lines = []
+                    field_count = 0
+            if TemporaryRoom.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information",
+                    value="\n".join(TemporaryRoom.lines),
+                    inline=False,
                 )
-            pages.append(embed)
-        return pages
+            TemporaryRoom.pages.append(embed)
+        return TemporaryRoom.pages
 
     @classmethod
     async def migrate_temporary_room(cls, channel_dict, old_name, snowflake_kwargs):
@@ -197,12 +199,12 @@ class TemporaryRoom(DatabaseFactory):
         set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
         temp_where_kwargs = {
             "channel_snowflake": old_room.channel_snowflake,
-            "guild_snowflake": guild_snowflake,
+            "guild_snowflake": int(guild_snowflake),
             "room_name": channel_dict.get("name", None),
         }
         where_kwargs = {
             "channel_snowflake": old_room.channel_snowflake,
-            "guild_snowflake": guild_snowflake,
+            "guild_snowflake": int(guild_snowflake),
         }
         kwargs = {
             "set_kwargs": set_kwargs,
@@ -226,7 +228,6 @@ class TemporaryRoom(DatabaseFactory):
 
     @classmethod
     async def toggle_temporary_room(cls, channel_dict):
-        action = None
         kwargs = {}
         kwargs.update(channel_dict.get("columns", None))
         temporary_room = await TemporaryRoom.select(**kwargs, singular=True)

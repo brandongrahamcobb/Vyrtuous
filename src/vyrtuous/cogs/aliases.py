@@ -160,7 +160,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
             member=member,
@@ -346,7 +346,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
             member=member,
@@ -382,7 +382,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
             member=member,
@@ -414,7 +414,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
             member=member,
@@ -448,7 +448,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
             member=member,
@@ -483,7 +483,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
             member=member,
@@ -524,7 +524,7 @@ class Aliases(commands.Cog):
         await Streaming.send_entry(
             alias=alias,
             channel_snowflake=action_information["action_channel_snowflake"],
-            duration=None,
+            duration="",
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
             member=member,

@@ -44,7 +44,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
     ],
 )
 async def test_alias(
-    bot, command: Optional[str], category, alias_name, channel_snowflake, role_snowflake
+    bot, command: str, category, alias_name, channel_snowflake, role_snowflake
 ):
     """
     Create and delete command aliases in the PostgreSQL

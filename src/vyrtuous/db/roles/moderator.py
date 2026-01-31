@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional, Union
+from datetime import datetime, timezone
+from typing import Union
 
 from discord.ext import commands
 import discord
@@ -40,6 +40,7 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 @skip_db_discovery
@@ -119,14 +120,15 @@ class Moderator(DatabaseFactory):
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "moderators"
+    lines, pages = [], []
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -140,7 +142,6 @@ class Moderator(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         moderators = await Moderator.select(**where_kwargs)
         for moderator in moderators:
@@ -165,35 +166,34 @@ class Moderator(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Moderator.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
+                Moderator.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_members,
+                        title="Skipped Members in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
-    
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        thumbnail = False
         title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await Moderator.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)        
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Moderator.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
+            thumbnail = False
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -203,7 +203,9 @@ class Moderator(DatabaseFactory):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    Moderator.lines.append(
+                        f"**User:** {member.display_name} {member.mention}"
+                    )
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -214,20 +216,23 @@ class Moderator(DatabaseFactory):
                     "moderators", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    lines.append(f"**Channel:** {channel.mention}")
+                    Moderator.lines.append(f"**Channel:** {channel.mention}")
                     field_count += 1
-                    if field_count >= chunk_size:
+                    if field_count >= CHUNK_SIZE:
                         embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
+                            name="Information",
+                            value="\n".join(Moderator.lines),
+                            inline=False,
                         )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
+                        embed = flush_page(embed, Moderator.pages, title, guild.name)
+                        Moderator.lines = []
+                        field_count = 0
+            if Moderator.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information", value="\n".join(Moderator.lines), inline=False
                 )
-            pages.append(embed)
-        return pages
+            Moderator.pages.append(embed)
+        return Moderator.pages
 
     @classmethod
     async def toggle_moderator(cls, channel_dict, member_dict, snowflake_kwargs):

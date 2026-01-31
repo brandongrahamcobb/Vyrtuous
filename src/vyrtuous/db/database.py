@@ -34,7 +34,7 @@ class Database:
         self.file_name: str = os.path.join(
             self.directory, f"backup_{self.timestamp}.sql"
         )
-        self.user: str = os.getenv("POSTGRES_USER")
+        self.user: str = str(os.getenv("POSTGRES_USER"))
 
     def create_backup_directory(self):
         os.makedirs(self.directory, exist_ok=True)

@@ -35,7 +35,7 @@ TEXT_CHANNEL_NAME = "text-channel"
         ("!migrate", "{channel_name}", "{channel_snowflake}"),
     ],
 )
-async def test_temp(bot, command: Optional[str], channel_name, channel_snowflake):
+async def test_temp(bot, command: str, channel_name, channel_snowflake):
     """
     Create or teardown a temporary room by accessing
     the PostgresSQL database 'vyrtuous' in the table 'temporary_rooms'.

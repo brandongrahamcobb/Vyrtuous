@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime
-from typing import Optional
 
 
 class TimeToComplete:
@@ -25,9 +24,7 @@ class TimeToComplete:
     def is_around_one_second(self, elapsed: float = 1.0):
         return 0.0 <= elapsed <= 2.0
 
-    def time_elapsed_measurement(
-        self, start: Optional[datetime], end: Optional[datetime]
-    ) -> float:
+    def time_elapsed_measurement(self, start: datetime, end: datetime) -> float:
         if start is None or end is None:
             return 0.0
         return (end - start).total_seconds()

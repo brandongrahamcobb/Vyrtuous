@@ -89,7 +89,7 @@ class ModeratorAppCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_bans_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -104,7 +104,7 @@ class ModeratorAppCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_commands_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -119,7 +119,7 @@ class ModeratorAppCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_coordinators_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -153,7 +153,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.describe(target="Specify one of: 'all', or server ID.")
     @moderator_predicator()
     async def list_developers_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -191,7 +191,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="flags", description="List flags.")
     @moderator_predicator()
     async def list_flags_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -206,7 +206,7 @@ class ModeratorAppCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_new_vegans_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -251,7 +251,7 @@ class ModeratorAppCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_moderators_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -265,7 +265,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="mutes", description="List mutes.")
     @moderator_predicator()
     async def list_mutes_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -388,7 +388,7 @@ class ModeratorAppCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_text_mutes_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)

@@ -41,7 +41,7 @@ NOT_PRIVILEGED_AUTHOR_NAME_ONE = "Not Privileged Author Name One"
         ("!admins", "<@{member_snowflake}>"),
     ],
 )
-async def test_admins(bot, command: Optional[str], target, cf):
+async def test_admins(bot, command: str, target, cf):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'administrators'.

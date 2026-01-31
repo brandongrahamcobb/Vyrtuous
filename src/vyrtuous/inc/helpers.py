@@ -90,3 +90,4 @@ TARGET_PERMISSIONS = (
     "send_messages",
     "view_channel",
 )
+CHUNK_SIZE = 7

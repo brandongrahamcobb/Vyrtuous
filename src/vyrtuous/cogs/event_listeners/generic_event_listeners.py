@@ -92,9 +92,6 @@ class GenericEventListeners(commands.Cog):
                 state=state,
             )
         except Exception as e:
-            import traceback
-
-            logger.info(traceback.format_exc())
             return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()
@@ -113,11 +110,9 @@ class GenericEventListeners(commands.Cog):
     async def on_app_command_error(self, interaction, error):
         state = StateService(interaction=interaction)
         logger.error(str(error))
-        if isinstance(error, app_commands.BadArgument):
+        if isinstance(error, app_commands.CheckFailure):
             return await state.end(error=str(error))
-        elif isinstance(error, app_commands.CheckFailure):
-            return await state.end(error=str(error))
-        elif isinstance(error, DiscordObjectNotFound()):
+        elif isinstance(error, DiscordObjectNotFound):
             return await state.end(error=str(error))
 
     @commands.Cog.listener()

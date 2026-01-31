@@ -35,7 +35,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!coord", "<@{member_snowflake}>", "<#{channel_snowflake}>"),
     ],
 )
-async def test_coord(bot, command: Optional[str], member, channel):
+async def test_coord(bot, command: str, member, channel):
     """
     Promote or demote a member with 'Coordinator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'coordinators'.

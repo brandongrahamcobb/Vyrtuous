@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from pathlib import Path
-from typing import Optional
+
 
 from discord.ext import commands
 import discord
@@ -65,7 +65,7 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: `all`, " "channel ID/mention or server ID.",
         ),
     ):
@@ -158,7 +158,7 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="'all', a specific server or user mention/ID"
         ),
     ):
@@ -191,7 +191,7 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):

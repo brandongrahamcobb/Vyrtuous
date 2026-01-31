@@ -18,8 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Optional
-
 from discord.ext import commands
 import discord
 
@@ -240,7 +238,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx,
         *,
-        lines: Optional[int] = commands.parameter(
+        lines: int = commands.parameter(
             default=3, description="Specify the number of lines"
         ),
     ):
@@ -275,11 +273,24 @@ class AdminTextCommands(commands.Cog):
             "member_snowflake": ctx.author.id,
         }
         do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         if target and target.lower() == "all":
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
-        pages = await PermissionCheck.check_permissions(
-            object_dict=object_dict, target=target, snowflake_kwargs=snowflake_kwargs
+        if target and target.lower() == "all":
+            channel_objs = [
+                channel_obj
+                for guild in self.bot.guilds
+                for channel_obj in guild.channels
+            ]
+        elif hasattr(object_dict.get("object", None), "channels"):
+            channel_objs = object_dict.get("object", None).channels
+        else:
+            channel_objs = [object_dict.get("object", None)]
+        pages = await PermissionCheck.build_pages(
+            channel_objs=channel_objs,
+            is_at_home=is_at_home,
+            snowflake_kwargs=snowflake_kwargs,
         )
         if pages:
             return await state.end(warning=pages)
@@ -354,7 +365,7 @@ class AdminTextCommands(commands.Cog):
             description="Tag a member or include their ID"
         ),
         *,
-        reason: Optional[str] = commands.parameter(
+        reason: str = commands.parameter(
             default="No reason provided",
             description="Optional reason (required for 7 days or more)",
         ),
@@ -493,7 +504,7 @@ class AdminTextCommands(commands.Cog):
         ),
         action: str = commands.parameter(description="create | modify | delete."),
         entry_type: str = commands.parameter(description="all | channel."),
-        *snowflakes: Optional[int],
+        *snowflakes: int,
     ):
         state = StateService(ctx=ctx)
         channel_mentions, failed_snowflakes, resolved_channels = [], [], []
@@ -531,7 +542,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
@@ -570,7 +581,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Include `all`, channel or server ID."
         ),
     ):

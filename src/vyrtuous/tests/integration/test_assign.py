@@ -35,7 +35,7 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
         ("!assign", "{uuid}", "{member_snowflake}"),
     ],
 )
-async def test_assign(bot, command: Optional[str], reference, member):
+async def test_assign(bot, command: str, reference, member):
     """
     Assign a developer to a developer issues present in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.

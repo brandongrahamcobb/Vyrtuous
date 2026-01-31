@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import re
-from typing import Optional, Union
+from typing import Union
 
 from discord.ext import commands
 import discord
@@ -31,7 +31,7 @@ from vyrtuous.utils.source import DiscordSourceNotFound
 class DiscordObjectNotFound(commands.CheckFailure):
     "Returns an error if a channel, guild, member or role is not found."
 
-    def __init__(self, message: str = None, target: str = None):
+    def __init__(self, message: str, target: str):
         super().__init__(
             message=message
             or f"Unable to resolve a valid channel, guild, member or role for target (`{target}`)."
@@ -170,7 +170,7 @@ class DiscordObject:
 
     def resolve_channel(
         self,
-        target: Optional[Union[int, str]],
+        target: Union[int, str],
     ) -> Union[discord.TextChannel, discord.VoiceChannel]:
         c_id = None
         if isinstance(target, int):
@@ -188,7 +188,7 @@ class DiscordObject:
 
     def resolve_guild(
         self,
-        target: Optional[Union[int, str]],
+        target: Union[int, str],
     ) -> Union[discord.Guild]:
         g_id = None
         if isinstance(target, int):

@@ -34,7 +34,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
         ("!summary", "<@{member_snowflake}>"),
     ],
 )
-async def test_summary(bot, command: Optional[str], member):
+async def test_summary(bot, command: str, member):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.

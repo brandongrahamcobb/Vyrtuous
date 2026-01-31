@@ -41,7 +41,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!xalias", "testrole"),
     ],
 )
-async def test_xalias(bot, command: Optional[str], alias_name):
+async def test_xalias(bot, command: str, alias_name):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.

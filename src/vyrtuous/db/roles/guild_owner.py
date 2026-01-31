@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional, Union
+from datetime import datetime, timezone
+from typing import Union
 
 from discord.ext import commands
 import discord
@@ -97,8 +97,8 @@ class GuildOwner(DatabaseFactory):
         self,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()

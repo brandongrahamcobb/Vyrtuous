@@ -59,9 +59,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ),
     ],
 )
-async def test_stream(
-    bot, command: Optional[str], source_channel, action, target, type
-):
+async def test_stream(bot, command: str, source_channel, action, target, type):
     """
     Setup, modify or teardown a streaming route, modifying the
     the PostgresSQL database 'vyrtuous' in the table 'streaming'.

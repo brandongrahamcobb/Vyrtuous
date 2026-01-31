@@ -31,7 +31,7 @@ from vyrtuous.tests.integration.test_suite import build_message, send_message, s
         ("!backup"),
     ],
 )
-async def test_backup(bot, command: Optional[str]):
+async def test_backup(bot, command: str):
     """
     Backup the database 'vyrtuous'.
 

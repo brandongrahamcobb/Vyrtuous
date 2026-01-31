@@ -31,7 +31,7 @@ from vyrtuous.tests.integration.test_suite import build_message, send_message, s
         ("!cogs"),
     ],
 )
-async def test_cogs(bot, command: Optional[str]):
+async def test_cogs(bot, command: str):
     """
     List cogs loaded by 'Vyrtuous'.
 

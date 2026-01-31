@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+
 
 from discord import app_commands
 from discord.ext import commands
@@ -41,11 +41,11 @@ class DurationObject:
 
     def __init__(self, duration: str):
         self._duration: str = ""
-        self._prefix: Optional[str] = None
-        self._number: int = None
-        self._unit: Optional[str] = None
-        self._base: Optional[datetime] = None
-        self.is_modification: bool = None
+        self._prefix: str
+        self._number: int = 0
+        self._unit: str
+        self._base: datetime = datetime.now(timezone.utc)
+        self.is_modification: bool = False
         self.duration = duration
 
     def __str__(self):
@@ -106,7 +106,7 @@ class DurationObject:
         return self._base
 
     @base.setter
-    def base(self, value: Optional[datetime]):
+    def base(self, value: datetime):
         self._base = value or datetime.now(timezone.utc)
 
     @property
@@ -189,11 +189,13 @@ class DurationObject:
             case _:
                 raise ValueError(f"Unsupported unit: {self.unit}")
 
-    def target_datetime(self, base: Optional[datetime] = None) -> datetime:
+    def target_datetime(self, base: datetime = datetime.now(timezone.utc)) -> datetime:
         base = base or self.base
         return base + self.to_timedelta()
 
-    def discord_unix_timestamp(self, base: Optional[datetime] = None) -> int:
+    def discord_unix_timestamp(
+        self, base: datetime = datetime.now(timezone.utc)
+    ) -> int:
         return int(self.target_datetime(base).timestamp())
 
     def to_seconds(self) -> int:
@@ -204,7 +206,7 @@ class DurationObject:
         if s == "0":
             self.number = 0
             self.unit = "h"
-            self._prefix = None
+            self._prefix = ""
             self.is_modification = False
             return
         if s[0] in self.PREFIXES:
@@ -212,7 +214,7 @@ class DurationObject:
             self.is_modification = True
             s = s[1:]
         else:
-            self._prefix = None
+            self._prefix = ""
             self.is_modification = False
         num_str = ""
         for char in s:

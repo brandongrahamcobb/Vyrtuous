@@ -34,7 +34,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
         ("!dev", "<@{member_snowflake}>"),
     ],
 )
-async def test_dev(bot, command: Optional[str], member):
+async def test_dev(bot, command: str, member):
     """
     Promote or demote a member with 'Developer' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'developers'.

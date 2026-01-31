@@ -57,16 +57,6 @@ class ChannelEventListeners(commands.Cog):
 
     async def cog_load(self):
         VideoRoom.video_rooms = await VideoRoom.select()
-        for room in VideoRoom.video_rooms:
-            channel = self.bot.get_channel(room.channel_snowflake)
-            if channel:
-                try:
-                    await channel.edit(
-                        status="Video-Only Room",
-                        reason="Enforce default video-only status",
-                    )
-                except discord.Forbidden as e:
-                    logger.warning(str(e).capitalize())
         self.flags = await Flag.select()
 
     @commands.Cog.listener()
@@ -209,9 +199,8 @@ class ChannelEventListeners(commands.Cog):
                     duration = DurationObject("1h")
                     await Streaming.send_entry(
                         alias=alias,
-                        channel=after.channel,
-                        duration=duration,
-                        executor_role="Role-specfic",
+                        channel_snowflake=after.channel.id,
+                        duration=str(duration),
                         is_channel_scope=True,
                         is_modification=False,
                         member=member,
@@ -237,9 +226,8 @@ class ChannelEventListeners(commands.Cog):
                     duration = DurationObject("0")
                     await Streaming.send_entry(
                         alias=alias,
-                        channel=after.channel,
-                        duration=duration,
-                        executor_role="Role-specfic",
+                        channel_snowflake=after.channel.id,
+                        duration=str(duration),
                         is_channel_scope=True,
                         is_modification=False,
                         member=member,

@@ -31,7 +31,7 @@ from vyrtuous.tests.integration.test_suite import build_message, send_message, s
         ("!debug", "10"),
     ],
 )
-async def test_ping(bot, command: Optional[str], lines):
+async def test_ping(bot, command: str, lines):
     """
     Fetch last lines from the logs.
 

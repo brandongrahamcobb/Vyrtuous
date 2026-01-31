@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 import time
 
 import discord
@@ -49,6 +49,7 @@ from vyrtuous.db.roles.moderator import (
 )
 from vyrtuous.db.roles.sysadmin import is_sysadmin
 from vyrtuous.utils.check import has_equal_or_lower_role
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Stage(DatabaseFactory):
@@ -72,14 +73,15 @@ class Stage(DatabaseFactory):
     ]
 
     TABLE_NAME = "active_stages"
+    lines, pages = [], []
 
     def __init__(
         self,
         channel_snowflake: int,
-        expires_in: Optional[datetime],
+        expires_in: datetime,
         guild_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -107,7 +109,6 @@ class Stage(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         stages = await Stage.select(**where_kwargs)
         for stage in stages:
@@ -118,11 +119,9 @@ class Stage(DatabaseFactory):
             dictionary[stage.guild_snowflake]["channels"][
                 stage.channel_snowflake
             ].setdefault("stages", {})
-            dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ]["stages"].update(
-                {"expires_in": DurationObject.from_expires_in(stage.expires_in)}
-            )
+            dictionary[stage.guild_snowflake]["channels"][stage.channel_snowflake][
+                "stages"
+            ].update({"expires_in": DurationObject.from_expires_in(stage.expires_in)})
         skipped_channels = generate_skipped_channels(dictionary)
         skipped_guilds = generate_skipped_guilds(dictionary)
         cleaned_dictionary = clean_dictionary(
@@ -132,32 +131,30 @@ class Stage(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Stage.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
+                Stage.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_channels,
+                        title="Skipped Channels in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
+        return cleaned_dictionary
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        dictionary = {}
         title = f"{get_random_emoji()} Stages"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await Stage.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Stage.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -169,26 +166,27 @@ class Stage(DatabaseFactory):
                 "channels"
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                lines.append(
+                Stage.lines.append(
                     f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
                 )
                 field_count += 1
-                if field_count == chunk_size:
+                if field_count == CHUNK_SIZE:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
+                        value="\n".join(Stage.lines),
                         inline=False,
                     )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-                if lines:
+                    embed = flush_page(embed, Stage.pages, title, guild.name)
+                    Stage.lines = []
+                    field_count = 0
+                if Stage.lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
+                        value="\n".join(Stage.lines),
                         inline=False,
                     )
-            pages.append(embed)
-        return pages
+            Stage.pages.append(embed)
+        return Stage.pages
 
     @classmethod
     async def toggle_stage(cls, channel_dict, duration, snowflake_kwargs):

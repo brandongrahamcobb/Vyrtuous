@@ -31,7 +31,7 @@ from vyrtuous.tests.integration.test_suite import build_message, send_message, s
         ("!ping"),
     ],
 )
-async def test_ping(bot, command: Optional[str]):
+async def test_ping(bot, command: str):
     """
     Backup the database 'vyrtuous'.
 

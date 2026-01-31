@@ -37,7 +37,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
         ("!devs", "<@{member_snowflake}>"),
     ],
 )
-async def test_devs(bot, command: Optional[str], target):
+async def test_devs(bot, command: str, target):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'developers'.

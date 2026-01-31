@@ -34,7 +34,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
         ("!hero", "<@{member_snowflake}>"),
     ],
 )
-async def test_hero(bot, command: Optional[str], target):
+async def test_hero(bot, command: str, target):
     """
     Promote or demote member to 'Hero' in memory (lost on reload).
 

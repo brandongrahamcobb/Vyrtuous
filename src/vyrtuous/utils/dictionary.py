@@ -19,13 +19,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
-def generate_skipped_set_pages(chunk_size, field_count, pages, skipped, title):
+def generate_skipped_set_pages(skipped, title):
+    field_count = 0
+    pages = []
     embed = discord.Embed(title=title, description="\u200b", color=discord.Color.blue())
     lines = []
     for snowflake in skipped:
-        if field_count >= chunk_size:
+        if field_count >= CHUNK_SIZE:
             embed.description = "\n".join(lines)
             pages.append(embed)
             embed = discord.Embed(
@@ -40,8 +43,10 @@ def generate_skipped_set_pages(chunk_size, field_count, pages, skipped, title):
     return pages
 
 
-def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
+def generate_skipped_dict_pages(skipped, title):
     bot = DiscordBot.get_instance()
+    field_count = 0
+    pages = []
     for guild_snowflake, list in skipped.items():
         guild = bot.get_guild(guild_snowflake)
         embed = discord.Embed(
@@ -50,7 +55,7 @@ def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
         field_count = 0
         lines = []
         for snowflake in list:
-            if field_count >= chunk_size:
+            if field_count >= CHUNK_SIZE:
                 embed.description = "\n".join(lines)
                 pages.append(embed)
                 embed = discord.Embed(

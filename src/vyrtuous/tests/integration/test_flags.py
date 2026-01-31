@@ -40,7 +40,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!flags", "{member_snowflake}"),
     ],
 )
-async def test_flags(bot, command: Optional[str], target):
+async def test_flags(bot, command: str, target):
     """
     List flags on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_flags'.

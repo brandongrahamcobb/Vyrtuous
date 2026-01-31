@@ -33,7 +33,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!cap", "{channel_snowflake}", "ban", "8"),
     ],
 )
-async def test_cap(bot, command: Optional[str], channel, category, hours):
+async def test_cap(bot, command: str, channel, category, hours):
     """
     Set a expires in limit for a channel by populating the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.

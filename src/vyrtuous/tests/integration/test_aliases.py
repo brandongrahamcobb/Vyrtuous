@@ -41,7 +41,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!testrole", "{member_snowflake}"),
     ],
 )
-async def test_aliases(bot, command: Optional[str], member_snowflake):
+async def test_aliases(bot, command: str, member_snowflake):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.

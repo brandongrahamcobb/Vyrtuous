@@ -33,7 +33,7 @@ from vyrtuous.tests.integration.test_suite import build_message, send_message, s
         ("!reload", "{cog}"),
     ],
 )
-async def test_load_reload_unload(bot, command: Optional[str], cog):
+async def test_load_reload_unload(bot, command: str, cog):
     """
     Load, reload or unload cogs.
 

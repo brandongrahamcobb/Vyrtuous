@@ -37,7 +37,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!pc", "{guild_snowflake}"),
     ],
 )
-async def test_pc(bot, command: Optional[str], target):
+async def test_pc(bot, command: str, target):
     """
     List permissions in channels.
 

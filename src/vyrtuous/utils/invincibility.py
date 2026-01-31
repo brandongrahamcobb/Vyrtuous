@@ -39,7 +39,7 @@ class Invincibility:
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
         kwargs = {
-            "guild_snowflake": guild_snowflake,
+            "guild_snowflake": int(guild_snowflake),
             "member_snowflake": member_snowflake,
         }
         bans = await Ban.select(**kwargs)

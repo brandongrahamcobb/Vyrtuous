@@ -37,7 +37,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!xrmute", "<#{channel_snowflake}>"),
     ],
 )
-async def test_rmute_xrmute(bot, command: Optional[str], channel):
+async def test_rmute_xrmute(bot, command: str, channel):
     """
     Voice-mute a whole room and undo it by adding and removing
     entries in the PostgreSQL database 'vyrtuous' in the table

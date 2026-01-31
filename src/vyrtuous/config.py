@@ -47,7 +47,7 @@ class Config:
             "postgres_host": os.getenv("POSTGRES_HOST"),
             "postgres_password": os.getenv("POSTGRES_PASSWORD"),
         }
-        _config["release_mode"] = os.environ.get("RELEASE_MODE").lower() in (
+        _config["release_mode"] = str(os.environ.get("RELEASE_MODE")).lower() in (
             "1",
             "true",
         )

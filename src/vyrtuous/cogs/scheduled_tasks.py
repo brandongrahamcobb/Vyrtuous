@@ -75,8 +75,8 @@ class ScheduledTasks(commands.Cog):
                 guild_snowflake = expired_ban.guild_snowflake
                 member_snowflake = expired_ban.member_snowflake
                 kwargs = {
-                    "channel_snowflake": channel_snowflake,
-                    "guild_snowflake": guild_snowflake,
+                    "channel_snowflake": int(channel_snowflake),
+                    "guild_snowflake": int(guild_snowflake),
                     "member_snowflake": member_snowflake,
                 }
                 guild = self.bot.get_guild(guild_snowflake)
@@ -134,8 +134,8 @@ class ScheduledTasks(commands.Cog):
                 target = expired_voice_mute.target
                 guild = self.bot.get_guild(guild_snowflake)
                 kwargs = {
-                    "channel_snowflake": channel_snowflake,
-                    "guild_snowflake": guild_snowflake,
+                    "channel_snowflake": int(channel_snowflake),
+                    "guild_snowflake": int(guild_snowflake),
                     "member_snowflake": member_snowflake,
                     "target": target,
                 }
@@ -355,8 +355,8 @@ class ScheduledTasks(commands.Cog):
                 guild_snowflake = expired_text_mute.guild_snowflake
                 member_snowflake = expired_text_mute.member_snowflake
                 kwargs = {
-                    "channel_snowflake": channel_snowflake,
-                    "guild_snowflake": guild_snowflake,
+                    "channel_snowflake": int(channel_snowflake),
+                    "guild_snowflake": int(guild_snowflake),
                     "member_snowflake": member_snowflake,
                 }
                 guild = self.bot.get_guild(guild_snowflake)
@@ -421,8 +421,8 @@ class ScheduledTasks(commands.Cog):
             guild_snowflake = text_mute.guild_snowflake
             member_snowflake = text_mute.member_snowflake
             where_kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
+                "channel_snowflake": int(channel_snowflake),
+                "guild_snowflake": int(guild_snowflake),
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
@@ -461,8 +461,8 @@ class ScheduledTasks(commands.Cog):
             guild_snowflake = ban.guild_snowflake
             member_snowflake = ban.member_snowflake
             where_kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
+                "channel_snowflake": int(channel_snowflake),
+                "guild_snowflake": int(guild_snowflake),
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}

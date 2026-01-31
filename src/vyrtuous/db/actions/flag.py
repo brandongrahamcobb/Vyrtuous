@@ -16,8 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
 
 import discord
 
@@ -33,6 +32,7 @@ from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
 )
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Flag(DatabaseFactory):
@@ -52,15 +52,16 @@ class Flag(DatabaseFactory):
     OPTIONAL_ARGS = ["created_at", "reason", "updated_at"]
 
     TABLE_NAME = "active_flags"
+    lines, pages = [], []
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: Optional[datetime] = None,
-        reason: Optional[str] = "No reason provided.",
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        reason: str = "No reason provided.",
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -113,7 +114,6 @@ class Flag(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         flags = await Flag.select(**where_kwargs)
         for flag in flags:
@@ -124,9 +124,9 @@ class Flag(DatabaseFactory):
             dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
                 "flags"
             ].setdefault(flag.channel_snowflake, {})
-            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
-                "flags"
-            ][flag.channel_snowflake].update(
+            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake]["flags"][
+                flag.channel_snowflake
+            ].update(
                 {
                     "reason": flag.reason,
                 }
@@ -140,35 +140,34 @@ class Flag(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Flag.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
+                Flag.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_members,
+                        title="Skipped Members in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
-    
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        thumbnail = False
         title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await Flag.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Flag.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
+            thumbnail = False
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -176,7 +175,9 @@ class Flag(DatabaseFactory):
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    Flag.lines.append(
+                        f"**User:** {member.display_name} {member.mention}"
+                    )
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -189,19 +190,21 @@ class Flag(DatabaseFactory):
                     if not isinstance(
                         object_dict.get("object"), discord.abc.GuildChannel
                     ):
-                        lines.append(f"**Channel:** {channel.mention}")
+                        Flag.lines.append(f"**Channel:** {channel.mention}")
                     if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
+                        Flag.lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
-                    if field_count >= chunk_size:
+                    if field_count >= CHUNK_SIZE:
                         embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
+                            name="Information",
+                            value="\n".join(Flag.lines),
+                            inline=False,
                         )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
+                        embed = flush_page(embed, Flag.pages, title, guild.name)
+                        Flag.lines = []
+            if Flag.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information", value="\n".join(Flag.lines), inline=False
                 )
-            pages.append(embed)
-        return pages
+            Flag.pages.append(embed)
+        return Flag.pages

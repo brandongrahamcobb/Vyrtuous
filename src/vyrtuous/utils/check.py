@@ -40,7 +40,7 @@ class HasEqualOrLowerRole(commands.CheckFailure):
 
 async def check(
     snowflake_kwargs,
-    lowest_role: str = None,
+    lowest_role: str,
 ) -> str:
     verifications = (
         ("Sysadmin", is_sysadmin),

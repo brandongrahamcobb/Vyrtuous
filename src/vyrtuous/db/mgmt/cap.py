@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 
 import discord
 
@@ -33,6 +33,7 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Cap(DatabaseFactory):
@@ -56,6 +57,7 @@ class Cap(DatabaseFactory):
     ]
 
     TABLE_NAME = "active_caps"
+    lines, pages = [], []
 
     def __init__(
         self,
@@ -63,8 +65,8 @@ class Cap(DatabaseFactory):
         channel_snowflake: int,
         duration_seconds: int,
         guild_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
     ):
         self.category = category
         self.channel_snowflake = channel_snowflake
@@ -75,7 +77,6 @@ class Cap(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         caps = await Cap.select(**where_kwargs)
         for cap in caps:
@@ -83,9 +84,9 @@ class Cap(DatabaseFactory):
             dictionary[cap.guild_snowflake]["channels"].setdefault(
                 cap.channel_snowflake, {"caps": {}}
             )
-            dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
-                "caps"
-            ][cap.category] = cap.duration_seconds
+            dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
+                cap.category
+            ] = cap.duration_seconds
         skipped_channels = generate_skipped_channels(dictionary)
         skipped_guilds = generate_skipped_guilds(dictionary)
         cleaned_dictionary = clean_dictionary(
@@ -95,31 +96,30 @@ class Cap(DatabaseFactory):
         )
         if is_at_home:
             if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
+                Cap.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_channels,
+                        title="Skipped Channels in Server",
+                    )
                 )
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Cap.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
-        return cleaned_dictionary, pages
-    
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
         title = f"{get_random_emoji()} {Cap.PLURAL}"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await Cap.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Cap.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -132,26 +132,27 @@ class Cap(DatabaseFactory):
                 for moderation_type, duration_seconds in cap_dictionary.get(
                     "caps", {}
                 ).items():
-                    lines.append(
+                    Cap.lines.append(
                         f"  ↳ {moderation_type} ({DurationObject.from_seconds(duration_seconds)})"
                     )
                     field_count += 1
-                    if field_count >= chunk_size:
+                    if field_count >= CHUNK_SIZE:
                         embed.add_field(
                             name=f"Channel: {channel.mention}",
-                            value="\n".join(lines),
+                            value="\n".join(Cap.lines),
                             inline=False,
                         )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-                if lines:
+                        embed = flush_page(embed, Cap.pages, title, guild.name)
+                        Cap.lines = []
+                        field_count = 0
+                if Cap.lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
+                        value="\n".join(Cap.lines),
                         inline=False,
                     )
-            pages.append(embed)
-        return pages
+            Cap.pages.append(embed)
+        return Cap.pages
 
     @classmethod
     async def toggle_cap(cls, category, channel_dict, hours):

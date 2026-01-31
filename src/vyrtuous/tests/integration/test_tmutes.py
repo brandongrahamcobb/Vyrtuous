@@ -41,7 +41,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!tmutes", "<@{member_snowflake}>"),
     ],
 )
-async def test_text_mutes(bot, command: Optional[str], target):
+async def test_text_mutes(bot, command: str, target):
     """
     List text-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_text_mutes'.

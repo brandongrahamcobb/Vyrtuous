@@ -40,7 +40,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!mutes", "<@{member_snowflake}>"),
     ],
 )
-async def test_voice_mutes(bot, command: Optional[str], target):
+async def test_voice_mutes(bot, command: str, target):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.

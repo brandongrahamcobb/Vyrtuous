@@ -16,8 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import TypeVar, Type
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.logger import logger
+
+T = TypeVar("T", bound="DatabaseFactory")
 
 
 class DatabaseFactory(object):
@@ -66,7 +70,9 @@ class DatabaseFactory(object):
         logger.info(f"Deleted entry from {table_name}.")
 
     @classmethod
-    async def select(cls, *, singular=False, inside=False, **kwargs):
+    async def select(
+        cls: Type[T], *, singular=False, inside=False, **kwargs
+    ) -> T | list[T]:
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, "TABLE_NAME")
         fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
@@ -93,7 +99,7 @@ class DatabaseFactory(object):
             )
         if singular:
             if not rows:
-                return None
+                return []
             row = rows[0]
             row_data = {k: row[k] for k in fields if k in row}
             return cls(**row_data)

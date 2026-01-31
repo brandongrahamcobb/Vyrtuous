@@ -37,7 +37,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!caps", "{guild_snowflake}"),
     ],
 )
-async def test_caps(bot, command: Optional[str], target):
+async def test_caps(bot, command: str, target):
     """
     List caps in the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.

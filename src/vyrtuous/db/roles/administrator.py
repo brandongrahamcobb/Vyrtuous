@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional, Union
+from datetime import datetime, timezone
+from typing import Union
 
 from discord.ext import commands
 import discord
@@ -40,6 +40,7 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 @skip_db_discovery
@@ -113,14 +114,15 @@ class Administrator(DatabaseFactory):
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "administrators"
+    lines, pages = [], []
 
     def __init__(
         self,
         guild_snowflake: int,
         member_snowflake: int,
         role_snowflakes: list[int | None],
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
     ):
         super().__init__()
         self.created_at = created_at
@@ -132,7 +134,6 @@ class Administrator(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, [], []
         dictionary = {}
         administrators = await Administrator.select(**where_kwargs)
         for administrator in administrators:
@@ -154,35 +155,34 @@ class Administrator(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Administrator.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
+                Administrator.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_members,
+                        title="Skipped Members in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
+        return cleaned_dictionary
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        thumbnail = False
         title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await Administrator.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Administrator.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
+            thumbnail = False
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -208,20 +208,25 @@ class Administrator(DatabaseFactory):
                     member_line = f"**User:** {member.display_name} {member.mention} "
                     if role_mentions:
                         member_line += "\n**Roles:** " + "\n".join(role_mentions)
-                lines.append(member_line)
+                Administrator.lines.append(member_line)
                 field_count += 1
-                if field_count >= chunk_size:
+                if field_count >= CHUNK_SIZE:
                     embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
+                        name="Information",
+                        value="\n".join(Administrator.lines),
+                        inline=False,
                     )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
+                    embed = flush_page(embed, Administrator.pages, title, guild.name)
+                    Administrator.lines = []
+                    field_count = 0
+            if Administrator.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information",
+                    value="\n".join(Administrator.lines),
+                    inline=False,
                 )
-            pages.append(embed)
-        return pages
+            Administrator.pages.append(embed)
+        return Administrator.pages
 
 
 class AdministratorRole(DatabaseFactory):
@@ -240,13 +245,14 @@ class AdministratorRole(DatabaseFactory):
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "administrator_roles"
+    lines, pages = [], []
 
     def __init__(
         self,
         guild_snowflake: int,
         role_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -262,7 +268,7 @@ class AdministratorRole(DatabaseFactory):
         member_snowflake = snowflake_kwargs.get("member_snowflake", None)
         role_snowflake = snowflake_kwargs.get("role_snowflake", None)
         kwargs = {
-            "guild_snowflake": guild_snowflake,
+            "guild_snowflake": int(guild_snowflake),
             "role_snowflakes": [role_snowflake],
         }
         administrator_role = await AdministratorRole.select(**kwargs, singular=True)
@@ -284,7 +290,7 @@ class AdministratorRole(DatabaseFactory):
             administrator_role_snowflakes = administrator.role_snowflakes
             administrator_role_snowflakes.append(role_snowflake)
             where_kwargs = {
-                "guild_snowflake": guild_snowflake,
+                "guild_snowflake": int(guild_snowflake),
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
@@ -300,7 +306,7 @@ class AdministratorRole(DatabaseFactory):
         member_snowflake = snowflake_kwargs.get("member_snowflake", None)
         role_snowflake = snowflake_kwargs.get("role_snowflake", None)
         where_kwargs = {
-            "guild_snowflake": guild_snowflake,
+            "guild_snowflake": int(guild_snowflake),
             "role_snowflakes": [role_snowflake],
         }
         administrator_role = await AdministratorRole.select(
@@ -317,7 +323,7 @@ class AdministratorRole(DatabaseFactory):
             administrator_role_snowflakes = administrator.role_snowflakes
             administrator_role_snowflakes.remove(role_snowflake)
             where_kwargs = {
-                "guild_snowflake": guild_snowflake,
+                "guild_snowflake": int(guild_snowflake),
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
@@ -328,13 +334,10 @@ class AdministratorRole(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         administrator_roles = await AdministratorRole.select(**where_kwargs)
         for administrator_role in administrator_roles:
-            dictionary.setdefault(
-                administrator_role.guild_snowflake, {"roles": {}}
-            )
+            dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
             dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
                 administrator_role.role_snowflake, {}
             )
@@ -348,32 +351,31 @@ class AdministratorRole(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                AdministratorRole.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_roles:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_roles,
-                    title="Skipped Roles in Server",
+                AdministratorRole.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_roles,
+                        title="Skipped Roles in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
+        return cleaned_dictionary
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count = 7, 0
         dictionary = {}
         title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
         where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await AdministratorRole.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        dictionary = await AdministratorRole.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -383,12 +385,14 @@ class AdministratorRole(DatabaseFactory):
             )
             for role_snowflake, entry in guild_data.get("roles", {}).items():
                 role = guild.get_role(role_snowflake)
-                if field_count >= chunk_size:
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                if field_count >= CHUNK_SIZE:
+                    embed = flush_page(
+                        embed, AdministratorRole.pages, title, guild.name
+                    )
                 embed.add_field(name=role.name, value=role.mention, inline=False)
                 field_count += 1
-            pages.append(embed)
-        return pages
+            AdministratorRole.pages.append(embed)
+        return AdministratorRole.pages
 
     @classmethod
     async def toggle_administrator_role(cls, role_dict, snowflake_kwargs):

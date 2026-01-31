@@ -99,7 +99,7 @@ class DevCommands(commands.Cog):
         ctx: commands.Context,
         reference: str,
         action: str,
-        notes: str = None,
+        notes: str,
     ):
         state = StateService(ctx=ctx)
 
@@ -137,8 +137,8 @@ class DevCommands(commands.Cog):
     async def list_bugs_app_command(
         self,
         interaction: discord.Interaction,
-        target: str = None,
-        filter: str = None,
+        target: str,
+        filter: str,
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)

@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+
 
 import discord
 
@@ -41,6 +41,8 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.cogs.aliases import Aliases
 
 
 class Alias(DatabaseFactory):
@@ -68,6 +70,7 @@ class Alias(DatabaseFactory):
     ]
 
     TABLE_NAME = "command_aliases"
+    lines, pages = [], []
 
     _ALIAS_CLASS_MAP = {
         "ban": Ban,
@@ -84,15 +87,14 @@ class Alias(DatabaseFactory):
         category: str,
         channel_snowflake: int,
         guild_snowflake: int,
-        created_at: Optional[datetime] = None,
-        role_snowflake: Optional[int] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        role_snowflake: int = 0,
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
         self.bot = DiscordBot.get_instance()
         self.alias_class = Alias._ALIAS_CLASS_MAP.get(category, None)
-        self.alias_cog = self.bot.get_cog("Aliases")
         self.category = category
         self.alias_name = alias_name
         self.channel_snowflake = channel_snowflake
@@ -100,18 +102,18 @@ class Alias(DatabaseFactory):
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.handlers = {
-            "ban": self.alias_cog.handle_ban_alias,
-            "vegan": self.alias_cog.handle_vegan_alias,
-            "carnist": self.alias_cog.handle_carnist_alias,
-            "unban": self.alias_cog.handle_unban_alias,
-            "flag": self.alias_cog.handle_flag_alias,
-            "unflag": self.alias_cog.handle_unflag_alias,
-            "vmute": self.alias_cog.handle_voice_mute_alias,
-            "unvmute": self.alias_cog.handle_unmute_alias,
-            "tmute": self.alias_cog.handle_text_mute_alias,
-            "untmute": self.alias_cog.handle_untextmute_alias,
-            "role": self.alias_cog.handle_role_alias,
-            "unrole": self.alias_cog.handle_unrole_alias,
+            "ban": Aliases.handle_ban_alias,
+            "vegan": Aliases.handle_vegan_alias,
+            "carnist": Aliases.handle_carnist_alias,
+            "unban": Aliases.handle_unban_alias,
+            "flag": Aliases.handle_flag_alias,
+            "unflag": Aliases.handle_unflag_alias,
+            "vmute": Aliases.handle_voice_mute_alias,
+            "unvmute": Aliases.handle_unmute_alias,
+            "tmute": Aliases.handle_text_mute_alias,
+            "untmute": Aliases.handle_untextmute_alias,
+            "role": Aliases.handle_role_alias,
+            "unrole": Aliases.handle_unrole_alias,
         }
         self.role_snowflake = role_snowflake
         self.role_mention = f"<@&{role_snowflake}>"
@@ -140,7 +142,7 @@ class Alias(DatabaseFactory):
                 "action_existing": action_existing,
                 "action_modification": action_modification,
                 "action_role_snowflake": (
-                    self.role_snowflake if self.role_snowflake else None
+                    str(self.role_snowflake) if self.role_snowflake else None
                 ),
             }
         )
@@ -152,8 +154,8 @@ class Alias(DatabaseFactory):
         channel = self.bot.get_channel(self.channel_snowflake)
         cap = await Cap.select(
             category=category,
-            channel_snowflake=self.channel_snowflake,
-            guild_snowflake=self.guild_snowflake,
+            channel_snowflake=str(self.channel_snowflake),
+            guild_snowflake=str(self.guild_snowflake),
             singular=True,
         )
         if not hasattr(cap, "duration"):
@@ -186,19 +188,21 @@ class Alias(DatabaseFactory):
     ):
         action_information = {}
         if getattr(self, "role_snowflake"):
-            action_information.update({"action_role_snowflake": self.role_snowflake})
+            action_information.update(
+                {"action_role_snowflake": str(self.role_snowflake)}
+            )
         action_information.update(
             {
                 "alias_class": self.alias_class,
-                "action_channel_snowflake": self.channel_snowflake,
-                "action_guild_snowflake": self.guild_snowflake,
-                "action_member_snowflake": member_snowflake,
+                "action_channel_snowflake": str(self.channel_snowflake),
+                "action_guild_snowflake": str(self.guild_snowflake),
+                "action_member_snowflake": str(member_snowflake),
             }
         )
         action_executor_role = await resolve_highest_role(
-            channel_snowflake=self.channel_snowflake,
-            guild_snowflake=self.guild_snowflake,
-            member_snowflake=author_snowflake,
+            channel_snowflake=str(self.channel_snowflake),
+            guild_snowflake=str(self.guild_snowflake),
+            member_snowflake=str(author_snowflake),
         )
         action_information.update({"action_executor_role": action_executor_role})
         action_information = await self.build_duration_information(
@@ -216,7 +220,6 @@ class Alias(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         aliases = await Alias.select(**where_kwargs)
         for alias in aliases:
@@ -224,9 +227,9 @@ class Alias(DatabaseFactory):
             dictionary[alias.guild_snowflake]["channels"].setdefault(
                 alias.channel_snowflake, {"aliases": {}}
             )
-            dictionary[alias.guild_snowflake]["channels"][
-                alias.channel_snowflake
-            ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
+            dictionary[alias.guild_snowflake]["channels"][alias.channel_snowflake][
+                "aliases"
+            ].setdefault(alias.category, {})[alias.alias_name] = []
             if alias.category == "role":
                 guild = bot.get_guild(alias.guild_snowflake)
                 if guild:
@@ -243,32 +246,30 @@ class Alias(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Alias.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
+                Alias.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_channels,
+                        title="Skipped Channels in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
+        return cleaned_dictionary
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
         title = f"{get_random_emoji()} Command Aliases"
 
         where_kwargs = object_dict.get("columns", None)
-
-        dictionary, pages = await Alias.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        dictionary = await Alias.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -278,38 +279,41 @@ class Alias(DatabaseFactory):
             )
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
-                lines = []
                 for category, alias_data in dictionary["aliases"].items():
-                    lines.append(f"{category}")
+                    Alias.lines.append(f"{category}")
                     for name, role_mention in alias_data.items():
                         if category == "role":
-                            lines.append(f"  ↳ `{name}` -> {role_mention}")
+                            Alias.lines.append(f"  ↳ `{name}` -> {role_mention}")
                         else:
-                            lines.append(f"  ↳ `{name}`")
+                            Alias.lines.append(f"  ↳ `{name}`")
                     field_count += 1
-                if field_count >= chunk_size:
+                if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
+                        value="\n".join(Alias.lines),
                         inline=False,
                     )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
+                    embed = flush_page(embed, Alias.pages, title, guild.name)
+                    Alias.lines = []
+                    field_count = 0
+            if Alias.lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
+                    value="\n".join(Alias.lines),
                     inline=False,
                 )
-            pages.append(embed)
-        return pages
+            Alias.pages.append(embed)
+        return Alias.pages
 
     @classmethod
     async def delete_alias(cls, alias_name, snowflake_kwargs):
         bot = DiscordBot.get_instance()
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
 
-        where_kwargs = {"alias_name": alias_name, "guild_snowflake": guild_snowflake}
+        where_kwargs = {
+            "alias_name": alias_name,
+            "guild_snowflake": int(guild_snowflake),
+        }
         alias = await Alias.select(singular=True, **where_kwargs)
         if not alias:
             return "No aliases found for `{alias_name}`."

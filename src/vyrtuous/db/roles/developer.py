@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional, Union
+from datetime import datetime, timezone
+from typing import Union
 
 from discord.ext import commands
 import discord
@@ -28,6 +28,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 @skip_db_discovery
@@ -80,12 +81,13 @@ class Developer(DatabaseFactory):
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "developers"
+    lines, pages = [], []
 
     def __init__(
         self,
         member_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -96,7 +98,6 @@ class Developer(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, where_kwargs):
-        pages = []
         dictionary = {}
         developers = await Developer.select(**where_kwargs)
         for developer in developers:
@@ -108,38 +109,41 @@ class Developer(DatabaseFactory):
                 {"placeholder": "placeholder"}
             )
         cleaned_dictionary = dictionary
-        return cleaned_dictionary, pages
-    
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, object_dict, **kwargs):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        dictionary = {}
-        thumbnail = False
         title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), (discord.Guild, discord.Member)) else ''}"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await Developer.build_clean_dictionary(where_kwargs=where_kwargs)        
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Developer.build_clean_dictionary(where_kwargs=where_kwargs)
 
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
         )
         for key, values in dictionary.items():
+            field_count = 0
+            thumbnail = False
             for member_snowflake, member_data in values.items():
                 user = bot.get_user(member_snowflake)
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {user.display_name} {user.mention}")
+                    Developer.lines.append(
+                        f"**User:** {user.display_name} {user.mention}"
+                    )
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
                     )
                     thumbnail = True
-                if field_count >= chunk_size:
+                if field_count >= CHUNK_SIZE:
                     embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
+                        name="Information",
+                        value="\n".join(Developer.lines),
+                        inline=False,
                     )
-                    pages.append(embed)
+                    Developer.pages.append(embed)
                     embed = (
                         discord.Embed(
                             title=title,
@@ -148,13 +152,13 @@ class Developer(DatabaseFactory):
                         ),
                     )
                     field_count = 0
-                    lines = []
-            if lines:
+                    Developer.lines = []
+            if Developer.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information", value="\n".join(Developer.lines), inline=False
                 )
-            pages.append(embed)
-        return pages
+            Developer.pages.append(embed)
+        return Developer.pages
 
     @classmethod
     async def toggle_developer(cls, member_dict, snowflake_kwargs):

@@ -35,11 +35,11 @@ class MessageService:
         self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
         *,
-        content: str = None,
-        file: discord.File = None,
-        embed: discord.Embed = None,
+        content: str,
+        file: discord.File,
+        embed: discord.Embed,
         allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
-        ephemeral: bool = None,
+        ephemeral: bool = True,
     ):
         if isinstance(source, commands.Context):
             can_send = (

@@ -34,7 +34,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!survey", "<#{channel_snowflake}>"),
     ],
 )
-async def test_survey(bot, command: Optional[str], channel):
+async def test_survey(bot, command: str, channel):
     """
     Server mute a member localized to the guild
 

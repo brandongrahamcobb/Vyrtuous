@@ -34,7 +34,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!vr", "{channel_snowflake}"),
     ],
 )
-async def test_vr(bot, command: Optional[str], channel):
+async def test_vr(bot, command: str, channel):
     """
     Create or teardown a video room by accessing
     the PostgresSQL database 'vyrtuous' in the table 'video_rooms'.

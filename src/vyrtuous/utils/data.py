@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime
-from typing import Optional
+
 
 from vyrtuous.bot.discord_bot import DiscordBot
 
@@ -31,7 +31,7 @@ class Data:
         channel_members_voice_count: int,
         channel_snowflake: int,
         executor_member_snowflake: int,
-        expires_at: Optional[datetime],
+        expires_at: datetime,
         guild_members_offline_and_online_member_count: int,
         guild_members_online_count: int,
         guild_members_voice_count: int,

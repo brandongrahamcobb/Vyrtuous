@@ -35,7 +35,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
         ("!aroles", "{guild_snowflake}"),
     ],
 )
-async def test_aroles(bot, command: Optional[str], specifier):
+async def test_aroles(bot, command: str, specifier):
     """
     List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.

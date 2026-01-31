@@ -37,7 +37,7 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
         ("!bug", "{uuid}", "overwrite", "Test notes"),
     ],
 )
-async def test_assign(bot, command: Optional[str], reference, action, notes):
+async def test_assign(bot, command: str, reference, action, notes):
     """
     Assign a developer to a developer issues present in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.

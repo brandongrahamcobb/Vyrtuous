@@ -33,7 +33,7 @@ ROLE_SNOWFLAKE = 10000000000000200
         ("!roleid", "{role_snowflake}"),
     ],
 )
-async def test_roleid(bot, command: Optional[str], role):
+async def test_roleid(bot, command: str, role):
     """
     Fetch a role snowflake in a guild
 

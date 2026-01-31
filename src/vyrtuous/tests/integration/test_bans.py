@@ -40,7 +40,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!bans", "<@{member_snowflake}>"),
     ],
 )
-async def test_bans(bot, command: Optional[str], target):
+async def test_bans(bot, command: str, target):
     """
     List bans on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.

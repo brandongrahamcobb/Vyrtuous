@@ -34,7 +34,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
         ("!smute", "<@{member_snowflake}>"),
     ],
 )
-async def test_smute(bot, command: Optional[str], member):
+async def test_smute(bot, command: str, member):
     """
     Server mute a member localized to the guild
 

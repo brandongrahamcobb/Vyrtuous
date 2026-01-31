@@ -97,7 +97,7 @@ class DevTextCommands(commands.Cog):
             description="Specify one of: `resolve` or `append` or `overwrite`.",
         ),
         *,
-        notes: Optional[str] = commands.parameter(
+        notes: str = commands.parameter(
             default=None, description="Optionally specify notes."
         ),
     ):
@@ -137,7 +137,7 @@ class DevTextCommands(commands.Cog):
             description="Specify one of: `all`, server ID or UUID.",
         ),
         *,
-        filter: Optional[str] = commands.parameter(
+        filter: str = commands.parameter(
             default=None,
             description="Optionally specify `resolved` or `unresolved`.",
         ),

@@ -80,7 +80,7 @@ class AdminAppCommands(commands.Cog):
         alias_name: str,
         channel: AppChannelSnowflake,
         *,
-        role: AppRoleSnowflake = None,
+        role: AppRoleSnowflake,
     ):
         role_dict = None
         state = StateService(interaction=interaction)
@@ -141,7 +141,7 @@ class AdminAppCommands(commands.Cog):
         target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     async def list_caps_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -351,7 +351,7 @@ class AdminAppCommands(commands.Cog):
     @app_commands.command(name="smutes", description="List mutes.")
     @administrator_predicator()
     async def list_server_mutes_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -397,7 +397,7 @@ class AdminAppCommands(commands.Cog):
     )
     @administrator_predicator()
     async def list_stages_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -429,7 +429,7 @@ class AdminAppCommands(commands.Cog):
     )
     @administrator_predicator()
     async def list_temp_rooms_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -454,9 +454,9 @@ class AdminAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        action: str = None,
-        entry_type: str = None,
-        snowflakes: str = None,
+        action: str,
+        entry_type: str,
+        snowflakes: str,
     ):
         channel_mentions, failed_snowflakes, resolved_channels = [], [], []
         state = StateService(interaction=interaction)
@@ -493,7 +493,7 @@ class AdminAppCommands(commands.Cog):
     )
     @administrator_predicator()
     async def list_streaming_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -522,7 +522,7 @@ class AdminAppCommands(commands.Cog):
     )
     @administrator_predicator()
     async def list_video_rooms_app_command(
-        self, interaction: discord.Interaction, target: str = None
+        self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)

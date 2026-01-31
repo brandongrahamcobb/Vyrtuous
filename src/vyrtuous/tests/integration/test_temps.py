@@ -37,7 +37,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!temps", "{guild_snowflake}"),
     ],
 )
-async def test_temps(bot, command: Optional[str], target):
+async def test_temps(bot, command: str, target):
     """
     List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'temporary_rooms'.

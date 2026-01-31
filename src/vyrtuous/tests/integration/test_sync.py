@@ -34,7 +34,7 @@ from vyrtuous.tests.integration.test_suite import build_message, send_message, s
         ("!sync", "~"),
     ],
 )
-async def test_sync(bot, command: Optional[str], spec):
+async def test_sync(bot, command: str, spec):
     """
     Syncs app commands.
 

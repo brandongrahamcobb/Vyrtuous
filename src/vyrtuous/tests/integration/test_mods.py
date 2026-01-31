@@ -40,7 +40,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!mods", "<@{member_snowflake}>"),
     ],
 )
-async def test_mods(bot, command: Optional[str], target):
+async def test_mods(bot, command: str, target):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'moderators'.

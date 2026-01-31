@@ -35,7 +35,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!mod", "<@{member_snowflake}>", "<#{channel_snowflake}>"),
     ],
 )
-async def test_mod(bot, command: Optional[str], member, channel):
+async def test_mod(bot, command: str, member, channel):
     """
     Promote or demote a member with 'Moderator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'moderators'.

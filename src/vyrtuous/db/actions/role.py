@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 
 import discord
 
@@ -34,6 +34,7 @@ from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
 )
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Role(DatabaseFactory):
@@ -54,6 +55,7 @@ class Role(DatabaseFactory):
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "roles"
+    lines, pages = [], []
 
     def __init__(
         self,
@@ -61,8 +63,8 @@ class Role(DatabaseFactory):
         guild_snowflake: int,
         member_snowflake: int,
         role_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -150,7 +152,10 @@ class Role(DatabaseFactory):
         member_snowflake,
         role_snowflake,
     ):
-        kwargs = {"guild_snowflake": guild_snowflake, "role_snowflake": role_snowflake}
+        kwargs = {
+            "guild_snowflake": int(guild_snowflake),
+            "role_snowflake": str(role_snowflake),
+        }
         role = await category_role_class.select(singular=True, **kwargs)
         if role:
             kwargs.update({"channel_snowflake": role.channel_snowflake})
@@ -171,7 +176,10 @@ class Role(DatabaseFactory):
         member_snowflake,
         role_snowflake,
     ):
-        kwargs = {"guild_snowflake": guild_snowflake, "role_snowflake": role_snowflake}
+        kwargs = {
+            "guild_snowflake": int(guild_snowflake),
+            "role_snowflake": str(role_snowflake),
+        }
         role = await category_role_class.select(singular=True, **kwargs)
         if role:
             kwargs.update({"channel_snowflake": role.channel_snowflake})
@@ -184,7 +192,6 @@ class Role(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         roles = await Role.select(**where_kwargs)
         for role in roles:
@@ -195,9 +202,9 @@ class Role(DatabaseFactory):
             dictionary[role.guild_snowflake]["members"][role.member_snowflake][
                 "roles"
             ].setdefault(role.channel_snowflake, {})
-            dictionary[role.guild_snowflake]["members"][role.member_snowflake][
-                "roles"
-            ][role.channel_snowflake] = {"role": role.role_snowflake}
+            dictionary[role.guild_snowflake]["members"][role.member_snowflake]["roles"][
+                role.channel_snowflake
+            ] = {"role": role.role_snowflake}
         skipped_guilds = generate_skipped_guilds(dictionary)
         skipped_members = generate_skipped_members(dictionary)
         cleaned_dictionary = clean_dictionary(
@@ -207,35 +214,34 @@ class Role(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Role.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
+                Role.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_members,
+                        title="Skipped Members in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
-    
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        thumbnail = False
-        where_kwargs = object_dict.get("columns", None)
         title = f"{get_random_emoji()} {Role.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
-        dictionary, pages = await Role.build_cleaned_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await Role.build_cleaned_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
+            thumbnail = False
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -243,7 +249,9 @@ class Role(DatabaseFactory):
             for member_snowflake, role_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    Role.lines.append(
+                        f"**User:** {member.display_name} {member.mention}"
+                    )
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -253,22 +261,25 @@ class Role(DatabaseFactory):
                     "roles"
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    role = channel_dictionary.get(role, None)
+                    role = channel_dictionary.get("role", None)
                     if not isinstance(
                         object_dict.get("object"), discord.abc.GuildChannel
                     ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    lines.append(f"**Role:** {role.mention}")
+                        Role.lines.append(f"**Channel:** {channel.mention}")
+                    Role.lines.append(f"**Role:** {role.mention}")
                     field_count += 1
-                    if field_count >= chunk_size:
+                    if field_count >= CHUNK_SIZE:
                         embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
+                            name="Information",
+                            value="\n".join(Role.lines),
+                            inline=False,
                         )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
+                        embed = flush_page(embed, Role.pages, title, guild.name)
+                        Role.lines = []
+                        field_count = 0
+            if Role.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information", value="\n".join(Role.lines), inline=False
                 )
-            pages.append(embed)
-        return pages
+            Role.pages.append(embed)
+        return Role.pages

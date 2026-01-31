@@ -34,7 +34,7 @@ ROLE_SNOWFLAKE = 10000000000000200
         ("!admin", "<@&{role_snowflake}>"),
     ],
 )
-async def test_admin(bot, command: Optional[str], role):
+async def test_admin(bot, command: str, role):
     """
     List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.

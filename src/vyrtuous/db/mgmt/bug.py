@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+
 
 import discord
 
@@ -34,6 +34,7 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Bug(DatabaseFactory):
@@ -59,6 +60,7 @@ class Bug(DatabaseFactory):
         "updated_at",
     ]
     TABLE_NAME = "bug_tracking"
+    lines, pages = [], []
 
     def __init__(
         self,
@@ -67,10 +69,10 @@ class Bug(DatabaseFactory):
         id: str,
         member_snowflakes: list[int],
         message_snowflake: int,
-        created_at: Optional[datetime] = None,
-        notes: Optional[str] = None,
-        resolved: Optional[bool] = False,
-        updated_at: Optional[datetime] = None,
+        notes: str | None,
+        resolved: bool = False,
+        created_at: datetime = datetime.now(timezone.utc),
+        updated_at: datetime = datetime.now(timezone.utc),
     ):
         super().__init__()
         self.channel_snowflake = channel_snowflake
@@ -110,7 +112,6 @@ class Bug(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         bugs = await Bug.select(**where_kwargs)
         for bug in bugs:
@@ -139,30 +140,29 @@ class Bug(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Bug.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_messages:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_messages,
-                    title="Skipped Messages in Server",
+                Bug.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_messages,
+                        title="Skipped Messages in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
-    
+        return cleaned_dictionary
+
     @classmethod
     async def build_pages(cls, filter, where_kwargs, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
         title = f"{get_random_emoji()} Developer Logs"
 
-        dictionary, pages = await Bug.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        dictionary = await Bug.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -178,38 +178,37 @@ class Bug(DatabaseFactory):
                     continue
                 if filter == "unresolved" and entry.get("resolved"):
                     continue
-                lines = []
                 msg = await channel.fetch_message(message_snowflake)
-                lines.append(
+                Bug.lines.append(
                     f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
                 )
-                lines.append(f"**Message:** {msg.jump_url}")
+                Bug.lines.append(f"**Message:** {msg.jump_url}")
                 if where_kwargs.get("id", None) == str(entry["id"]):
-                    lines.append(
+                    Bug.lines.append(
                         f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
                     )
-                    lines.append(
+                    Bug.lines.append(
                         f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
                     )
                 else:
-                    lines.append(f'**Reference:** {entry["id"]}')
+                    Bug.lines.append(f'**Reference:** {entry["id"]}')
                 field_count += 1
-                if field_count >= chunk_size:
+                if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name=f"**Channel:** {channel.mention}",
-                        value="\n".join(lines),
+                        value="\n".join(Bug.lines),
                         inline=False,
                     )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
+                    embed = flush_page(embed, Bug.pages, title, guild.name)
+                    Bug.lines = []
+            if Bug.lines:
                 embed.add_field(
                     name=f"**Channel:** {channel.mention}",
-                    value="\n".join(lines),
+                    value="\n".join(Bug.lines),
                     inline=False,
                 )
-            pages.append(embed)
-        return pages
+            Bug.pages.append(embed)
+        return Bug.pages
 
     @classmethod
     async def assign_bug_to_developer(cls, reference, member_dict):

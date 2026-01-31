@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+
 
 import discord
 
@@ -35,6 +35,7 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.utils.logger import logger
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class VoiceMute(DatabaseFactory):
@@ -60,18 +61,19 @@ class VoiceMute(DatabaseFactory):
     ]
 
     TABLE_NAME = "active_voice_mutes"
+    lines, pages = [], []
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
         expired: bool = False,
-        expires_in: Optional[datetime] = None,
-        reason: Optional[str] = "No reason provided.",
-        target: Optional[str] = "user",
-        updated_at: Optional[datetime] = None,
+        expires_in: datetime = datetime.now(timezone.utc),
+        reason: str = "No reason provided.",
+        target: str = "user",
+        updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
         super().__init__()
@@ -140,7 +142,6 @@ class VoiceMute(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         voice_mutes = await VoiceMute.select(target="user", **where_kwargs)
         for voice_mute in voice_mutes:
@@ -168,35 +169,34 @@ class VoiceMute(DatabaseFactory):
         )
         if is_at_home:
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                VoiceMute.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
             if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
+                VoiceMute.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_members,
+                        title="Skipped Members in Server",
+                    )
                 )
-        return cleaned_dictionary, pages
+        return cleaned_dictionary
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
-        thumbnail = False
         title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        where_kwargs = object_dict.get("columns", None)
 
-        dictionary, pages = await VoiceMute.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        where_kwargs = object_dict.get("columns", None)
+        dictionary = await VoiceMute.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
+            thumbnail = False
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -206,7 +206,9 @@ class VoiceMute(DatabaseFactory):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    VoiceMute.lines.append(
+                        f"**User:** {member.display_name} {member.mention}"
+                    )
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -220,25 +222,30 @@ class VoiceMute(DatabaseFactory):
                     if not isinstance(
                         object_dict.get("object"), discord.abc.GuildChannel
                     ):
-                        lines.append(f"**Channel:** {channel.mention}")
+                        VoiceMute.lines.append(f"**Channel:** {channel.mention}")
                     if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
+                        VoiceMute.lines.append(
                             f"**Expires in:** {channel_dictionary['expires_in']}"
                         )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
+                        VoiceMute.lines.append(
+                            f"**Reason:** {channel_dictionary['reason']}"
                         )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
+                    field_count += 1
+                    if field_count >= CHUNK_SIZE:
+                        embed.add_field(
+                            name="Information",
+                            value="\n".join(VoiceMute.lines),
+                            inline=False,
+                        )
+                        embed = flush_page(embed, VoiceMute.pages, title, guild.name)
+                        VoiceMute.lines = []
+                        field_count = 0
+            if VoiceMute.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information", value="\n".join(VoiceMute.lines), inline=False
                 )
-            pages.append(embed)
-        return pages
+            VoiceMute.pages.append(embed)
+        return VoiceMute.pages
 
     @classmethod
     async def room_mute(cls, channel_dict, guild_snowflake, reason, snowflake_kwargs):

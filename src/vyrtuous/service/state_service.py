@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 import asyncio
+
 import uuid
 
 from cachetools import TTLCache
@@ -51,9 +52,9 @@ class StateService:
     def __init__(
         self,
         *,
-        ctx: commands.Context = None,
-        interaction: discord.Interaction = None,
-        message: discord.Message = None,
+        ctx: commands.Context | None,
+        interaction: discord.Interaction | None,
+        message: discord.Message | None,
     ):
         if (ctx is None) == (interaction is None) == (message is None):
             raise DiscordSourceNotFound()
@@ -66,7 +67,7 @@ class StateService:
         self._reported_users = set()
         self.is_ephemeral = False
         self.start_time = self._get_start_time(self._source)
-        self.message = None
+        self.message = discord.Message | None
         self.paginator = None
         self.submitter_id = resolve_author(self._source).id
 

@@ -34,7 +34,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ("!rmv", "{source_channel_snowflake}", "{target_channel_snowflake}"),
     ],
 )
-async def test_rmv(bot, command: Optional[str], source_channel, target_channel):
+async def test_rmv(bot, command: str, source_channel, target_channel):
     """
     Move all members from one VC to another
 

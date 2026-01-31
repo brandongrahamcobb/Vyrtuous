@@ -37,7 +37,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!vrs", "{guild_snowflake}"),
     ],
 )
-async def test_vrs(bot, command: Optional[str], target):
+async def test_vrs(bot, command: str, target):
     """
     List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'video_rooms'.

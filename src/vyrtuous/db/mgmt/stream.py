@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+
 
 import discord
 
@@ -36,6 +36,7 @@ from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
 )
+from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Streaming(DatabaseFactory):
@@ -63,16 +64,17 @@ class Streaming(DatabaseFactory):
     ]
 
     TABLE_NAME = "streaming"
+    lines, pages = [], []
 
     def __init__(
         self,
         channel_snowflake: int,
-        enabled: Optional[bool],
+        enabled: bool,
         entry_type: str,
         guild_snowflake: int,
-        created_at: Optional[datetime] = None,
-        snowflakes: list[int] = None,
-        updated_at: Optional[datetime] = None,
+        created_at: datetime = datetime.now(timezone.utc),
+        snowflakes: list[int] = [0],
+        updated_at: datetime = datetime.now(timezone.utc),
     ):
         self.action: str
         self.channel_snowflake = channel_snowflake
@@ -314,14 +316,11 @@ class Streaming(DatabaseFactory):
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         streaming = await Streaming.select(**where_kwargs)
         for stream in streaming:
             dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            dictionary[stream.guild_snowflake]["channels"][
-                stream.channel_snowflake
-            ] = {
+            dictionary[stream.guild_snowflake]["channels"][stream.channel_snowflake] = {
                 "enabled": stream.enabled,
                 "entry_type": stream.entry_type,
                 "snowflakes": stream.snowflakes,
@@ -335,32 +334,30 @@ class Streaming(DatabaseFactory):
         )
         if is_at_home:
             if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
+                Streaming.pages.extend(
+                    generate_skipped_dict_pages(
+                        skipped=skipped_channels,
+                        title="Skipped Channels in Server",
+                    )
                 )
             if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
+                Streaming.pages.extend(
+                    generate_skipped_set_pages(
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
                 )
-        return cleaned_dictionary, pages
+        return cleaned_dictionary
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines = 7, 0, []
         title = f"{get_random_emoji()} {Streaming.PLURAL}"
 
         where_kwargs = object_dict.get("columns", None)
-
-        dictionary, pages = await Streaming.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+        dictionary = await Streaming.build_clean_dictionary(
+            is_at_home=is_at_home, where_kwargs=where_kwargs
+        )
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -371,28 +368,29 @@ class Streaming(DatabaseFactory):
             for channel_snowflake, entry in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 status = "\u2705" if entry["enabled"] else "\u26d4"
-                lines.append(
+                Streaming.lines.append(
                     f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                 )
                 if isinstance(
                     object_dict.get("object", None), discord.abc.GuildChannel
                 ):
-                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
+                    Streaming.lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                 field_count += 1
-                if field_count >= chunk_size:
+                if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(lines),
+                        value="\n".join(Streaming.lines),
                         inline=False,
                     )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
+                    embed = flush_page(embed, Streaming.pages, title, guild.name)
+                    Streaming.lines = []
+                    field_count = 0
+            if Streaming.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
+                    name="Information", value="\n".join(Streaming.lines), inline=False
                 )
-            pages.append(embed)
-        return pages
+            Streaming.pages.append(embed)
+        return Streaming.pages
 
     @classmethod
     async def modify_stream(
@@ -410,7 +408,7 @@ class Streaming(DatabaseFactory):
         where_kwargs = {
             "channel_snowflake": channel_kwargs["channel_snowflake"],
             "entry_type": entry_type,
-            "guild_snowflake": guild_snowflake,
+            "guild_snowflake": int(guild_snowflake),
         }
         if action is None and entry_type is None:
             stream = await Streaming.select(**channel_kwargs, singular=True)
