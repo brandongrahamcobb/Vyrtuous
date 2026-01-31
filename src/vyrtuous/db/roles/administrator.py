@@ -64,7 +64,9 @@ async def is_administrator_wrapper(
 
 async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
     administrator = await Administrator.select(
-        guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+        singular=True,
     )
     if not administrator:
         raise NotAdministrator
@@ -260,11 +262,13 @@ class AdministratorRole(DatabaseFactory):
             "guild_snowflake": guild_snowflake,
             "role_snowflakes": [role_snowflake],
         }
-        administrator_role = await AdministratorRole.select(**kwargs)
+        administrator_role = await AdministratorRole.select(**kwargs, singular=True)
         if not administrator_role:
             return
         administrator = await Administrator.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            singular=True,
         )
         if not administrator:
             administrator = Administrator(
@@ -296,11 +300,15 @@ class AdministratorRole(DatabaseFactory):
             "guild_snowflake": guild_snowflake,
             "role_snowflakes": [role_snowflake],
         }
-        administrator_role = await AdministratorRole.select(**where_kwargs)
+        administrator_role = await AdministratorRole.select(
+            **where_kwargs, singular=True
+        )
         if not administrator_role:
             return
         administrator = await Administrator.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            singular=True,
         )
         if administrator:
             administrator_role_snowflakes = administrator.role_snowflakes

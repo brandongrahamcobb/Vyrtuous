@@ -70,6 +70,7 @@ async def is_moderator(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
+        singular=True,
     )
     if not moderator:
         raise NotModerator
@@ -228,6 +229,7 @@ class Moderator(DatabaseFactory):
     @classmethod
     async def toggle_moderator(cls, channel_dict, member_dict, snowflake_kwargs):
         from vyrtuous.utils.check import has_equal_or_lower_role
+
         await has_equal_or_lower_role(
             snowflake_kwargs=snowflake_kwargs,
             member_snowflake=member_dict.get("id", None),
@@ -235,7 +237,7 @@ class Moderator(DatabaseFactory):
         where_kwargs = {}
         where_kwargs.update(channel_dict.get("columns", None))
         where_kwargs.update(member_dict.get("columns", None))
-        moderator = await Moderator.select(**where_kwargs)
+        moderator = await Moderator.select(**where_kwargs, singular=True)
         if moderator:
             await Moderator.delete(**where_kwargs)
             action = "revoked"

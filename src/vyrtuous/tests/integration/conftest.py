@@ -54,11 +54,13 @@ async def bot(cf, db):
     return bot
 
 
-def context(bot, message, prefix):
+def context(bot, channel, guild, message, prefix):
     view = cmd_view.StringView(message.content)
     view.skip_string(prefix)
     command_name = view.get_word()
     ctx = Context(bot=bot, message=message, prefix=prefix, view=view)
+    ctx.channel = channel
+    ctx.guild = guild
     ctx.invoked_with = command_name
     ctx.command = bot.get_command(command_name)
     view.skip_ws()

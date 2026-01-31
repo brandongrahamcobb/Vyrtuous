@@ -61,13 +61,19 @@ async def test_assign(bot, command: Optional[str], reference, member):
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
-    sysadmin_commands = bot.get_cog("SysadminCommands")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    sysadmin_commands = bot.get_cog("SysadminTextCommands")
     command = await sysadmin_commands.assign_bug_to_developer_text_command(
         ctx, reference=ref, member=m
     )

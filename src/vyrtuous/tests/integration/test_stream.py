@@ -50,6 +50,13 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
             "channel",
             "{target_channel_snowflake}",
         ),
+        (
+            "!stream",
+            "{source_channel_snowflake}",
+            "create",
+            "channel",
+            "Fail",
+        ),
     ],
 )
 async def test_stream(
@@ -97,11 +104,17 @@ async def test_stream(
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
-    admin_commands = bot.get_cog("AdminCommands")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    admin_commands = bot.get_cog("AdminTextCommands")
     command = await admin_commands.modify_streaming_text_command(ctx, **kwargs)

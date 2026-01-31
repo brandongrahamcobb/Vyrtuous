@@ -61,7 +61,7 @@ def developer_predicator():
 
 
 async def is_developer(member_snowflake: int) -> bool:
-    developer = await Developer.select(member_snowflake=member_snowflake)
+    developer = await Developer.select(member_snowflake=member_snowflake, singular=True)
     if not developer:
         raise NotDeveloper
     return True
@@ -155,7 +155,7 @@ class Developer(DatabaseFactory):
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
         where_kwargs = member_dict.get("columns", None)
-        developer = await Developer.select(**where_kwargs)
+        developer = await Developer.select(**where_kwargs, singular=True)
         if developer:
             await Developer.delete(**where_kwargs)
             action = "revoked"

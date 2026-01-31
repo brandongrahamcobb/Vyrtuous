@@ -56,12 +56,15 @@ class GuildEventListeners(commands.Cog):
         snowflake_kwargs = {
             "guild_snowflake": guild_snowflake,
             "member_snowflake": before.id,
-            "role_snowflake": added_roles[0],
         }
         if added_roles:
-            await AdministratorRole.added_role(snowflake_kwargs=snowflake_kwargs)
-            logger.info(f"Added roles: {', '.join(added_roles)}")
+            for added_role in added_roles:
+                snowflake_kwargs.update({"role_snowflake": added_role})
+                await AdministratorRole.added_role(snowflake_kwargs=snowflake_kwargs)
+                logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
+            for removed_role in removed_roles:
+                snowflake_kwargs.update({"role_snowflake": removed_role})
             await AdministratorRole.removed_role(snowflake_kwargs=snowflake_kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 

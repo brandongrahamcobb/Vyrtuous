@@ -70,13 +70,19 @@ async def test_mod(bot, command: Optional[str], member, channel):
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
-    coord_commands = bot.get_cog("CoordinatorCommands")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    coord_commands = bot.get_cog("CoordinatorTextCommands")
     command = await coord_commands.toggle_moderator_text_command(
         ctx, member=m, channel=c
     )

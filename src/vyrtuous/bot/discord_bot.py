@@ -1,4 +1,6 @@
-"""discord_bot.py This is essentially a stripped version of Rapptz advanced_startup.py.
+"""!/bin/python3
+
+discord_bot.py This is essentially a stripped version of Rapptz advanced_startup.py.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

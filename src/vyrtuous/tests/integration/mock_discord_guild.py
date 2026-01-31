@@ -50,7 +50,7 @@ GUILD_DATA = {
     "large": False,
     "member_count": 0,
     "voice_states": {},
-    "members": [],
+    "members": {},
     "channels": [],
     "presences": {},
     "max_presences": None,
@@ -91,16 +91,20 @@ class MockGuild(discord.Guild):
     def get_member(self, member_snowflake):
         if member_snowflake is None:
             return None
-        for member in self._members:
-            if str(member.id) == str(member_snowflake):
-                return member
+        if member_snowflake in self._members.keys():
+            return self._members[member_snowflake]
+        else:
+            return None
+            # if str(member.id) == str(member_snowflake):
+            #     return member
 
     def get_role(self, role_snowflake):
         if role_snowflake is None:
             return None
-        for role in self._roles:
-            if role.id == role_snowflake:
-                return role
+        if role_snowflake in self._roles.keys():
+            return self._roles[role_snowflake]
+        else:
+            return None
 
     @property
     def channels(self):

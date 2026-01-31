@@ -231,7 +231,7 @@ class Ban(DatabaseFactory):
                 "guild_snowflake": after.channel.guild.id,
                 "member_snowflake": member.id,
             }
-            ban = await Ban.select(**kwargs)
+            ban = await Ban.select(**kwargs, singular=True)
             if ban:
                 targets = []
                 for target, overwrite in after.channel.overwrites.items():

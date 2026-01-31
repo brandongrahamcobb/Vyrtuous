@@ -1,4 +1,6 @@
-"""event_listeners.py A discord.py cog containing event listeners for the Vyrtuous bot.
+"""!/bin/python3
+
+channel_event_listeners.py A discord.py cog containing channel event listeners for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -76,7 +78,9 @@ class ChannelEventListeners(commands.Cog):
                 return
         room = self.deleted_rooms.pop(name, None)
         if not room:
-            room = await TemporaryRoom.select(guild_snowflake=guild.id, room_name=name)
+            room = await TemporaryRoom.select(
+                guild_snowflake=guild.id, room_name=name, singular=True
+            )
         if room:
             old_id = room.channel_snowflake
         set_kwargs = {"channel_snowflake": channel.id}
@@ -97,7 +101,9 @@ class ChannelEventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         room = await TemporaryRoom.select(
-            channel_snowflake=channel.id, guild_snowflake=channel.guild.id
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+            singular=True,
         )
         if room:
             self.deleted_rooms[channel.name] = room
@@ -149,7 +155,7 @@ class ChannelEventListeners(commands.Cog):
         #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
         #          DO UPDATE SET expires_in = EXCLUDED.expires_in
         #      ''', member.guild.id, member.id, after.channel.id, expires_in, after.channel.name)
-        server_mute = await ServerMute.select(member_snowflake=member.id)
+        server_mute = await ServerMute.select(member_snowflake=member.id, singular=True)
         if server_mute:
             if member.guild.id == server_mute.guild_snowflake:
                 if not after.mute:
@@ -174,6 +180,7 @@ class ChannelEventListeners(commands.Cog):
                 guild_snowflake=after.channel.guild.id,
                 member_snowflake=member.id,
                 target="user",
+                singular=True,
             )
             if voice_mute:
                 should_be_muted = True

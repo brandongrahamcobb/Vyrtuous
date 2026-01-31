@@ -139,7 +139,7 @@ class HelpCommand(commands.Cog):
         if cmd:
             return ("command", cmd)
         alias = await Alias.select(
-            alias_name=name.lower(), guild_snowflake=source.guild.id
+            alias_name=name.lower(), guild_snowflake=source.guild.id, singular=True
         )
         if alias and alias.guild_snowflake == source.guild.id:
             return ("alias", alias)

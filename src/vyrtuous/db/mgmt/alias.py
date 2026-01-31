@@ -342,10 +342,7 @@ class Alias(DatabaseFactory):
             f"Alias `{alias_name}` of type `{category}` "
             f"created successfully for channel {channel_dict.get("mention", None)}."
         )
-        alias = await Alias.select(
-            category=category,
-            **where_kwargs,
-        )
+        alias = await Alias.select(category=category, **where_kwargs, singular=True)
         if alias:
             return (
                 f"Alias of type `{category}` "

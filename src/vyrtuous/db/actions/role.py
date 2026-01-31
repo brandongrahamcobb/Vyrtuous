@@ -46,18 +46,21 @@ class Role(DatabaseFactory):
     UNDO = "unrole"
 
     REQUIRED_INSTANTIATION_ARGS = [
+        "channel_snowflake",
         "guild_snowflake",
+        "member_snowflake",
         "role_snowflake",
     ]
-    OPTIONAL_ARGS = ["channel_snowflake", "created_at", "updated_at"]
+    OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "roles"
 
     def __init__(
         self,
+        channel_snowflake: int,
         guild_snowflake: int,
+        member_snowflake: int,
         role_snowflake: int,
-        channel_snowflake: Optional[int] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,
@@ -66,8 +69,12 @@ class Role(DatabaseFactory):
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at
+        self.channel_snowflake = channel_snowflake
         self.guild_snowflake = guild_snowflake
+        self.member_snowflake = member_snowflake
+        self.member_mention = f"<#{member_snowflake}>" if member_snowflake else None
         self.role_snowflake = role_snowflake
+        self.role_mention = f"<@&{role_snowflake}>" if role_snowflake else None
         self.updated_at = updated_at
 
     @classmethod
@@ -76,7 +83,7 @@ class Role(DatabaseFactory):
         channel = bot.get_channel(action_information["action_channel_snowflake"])
         author = resolve_author(source=source)
         member = source.guild.get_member(action_information["action_member_snowflake"])
-        role = source.guild.get_member(action_information["action_role_snowflake"])
+        role = source.guild.get_role(action_information["action_role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been granted a role",
@@ -97,7 +104,7 @@ class Role(DatabaseFactory):
         channel = bot.get_channel(action_information["action_channel_snowflake"])
         author = resolve_author(source=source)
         member = source.guild.get_member(action_information["action_member_snowflake"])
-        role = source.guild.get_member(action_information["action_role_snowflake"])
+        role = source.guild.get_role(action_information["action_role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s role has been revoked",
@@ -146,11 +153,9 @@ class Role(DatabaseFactory):
         kwargs = {"guild_snowflake": guild_snowflake, "role_snowflake": role_snowflake}
         role = await category_role_class.select(singular=True, **kwargs)
         if role:
-            if hasattr(role, "channel_snowflake"):
-                kwargs.update({"channel_snowflake": role.channel_snowflake})
-                msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
-            else:
-                msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) in guild ({guild_snowflake})."
+            kwargs.update({"channel_snowflake": role.channel_snowflake})
+            kwargs.update({"member_snowflake": role.member_snowflake})
+            msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
             category = category_class(**kwargs)
             await category.create()
             logger.info(msg)
@@ -169,11 +174,9 @@ class Role(DatabaseFactory):
         kwargs = {"guild_snowflake": guild_snowflake, "role_snowflake": role_snowflake}
         role = await category_role_class.select(singular=True, **kwargs)
         if role:
-            if hasattr(role, "channel_snowflake"):
-                kwargs.update({"channel_snowflake": role.channel_snowflake})
-                msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
-            else:
-                msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) in guild ({guild_snowflake})."
+            kwargs.update({"channel_snowflake": role.channel_snowflake})
+            kwargs.update({"member_snowflake": role.member_snowflake})
+            msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
             await category_class.delete(**kwargs)
             logger.info(msg)
         else:

@@ -250,8 +250,7 @@ class VoiceMute(DatabaseFactory):
             if member.id == member_snowflake:
                 continue
             voice_mute = await VoiceMute.select(
-                **where_kwargs,
-                target="user",
+                **where_kwargs, target="user", singular=True
             )
             if voice_mute:
                 skipped_members.append(member)
@@ -304,7 +303,9 @@ class VoiceMute(DatabaseFactory):
         where_kwargs = channel_dict.get("columns", None)
 
         for member in channel_dict.get("object", None).members:
-            voice_mute = await VoiceMute.select(target="user", **where_kwargs)
+            voice_mute = await VoiceMute.select(
+                target="user", **where_kwargs, singular=True
+            )
             if not voice_mute:
                 skipped_members.append(member)
                 continue

@@ -67,11 +67,17 @@ async def test_sync(bot, command: Optional[str], spec):
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
-    dev_commands = bot.get_cog("DevCommands")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    dev_commands = bot.get_cog("DevTextCommands")
     command = await dev_commands.sync_text_command(ctx, spec=spec)

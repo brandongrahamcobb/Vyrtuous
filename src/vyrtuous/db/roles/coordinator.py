@@ -39,6 +39,7 @@ from vyrtuous.utils.guild_dictionary import (
 )
 from vyrtuous.utils.emojis import get_random_emoji
 
+
 @skip_db_discovery
 class NotCoordinator(commands.CheckFailure):
     def __init__(
@@ -67,6 +68,7 @@ async def is_coordinator(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
+        singular=True,
     )
     if not coordinator:
         raise NotCoordinator
@@ -224,6 +226,7 @@ class Coordinator(DatabaseFactory):
     @classmethod
     async def toggle_coordinator(cls, channel_dict, member_dict, snowflake_kwargs):
         from vyrtuous.utils.check import has_equal_or_lower_role
+
         await has_equal_or_lower_role(
             snowflake_kwargs=snowflake_kwargs,
             member_snowflake=member_dict.get("id", None),
@@ -231,7 +234,7 @@ class Coordinator(DatabaseFactory):
         where_kwargs = {}
         where_kwargs.update(channel_dict.get("columns", None))
         where_kwargs.update(member_dict.get("columns", None))
-        coordinator = await Coordinator.select(**where_kwargs)
+        coordinator = await Coordinator.select(**where_kwargs, singular=True)
         if coordinator:
             await Coordinator.delete(**where_kwargs)
             action = "revoked"

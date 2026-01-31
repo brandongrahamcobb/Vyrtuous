@@ -61,13 +61,19 @@ async def test_load_reload_unload(bot, command: Optional[str], cog):
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
-    dev_commands = bot.get_cog("DevCommands")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    dev_commands = bot.get_cog("DevTextCommands")
     command = await dev_commands.load_text_command(ctx, module=c)
     command = await dev_commands.reload_text_command(ctx, module=c)
     command = await dev_commands.unload_text_command(ctx, module=c)

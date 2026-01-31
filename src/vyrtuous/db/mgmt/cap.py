@@ -154,7 +154,7 @@ class Cap(DatabaseFactory):
         seconds = int(hours) * 3600
         where_kwargs = channel_dict.get("columns", None)
         where_kwargs.update({"category": category})
-        cap = await Cap.select(**where_kwargs)
+        cap = await Cap.select(**where_kwargs, singular=True)
         if cap and seconds:
             await Cap.update(
                 set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs

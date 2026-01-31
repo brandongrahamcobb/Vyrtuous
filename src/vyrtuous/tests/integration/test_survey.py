@@ -20,20 +20,21 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, channel",
     [
-        ("!survey {channel_snowflake} "),
-        ("!survey <#{channel_snowflake}>"),
+        ("!survey", "{channel_snowflake}"),
+        ("!survey", "<#{channel_snowflake}>"),
     ],
 )
-async def test_survey(bot, command: Optional[str]):
+async def test_survey(bot, command: Optional[str], channel):
     """
     Server mute a member localized to the guild
 
@@ -51,8 +52,26 @@ async def test_survey(bot, command: Optional[str]):
     >>> !survey 10000000000000010
     [{emoji} Survey results for Channel1]
     """
-    formatted = command.format(
+    c = channel.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {c}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None),
+        channel=objects.get("text_channel", None),
+        content=full,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None),
+    )
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    mod_commands = bot.get_cog("ModeratorTextCommands")
+    command = await mod_commands.stage_survey_text_command(ctx, channel=c)

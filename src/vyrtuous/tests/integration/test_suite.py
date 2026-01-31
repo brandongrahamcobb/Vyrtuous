@@ -37,6 +37,8 @@ RED = "\033[91m"
 YELLOW = "\033[93m"
 GREEN = "\033[92m"
 RESET = "\033[0m"
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
 @asynccontextmanager
@@ -44,12 +46,14 @@ async def capture(channel):
     before = list(channel._messages)
     yield
     after = channel._messages
+    if not after:
+        await asyncio.sleep(1)
     new_messages = after[len(before) :]
     channel._captured = new_messages
 
 
 def build_guild(bot, state):
-    guild = MockGuild(bot=bot, channels=[], members=[], roles=[], state=state)
+    guild = MockGuild(bot=bot, channels=[], members={}, roles={}, state=state)
     return guild
 
 
@@ -58,8 +62,8 @@ def build_role(guild, state):
     return role
 
 
-def build_channel(bot, guild, state):
-    channel = MockChannel(bot=bot, guild=guild, state=state)
+def build_channel(bot, guild, state, id=None):
+    channel = MockChannel(bot=bot, id=id, guild=guild, state=state)
     return channel
 
 
@@ -86,10 +90,12 @@ def setup(bot):
     state = MockState()
     guild = build_guild(bot, state)
     role = build_role(guild, state)
-    guild._roles.append(role)
+    guild._roles.update({role.id: role})
     bot._guilds.append(guild)
-    channel = build_channel(bot, guild, state)
-    guild._channels.append(channel)
+    text_channel = build_channel(bot, guild, state, id=TEXT_CHANNEL_SNOWFLAKE)
+    voice_channel = build_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)
+    guild._channels.append(text_channel)
+    guild._channels.append(voice_channel)
     author = build_member(
         bot=bot,
         guild=guild,
@@ -114,10 +120,10 @@ def setup(bot):
         name=PRIVILEGED_AUTHOR_NAME,
         state=state,
     )
-    channel._members.append(dummy)
-    guild._members.append(author)
-    guild._members.append(dummy)
-    guild._members.append(bot_member)
+    voice_channel._members.append(dummy)
+    guild._members.update({author.id: author})
+    guild._members.update({dummy.id: dummy})
+    guild._members.update({bot_member.id: bot_member})
     state.user = bot_member
     bot._connection = state
     bot.me = bot_member
@@ -125,7 +131,8 @@ def setup(bot):
     objects = {
         "author": author,
         "bot": bot,
-        "channel": channel,
+        "text_channel": text_channel,
+        "voice_channel": voice_channel,
         "guild": guild,
         "state": state,
     }
@@ -137,14 +144,13 @@ async def send_message(bot, content: str = None):
 
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=content,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
 
-    async with capture(objects.get("channel", None)):
+    async with capture(objects.get("text_channel", None)):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-        await asyncio.sleep(1)
-    return objects.get("channel", None)._captured[-1]
+    return objects.get("text_channel", None)._captured[-1]

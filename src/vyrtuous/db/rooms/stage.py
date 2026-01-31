@@ -195,7 +195,7 @@ class Stage(DatabaseFactory):
         failed, pages, skipped, succeeded = [], [], [], []
         kwargs = channel_dict.get("columns", None)
 
-        stage = await Stage.select(**kwargs)
+        stage = await Stage.select(**kwargs, singular=True)
         if stage:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict.get("mention", None)}"
             await Stage.delete(**kwargs)
@@ -206,9 +206,7 @@ class Stage(DatabaseFactory):
                     target="room",
                 )
                 voice_mute = await VoiceMute.select(
-                    **kwargs,
-                    member_snowflake=member.id,
-                    target="user",
+                    **kwargs, member_snowflake=member.id, target="user", singular=True
                 )
                 if not voice_mute and member.voice and member.voice.mute:
                     try:
@@ -396,7 +394,7 @@ class Stage(DatabaseFactory):
             member_snowflake=member_dict.get("id", None),
         )
         where_kwargs = channel_dict.get("columns", None)
-        stage = await Stage.select(**where_kwargs)
+        stage = await Stage.select(**where_kwargs, singular=True)
         if stage:
             await member_dict.get("object", None).edit(
                 mute=not member_dict.get("object", None).voice.mute

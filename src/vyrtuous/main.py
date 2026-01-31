@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+import this
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config

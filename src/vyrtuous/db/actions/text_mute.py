@@ -234,7 +234,7 @@ class TextMute(DatabaseFactory):
             "guild_snowflake": message.guild.id,
             "member_snowflake": message.author.id,
         }
-        text_mute = await TextMute.select(**kwargs)
+        text_mute = await TextMute.select(**kwargs, singular=True)
         if text_mute:
             targets = []
             for target, overwrite in message.channel.overwrites.items():

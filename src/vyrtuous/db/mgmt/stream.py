@@ -410,7 +410,7 @@ class Streaming(DatabaseFactory):
             "guild_snowflake": guild_snowflake,
         }
         if action is None and entry_type is None:
-            stream = await Streaming.select(**channel_kwargs)
+            stream = await Streaming.select(**channel_kwargs, singular=True)
             enabled = not stream[0].enabled
             action = "enabled" if enabled else "disabled"
             set_kwargs = {"enabled": enabled}

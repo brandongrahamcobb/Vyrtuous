@@ -1,4 +1,6 @@
-"""aliases.py A discord.py cog containing command aliases for the Vyrtuous bot.
+"""!/bin/python3
+
+aliases.py A discord.py cog containing command aliases for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -208,11 +210,13 @@ class Aliases(commands.Cog):
     async def handle_role_alias(
         self, alias, action_information, member, message, state
     ):
-        db_role = Role(
+        added_role = Role(
+            channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=action_information["action_role_snowflake"],
         )
-        await db_role.create()
+        await added_role.create()
 
         role = message.guild.get_role(alias.role_snowflake)
         if role:
@@ -462,6 +466,7 @@ class Aliases(commands.Cog):
         self, alias, action_information, member, message, state
     ):
         await Role.delete(
+            channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=action_information["action_role_snowflake"],

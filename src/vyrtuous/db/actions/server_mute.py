@@ -159,7 +159,7 @@ class ServerMute(DatabaseFactory):
         )
         where_kwargs = member_dict.get("columns", None)
 
-        server_mute = await ServerMute.select(**where_kwargs)
+        server_mute = await ServerMute.select(**where_kwargs, singular=True)
         if not server_mute:
             server_mute = ServerMute(
                 **where_kwargs,

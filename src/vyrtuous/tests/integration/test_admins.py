@@ -79,11 +79,17 @@ async def test_admins(bot, command: Optional[str], target, cf):
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
-    mod_commands = bot.get_cog("ModeratorCommands")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
+    mod_commands = bot.get_cog("ModeratorTextCommands")
     command = await mod_commands.list_administrators_text_command(ctx, target=t)

@@ -76,11 +76,17 @@ async def test_aliases(bot, command: Optional[str], member_snowflake):
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("channel", None),
+        channel=objects.get("text_channel", None),
         content=full,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
-    ctx = context(bot=bot, message=msg, prefix="!")
+    ctx = context(
+        bot=bot,
+        channel=objects.get("text_channel", None),
+        guild=objects.get("guild", None),
+        message=msg,
+        prefix="!",
+    )
     generic_event_listeners = bot.get_cog("GenericEventListeners")
     command = await generic_event_listeners.on_message(message=msg)
