@@ -26,12 +26,12 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.guild_dictionary import (
+from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
     generate_skipped_guilds,
     generate_skipped_members,
-    clean_guild_dictionary,
+    clean_dictionary,
     flush_page,
 )
 
@@ -183,7 +183,8 @@ class Role(DatabaseFactory):
             return
 
     @classmethod
-    async def build_dictionary(cls, where_kwargs):
+    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         roles = await Role.select(**where_kwargs)
         for role in roles:
@@ -197,27 +198,43 @@ class Role(DatabaseFactory):
             dictionary[role.guild_snowflake]["members"][role.member_snowflake][
                 "roles"
             ][role.channel_snowflake] = {"role": role.role_snowflake}
-        return dictionary
+        skipped_guilds = generate_skipped_guilds(dictionary)
+        skipped_members = generate_skipped_members(dictionary)
+        cleaned_dictionary = clean_dictionary(
+            dictionary=dictionary,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_members:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_members,
+                    title="Skipped Members in Server",
+                )
+        return cleaned_dictionary, pages
     
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
+        chunk_size, field_count, lines = 7, 0, []
         thumbnail = False
         where_kwargs = object_dict.get("columns", None)
         title = f"{get_random_emoji()} {Role.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
-        guild_dictionary = await Role.build_dictionary(where_kwargs=where_kwargs)
+        dictionary, pages = await Role.build_cleaned_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
 
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
+        for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -254,22 +271,4 @@ class Role(DatabaseFactory):
                     name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
         return pages

@@ -30,13 +30,13 @@ from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.guild_dictionary import (
+from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
     generate_skipped_guilds,
     generate_skipped_members,
     generate_skipped_roles,
-    clean_guild_dictionary,
+    clean_dictionary,
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
@@ -131,36 +131,57 @@ class Administrator(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        administrators = await Administrator.select(**kwargs)
-
+    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+        chunk_size, field_count, pages = 7, 0, [], []
+        dictionary = {}
+        administrators = await Administrator.select(**where_kwargs)
         for administrator in administrators:
-            guild_dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
-            guild_dictionary[administrator.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
+            dictionary[administrator.guild_snowflake]["members"].setdefault(
                 administrator.member_snowflake, {"administrators": {}}
             )
 
             for role_snowflake in administrator.role_snowflakes:
-                guild_dictionary[administrator.guild_snowflake]["members"][
+                dictionary[administrator.guild_snowflake]["members"][
                     administrator.member_snowflake
                 ]["administrators"].update({role_snowflake: True})
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
+        skipped_guilds = generate_skipped_guilds(dictionary)
+        skipped_members = generate_skipped_members(dictionary)
+        cleaned_dictionary = clean_dictionary(
+            dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_members:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_members,
+                    title="Skipped Members in Server",
+                )
+        return cleaned_dictionary, pages
 
-        for guild_snowflake, guild_data in guild_dictionary.items():
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines = 7, 0, []
+        thumbnail = False
+        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        where_kwargs = object_dict.get("columns", None)
+
+        dictionary, pages = await Administrator.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+
+        for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -200,24 +221,6 @@ class Administrator(DatabaseFactory):
                     name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
         return pages
 
 
@@ -324,46 +327,25 @@ class AdministratorRole(DatabaseFactory):
         )
 
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
+    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         chunk_size, field_count, pages = 7, 0, []
-        guild_dictionary = {}
-        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
-
-        kwargs = object_dict.get("columns", None)
-
-        administrator_roles = await AdministratorRole.select(**kwargs)
-
+        dictionary = {}
+        administrator_roles = await AdministratorRole.select(**where_kwargs)
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(
+            dictionary.setdefault(
                 administrator_role.guild_snowflake, {"roles": {}}
             )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
+            dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
                 administrator_role.role_snowflake, {}
             )
 
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_roles = generate_skipped_roles(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
+        skipped_guilds = generate_skipped_guilds(dictionary)
+        skipped_roles = generate_skipped_roles(dictionary)
+        cleaned_dictionary = clean_dictionary(
+            dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_roles=skipped_roles,
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for role_snowflake, entry in guild_data.get("roles", {}).items():
-                role = guild.get_role(role_snowflake)
-                if field_count >= chunk_size:
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                embed.add_field(name=role.name, value=role.mention, inline=False)
-                field_count += 1
-            pages.append(embed)
-
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -381,6 +363,31 @@ class AdministratorRole(DatabaseFactory):
                     skipped=skipped_roles,
                     title="Skipped Roles in Server",
                 )
+        return cleaned_dictionary, pages
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count = 7, 0
+        dictionary = {}
+        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
+        where_kwargs = object_dict.get("columns", None)
+
+        dictionary, pages = await AdministratorRole.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+
+        for guild_snowflake, guild_data in dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for role_snowflake, entry in guild_data.get("roles", {}).items():
+                role = guild.get_role(role_snowflake)
+                if field_count >= chunk_size:
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                embed.add_field(name=role.name, value=role.mention, inline=False)
+                field_count += 1
+            pages.append(embed)
         return pages
 
     @classmethod

@@ -25,12 +25,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.roles.developer import Developer
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.guild_dictionary import (
+from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
     generate_skipped_guilds,
     generate_skipped_messages,
-    clean_guild_dictionary,
+    clean_dictionary,
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
@@ -109,7 +109,8 @@ class Bug(DatabaseFactory):
         return embed
 
     @classmethod
-    async def build_dictionary(cls, where_kwargs):
+    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         bugs = await Bug.select(**where_kwargs)
         for bug in bugs:
@@ -129,25 +130,41 @@ class Bug(DatabaseFactory):
                 bug.member_snowflakes
             )
             messages[bug.message_snowflake]["notes"].append(bug.notes)
-        return dictionary
+        skipped_guilds = generate_skipped_guilds(dictionary)
+        skipped_messages = await generate_skipped_messages(dictionary)
+        cleaned_dictionary = clean_dictionary(
+            dictionary=dictionary,
+            skipped_guilds=skipped_guilds,
+            skipped_messages=skipped_messages,
+        )
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_messages:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_messages,
+                    title="Skipped Messages in Server",
+                )
+        return cleaned_dictionary, pages
     
     @classmethod
     async def build_pages(cls, filter, where_kwargs, is_at_home):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
+        chunk_size, field_count, lines = 7, 0, []
         title = f"{get_random_emoji()} Developer Logs"
 
-        guild_dictionary = await Bug.build_dictionary(where_kwargs=where_kwargs)
+        dictionary, pages = await Bug.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
 
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_messages = await generate_skipped_messages(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_messages=skipped_messages,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
+        for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -192,24 +209,6 @@ class Bug(DatabaseFactory):
                     inline=False,
                 )
             pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_messages:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_messages,
-                    title="Skipped Messages in Server",
-                )
         return pages
 
     @classmethod

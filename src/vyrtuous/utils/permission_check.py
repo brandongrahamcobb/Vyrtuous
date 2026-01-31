@@ -2,7 +2,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.guild_dictionary import (
+from vyrtuous.utils.dictionary import (
     flush_page,
 )
 from vyrtuous.inc.helpers import TARGET_PERMISSIONS
@@ -17,7 +17,7 @@ class PermissionCheck:
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
+        dictionary = {}
         title = f"{get_random_emoji()} {bot.user.display_name} Missing Permissions"
 
         if target and target.lower() == "all":
@@ -36,12 +36,12 @@ class PermissionCheck:
                     missing.append(permission)
             if not missing:
                 continue
-            guild_dictionary.setdefault(channel.guild.id, {"channels": {}})
-            guild_dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
-            guild_dictionary[channel.guild.id]["channels"][channel.id].update(
+            dictionary.setdefault(channel.guild.id, {"channels": {}})
+            dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
+            dictionary[channel.guild.id]["channels"][channel.id].update(
                 {"permissions": missing}
             )
-        for guild_snowflake, guild_data in guild_dictionary.items():
+        for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(

@@ -32,12 +32,12 @@ from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.highest_role import resolve_highest_role
-from vyrtuous.utils.guild_dictionary import (
+from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
     generate_skipped_channels,
     generate_skipped_guilds,
-    clean_guild_dictionary,
+    clean_dictionary,
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
@@ -214,8 +214,9 @@ class Alias(DatabaseFactory):
         return action_information
 
     @classmethod
-    async def build_dictionary(cls, where_kwargs):
+    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         bot = DiscordBot.get_instance()
+        chunk_size, field_count, pages = 7, 0, []
         dictionary = {}
         aliases = await Alias.select(**where_kwargs)
         for alias in aliases:
@@ -233,58 +234,13 @@ class Alias(DatabaseFactory):
                     dictionary[alias.guild_snowflake]["channels"][
                         alias.channel_snowflake
                     ]["aliases"][alias.category][alias.alias_name] = role.mention
-        return dictionary
-
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        title = f"{get_random_emoji()} Command Aliases"
-
-        where_kwargs = object_dict.get("columns", None)
-
-        guild_dictionary = await Alias.build_dictionary(where_kwargs=where_kwargs)
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
+        skipped_channels = generate_skipped_channels(dictionary)
+        skipped_guilds = generate_skipped_guilds(dictionary)
+        cleaned_dictionary = clean_dictionary(
+            dictionary=dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for category, alias_data in dictionary["aliases"].items():
-                    lines.append(f"{category}")
-                    for name, role_mention in alias_data.items():
-                        if category == "role":
-                            lines.append(f"  ↳ `{name}` -> {role_mention}")
-                        else:
-                            lines.append(f"  ↳ `{name}`")
-                if len(lines) >= chunk_size:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-            pages.append(embed)
-
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -302,6 +258,50 @@ class Alias(DatabaseFactory):
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
                 )
+        return cleaned_dictionary, pages
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines = 7, 0, []
+        title = f"{get_random_emoji()} Command Aliases"
+
+        where_kwargs = object_dict.get("columns", None)
+
+        dictionary, pages = await Alias.build_clean_dictionary(is_at_home=is_at_home, where_kwargs=where_kwargs)
+
+        for guild_snowflake, guild_data in dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
+                channel = guild.get_channel(channel_snowflake)
+                lines = []
+                for category, alias_data in dictionary["aliases"].items():
+                    lines.append(f"{category}")
+                    for name, role_mention in alias_data.items():
+                        if category == "role":
+                            lines.append(f"  ↳ `{name}` -> {role_mention}")
+                        else:
+                            lines.append(f"  ↳ `{name}`")
+                    field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+            if lines:
+                embed.add_field(
+                    name=f"Channel: {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
+                )
+            pages.append(embed)
         return pages
 
     @classmethod

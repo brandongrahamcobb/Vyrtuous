@@ -95,7 +95,8 @@ class Developer(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def build_dictionary(cls, where_kwargs):
+    async def build_clean_dictionary(cls, where_kwargs):
+        pages = []
         dictionary = {}
         developers = await Developer.select(**where_kwargs)
         for developer in developers:
@@ -106,18 +107,19 @@ class Developer(DatabaseFactory):
             dictionary["members"][developer.member_snowflake]["developers"].update(
                 {"placeholder": "placeholder"}
             )
-        return dictionary
+        cleaned_dictionary = dictionary
+        return cleaned_dictionary, pages
     
     @classmethod
     async def build_pages(cls, object_dict, **kwargs):
         bot = DiscordBot.get_instance()
-        chunk_size, field_count, lines, pages = 7, 0, [], []
+        chunk_size, field_count, lines = 7, 0, []
         dictionary = {}
         thumbnail = False
         title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), (discord.Guild, discord.Member)) else ''}"
         where_kwargs = object_dict.get("columns", None)
 
-        dictionary = await Developer.build_dictionary(where_kwargs=where_kwargs)        
+        dictionary, pages = await Developer.build_clean_dictionary(where_kwargs=where_kwargs)        
 
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
@@ -152,7 +154,7 @@ class Developer(DatabaseFactory):
                     name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
-            return pages
+        return pages
 
     @classmethod
     async def toggle_developer(cls, member_dict, snowflake_kwargs):

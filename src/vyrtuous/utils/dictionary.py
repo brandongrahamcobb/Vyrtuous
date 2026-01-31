@@ -1,4 +1,4 @@
-"""guild_dictionary.py The purpose of this program is to manage list command logic.
+"""dictionary.py The purpose of this program is to manage list command logic.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -66,19 +66,19 @@ def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
     return pages
 
 
-def generate_skipped_guilds(guild_dictionary: dict) -> set:
+def generate_skipped_guilds(dictionary: dict) -> set:
     bot = DiscordBot.get_instance()
     skipped_guilds = set()
-    for guild_snowflake in guild_dictionary:
+    for guild_snowflake in dictionary:
         if not bot.get_guild(guild_snowflake):
             skipped_guilds.add(guild_snowflake)
     return skipped_guilds
 
 
-def generate_skipped_channels(guild_dictionary: dict) -> dict:
+def generate_skipped_channels(dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
     skipped_channels = {}
-    for guild_snowflake, guild_data in guild_dictionary.items():
+    for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
@@ -90,10 +90,10 @@ def generate_skipped_channels(guild_dictionary: dict) -> dict:
     return skipped_channels
 
 
-def generate_skipped_members(guild_dictionary: dict) -> dict:
+def generate_skipped_members(dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
     skipped_members = {}
-    for guild_snowflake, guild_data in guild_dictionary.items():
+    for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
@@ -103,10 +103,10 @@ def generate_skipped_members(guild_dictionary: dict) -> dict:
     return skipped_members
 
 
-def generate_skipped_roles(guild_dictionary: dict) -> dict:
+def generate_skipped_roles(dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
     skipped_roles = {}
-    for guild_snowflake, guild_data in guild_dictionary.items():
+    for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
@@ -116,10 +116,10 @@ def generate_skipped_roles(guild_dictionary: dict) -> dict:
     return skipped_roles
 
 
-def generate_skipped_snowflakes(guild_dictionary: dict) -> dict:
+def generate_skipped_snowflakes(dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
     skipped_snowflakes = {}
-    for guild_snowflake, guild_data in guild_dictionary.items():
+    for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
@@ -131,8 +131,8 @@ def generate_skipped_snowflakes(guild_dictionary: dict) -> dict:
     return skipped_snowflakes
 
 
-def clean_guild_dictionary(
-    guild_dictionary: dict,
+def clean_dictionary(
+    dictionary: dict,
     *,
     skipped_guilds: set | None = None,
     skipped_channels: dict | None = None,
@@ -148,7 +148,7 @@ def clean_guild_dictionary(
     skipped_messages = skipped_messages or {}
     skipped_roles = skipped_roles or {}
     skipped_snowflakes = skipped_snowflakes or {}
-    for guild_snowflake, guild_data in guild_dictionary.items():
+    for guild_snowflake, guild_data in dictionary.items():
         if guild_snowflake in skipped_guilds:
             continue
         channels = {
@@ -186,10 +186,10 @@ def clean_guild_dictionary(
     return cleaned
 
 
-async def generate_skipped_messages(guild_dictionary: dict) -> dict:
+async def generate_skipped_messages(dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
     skipped_messages = {}
-    for guild_snowflake, guild_data in guild_dictionary.items():
+    for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
