@@ -5,7 +5,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE moderation_logs (
-    action_type VARCHAR(255) NOT NULL,
+    infraction_type VARCHAR(255) NOT NULL,
     channel_members_voice_count INTEGER DEFAULT 0 NOT NULL,
     channel_snowflake BIGINT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -57,18 +57,18 @@ async def check(
     for role_name, verify in verifications:
         try:
             if role_name in ("Sysadmin", "Developer"):
-                if await verify(member_snowflake=member_snowflake):
+                if await verify(member_snowflake=int(member_snowflake)):
                     return role_name
             elif role_name in ("Guild Owner", "Administrator"):
                 if await verify(
-                    guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+                    guild_snowflake=int(guild_snowflake), member_snowflake=int(member_snowflake)
                 ):
                     return role_name
             else:
                 if await verify(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
+                    channel_snowflake=int(channel_snowflake),
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(member_snowflake),
                 ):
                     return role_name
         except commands.CheckFailure:
@@ -90,7 +90,7 @@ async def has_equal_or_lower_role_wrapper(
         "member_snowflake": sender_snowflake,
     }
     return await has_equal_or_lower_role(
-        snowflake_kwargs=snowflake_kwargs, member_snowflake=member_snowflake
+        snowflake_kwargs=snowflake_kwargs, member_snowflake=int(member_snowflake)
     )
 
 

@@ -27,7 +27,7 @@ class Data:
     @classmethod
     async def save(
         cls,
-        action_type: str,
+        infraction_type: str,
         channel_members_voice_count: int,
         channel_snowflake: int,
         executor_member_snowflake: int,
@@ -45,10 +45,10 @@ class Data:
         async with bot.db_pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO moderation_logs (action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
+                INSERT INTO moderation_logs (infraction_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             """,
-                action_type,
+                infraction_type,
                 channel_members_voice_count,
                 channel_snowflake,
                 executor_member_snowflake,

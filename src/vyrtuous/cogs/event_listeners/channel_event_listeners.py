@@ -28,11 +28,11 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.server_mute import ServerMute
-from vyrtuous.db.actions.text_mute import TextMute
-from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.infractions.ban import Ban
+from vyrtuous.db.infractions.flag import Flag
+from vyrtuous.db.infractions.server_mute import ServerMute
+from vyrtuous.db.infractions.text_mute import TextMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.roles.coordinator import Coordinator
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.rooms.stage import Stage

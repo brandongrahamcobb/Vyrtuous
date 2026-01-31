@@ -45,7 +45,7 @@ async def is_guild_owner_wrapper(
     member = resolve_author(source=source)
     member_snowflake = member.id
     return await is_guild_owner(
-        guild_snowflake=source.guild.id, member_snowflake=member_snowflake
+        guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
     )
 
 

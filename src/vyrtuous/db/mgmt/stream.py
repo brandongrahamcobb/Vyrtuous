@@ -76,7 +76,7 @@ class Streaming(DatabaseFactory):
         snowflakes: list[int] = [0],
         updated_at: datetime = datetime.now(timezone.utc),
     ):
-        self.action: str
+        self._action: str
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.enabled = enabled
@@ -87,7 +87,7 @@ class Streaming(DatabaseFactory):
 
     @property
     def action(self):
-        self._action
+        return self._action
 
     @action.setter
     def action(self, action: str):
@@ -121,7 +121,7 @@ class Streaming(DatabaseFactory):
         channel = bot.get_channel(channel_snowflake)
         author_snowflake = None
         expires_at = None
-        streaming = await Streaming.select()
+        streaming = await Streaming.select(singular=False)
         highest_role = await resolve_highest_role(
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
@@ -167,18 +167,18 @@ class Streaming(DatabaseFactory):
             for channel in channel.guild.voice_channels
         )
         await Data.save(
-            action_type=alias.category,
+            infraction_type=alias.category,
             channel_members_voice_count=channel_members_voice_count,
-            channel_snowflake=channel.id,
-            executor_member_snowflake=author_snowflake,
+            channel_snowflake=int(channel.id),
+            executor_member_snowflake=int(message.author.id),
             expires_at=expires_at,
             guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count,
             guild_members_online_count=guild_members_online_count,
             guild_members_voice_count=guild_members_voice_count,
-            guild_snowflake=channel.guild.id,
+            guild_snowflake=int(channel.guild.id),
             highest_role=highest_role,
             is_modification=is_modification,
-            target_member_snowflake=member.id,
+            target_member_snowflake=int(member.id),
             reason=reason,
         )
 
@@ -288,9 +288,9 @@ class Streaming(DatabaseFactory):
         embed_duration.add_field(
             name=f"{duration_type}", value=duration_info, inline=False
         )
-        action_details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
+        infraction_details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
         embed_duration.add_field(
-            name="⚙️ Action Details", value=action_details, inline=True
+            name="⚙️ Action Details", value=infraction_details, inline=True
         )
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
         embed_duration.add_field(
@@ -317,7 +317,7 @@ class Streaming(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        streaming = await Streaming.select(**where_kwargs)
+        streaming = await Streaming.select(singular=False, **where_kwargs)
         for stream in streaming:
             dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
             dictionary[stream.guild_snowflake]["channels"][stream.channel_snowflake] = {
@@ -411,8 +411,8 @@ class Streaming(DatabaseFactory):
             "guild_snowflake": int(guild_snowflake),
         }
         if action is None and entry_type is None:
-            stream = await Streaming.select(**channel_kwargs, singular=True)
-            enabled = not stream[0].enabled
+            stream = await Streaming.select(singular=True, **channel_kwargs)
+            enabled = not stream.enabled
             action = "enabled" if enabled else "disabled"
             set_kwargs = {"enabled": enabled}
             await Streaming.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)

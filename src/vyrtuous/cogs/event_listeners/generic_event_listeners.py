@@ -22,7 +22,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
 
@@ -75,22 +75,34 @@ class GenericEventListeners(commands.Cog):
             state = StateService(message=message)
             member_obj = message.guild.get_member(int(args[1]))
             member_snowflake = member_obj.id
-            action_information = await alias.build_action_information(
+            infraction_information = await alias.build_infraction_information(
                 author_snowflake=message.author.id,
                 duration=(
                     DurationObject(args[2]) if len(args) > 2 else DurationObject("8h")
                 ),
-                member_snowflake=member_snowflake,
+                member_snowflake=int(member_snowflake),
                 reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
                 state=state,
             )
-            await alias.handlers[alias.category](
-                alias=alias,
-                action_information=action_information,
-                member=member_obj,
-                message=message,
-                state=state,
-            )
+            if infraction := infraction_information.get("infraction_existing", None):
+                await infraction.delete(**kwargs)
+                await infraction.handle_undo_alias(
+                    alias=alias,
+                    infraction_information=infraction_information,
+                    member=member_obj,
+                    message=message,
+                    state=state,
+                )
+            else:
+                infraction = Alias.build_infraction_information
+                infraction.
+                await alias.undo_handlers[alias.category](
+                    alias=alias,
+                    infraction_information=infraction_information,
+                    member=member_obj,
+                    message=message,
+                    state=state,
+                )
         except Exception as e:
             return await state.end(warning=str(e).capitalize())
 

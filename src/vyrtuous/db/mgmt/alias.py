@@ -22,14 +22,8 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.role import Role
-from vyrtuous.db.actions.text_mute import TextMute
-from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.dictionary import (
@@ -47,8 +41,9 @@ from vyrtuous.cogs.aliases import Aliases
 
 class Alias(DatabaseFactory):
 
+    identifier: str
+
     ACT = "alias"
-    CATEGORY = "alias"
     PLURAL = "Aliases"
     SINGULAR = "Alias"
     SCOPES = ["channels"]
@@ -72,15 +67,6 @@ class Alias(DatabaseFactory):
     TABLE_NAME = "command_aliases"
     lines, pages = [], []
 
-    _ALIAS_CLASS_MAP = {
-        "ban": Ban,
-        "vmute": VoiceMute,
-        "tmute": TextMute,
-        "role": Role,
-        "flag": Flag,
-        "vegan": Vegan,
-    }
-
     def __init__(
         self,
         alias_name: str,
@@ -94,66 +80,58 @@ class Alias(DatabaseFactory):
     ):
         super().__init__()
         self.bot = DiscordBot.get_instance()
-        self.alias_class = Alias._ALIAS_CLASS_MAP.get(category, None)
-        self.category = category
         self.alias_name = alias_name
+        self.category = category
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>"
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
-        self.handlers = {
-            "ban": Aliases.handle_ban_alias,
-            "vegan": Aliases.handle_vegan_alias,
-            "carnist": Aliases.handle_carnist_alias,
-            "unban": Aliases.handle_unban_alias,
-            "flag": Aliases.handle_flag_alias,
-            "unflag": Aliases.handle_unflag_alias,
-            "vmute": Aliases.handle_voice_mute_alias,
-            "unvmute": Aliases.handle_unmute_alias,
-            "tmute": Aliases.handle_text_mute_alias,
-            "untmute": Aliases.handle_untextmute_alias,
-            "role": Aliases.handle_role_alias,
-            "unrole": Aliases.handle_unrole_alias,
-        }
         self.role_snowflake = role_snowflake
         self.role_mention = f"<@&{role_snowflake}>"
         self.updated_at = updated_at
 
-    async def build_existing_information(self, action_information, member_snowflake):
+    def for_category(self) -> type['Alias'] | None:
+        for subclass in self.__class__.__subclasses__():
+            if getattr(subclass, "category", None) == self.category.lower():
+                return subclass
+        return None
+    
+    async def build_existing_information(self, infraction_information, member_snowflake):
         kwargs = {}
-        primary_keys = await self.alias_class.primary_keys()
+        cls = self.for_category()
+        if cls is None:
+            raise ValueError(f"No Alias subclass found for category {self.category!r}.")
+        primary_keys = await cls.primary_keys()
         if "channel_snowflake" in primary_keys:
             kwargs.update({"channel_snowflake": self.channel_snowflake})
         if "guild_snowflake" in primary_keys:
             kwargs.update({"guild_snowflake": self.guild_snowflake})
         if "member_snowflake" in primary_keys:
             kwargs.update({"member_snowflake": member_snowflake})
-        action_existing = await self.alias_class.select(
+        infraction_existing = await cls.select(
             **kwargs,
             singular=True,
         )
-        action_modification = False
-        if action_existing:
-            action_modification = True
-            await self.alias_class.delete(**kwargs)
-            self.category = self.alias_class.UNDO
-        action_information.update(
+        infraction_modification = False
+        if infraction_existing:
+            infraction_modification = True
+        infraction_information.update(
             {
-                "action_existing": action_existing,
-                "action_modification": action_modification,
-                "action_role_snowflake": (
-                    str(self.role_snowflake) if self.role_snowflake else None
+                "infraction_existing": infraction_existing,
+                "infraction_modification": infraction_modification,
+                "infraction_role_snowflake": (
+                    self.role_snowflake if self.role_snowflake else None
                 ),
             }
         )
-        return action_information
+        return infraction_information
 
     async def build_duration_information(
-        self, action_information, category, duration, state
+        self, infraction_information, duration, state
     ):
         channel = self.bot.get_channel(self.channel_snowflake)
         cap = await Cap.select(
-            category=category,
+            category=self.category,
             channel_snowflake=str(self.channel_snowflake),
             guild_snowflake=str(self.guild_snowflake),
             singular=True,
@@ -166,62 +144,60 @@ class Alias(DatabaseFactory):
             duration.to_timedelta().total_seconds() > cap_duration
             or duration.number == 0
         ):
-            if action_information["executor_role"] == "Moderator":
+            if infraction_information["executor_role"] == "Moderator":
                 duration_str = DurationObject.from_seconds(cap_duration)
                 return await state.end(
                     warning=f"Cannot set the "
-                    f"{action_information['alias_class'].SINGULAR} beyond {duration_str} as a "
-                    f"{action_information['executor_role']} in {channel.mention}."
+                    f"{infraction_information['alias_class'].SINGULAR} beyond {duration_str} as a "
+                    f"{infraction_information['executor_role']} in {channel.mention}."
                 )
         expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
-        action_information.update(
+        infraction_information.update(
             {
-                "action_cap_duration": cap_duration,
-                "action_duration": duration,
-                "action_expires_in": expires_in,
+                "infraction_cap_duration": cap_duration,
+                "infraction_duration": duration,
+                "infraction_expires_in": expires_in,
             }
         )
-        return action_information
+        return infraction_information
 
-    async def build_action_information(
-        self, author_snowflake, duration, member_snowflake, reason, state
+    async def build_infraction_information(
+        self, author_snowflake, duration, infraction_class, member_snowflake, reason, state
     ):
-        action_information = {}
+        infraction_information = {}
         if getattr(self, "role_snowflake"):
-            action_information.update(
-                {"action_role_snowflake": str(self.role_snowflake)}
+            infraction_information.update(
+                {"infraction_role_snowflake": self.role_snowflake}
             )
-        action_information.update(
+        infraction_information.update(
             {
-                "alias_class": self.alias_class,
-                "action_channel_snowflake": str(self.channel_snowflake),
-                "action_guild_snowflake": str(self.guild_snowflake),
-                "action_member_snowflake": str(member_snowflake),
+                "infraction_channel_snowflake": self.channel_snowflake,
+                "infraction_guild_snowflake": self.guild_snowflake,
+                "infraction_member_snowflake": member_snowflake,
             }
         )
-        action_executor_role = await resolve_highest_role(
-            channel_snowflake=str(self.channel_snowflake),
-            guild_snowflake=str(self.guild_snowflake),
-            member_snowflake=str(author_snowflake),
+        infraction_executor_role = await resolve_highest_role(
+            channel_snowflake=self.channel_snowflake,
+            guild_snowflake=self.guild_snowflake,
+            member_snowflake=author_snowflake,
         )
-        action_information.update({"action_executor_role": action_executor_role})
-        action_information = await self.build_duration_information(
-            action_information=action_information,
-            category=self.category,
+        infraction_information.update({"infraction_executor_role": infraction_executor_role})
+        infraction_information = await self.build_duration_information(
+            infraction_information=infraction_information,
             duration=duration,
             state=state,
         )
-        action_information.update({"action_reason": reason})
-        action_information = await self.build_existing_information(
-            action_information=action_information, member_snowflake=member_snowflake
+        infraction_information.update({"infraction_reason": reason})
+        infraction_information = await self.build_existing_information(
+            infraction_information=infraction_information, member_snowflake=int(member_snowflake)
         )
-        return action_information
+        return infraction_information
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         bot = DiscordBot.get_instance()
         dictionary = {}
-        aliases = await Alias.select(**where_kwargs)
+        aliases = await Alias.select(singular=False, **where_kwargs)
         for alias in aliases:
             dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
             dictionary[alias.guild_snowflake]["channels"].setdefault(
@@ -309,26 +285,16 @@ class Alias(DatabaseFactory):
     async def delete_alias(cls, alias_name, snowflake_kwargs):
         bot = DiscordBot.get_instance()
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-
         where_kwargs = {
             "alias_name": alias_name,
             "guild_snowflake": int(guild_snowflake),
         }
         alias = await Alias.select(singular=True, **where_kwargs)
         if not alias:
-            return "No aliases found for `{alias_name}`."
-
+            return f"No aliases found for `{alias_name}`."
         guild = bot.get_guild(guild_snowflake)
         channel = guild.get_channel(alias.channel_snowflake)
-
         if getattr(alias, "role_snowflake"):
-            await Role.delete(
-                guild_snowflake=guild_snowflake, role_snowflake=alias.role_snowflake
-            )
-            reason = "Removing hide role."
-            role = guild.get_role(alias.role_snowflake)
-            if role:
-                await role.delete(reason=reason)
             msg = (
                 f"Alias `{alias.alias_name}` of type "
                 f"`{alias.category}` for channel {channel.mention} "
@@ -359,12 +325,9 @@ class Alias(DatabaseFactory):
             )
         if role_dict:
             where_kwargs.update(role_dict.get("columns", None))
-            role_obj = Role(**where_kwargs)
-            await role_obj.create()
             msg = (
                 f"Alias `{alias_name}` of type `{category}` "
-                f"created successfully "
-                f"with role {role_dict.get("mention", None)}."
+                f"created successfully for channel {channel_dict.get("mention", None)} with role {role_dict.get("mention", None)}."
             )
         alias = Alias(alias_name=alias_name, category=str(category), **where_kwargs)
         await alias.create()

@@ -113,7 +113,7 @@ class Bug(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        bugs = await Bug.select(**where_kwargs)
+        bugs = await Bug.select(singular=False, **where_kwargs)
         for bug in bugs:
             dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
             messages = dictionary[bug.guild_snowflake]["messages"]
@@ -214,7 +214,7 @@ class Bug(DatabaseFactory):
     async def assign_bug_to_developer(cls, reference, member_dict):
         where_kwargs = member_dict.get("columns", None)
 
-        developer = await Developer.select(**where_kwargs, singular=True)
+        developer = await Developer.select(singular=True, **where_kwargs)
         if not developer:
             return (
                 f"Developer not found for target ({member_dict.get("mention", None)})."

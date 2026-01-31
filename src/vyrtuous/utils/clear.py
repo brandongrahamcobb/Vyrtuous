@@ -27,7 +27,7 @@ class Clear:
     ):
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
@@ -71,11 +71,11 @@ class Clear:
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('name', None)}."
                         elif isinstance(obj, AdministratorRole):
                             administrator_roles = AdministratorRole.select(
-                                guild_snowflake=guild_snowflake,
+                                guild_snowflake=int(guild_snowflake),
                             )
                             for administrator_role in administrator_roles:
                                 await obj.revoke_role(
-                                    guild_snowflake=guild_snowflake,
+                                    guild_snowflake=int(guild_snowflake),
                                     role_snowflake=administrator_role.role_snowflake,
                                 )
         elif target == "all" and await is_sysadmin(
@@ -87,11 +87,11 @@ class Clear:
                     msg = "Deleted all database entries."
                     if isinstance(obj, AdministratorRole):
                         administrator_roles = AdministratorRole.select(
-                            guild_snowflake=guild_snowflake,
+                            guild_snowflake=int(guild_snowflake),
                         )
                         for administrator_role in administrator_roles:
                             await obj.revoke_role(
-                                guild_snowflake=guild_snowflake,
+                                guild_snowflake=int(guild_snowflake),
                                 role_snowflake=administrator_role.role_snowflake,
                             )
         else:

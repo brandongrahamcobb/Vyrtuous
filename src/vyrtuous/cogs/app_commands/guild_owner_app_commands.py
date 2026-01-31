@@ -49,9 +49,9 @@ class GuildOwnerAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         role_dict = await do.determine_from_target(target=role)

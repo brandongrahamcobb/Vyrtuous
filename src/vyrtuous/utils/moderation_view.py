@@ -32,14 +32,14 @@ class ModerationView(discord.ui.View):
 
     def __init__(self, interaction: discord.Interaction, member_snowflake: int, modal):
         super().__init__(timeout=120)
-        self.action_information = {}
+        self.infraction_information = {}
         self.author_snowflake = interaction.user.id
         self.categories = dir_to_classes(dir_paths=self.category_paths)
         self.interaction = interaction
         self.member_snowflake = member_snowflake
         self.modal = modal
 
-    async def interaction_check(self, interaction):
+    async def interinfraction_check(self, interaction):
         return interaction.user.id == self.author_snowflake
 
     async def setup(self):
@@ -85,7 +85,7 @@ class ModerationView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.action_information["action_channel_snowflake"] = channel.id
+        self.infraction_information["infraction_channel_snowflake"] = channel.id
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -98,7 +98,7 @@ class ModerationView(discord.ui.View):
         category_name = select.values[0]
         category = next(c for c in self.categories if c.__name__ == category_name)
         self.category_select.placeholder = category.ACT
-        self.action_information["alias_class"] = category
+        self.infraction_information["alias_class"] = category
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -109,25 +109,25 @@ class ModerationView(discord.ui.View):
             member_snowflake=self.member_snowflake,
             sender_snowflake=interaction.user.id,
         )
-        action_existing = await self.action_information.get("alias_class", None).select(
-            channel_snowflake=self.action_information.get(
-                "action_channel_snowflake", None
+        infraction_existing = await self.infraction_information.get("alias_class", None).select(
+            channel_snowflake=self.infraction_information.get(
+                "infraction_channel_snowflake", None
             ),
             member_snowflake=self.member_snowflake,
             singular=True,
         )
-        self.action_information["action_executor_role"] = executor_role
-        self.action_information["action_member_snowflake"] = self.member_snowflake
-        self.action_information["action_existing"] = action_existing
-        if hasattr(action_existing, "expires_in"):
-            if DurationObject.from_expires_in_to_str(action_existing.expires_in) == 0:
+        self.infraction_information["infraction_executor_role"] = executor_role
+        self.infraction_information["infraction_member_snowflake"] = self.member_snowflake
+        self.infraction_information["infraction_existing"] = infraction_existing
+        if hasattr(infraction_existing, "expires_in"):
+            if DurationObject.from_expires_in_to_str(infraction_existing.expires_in) == 0:
                 await interaction.response.send_message(
                     content="This moderation is permanent and can only be undone, not modified.",
                     ephemeral=True,
                 )
                 await interaction.message.delete()
                 self.stop()
-        modal = self.modal(action_information=self.action_information)
+        modal = self.modal(infraction_information=self.infraction_information)
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)

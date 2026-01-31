@@ -22,9 +22,9 @@ from discord.ext import commands, tasks
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.text_mute import TextMute
-from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.infractions.ban import Ban
+from vyrtuous.db.infractions.text_mute import TextMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
 from vyrtuous.db.roles.developer import Developer
@@ -190,8 +190,8 @@ class ScheduledTasks(commands.Cog):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     await Stage.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
+                        channel_snowflake=int(channel_snowflake),
+                        guild_snowflake=int(guild_snowflake),
                     )
                     logger.info(
                         f"Unable to locate guild {guild_snowflake}, cleaning up expired stage."
@@ -200,8 +200,8 @@ class ScheduledTasks(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 if channel is None:
                     await Stage.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
+                        channel_snowflake=int(channel_snowflake),
+                        guild_snowflake=int(guild_snowflake),
                     )
                     logger.info(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
@@ -221,7 +221,7 @@ class ScheduledTasks(commands.Cog):
                     if member is None:
                         await VoiceMute.delete(
                             channel_snowflake=channel.id,
-                            member_snowflake=member_snowflake,
+                            member_snowflake=int(member_snowflake),
                             guild_snowflake=guild.id,
                             target="room",
                         )
@@ -498,10 +498,10 @@ class ScheduledTasks(commands.Cog):
     async def check_sysadmin(self):
         member_snowflake = self.bot.config.get("discord_owner_id", None)
         sysadmin = await Sysadmin.select(
-            member_snowflake=member_snowflake, singular=True
+            member_snowflake=int(member_snowflake), singular=True
         )
         if not sysadmin:
-            sysadmin = Sysadmin(member_snowflake=member_snowflake)
+            sysadmin = Sysadmin(member_snowflake=int(member_snowflake))
             await sysadmin.create()
             logger.info(f"Sysadmin ({member_snowflake}) added to the db.")
         else:

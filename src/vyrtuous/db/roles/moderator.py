@@ -60,7 +60,7 @@ async def is_moderator_wrapper(
     return await is_moderator(
         channel_snowflake=source.channel.id,
         guild_snowflake=source.guild.id,
-        member_snowflake=member_snowflake,
+        member_snowflake=int(member_snowflake),
     )
 
 
@@ -68,9 +68,9 @@ async def is_moderator(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> bool:
     moderator = await Moderator.select(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
+        channel_snowflake=int(channel_snowflake),
+        guild_snowflake=int(guild_snowflake),
+        member_snowflake=int(member_snowflake),
         singular=True,
     )
     if not moderator:
@@ -143,7 +143,7 @@ class Moderator(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        moderators = await Moderator.select(**where_kwargs)
+        moderators = await Moderator.select(singular=False, **where_kwargs)
         for moderator in moderators:
             dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
             dictionary[moderator.guild_snowflake]["members"].setdefault(
@@ -245,7 +245,7 @@ class Moderator(DatabaseFactory):
         where_kwargs = {}
         where_kwargs.update(channel_dict.get("columns", None))
         where_kwargs.update(member_dict.get("columns", None))
-        moderator = await Moderator.select(**where_kwargs, singular=True)
+        moderator = await Moderator.select(singular=True, **where_kwargs)
         if moderator:
             await Moderator.delete(**where_kwargs)
             action = "revoked"

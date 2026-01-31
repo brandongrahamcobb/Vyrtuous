@@ -25,7 +25,7 @@ import discord
 from vyrtuous.utils.permission_check import PermissionCheck
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.server_mute import ServerMute
+from vyrtuous.db.infractions.server_mute import ServerMute
 from vyrtuous.db.roles.administrator import (
     AdministratorRole,
     administrator_predicator,
@@ -161,12 +161,12 @@ class AdminAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         target: str,
-        category: AppCategory = "all",
+        category: AppCategory,
     ):
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=target)
@@ -204,9 +204,9 @@ class AdminAppCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
@@ -248,16 +248,31 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
+        is_at_home = at_home(source=interaction)
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=target)
         if target and target.lower() == "all":
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
-        pages = await PermissionCheck.check_permissions(
-            object_dict=object_dict, target=target, snowflake_kwargs=snowflake_kwargs
+        if target and target.lower() == "all":
+            await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
+        if target and target.lower() == "all":
+            channel_objs = [
+                channel_obj
+                for guild in self.bot.guilds
+                for channel_obj in guild.channels
+            ]
+        elif hasattr(object_dict.get("object", None), "channels"):
+            channel_objs = object_dict.get("object", None).channels
+        else:
+            channel_objs = [object_dict.get("object", None)]
+        pages = await PermissionCheck.build_pages(
+            channel_objs=channel_objs,
+            is_at_home=is_at_home,
+            snowflake_kwargs=snowflake_kwargs,
         )
         if pages:
             return await state.end(warning=pages)
@@ -337,9 +352,9 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         member_dict = await do.determine_from_target(target=member)
@@ -374,13 +389,13 @@ class AdminAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        duration: AppDuration = DurationObject("1h"),
+        duration: AppDuration,
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
@@ -461,9 +476,9 @@ class AdminAppCommands(commands.Cog):
         channel_mentions, failed_snowflakes, resolved_channels = [], [], []
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
@@ -541,9 +556,9 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         msg = await Alias.delete_alias(
             alias_name=alias_name, snowflake_kwargs=snowflake_kwargs

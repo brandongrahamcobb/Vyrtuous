@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import TypeVar, Type
+from typing import TypeVar, Type, overload, Literal
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.logger import logger
@@ -68,6 +68,20 @@ class DatabaseFactory(object):
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
         logger.info(f"Deleted entry from {table_name}.")
+
+    @classmethod
+    @overload
+    async def select(
+        cls: Type[T], *, singular: Literal[True], inside=False, **kwargs
+    ) -> T:
+        ...
+
+    @classmethod
+    @overload
+    async def select(
+        cls: Type[T], *, singular: Literal[False], inside=False, **kwargs
+    ) -> list[T]:
+        ...
 
     @classmethod
     async def select(
@@ -163,3 +177,4 @@ class DatabaseFactory(object):
         for row in rows:
             kwargs.append(row["column_name"])
         return kwargs
+        

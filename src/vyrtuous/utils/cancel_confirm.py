@@ -75,7 +75,7 @@ class VerifyView(discord.ui.View):
         self.result = None
         self.mention = mention
 
-    async def interaction_check(self, interaction):
+    async def interinfraction_check(self, interaction):
         return interaction.user.id == self.author_snowflake
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)

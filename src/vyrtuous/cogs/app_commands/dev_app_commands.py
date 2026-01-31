@@ -40,7 +40,7 @@ from vyrtuous.service.discord_object_service import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class DevCommands(commands.Cog):
+class DevAppCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
@@ -82,7 +82,7 @@ class DevCommands(commands.Cog):
                 name="Not Loaded", value="\n".join(not_loaded), inline=False
             )
         if not loaded and not not_loaded:
-            embed.add_field(name="No cogs available.", inline=False)
+            embed.add_field(name="No cogs available.", value=None, inline=False)
         return await state.end(success=embed)
 
     @app_commands.command(
@@ -96,12 +96,12 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def update_bug_tracking_app_command(
         self,
-        ctx: commands.Context,
+        interaction: discord.Interaction,
         reference: str,
         action: str,
         notes: str,
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(interaction=interaction)
 
         bug = await Bug.select(id=reference, resolved=False, singular=True)
         if not bug:
@@ -117,7 +117,9 @@ class DevCommands(commands.Cog):
                 "will remain in the database for the next 30 days."
             )
         elif action and action.lower() == "append":
-            await bug.append(notes)
+            where_kwargs = {"id": reference}
+            set_kwargs = {"notes": bug.notes + notes if bug.notes else notes}
+            await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = "appended to the previous notes."
         elif action and action.lower() == "overwrite":
             where_kwargs = {"id": reference}
@@ -274,4 +276,4 @@ class DevCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(DevCommands(bot))
+    await bot.add_cog(DevAppCommands(bot))

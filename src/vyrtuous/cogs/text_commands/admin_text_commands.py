@@ -25,7 +25,7 @@ from vyrtuous.utils.permission_check import PermissionCheck
 from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.server_mute import ServerMute
+from vyrtuous.db.infractions.server_mute import ServerMute
 from vyrtuous.db.roles.administrator import (
     AdministratorRole,
     administrator_predicator,
@@ -177,9 +177,9 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         object_dict = await do.determine_from_target(target=target)
@@ -218,9 +218,9 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
@@ -268,9 +268,9 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
@@ -372,9 +372,9 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
@@ -421,9 +421,9 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
@@ -509,9 +509,9 @@ class AdminTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         channel_mentions, failed_snowflakes, resolved_channels = [], [], []
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
@@ -603,9 +603,9 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         msg = await Alias.delete_alias(
             alias_name=alias_name, snowflake_kwargs=snowflake_kwargs

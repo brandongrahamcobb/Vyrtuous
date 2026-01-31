@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
@@ -38,10 +38,11 @@ from vyrtuous.utils.logger import logger
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
-class TextMute(DatabaseFactory):
+class TextMute(Alias):
+
+    category = "tmute"
 
     ACT = "tmute"
-    CATEGORY = "tmute"
     PLURAL = "Text Mutes"
     SCOPES = ["channel", "member"]
     SINGULAR = "Text Mute"
@@ -94,19 +95,19 @@ class TextMute(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def act_embed(cls, action_information, source, **kwargs):
+    async def act_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been Text-Muted",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {action_information['action_duration']}\n"
-                f"**Reason:** {action_information['action_reason']}"
+                f"**Expires:** {infraction_information['infraction_duration']}\n"
+                f"**Reason:** {infraction_information['infraction_reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -114,11 +115,11 @@ class TextMute(DatabaseFactory):
         return embed
 
     @classmethod
-    async def undo_embed(cls, action_information, source, **kwargs):
+    async def undo_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
             description=(
@@ -134,7 +135,7 @@ class TextMute(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        text_mutes = await TextMute.select(**where_kwargs)
+        text_mutes = await TextMute.select(singular=False, **where_kwargs)
         for text_mute in text_mutes:
             dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
             dictionary[text_mute.guild_snowflake]["members"].setdefault(
@@ -267,3 +268,86 @@ class TextMute(DatabaseFactory):
                     await TextMute.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                 except discord.Forbidden as e:
                     logger.warning(e)
+
+
+
+    @classmethod
+    async def handle_act_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        text_mute = TextMute(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            expires_in=infraction_information["infraction_expires_in"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+            role_snowflake=infraction_information["infraction_role_snowflake"],
+            reason=infraction_information["infraction_reason"],
+        )
+        await text_mute.create()
+        channel = message.guild.get_channel(
+            infraction_information["infraction_channel_snowflake"]
+        )
+        if channel:
+            try:
+                await channel.set_permissions(
+                    target=member,
+                    send_messages=False,
+                    add_reactions=False,
+                    reason=infraction_information["infraction_reason"],
+                )
+            except discord.Forbidden as e:
+                logger.error(str(e).capitalize())
+                return await state.end(error=str(e).capitalize())
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration=infraction_information["infraction_duration"],
+            is_channel_scope=False,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason=infraction_information["infraction_reason"],
+        )
+        embed = await TextMute.act_embed(
+            infraction_information=infraction_information, source=message
+        )
+        return await state.end(success=embed)
+
+
+    @classmethod
+    async def handle_undo_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        await TextMute.delete(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+        )
+        channel = message.guild.get_channel(
+            infraction_information["infraction_channel_snowflake"]
+        )
+        if channel:
+            try:
+                await channel.set_permissions(
+                    target=member,
+                    send_messages=None,
+                    add_reactions=None,
+                    reason=infraction_information["infraction_reason"],
+                )
+            except discord.Forbidden as e:
+                logger.error(str(e).capitalize())
+                return await state.end(error=str(e).capitalize())
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration="",
+            is_channel_scope=False,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason="No reason provided.",
+        )
+        embed = await TextMute.undo_embed(
+            infraction_information=infraction_information, source=message
+        )
+        return await state.end(success=embed)

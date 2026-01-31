@@ -24,10 +24,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.text_mute import TextMute
-from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.infractions.ban import Ban
+from vyrtuous.db.infractions.flag import Flag
+from vyrtuous.db.infractions.text_mute import TextMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import Administrator
 from vyrtuous.db.roles.coordinator import Coordinator
 from vyrtuous.db.roles.developer import Developer
@@ -230,9 +230,9 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
@@ -287,9 +287,9 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
-            "channel_snowflake": interaction.channel.id,
-            "guild_snowflake": interaction.guild.id,
-            "member_snowflake": interaction.user.id,
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
@@ -355,7 +355,7 @@ class ModeratorAppCommands(commands.Cog):
     ):
         pages = []
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)

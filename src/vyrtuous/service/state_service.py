@@ -52,9 +52,9 @@ class StateService:
     def __init__(
         self,
         *,
-        ctx: commands.Context | None,
-        interaction: discord.Interaction | None,
-        message: discord.Message | None,
+        ctx: commands.Context | None = None,
+        interaction: discord.Interaction | None = None,
+        message: discord.Message | None = None,
     ):
         if (ctx is None) == (interaction is None) == (message is None):
             raise DiscordSourceNotFound()
@@ -216,7 +216,7 @@ class StateService:
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
-                    "reaction_add", timeout=30.0, check=look
+                    "reinfraction_add", timeout=30.0, check=look
                 )
             except asyncio.TimeoutError:
                 try:
@@ -304,7 +304,8 @@ class StateService:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
         await user.send(message)
 
-    async def send_pages(plural, pages, state):
+    @classmethod
+    async def send_pages(cls, plural, pages, state):
         if pages:
             try:
                 return await state.end(success=pages)

@@ -80,7 +80,7 @@ class DevTextCommands(commands.Cog):
                 name="Not Loaded", value="\n".join(not_loaded), inline=False
             )
         if not loaded and not not_loaded:
-            embed.add_field(name="No cogs available.", inline=False)
+            embed.add_field(name="No cogs available.", value=None, inline=False)
         return await state.end(success=embed)
 
     @commands.command(
@@ -117,7 +117,9 @@ class DevTextCommands(commands.Cog):
                 "will remain in the database for the next 30 days."
             )
         elif action and action.lower() == "append":
-            await bug.append(notes)
+            where_kwargs = {"id": reference}
+            set_kwargs = {"notes": bug.notes + notes if bug.notes else notes}
+            await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = "appended to the previous notes."
         elif action and action.lower() == "overwrite":
             where_kwargs = {"id": reference}

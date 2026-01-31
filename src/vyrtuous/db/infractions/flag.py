@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.dictionary import (
@@ -35,10 +35,11 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
-class Flag(DatabaseFactory):
+class Flag(Alias):
+
+    category = "flag"
 
     ACT = "flag"
-    CATEGORY = "flag"
     PLURAL = "Flags"
     SCOPES = ["channel", "member"]
     SINGULAR = "Flag"
@@ -75,18 +76,18 @@ class Flag(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def act_embed(cls, action_information, source, **kwargs):
+    async def act_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been flagged",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Reason:** {action_information['action_reason']}"
+                f"**Reason:** {infraction_information['infraction_reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -94,11 +95,11 @@ class Flag(DatabaseFactory):
         return embed
 
     @classmethod
-    async def undo_embed(cls, action_information, source, **kwargs):
+    async def undo_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s flag has been removed",
@@ -115,7 +116,7 @@ class Flag(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        flags = await Flag.select(**where_kwargs)
+        flags = await Flag.select(singular=False, **where_kwargs)
         for flag in flags:
             dictionary.setdefault(flag.guild_snowflake, {"members": {}})
             dictionary[flag.guild_snowflake]["members"].setdefault(
@@ -208,3 +209,64 @@ class Flag(DatabaseFactory):
                 )
             Flag.pages.append(embed)
         return Flag.pages
+
+
+    @classmethod
+    async def handle_act_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        flag = Flag(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+            reason=infraction_information["infraction_reason"],
+        )
+        await flag.create()
+        bot = DiscordBot.get_instance()
+        cog = bot.get_cog("ChannelEventListeners")
+        cog.flags.append(flag)
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration=infraction_information["infraction_duration"],
+            is_channel_scope=False,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason=infraction_information["infraction_reason"],
+        )
+        embed = await Flag.act_embed(
+            infraction_information=infraction_information, source=message
+        )
+        return await state.end(success=embed)
+
+
+    @classmethod
+    async def handle_undo_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        await Flag.delete(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+        )
+        bot = DiscordBot.get_instance()
+        cog = bot.get_cog("ChannelEventListeners")
+        for flag in cog.flags:
+            if flag.channel_snowflake == infraction_information["infraction_channel_snowflake"]:
+                cog.flags.remove(flag)
+                break
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration="",
+            is_channel_scope=False,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason="No reason provided.",
+        )
+        embed = await Flag.undo_embed(
+            infraction_information=infraction_information, source=message
+        )
+        return await state.end(success=embed)

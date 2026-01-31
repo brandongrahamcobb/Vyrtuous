@@ -58,7 +58,7 @@ async def is_coordinator_wrapper(
     return await is_coordinator(
         channel_snowflake=source.channel.id,
         guild_snowflake=source.guild.id,
-        member_snowflake=member_snowflake,
+        member_snowflake=int(member_snowflake),
     )
 
 
@@ -66,9 +66,9 @@ async def is_coordinator(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> bool:
     coordinator = await Coordinator.select(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
+        channel_snowflake=int(channel_snowflake),
+        guild_snowflake=int(guild_snowflake),
+        member_snowflake=int(member_snowflake),
         singular=True,
     )
     if not coordinator:
@@ -140,7 +140,7 @@ class Coordinator(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        coordinators = await Coordinator.select(**where_kwargs)
+        coordinators = await Coordinator.select(singular=False, **where_kwargs)
         for coordinator in coordinators:
             dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
             dictionary[coordinator.guild_snowflake]["members"].setdefault(
@@ -242,7 +242,7 @@ class Coordinator(DatabaseFactory):
         where_kwargs = {}
         where_kwargs.update(channel_dict.get("columns", None))
         where_kwargs.update(member_dict.get("columns", None))
-        coordinator = await Coordinator.select(**where_kwargs, singular=True)
+        coordinator = await Coordinator.select(singular=True, **where_kwargs)
         if coordinator:
             await Coordinator.delete(**where_kwargs)
             action = "revoked"

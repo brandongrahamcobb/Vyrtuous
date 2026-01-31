@@ -63,7 +63,7 @@ class HelpCommand(commands.Cog):
         self, channel_snowflake: int, guild_snowflake: int
     ) -> list[str]:
         lines = []
-        aliases = await Alias.select(guild_snowflake=guild_snowflake)
+        aliases = await Alias.select(guild_snowflake=int(guild_snowflake))
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:

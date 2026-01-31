@@ -25,7 +25,13 @@ import discord
 
 class Snowflake:
     def __init__(self, snowflake: int):
-        self.snowflake = snowflake
+        self._snowflake = snowflake
+
+    def __int__(self):
+        return int(self._snowflake)
+
+    def __str__(self):
+        return str(self._snowflake)
 
     @property
     def snowflake(self) -> int:

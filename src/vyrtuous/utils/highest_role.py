@@ -31,25 +31,25 @@ async def resolve_highest_role(
     guild_snowflake: int,
 ):
     try:
-        if await is_sysadmin(member_snowflake=member_snowflake):
+        if await is_sysadmin(member_snowflake=int(member_snowflake)):
             return "Sysadmin"
     except NotSysadmin as e:
         logger.warning(str(e).capitalize())
     try:
-        if await is_developer(member_snowflake=member_snowflake):
+        if await is_developer(member_snowflake=int(member_snowflake)):
             return "Developer"
     except NotDeveloper as e:
         logger.warning(str(e).capitalize())
     try:
         if await is_guild_owner(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            guild_snowflake=int(guild_snowflake), member_snowflake=int(member_snowflake)
         ):
             return "Guild Owner"
     except NotGuildOwner as e:
         logger.warning(str(e).capitalize())
     try:
         if await is_administrator(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            guild_snowflake=int(guild_snowflake), member_snowflake=int(member_snowflake)
         ):
             return "Administrator"
     except NotAdministrator as e:
@@ -57,18 +57,18 @@ async def resolve_highest_role(
     if channel_snowflake:
         try:
             if await is_coordinator(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
+                channel_snowflake=int(channel_snowflake),
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(member_snowflake),
             ):
                 return "Coordinator"
         except NotCoordinator as e:
             logger.warning(str(e).capitalize())
         try:
             if await is_moderator(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
+                channel_snowflake=int(channel_snowflake),
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(member_snowflake),
             ):
                 return "Moderator"
         except NotModerator as e:

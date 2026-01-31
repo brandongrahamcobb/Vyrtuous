@@ -78,7 +78,7 @@ class Cap(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        caps = await Cap.select(**where_kwargs)
+        caps = await Cap.select(singular=False, **where_kwargs)
         for cap in caps:
             dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
             dictionary[cap.guild_snowflake]["channels"].setdefault(
@@ -159,7 +159,7 @@ class Cap(DatabaseFactory):
         seconds = int(hours) * 3600
         where_kwargs = channel_dict.get("columns", None)
         where_kwargs.update({"category": category})
-        cap = await Cap.select(**where_kwargs, singular=True)
+        cap = await Cap.select(singular=True, **where_kwargs)
         if cap and seconds:
             await Cap.update(
                 set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs

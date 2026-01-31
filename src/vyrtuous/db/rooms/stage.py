@@ -26,7 +26,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.fields.duration import DurationObject
-from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
@@ -110,7 +110,7 @@ class Stage(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        stages = await Stage.select(**where_kwargs)
+        stages = await Stage.select(singular=False, **where_kwargs)
         for stage in stages:
             dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
             dictionary[stage.guild_snowflake]["channels"].setdefault(
@@ -396,7 +396,7 @@ class Stage(DatabaseFactory):
             member_snowflake=member_dict.get("id", None),
         )
         where_kwargs = channel_dict.get("columns", None)
-        stage = await Stage.select(**where_kwargs, singular=True)
+        stage = await Stage.select(singular=True, **where_kwargs)
         if stage:
             await member_dict.get("object", None).edit(
                 mute=not member_dict.get("object", None).voice.mute

@@ -78,7 +78,7 @@ class ServerMute(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        server_mutes = await ServerMute.select(**where_kwargs)
+        server_mutes = await ServerMute.select(singular=False, **where_kwargs)
         for server_mute in server_mutes:
             dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
             dictionary[server_mute.guild_snowflake]["members"].setdefault(
@@ -167,7 +167,7 @@ class ServerMute(DatabaseFactory):
         )
         where_kwargs = member_dict.get("columns", None)
 
-        server_mute = await ServerMute.select(**where_kwargs, singular=True)
+        server_mute = await ServerMute.select(singular=True, **where_kwargs)
         if not server_mute:
             server_mute = ServerMute(
                 **where_kwargs,

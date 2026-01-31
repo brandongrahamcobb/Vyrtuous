@@ -41,7 +41,7 @@ class CategoryObject:
     @category.setter
     def category(self, new_cat):
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")

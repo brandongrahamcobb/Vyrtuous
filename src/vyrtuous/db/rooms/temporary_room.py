@@ -34,14 +34,14 @@ from vyrtuous.utils.dictionary import (
     flush_page,
 )
 
-from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.infractions.ban import Ban
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.actions.flag import Flag
+from vyrtuous.db.infractions.flag import Flag
 from vyrtuous.db.roles.moderator import Moderator
-from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.db.roles.vegan import Vegan
-from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
@@ -90,8 +90,8 @@ class TemporaryRoom(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        aliases = await Alias.select(**where_kwargs)
-        temporary_rooms = await TemporaryRoom.select(**where_kwargs)
+        aliases = await Alias.select(singular=False, **where_kwargs)
+        temporary_rooms = await TemporaryRoom.select(singular=False, **where_kwargs)
         for temporary_room in temporary_rooms:
             dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
             dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
@@ -194,7 +194,7 @@ class TemporaryRoom(DatabaseFactory):
     async def migrate_temporary_room(cls, channel_dict, old_name, snowflake_kwargs):
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         old_room = await TemporaryRoom.select(
-            guild_snowflake=guild_snowflake, room_name=old_name, singular=True
+            guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
         )
         set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
         temp_where_kwargs = {

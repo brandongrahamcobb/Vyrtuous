@@ -58,15 +58,15 @@ async def is_administrator_wrapper(
     member = resolve_author(source=source)
     member_snowflake = member.id
     return await is_administrator(
-        guild_snowflake=source.guild.id,
-        member_snowflake=member_snowflake,
+        guild_snowflake=int(source.guild.id),
+        member_snowflake=int(member_snowflake),
     )
 
 
 async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
     administrator = await Administrator.select(
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
+        guild_snowflake=int(guild_snowflake),
+        member_snowflake=int(member_snowflake),
         singular=True,
     )
     if not administrator:
@@ -135,7 +135,7 @@ class Administrator(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        administrators = await Administrator.select(**where_kwargs)
+        administrators = await Administrator.select(singular=False, **where_kwargs)
         for administrator in administrators:
             dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
             dictionary[administrator.guild_snowflake]["members"].setdefault(
@@ -275,14 +275,14 @@ class AdministratorRole(DatabaseFactory):
         if not administrator_role:
             return
         administrator = await Administrator.select(
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
             singular=True,
         )
         if not administrator:
             administrator = Administrator(
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(member_snowflake),
                 role_snowflake=list(role_snowflake),
             )
             await administrator.create()
@@ -315,8 +315,8 @@ class AdministratorRole(DatabaseFactory):
         if not administrator_role:
             return
         administrator = await Administrator.select(
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
             singular=True,
         )
         if administrator:
@@ -335,7 +335,7 @@ class AdministratorRole(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        administrator_roles = await AdministratorRole.select(**where_kwargs)
+        administrator_roles = await AdministratorRole.select(singular=False, **where_kwargs)
         for administrator_role in administrator_roles:
             dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
             dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
@@ -421,7 +421,7 @@ class AdministratorRole(DatabaseFactory):
                 revoked_members = {}
                 member = guild.get_member(administrator.member_snowflake)
                 await Administrator.delete(
-                    guild_snowflake=guild_snowflake,
+                    guild_snowflake=int(guild_snowflake),
                     member_snowflake=administrator.member_snowflake,
                 )
                 revoked_members.setdefault(
@@ -440,7 +440,7 @@ class AdministratorRole(DatabaseFactory):
             role_snowflakes = [role_dict.get("id", None)]
             for member in role_dict.get("object", None).members:
                 administrator = Administrator(
-                    guild_snowflake=guild_snowflake,
+                    guild_snowflake=int(guild_snowflake),
                     member_snowflake=member.id,
                     role_snowflakes=role_snowflakes,
                 )

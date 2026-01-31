@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
@@ -36,7 +36,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
-class Vegan(DatabaseFactory):
+class Vegan(Alias):
 
     ACT = "vegan"
     CATEGORY = "vegan"
@@ -66,9 +66,9 @@ class Vegan(DatabaseFactory):
         self.updated_at = updated_at
 
     @classmethod
-    async def act_embed(cls, action_information, source, **kwargs):
+    async def act_embed(cls, infraction_information, source, **kwargs):
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
@@ -79,9 +79,9 @@ class Vegan(DatabaseFactory):
         return embed
 
     @classmethod
-    async def undo_embed(cls, action_information, source, **kwargs):
+    async def undo_embed(cls, infraction_information, source, **kwargs):
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
             f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",
@@ -94,7 +94,7 @@ class Vegan(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        vegans = await Vegan.select(**where_kwargs)
+        vegans = await Vegan.select(singular=False, **where_kwargs)
         for vegan in vegans:
             dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
             dictionary[vegan.guild_snowflake]["members"].setdefault(
@@ -170,3 +170,60 @@ class Vegan(DatabaseFactory):
                 )
             Vegan.pages.append(embed)
         return Vegan.pages
+
+    @classmethod
+    async def handle_act_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+
+        vegan = Vegan(
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+        )
+        await vegan.create()
+
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration="",
+            is_channel_scope=False,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason="No reason provied.",
+        )
+
+        embed = await Vegan.act_embed(
+            infraction_information=infraction_information, source=message
+        )
+
+        return await state.end(success=embed)
+    
+
+
+    @classmethod
+    async def handle_undo_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        await Vegan.delete(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+        )
+
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration="",
+            is_channel_scope=False,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason="No reason provided.",
+        )
+
+        embed = await Vegan.undo_embed(
+            infraction_information=infraction_information, source=message
+        )
+
+        return await state.end(success=embed)

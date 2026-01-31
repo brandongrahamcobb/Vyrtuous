@@ -23,7 +23,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.coordinator import coordinator_predicator
 from vyrtuous.db.roles.moderator import Moderator
-from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.fields.snowflake import (
     ChannelSnowflake,
     MemberSnowflake,
@@ -53,9 +53,9 @@ class CoordinatorTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
@@ -82,9 +82,9 @@ class CoordinatorTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         snowflake_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)

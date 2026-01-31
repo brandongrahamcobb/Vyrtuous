@@ -169,8 +169,8 @@ class VideoRoom(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        aliases = await Alias.select(**where_kwargs)
-        video_rooms = await VideoRoom.select(**where_kwargs)
+        aliases = await Alias.select(singular=False, **where_kwargs)
+        video_rooms = await VideoRoom.select(singular=False, **where_kwargs)
         for video_room in video_rooms:
             dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
             dictionary[video_room.guild_snowflake]["channels"].setdefault(

@@ -35,12 +35,12 @@ class GuildEventListeners(commands.Cog):
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         if before.owner_id != after.owner_id:
             where_kwargs = {
-                "guild_snowflake": str(before.id),
-                "member_snowflake": str(before.owner_id),
+                "guild_snowflake": int(before.id),
+                "member_snowflake": before.owner_id,
             }
             set_kwargs = {
-                "guild_snowflake": str(after.id),
-                "member_snowflake": str(after.owner_id),
+                "guild_snowflake": int(after.id),
+                "member_snowflake": after.owner_id,
             }
             await GuildOwner.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
@@ -55,16 +55,16 @@ class GuildEventListeners(commands.Cog):
         removed_roles = before_role_snowflakes - after_role_snowflakes
         snowflake_kwargs = {
             "guild_snowflake": int(guild_snowflake),
-            "member_snowflake": str(before.id),
+            "member_snowflake": int(before.id),
         }
         if added_roles:
             for added_role in added_roles:
-                snowflake_kwargs.update({"role_snowflake": added_role})
+                snowflake_kwargs.update({"role_snowflake": int(added_role)})
                 await AdministratorRole.added_role(snowflake_kwargs=snowflake_kwargs)
                 logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             for removed_role in removed_roles:
-                snowflake_kwargs.update({"role_snowflake": removed_role})
+                snowflake_kwargs.update({"role_snowflake": int(removed_role)})
             await AdministratorRole.removed_role(snowflake_kwargs=snowflake_kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 

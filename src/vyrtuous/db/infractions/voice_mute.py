@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
@@ -38,10 +38,11 @@ from vyrtuous.utils.logger import logger
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
-class VoiceMute(DatabaseFactory):
+class VoiceMute(Alias):
+    
+    category = "vmute"
 
     ACT = "vmute"
-    CATEGORY = "vmute"
     PLURAL = "Voice Mutes"
     SCOPES = ["channel", "member"]
     SINGULAR = "Voice Mute"
@@ -101,11 +102,11 @@ class VoiceMute(DatabaseFactory):
         self._target = target
 
     @classmethod
-    async def act_embed(cls, action_information, source, **kwargs):
+    async def act_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been voice-muted",
@@ -113,8 +114,8 @@ class VoiceMute(DatabaseFactory):
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {action_information['action_duration']}\n"
-                f"**Reason:** {action_information['action_reason']}"
+                f"**Expires:** {infraction_information['infraction_duration']}\n"
+                f"**Reason:** {infraction_information['infraction_reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -122,11 +123,11 @@ class VoiceMute(DatabaseFactory):
         return embed
 
     @classmethod
-    async def undo_embed(cls, action_information, source, **kwargs):
+    async def undo_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s voice-mute has been removed",
@@ -351,3 +352,76 @@ class VoiceMute(DatabaseFactory):
         )
         pages.append(embed)
         return pages
+
+    @classmethod
+    async def handle_act_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        voice_mute = VoiceMute(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            expires_in=infraction_information["infraction_expires_in"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+            reason=infraction_information["infraction_reason"],
+            target="user",
+        )
+        await voice_mute.create()
+        is_channel_scope = False
+        if member.voice and member.voice.channel:
+            if (
+                member.voice.channel.id
+                == infraction_information["infraction_channel_snowflake"]
+            ):
+                is_channel_scope = True
+                try:
+                    await member.edit(
+                        mute=True, reason=infraction_information["infraction_reason"]
+                    )
+                except discord.Forbidden as e:
+                    return await state.end(error=str(e).capitalize())
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration=infraction_information["infraction_duration"],
+            is_channel_scope=is_channel_scope,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason=infraction_information["infraction_reason"],
+        )
+        embed = await VoiceMute.act_embed(
+            infraction_information=infraction_information, source=message
+        )
+        return await state.end(success=embed)
+
+
+    @classmethod
+    async def handle_undo_alias(
+        cls, alias, infraction_information, member, message, state
+    ):
+        await VoiceMute.delete(
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            guild_snowflake=infraction_information["infraction_guild_snowflake"],
+            member_snowflake=infraction_information["infraction_member_snowflake"],
+        )
+        is_channel_scope = False
+        if member.voice and member.voice.channel:
+            try:
+                is_channel_scope = True
+                await member.edit(mute=False)
+            except discord.Forbidden as e:
+                return await state.end(error=str(e).capitalize())
+        await Streaming.send_entry(
+            alias=alias,
+            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            duration="",
+            is_channel_scope=is_channel_scope,
+            is_modification=infraction_information["infraction_modification"],
+            member=member,
+            message=message,
+            reason="No reason provided.",
+        )
+        embed = await VoiceMute.undo_embed(
+            infraction_information=infraction_information, source=message
+        )
+        return await state.end(success=embed)

@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import re
-from typing import Union
+from typing import Any, Union
 
 from discord.ext import commands
 import discord
@@ -31,7 +31,7 @@ from vyrtuous.utils.source import DiscordSourceNotFound
 class DiscordObjectNotFound(commands.CheckFailure):
     "Returns an error if a channel, guild, member or role is not found."
 
-    def __init__(self, message: str, target: str):
+    def __init__(self, target: str, *, message: str | None = None ):
         super().__init__(
             message=message
             or f"Unable to resolve a valid channel, guild, member or role for target (`{target}`)."
@@ -42,7 +42,8 @@ class GuildChannelNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
         super().__init__(
-            message=f"Unable to resolve a valid Discord guild channel with the provided context and target (`{target}`)."
+            message=f"Unable to resolve a valid Discord guild channel with the provided context and target (`{target}`).",
+            target=target
         )
 
 
@@ -50,7 +51,8 @@ class GuildNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
         super().__init__(
-            message=f"Unable to resolve a valid Discord guild with the provided context and target (`{target}`)."
+            message=f"Unable to resolve a valid Discord guild with the provided context and target (`{target}`).",
+            target=target
         )
 
 
@@ -58,7 +60,8 @@ class GuildMemberNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
         super().__init__(
-            message=f"Unable to resolve a valid Discord guild member with the provided context and target (`{target}`)."
+            message=f"Unable to resolve a valid Discord guild member with the provided context and target (`{target}`).",
+            target=target
         )
 
 
@@ -66,30 +69,34 @@ class GuildRoleNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
         super().__init__(
-            message=f"Unable to resolve a valid Discord guild role with the provided context and target (`{target}`)."
+            message=f"Unable to resolve a valid Discord guild role with the provided context and target (`{target}`).",
+            target=target
         )
 
 
 class TargetIsBot(commands.CheckFailure):
     def __init__(
-        self, source: Union[commands.Context, discord.Interaction, discord.Message]
+        self, *, ctx: commands.Context | None = None, interaction: discord.Interaction | None = None, message: discord.Message | None = None
     ):
+        if (ctx is None) == (interaction is None) == (message is None):
+            raise DiscordSourceNotFound()
+        self._source = ctx or interaction or message
         super().__init__(
-            message=f"You cannot execute actions on {source.guild.me.mention}."
+            message=f"You cannot execute actions on {self._source.guild.me.mention}."
         )
 
 
 class DiscordObject:
 
     def __init__(
-        self, *, ctx: commands.Context = None, interaction: discord.Interaction = None
+        self, *, ctx: commands.Context | None = None, interaction: discord.Interaction | None = None, message: discord.Message | None = None
     ):
-        if (ctx is None) == (interaction is None):
+        if (ctx is None) == (interaction is None) == (message is None):
             raise DiscordSourceNotFound()
         self.bot = DiscordBot.get_instance()
-        self._source = ctx or interaction
+        self._source = ctx or interaction or message
 
-    async def determine_from_target(self, target) -> dict:
+    async def determine_from_target(self, target) -> dict[str, Any]:
         if target is None:
             raise TypeError()
         if isinstance(self._source, commands.Context):
@@ -184,12 +191,12 @@ class DiscordObject:
             c = self._source.guild.get_channel(c_id)
             if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                 return c
-        raise GuildChannelNotFound(target=target)
+        raise GuildChannelNotFound(target=str(target))
 
     def resolve_guild(
         self,
         target: Union[int, str],
-    ) -> Union[discord.Guild]:
+    ) -> discord.Guild:
         g_id = None
         if isinstance(target, int):
             g_id = target
@@ -202,7 +209,7 @@ class DiscordObject:
             g = self.bot.get_guild(g_id)
             if isinstance(g, (discord.Guild)):
                 return g
-        raise GuildNotFound(target=target)
+        raise GuildNotFound(target=str(target))
 
     def resolve_member(self, target) -> discord.Member:
         m_id = None
@@ -217,7 +224,7 @@ class DiscordObject:
             m = self._source.guild.get_member(m_id)
             if isinstance(m, discord.Member):
                 return m
-        raise GuildMemberNotFound(target=target)
+        raise GuildMemberNotFound(target=str(target))
 
     def resolve_role(self, target) -> discord.Role:
         r_id = None
@@ -232,4 +239,4 @@ class DiscordObject:
             r = self._source.guild.get_role(r_id)
             if isinstance(r, discord.Role):
                 return r
-        raise GuildRoleNotFound(target=target)
+        raise GuildRoleNotFound(target=str(target))
