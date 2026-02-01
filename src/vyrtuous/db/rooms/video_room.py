@@ -52,7 +52,7 @@ class VideoRoom(DatabaseFactory):
     SINGULAR = "Video Rooms"
     UNDO = "vr"
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "channel_snowflake",
         "guild_snowflake",
     ]
@@ -72,7 +72,6 @@ class VideoRoom(DatabaseFactory):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at

@@ -46,7 +46,7 @@ class Bug(DatabaseFactory):
     SINGULAR = "Bug"
     UNDO = None
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "channel_snowflake",
         "guild_snowflake",
         "id",
@@ -74,7 +74,6 @@ class Bug(DatabaseFactory):
         created_at: datetime = datetime.now(timezone.utc),
         updated_at: datetime = datetime.now(timezone.utc),
     ):
-        super().__init__()
         self.channel_snowflake = channel_snowflake
         self.created_at: datetime = created_at or datetime.now(timezone.utc)
         self.member_snowflakes = member_snowflakes

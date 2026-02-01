@@ -17,15 +17,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-
+from pathlib import Path
+from typing import Dict, Tuple
 
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.fields.duration import DurationObject
-from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -34,22 +32,24 @@ from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
 )
+from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.cogs.aliases import Aliases
 
 
 class Alias(DatabaseFactory):
 
     identifier: str
 
-    ACT = "alias"
+    lines, pages = [], []
+
     PLURAL = "Aliases"
     SINGULAR = "Alias"
     SCOPES = ["channels"]
-    UNDO = "xalias"
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    ARGS_MAP = {}
+
+    REQUIRED_ARGS = [
         "alias_name",
         "category",
         "channel_snowflake",
@@ -65,7 +65,6 @@ class Alias(DatabaseFactory):
     ]
 
     TABLE_NAME = "command_aliases"
-    lines, pages = [], []
 
     def __init__(
         self,
@@ -78,7 +77,6 @@ class Alias(DatabaseFactory):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.bot = DiscordBot.get_instance()
         self.alias_name = alias_name
         self.category = category
@@ -90,108 +88,21 @@ class Alias(DatabaseFactory):
         self.role_mention = f"<@&{role_snowflake}>"
         self.updated_at = updated_at
 
-    def for_category(self) -> type['Alias'] | None:
-        for subclass in self.__class__.__subclasses__():
-            if getattr(subclass, "category", None) == self.category.lower():
-                return subclass
-        return None
-    
-    async def build_existing_information(self, infraction_information, member_snowflake):
-        kwargs = {}
-        cls = self.for_category()
-        if cls is None:
-            raise ValueError(f"No Alias subclass found for category {self.category!r}.")
-        primary_keys = await cls.primary_keys()
-        if "channel_snowflake" in primary_keys:
-            kwargs.update({"channel_snowflake": self.channel_snowflake})
-        if "guild_snowflake" in primary_keys:
-            kwargs.update({"guild_snowflake": self.guild_snowflake})
-        if "member_snowflake" in primary_keys:
-            kwargs.update({"member_snowflake": member_snowflake})
-        infraction_existing = await cls.select(
-            **kwargs,
-            singular=True,
-        )
-        infraction_modification = False
-        if infraction_existing:
-            infraction_modification = True
-        infraction_information.update(
-            {
-                "infraction_existing": infraction_existing,
-                "infraction_modification": infraction_modification,
-                "infraction_role_snowflake": (
-                    self.role_snowflake if self.role_snowflake else None
-                ),
-            }
-        )
-        return infraction_information
+    @classmethod
+    async def execute(cls, information, message, state):
+        for sub in information['alias'].__subclasses__():
+            if sub.identifier == information['category']:
+                obj = await sub.select(**information["snowflake_kwargs"], singular=True)
+                if obj:
+                    await sub.undo(information=information, message=message, state=state)
+                else:
+                    await sub.enforce(information=information, message=message, state=state)
 
-    async def build_duration_information(
-        self, infraction_information, duration, state
-    ):
-        channel = self.bot.get_channel(self.channel_snowflake)
-        cap = await Cap.select(
-            category=self.category,
-            channel_snowflake=str(self.channel_snowflake),
-            guild_snowflake=str(self.guild_snowflake),
-            singular=True,
-        )
-        if not hasattr(cap, "duration"):
-            cap_duration = DurationObject("8h").to_seconds()
-        else:
-            cap_duration = cap.duration_seconds
-        if (
-            duration.to_timedelta().total_seconds() > cap_duration
-            or duration.number == 0
-        ):
-            if infraction_information["executor_role"] == "Moderator":
-                duration_str = DurationObject.from_seconds(cap_duration)
-                return await state.end(
-                    warning=f"Cannot set the "
-                    f"{infraction_information['alias_class'].SINGULAR} beyond {duration_str} as a "
-                    f"{infraction_information['executor_role']} in {channel.mention}."
-                )
-        expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
-        infraction_information.update(
-            {
-                "infraction_cap_duration": cap_duration,
-                "infraction_duration": duration,
-                "infraction_expires_in": expires_in,
-            }
-        )
-        return infraction_information
+    async def undo(self):
+        pass
 
-    async def build_infraction_information(
-        self, author_snowflake, duration, infraction_class, member_snowflake, reason, state
-    ):
-        infraction_information = {}
-        if getattr(self, "role_snowflake"):
-            infraction_information.update(
-                {"infraction_role_snowflake": self.role_snowflake}
-            )
-        infraction_information.update(
-            {
-                "infraction_channel_snowflake": self.channel_snowflake,
-                "infraction_guild_snowflake": self.guild_snowflake,
-                "infraction_member_snowflake": member_snowflake,
-            }
-        )
-        infraction_executor_role = await resolve_highest_role(
-            channel_snowflake=self.channel_snowflake,
-            guild_snowflake=self.guild_snowflake,
-            member_snowflake=author_snowflake,
-        )
-        infraction_information.update({"infraction_executor_role": infraction_executor_role})
-        infraction_information = await self.build_duration_information(
-            infraction_information=infraction_information,
-            duration=duration,
-            state=state,
-        )
-        infraction_information.update({"infraction_reason": reason})
-        infraction_information = await self.build_existing_information(
-            infraction_information=infraction_information, member_snowflake=int(member_snowflake)
-        )
-        return infraction_information
+    async def enforce(self):
+        pass
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
@@ -332,3 +243,16 @@ class Alias(DatabaseFactory):
         alias = Alias(alias_name=alias_name, category=str(category), **where_kwargs)
         await alias.create()
         return msg
+
+        
+    def fill_map(self, args) -> Dict[str, Tuple[int, str]]:
+        map = self.ARGS_MAP
+        sorted_args = sorted(map.items(), key=lambda x: x[1])
+        kwargs = {}
+        for i, (key, pos) in enumerate(sorted_args):
+            if i == len(sorted_args) - 1:
+                value = " ".join(str(a) for a in args[pos - 1:])
+            else:
+                value = str(args[pos - 1])
+            kwargs[key] = (pos, value)
+        return kwargs

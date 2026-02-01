@@ -29,7 +29,7 @@ class DatabaseFactory(object):
     async def create(self):
         bot = DiscordBot.get_instance()
         table_name = getattr(self, "TABLE_NAME")
-        fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+        fields = getattr(self, "REQUIRED_ARGS") + getattr(
             self, "OPTIONAL_ARGS"
         )
         insert_fields = [
@@ -53,7 +53,7 @@ class DatabaseFactory(object):
     @classmethod
     async def delete(cls, **kwargs):
         bot = DiscordBot.get_instance()
-        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+        fields = getattr(cls, "REQUIRED_ARGS") + getattr(
             cls, "OPTIONAL_ARGS"
         )
         table_name = getattr(cls, "TABLE_NAME")
@@ -89,7 +89,7 @@ class DatabaseFactory(object):
     ) -> T | list[T]:
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+        fields = getattr(cls, "REQUIRED_ARGS") + getattr(
             cls, "OPTIONAL_ARGS"
         )
         virtual_filters = {"expired"}
@@ -128,7 +128,7 @@ class DatabaseFactory(object):
     async def update(cls, *, set_kwargs: dict, where_kwargs: dict):
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+        fields = getattr(cls, "REQUIRED_ARGS") + getattr(
             cls, "OPTIONAL_ARGS"
         )
         set_filtered_kwargs = {k: v for k, v in set_kwargs.items() if k in fields}
@@ -177,4 +177,3 @@ class DatabaseFactory(object):
         for row in rows:
             kwargs.append(row["column_name"])
         return kwargs
-        

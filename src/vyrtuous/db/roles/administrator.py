@@ -106,7 +106,7 @@ class Administrator(DatabaseFactory):
     SINGULAR = "Administrator"
     UNDO = None
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "guild_snowflake",
         "member_snowflake",
         "role_snowflakes",
@@ -124,7 +124,6 @@ class Administrator(DatabaseFactory):
         created_at: datetime = datetime.now(timezone.utc),
         updated_at: datetime = datetime.now(timezone.utc),
     ):
-        super().__init__()
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
@@ -238,7 +237,7 @@ class AdministratorRole(DatabaseFactory):
     SINGULAR = "Administrator Role"
     UNDO = "arole"
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "guild_snowflake",
         "role_snowflake",
     ]
@@ -255,7 +254,6 @@ class AdministratorRole(DatabaseFactory):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.role_snowflake = role_snowflake

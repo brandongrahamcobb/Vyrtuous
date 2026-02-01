@@ -61,7 +61,7 @@ class Stage(DatabaseFactory):
     SINGULAR = "Stage"
     UNDO = "stage"
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "channel_snowflake",
         "expires_in",
         "guild_snowflake",
@@ -84,7 +84,6 @@ class Stage(DatabaseFactory):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.expires_in = expires_in

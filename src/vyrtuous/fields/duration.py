@@ -18,10 +18,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timedelta, timezone
 
-
 from discord import app_commands
 from discord.ext import commands
 import discord
+
+from vyrtuous.bot.discord_bot import DiscordBot
+
+class DurationError(commands.CheckFailure):
+ def __init__(self, information):
+        bot = DiscordBot.get_instance()
+        channel = bot.get_channel(information['channel_snowflake'])
+        super().__init__(
+            message=(f"Cannot set the "
+                f"{information["alias"].SINGULAR} beyond {information["duration"]} as a "
+                f"{information['executor_role']} in {channel.mention}."
+            ),
+        )
 
 
 class DurationObject:

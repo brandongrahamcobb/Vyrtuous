@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.aliases.role_alias import RoleAlias
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
@@ -37,17 +37,16 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
-class Role(Alias):
+class Role(RoleAlias):
 
-    category = "role"
+    lines, pages = [], []
 
-    ACT = "role"
     PLURAL = "Roles"
     SCOPES = ["channel", "member"]
     SINGULAR = "Role"
-    UNDO = "unrole"
 
-    REQUIRED_INSTANTIATION_ARGS = [
+
+    REQUIRED_ARGS = [
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
@@ -55,8 +54,6 @@ class Role(Alias):
     ]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
-    TABLE_NAME = "roles"
-    lines, pages = [], []
 
     def __init__(
         self,
@@ -68,7 +65,6 @@ class Role(Alias):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at
@@ -83,10 +79,10 @@ class Role(Alias):
     @classmethod
     async def act_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
-        role = source.guild.get_role(infraction_information["infraction_role_snowflake"])
+        member = source.guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        role = source.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been granted a role",
@@ -104,10 +100,10 @@ class Role(Alias):
     @classmethod
     async def undo_embed(cls, infraction_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
-        role = source.guild.get_role(infraction_information["infraction_role_snowflake"])
+        member = source.guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        role = source.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s role has been revoked",
@@ -291,25 +287,25 @@ class Role(Alias):
         cls, alias, infraction_information, member, message, state
     ):
         added_role = Role(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
-            role_snowflake=infraction_information["infraction_role_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
         )
         await added_role.create()
 
         role = message.guild.get_role(alias.role_snowflake)
         if role:
             await Role.administer_role(
-                guild_snowflake=infraction_information["infraction_guild_snowflake"],
-                member_snowflake=infraction_information["infraction_member_snowflake"],
-                role_snowflake=infraction_information["infraction_role_snowflake"],
+                guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+                member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+                role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
             )
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            duration=infraction_information["infraction_duration"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration=information["duration"],
             is_channel_scope=False,
             is_modification=False,
             member=member,
@@ -329,26 +325,26 @@ class Role(Alias):
         cls, alias, infraction_information, member, message, state
     ):
         await Role.delete(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
-            role_snowflake=infraction_information["infraction_role_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
         )
 
         role = message.guild.get_role(alias.role_snowflake)
         if role:
             await Role.revoke_role(
-                guild_snowflake=infraction_information["infraction_guild_snowflake"],
-                member_snowflake=infraction_information["infraction_member_snowflake"],
-                role_snowflake=infraction_information["infraction_role_snowflake"],
+                guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+                member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+                role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
             )
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration="",
             is_channel_scope=False,
-            is_modification=infraction_information["infraction_modification"],
+            is_modification=information["modification"],
             member=member,
             message=message,
             reason="No reason provided.",

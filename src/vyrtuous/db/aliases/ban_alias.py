@@ -33,23 +33,28 @@ class BanAlias(Alias):
 
     identifier = "ban"
 
-    ACT = "ban"
-    UNDO = "unban"
+    ARGS_MAP = {
+        "alias_name": 1,
+        "member": 2,
+        "duration": 3,
+        "reason": 4
+    }
+
+    TABLE_NAME = "active_bans"
 
     @classmethod
-    async def act_embed(cls, infraction_information, source, **kwargs):
+    async def act_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])"
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been banned",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {infraction_information['infraction_duration']}\n"
-                f"**Reason:** {infraction_information['infraction_reason']}"
+                f"**Expires:** {information['duration']}\n"
+                f"**Reason:** {information['reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -57,16 +62,15 @@ class BanAlias(Alias):
         return embed
 
     @classmethod
-    async def undo_embed(cls, infraction_information, source, **kwargs):
+    async def undo_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])"
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s ban has been removed",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}"
             ),
@@ -76,25 +80,28 @@ class BanAlias(Alias):
         return embed
 
     @classmethod
-    async def enforce(cls, alias, infraction_information, member, message, state):
+    async def enforce(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         ban = Ban(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            expires_in=infraction_information["infraction_expires_in"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
-            reason=infraction_information["infraction_reason"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            expires_in=information["expires_in"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            reason=information["reason"],
         )
         await ban.create()
         is_channel_scope = False
         channel = message.guild.get_channel(
-            infraction_information["infraction_channel_snowflake"]
+            information["snowflake_kwargs"]["channel_snowflake"]
         )
         if channel:
             try:
                 await channel.set_permissions(
                     member,
                     view_channel=False,
-                    reason=infraction_information["infraction_reason"],
+                    reason=information["reason"],
                 )
                 if (
                     member.voice
@@ -103,15 +110,15 @@ class BanAlias(Alias):
                 ):
                     is_channel_scope = True
                     await member.move_to(
-                        None, reason=infraction_information["infraction_reason"]
+                        None, reason=information["reason"]
                     )
                     where_kwargs = {
-                        "channel_snowflake": infraction_information[
-                            "infraction_channel_snowflake"
+                        "channel_snowflake": information["snowflake_kwargs"][
+                            "channel_snowflake"
                         ],
-                        "guild_snowflake": infraction_information["infraction_guild_snowflake"],
-                        "member_snowflake": infraction_information[
-                            "infraction_member_snowflake"
+                        "guild_snowflake": information["snowflake_kwargs"]["guild_snowflake"],
+                        "member_snowflake": information["snowflake_kwargs"][
+                            "member_snowflake"
                         ],
                     }
                     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
@@ -120,32 +127,35 @@ class BanAlias(Alias):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await Streaming.send_entry(
-            alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            duration=infraction_information["infraction_duration"],
+            alias=information['alias'],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration=information["duration"],
             is_channel_scope=is_channel_scope,
-            is_modification=infraction_information["infraction_modification"],
+            is_modification=False,
             member=member,
             message=message,
-            reason=infraction_information["infraction_reason"],
+            reason=information["reason"],
         )
-        embed = await Ban.act_embed(
-            infraction_information=infraction_information, source=message
+        embed = await BanAlias.act_embed(
+            information=information, source=message
         )
         return await state.end(success=embed)
     
 
     @classmethod
     async def undo(
-        cls, alias, infraction_information, member, message, state
+        cls, information, message, state
     ):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         await Ban.delete(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
         channel = message.guild.get_channel(
-            infraction_information["infraction_channel_snowflake"]
+            information["snowflake_kwargs"]["channel_snowflake"]
         )
         if channel:
             try:
@@ -154,16 +164,16 @@ class BanAlias(Alias):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await Streaming.send_entry(
-            alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            alias=information['alias'],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration="",
             is_channel_scope=False,
-            is_modification=infraction_information["infraction_modification"],
+            is_modification=True,
             member=member,
             message=message,
             reason="No reason provided.",
         )
-        embed = await Ban.undo_embed(
-            infraction_information=infraction_information, source=message
+        embed = await BanAlias.undo_embed(
+            information=information, source=message
         )
         return await state.end(success=embed)

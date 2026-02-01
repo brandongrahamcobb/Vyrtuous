@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 import discord
 
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.data import Data
@@ -50,7 +51,7 @@ class Streaming(DatabaseFactory):
     SINGULAR = "Streaming Channel"
     UNDO = None
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "channel_snowflake",
         "enabled",
         "entry_type",
@@ -108,14 +109,14 @@ class Streaming(DatabaseFactory):
     @classmethod
     async def send_entry(
         cls,
-        alias,
+        alias: Alias,
         channel_snowflake: int,
-        duration: str,
-        is_channel_scope: bool,
-        is_modification: bool,
         member: discord.Member,
-        message,
-        reason: str,
+        message: discord.Message,
+        is_channel_scope: bool = False,
+        is_modification: bool = False,
+        reason: str = "No reason provided",
+        duration: str | None = None,
     ):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(channel_snowflake)
@@ -123,9 +124,9 @@ class Streaming(DatabaseFactory):
         expires_at = None
         streaming = await Streaming.select(singular=False)
         highest_role = await resolve_highest_role(
-            channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
-            member_snowflake=member.id,
+            channel_snowflake=int(channel.id),
+            guild_snowflake=int(channel.guild.id),
+            member_snowflake=int(member.id),
         )
         if message:
             for stream in streaming:

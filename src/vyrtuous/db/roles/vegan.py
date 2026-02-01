@@ -45,7 +45,7 @@ class Vegan(Alias):
     SINGULAR = "Vegan"
     UNDO = "vegan"
 
-    REQUIRED_INSTANTIATION_ARGS = ["guild_snowflake", "member_snowflake"]
+    REQUIRED_ARGS = ["guild_snowflake", "member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "vegans"
@@ -59,7 +59,6 @@ class Vegan(Alias):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
@@ -68,7 +67,7 @@ class Vegan(Alias):
     @classmethod
     async def act_embed(cls, infraction_information, source, **kwargs):
         author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
+        member = source.guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
@@ -81,7 +80,7 @@ class Vegan(Alias):
     @classmethod
     async def undo_embed(cls, infraction_information, source, **kwargs):
         author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
+        member = source.guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
             f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",
@@ -177,17 +176,17 @@ class Vegan(Alias):
     ):
 
         vegan = Vegan(
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
         await vegan.create()
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration="",
             is_channel_scope=False,
-            is_modification=infraction_information["infraction_modification"],
+            is_modification=information["modification"],
             member=member,
             message=message,
             reason="No reason provied.",
@@ -206,17 +205,17 @@ class Vegan(Alias):
         cls, alias, infraction_information, member, message, state
     ):
         await Vegan.delete(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration="",
             is_channel_scope=False,
-            is_modification=infraction_information["infraction_modification"],
+            is_modification=information["modification"],
             member=member,
             message=message,
             reason="No reason provided.",

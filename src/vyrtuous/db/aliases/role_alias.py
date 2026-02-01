@@ -32,21 +32,24 @@ class RoleAlias(Alias):
 
     identifier = "role"
 
-    ACT = "role"
-    UNDO = "unrole"
+    ARGS_MAP = {
+        "alias_name": 1,
+        "member": 2
+    }
+
+    TABLE_NAME = "roles"
 
     @classmethod
-    async def act_embed(cls, infraction_information, source, **kwargs):
+    async def act_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
-        role = source.guild.get_role(infraction_information["infraction_role_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        role = guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been granted a role",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Role:** {role.mention}"
@@ -57,17 +60,16 @@ class RoleAlias(Alias):
         return embed
 
     @classmethod
-    async def undo_embed(cls, infraction_information, source, **kwargs):
+    async def undo_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
-        role = source.guild.get_role(infraction_information["infraction_role_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        role = guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s role has been revoked",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Role:** {role.mention}"
@@ -101,37 +103,37 @@ class RoleAlias(Alias):
 
     @classmethod
     async def enforce(
-        cls, alias, infraction_information, member, message, state
+        cls, information, message, state
     ):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         added_role = Role(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
-            role_snowflake=infraction_information["infraction_role_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
         )
         await added_role.create()
 
-        role = message.guild.get_role(alias.role_snowflake)
+        role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         if role:
             await Role.administer_role(
-                guild_snowflake=infraction_information["infraction_guild_snowflake"],
-                member_snowflake=infraction_information["infraction_member_snowflake"],
-                role_snowflake=infraction_information["infraction_role_snowflake"],
+                guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+                member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+                role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
             )
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            duration=infraction_information["infraction_duration"],
-            is_channel_scope=False,
-            is_modification=False,
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration=information["duration"],
             member=member,
             message=message,
-            reason="No reason provided.",
         )
 
-        embed = await Role.act_embed(
-            infraction_information=infraction_information, source=message
+        embed = await RoleAlias.act_embed(
+            information=information, source=message
         )
 
         return await state.end(success=embed)
@@ -139,36 +141,36 @@ class RoleAlias(Alias):
 
     @classmethod
     async def undo(
-        cls, alias, infraction_information, member, message, state
+        cls, information, message, state
     ):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         await Role.delete(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
-            role_snowflake=infraction_information["infraction_role_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
         )
 
-        role = message.guild.get_role(alias.role_snowflake)
+        role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         if role:
             await Role.revoke_role(
-                guild_snowflake=infraction_information["infraction_guild_snowflake"],
-                member_snowflake=infraction_information["infraction_member_snowflake"],
-                role_snowflake=infraction_information["infraction_role_snowflake"],
+                guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+                member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+                role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
             )
 
         await Streaming.send_entry(
-            alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            duration="",
-            is_channel_scope=False,
-            is_modification=infraction_information["infraction_modification"],
+            alias=information["alias"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            is_modification=True,
             member=member,
             message=message,
-            reason="No reason provided.",
         )
 
-        embed = await Role.undo_embed(
-            infraction_information=infraction_information, source=message
+        embed = await RoleAlias.undo_embed(
+            information=information, source=message
         )
 
         return await state.end(success=embed)

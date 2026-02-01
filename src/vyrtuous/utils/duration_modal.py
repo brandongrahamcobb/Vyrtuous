@@ -59,7 +59,7 @@ class DurationModal(discord.ui.Modal):
             infraction_channel_cap = DurationObject("8h").to_seconds()
         expires_in_timedelta = DurationObject(self.duration.value).to_timedelta()
         if (
-            self.infraction_information["infraction_existing"]
+            self.information["existing"]
             and expires_in_timedelta.total_seconds() > infraction_channel_cap
             or duration_obj.number == 0
         ):

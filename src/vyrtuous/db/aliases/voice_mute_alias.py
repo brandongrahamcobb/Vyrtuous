@@ -34,21 +34,29 @@ class VoiceMuteAlias(Alias):
     ACT = "vmute"
     UNDO = "unvmute"
 
+    ARGS_MAP = {
+        "alias_name": 1,
+        "member": 2,
+        "duration": 3,
+        "reason": 4
+    }
+    
+    TABLE_NAME = "active_voice_mutes"
+
     @classmethod
-    async def act_embed(cls, infraction_information, source, **kwargs):
+    async def act_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been voice-muted",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {infraction_information['infraction_duration']}\n"
-                f"**Reason:** {infraction_information['infraction_reason']}"
+                f"**Expires:** {information['infraction_duration']}\n"
+                f"**Reason:** {information['infraction_reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -56,11 +64,11 @@ class VoiceMuteAlias(Alias):
         return embed
 
     @classmethod
-    async def undo_embed(cls, infraction_information, source, **kwargs):
+    async def undo_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(infraction_information["infraction_channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(infraction_information["infraction_member_snowflake"])
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s voice-mute has been removed",
@@ -76,14 +84,17 @@ class VoiceMuteAlias(Alias):
 
     @classmethod
     async def enforce(
-        cls, alias, infraction_information, member, message, state
+        cls, information, message, state
     ):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         voice_mute = VoiceMute(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            expires_in=infraction_information["infraction_expires_in"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
-            reason=infraction_information["infraction_reason"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            expires_in=information["expires_in"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            reason=information["reason"],
             target="user",
         )
         await voice_mute.create()
@@ -91,39 +102,41 @@ class VoiceMuteAlias(Alias):
         if member.voice and member.voice.channel:
             if (
                 member.voice.channel.id
-                == infraction_information["infraction_channel_snowflake"]
+                == information["snowflake_kwargs"]["channel_snowflake"]
             ):
                 is_channel_scope = True
                 try:
                     await member.edit(
-                        mute=True, reason=infraction_information["infraction_reason"]
+                        mute=True, reason=information["reason"]
                     )
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
         await Streaming.send_entry(
-            alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            duration=infraction_information["infraction_duration"],
+            alias=information['alias'],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration=information["duration"],
             is_channel_scope=is_channel_scope,
-            is_modification=infraction_information["infraction_modification"],
             member=member,
             message=message,
-            reason=infraction_information["infraction_reason"],
+            reason=information["reason"],
         )
-        embed = await VoiceMute.act_embed(
-            infraction_information=infraction_information, source=message
+        embed = await VoiceMuteAlias.act_embed(
+            information=information, source=message
         )
         return await state.end(success=embed)
 
 
     @classmethod
     async def undo(
-        cls, alias, infraction_information, member, message, state
+        cls, information, message, state
     ):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         await VoiceMute.delete(
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            guild_snowflake=infraction_information["infraction_guild_snowflake"],
-            member_snowflake=infraction_information["infraction_member_snowflake"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
         is_channel_scope = False
         if member.voice and member.voice.channel:
@@ -133,16 +146,14 @@ class VoiceMuteAlias(Alias):
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
         await Streaming.send_entry(
-            alias=alias,
-            channel_snowflake=infraction_information["infraction_channel_snowflake"],
-            duration="",
+            alias=information['alias'],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_channel_scope=is_channel_scope,
-            is_modification=infraction_information["infraction_modification"],
+            is_modification=True,
             member=member,
             message=message,
-            reason="No reason provided.",
         )
-        embed = await VoiceMute.undo_embed(
-            infraction_information=infraction_information, source=message
+        embed = await VoiceMuteAlias.undo_embed(
+            information=information, source=message
         )
         return await state.end(success=embed)

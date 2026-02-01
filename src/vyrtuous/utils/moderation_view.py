@@ -85,7 +85,7 @@ class ModerationView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.infraction_information["infraction_channel_snowflake"] = channel.id
+        self.information["snowflake_kwargs"]["channel_snowflake"] = channel.id
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -116,9 +116,9 @@ class ModerationView(discord.ui.View):
             member_snowflake=self.member_snowflake,
             singular=True,
         )
-        self.infraction_information["infraction_executor_role"] = executor_role
-        self.infraction_information["infraction_member_snowflake"] = self.member_snowflake
-        self.infraction_information["infraction_existing"] = infraction_existing
+        self.information["executor_role"] = executor_role
+        self.information["snowflake_kwargs"]["member_snowflake"] = self.member_snowflake
+        self.information["existing"] = infraction_existing
         if hasattr(infraction_existing, "expires_in"):
             if DurationObject.from_expires_in_to_str(infraction_existing.expires_in) == 0:
                 await interaction.response.send_message(

@@ -45,7 +45,7 @@ class Cap(DatabaseFactory):
     SINGULAR = "Cap"
     UNDO = None
 
-    REQUIRED_INSTANTIATION_ARGS = [
+    REQUIRED_ARGS = [
         "category",
         "channel_snowflake",
         "duration_seconds",

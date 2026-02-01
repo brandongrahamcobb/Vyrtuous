@@ -88,7 +88,7 @@ class GuildOwner(DatabaseFactory):
     SINGULAR = "Guild Owner"
     UNDO = None
 
-    REQUIRED_INSTANTIATION_ARGS = ["guild_snowflake", "member_snowflake"]
+    REQUIRED_ARGS = ["guild_snowflake", "member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "guild_owners"
@@ -101,7 +101,6 @@ class GuildOwner(DatabaseFactory):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake

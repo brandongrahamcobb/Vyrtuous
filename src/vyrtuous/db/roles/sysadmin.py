@@ -70,7 +70,7 @@ class Sysadmin(DatabaseFactory):
     SINGULAR = "Sysadmin"
     UNDO = None
 
-    REQUIRED_INSTANTIATION_ARGS = ["member_snowflake"]
+    REQUIRED_ARGS = ["member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "sysadmin"
@@ -82,7 +82,6 @@ class Sysadmin(DatabaseFactory):
         updated_at: datetime = datetime.now(timezone.utc),
         **kwargs,
     ):
-        super().__init__()
         self.created_at = created_at
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None

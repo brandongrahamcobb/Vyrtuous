@@ -22,9 +22,11 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.infractions.ban import Ban
 from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
+from vyrtuous.utils.alias_information import AliasInformation
 
 from vyrtuous.utils.logger import logger
 from vyrtuous.service.state_service import StateService
@@ -51,39 +53,18 @@ class GenericEventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         try:
-            args = (
-                message.content[len(self.config["discord_command_prefix"]) :]
-                .strip()
-                .split()
-            )
             if not message.guild:
-                return
-            if not args:
-                return
-            if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             if self.config["release_mode"] and message.author.id == self.bot.user.id:
                 return
-            await TextMute.text_mute_overwrite(message=message)
-            alias = await Alias.select(
-                alias_name=args[0],
-                guild_snowflake=message.guild.id,
-                singular=True,
-            )
-            if not alias:
+            await Ban.ban_overwrite(channel=message.channel, member=message.author)
+            await TextMute.text_mute_overwrite(channel=message.channel, member=message.author)
+            if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             state = StateService(message=message)
-            member_obj = message.guild.get_member(int(args[1]))
-            member_snowflake = member_obj.id
-            infraction_information = await alias.build_infraction_information(
-                author_snowflake=message.author.id,
-                duration=(
-                    DurationObject(args[2]) if len(args) > 2 else DurationObject("8h")
-                ),
-                member_snowflake=int(member_snowflake),
-                reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
-                state=state,
-            )
+            information = await AliasInformation.build(message=message)
+            await Alias.execute(information=information, state=state)
+            
             if infraction := infraction_information.get("infraction_existing", None):
                 await infraction.delete(**kwargs)
                 await infraction.handle_undo_alias(
