@@ -19,20 +19,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.db.infractions.server_mute import ServerMute
+from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.check import has_equal_or_lower_role
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
     clean_dictionary,
     flush_page,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_members,
+    generate_skipped_set_pages,
 )
-from vyrtuous.utils.check import (
-    has_equal_or_lower_role,
-)
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.db.infractions.server_mute import ServerMute
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class ServerMuteService:
@@ -75,10 +73,10 @@ class ServerMuteService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {ServerMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Server Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await ServerMute.build_dictionary(
+        dictionary = await ServerMuteService.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 

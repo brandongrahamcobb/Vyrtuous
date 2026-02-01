@@ -21,16 +21,16 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationObject
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
     clean_dictionary,
     flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
 )
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class CapService:
@@ -76,7 +76,7 @@ class CapService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Cap.PLURAL}"
+        title = f"{get_random_emoji()} Caps"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await CapService.build_clean_dictionary(

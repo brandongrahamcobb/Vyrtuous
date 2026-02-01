@@ -17,8 +17,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
-from contextlib import asynccontextmanager
 import threading
+from contextlib import asynccontextmanager
 
 from vyrtuous.tests.integration.mock_discord_channel import MockChannel
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild

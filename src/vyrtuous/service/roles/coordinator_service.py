@@ -17,28 +17,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.roles.administrator_service import is_administrator_wrapper
 from vyrtuous.db.roles.coordinator import Coordinator
-
+from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.service.roles.administrator_service import is_administrator_wrapper
 from vyrtuous.service.roles.developer_service import is_developer_wrapper
 from vyrtuous.service.roles.guild_owner_service import is_guild_owner_wrapper
 from vyrtuous.service.roles.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
     clean_dictionary,
     flush_page,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_members,
+    generate_skipped_set_pages,
 )
+from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 @skip_db_discovery
@@ -148,7 +147,7 @@ class CoordinatorService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await CoordinatorService.build_clean_dictionary(

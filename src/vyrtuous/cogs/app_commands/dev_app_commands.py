@@ -21,23 +21,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Literal, Optional
 from uuid import UUID
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
-from vyrtuous.service.roles.developer_service import developer_predicator
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
+from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.mgmt.bug_service import BugService
+from vyrtuous.service.roles.developer_service import developer_predicator
+from vyrtuous.service.state_service import StateService
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
-from vyrtuous.service.discord_object_service import (
-    DiscordObject,
-)
-from vyrtuous.utils.emojis import get_random_emoji
 
 
 class DevAppCommands(commands.Cog):
@@ -152,10 +151,10 @@ class DevAppCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
             where_kwargs = object_dict.get("columns", None)
-        pages = await Bug.build_pages(
+        pages = await BugService.build_pages(
             filter=filter, where_kwargs=where_kwargs, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Bugs", pages=pages, state=state)
 
     @app_commands.command(
         name="load", description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"

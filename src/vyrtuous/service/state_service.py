@@ -16,24 +16,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
 import asyncio
-
 import uuid
+from datetime import datetime, timezone
 
+import discord
 from cachetools import TTLCache
 from discord.ext import commands
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.bug import Bug
 from vyrtuous.db.roles.developer import Developer
 from vyrtuous.service.message_service import MessageService, PaginatorService
-from vyrtuous.utils.logger import logger
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.time_to_complete import TimeToComplete
 from vyrtuous.utils.author import resolve_author
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.logger import logger
 from vyrtuous.utils.source import DiscordSourceNotFound
+from vyrtuous.utils.time_to_complete import TimeToComplete
 
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
 

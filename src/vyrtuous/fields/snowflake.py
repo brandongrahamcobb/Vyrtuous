@@ -18,9 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import re
 
-from discord.ext import commands
-from discord import app_commands
 import discord
+from discord import app_commands
+from discord.ext import commands
 
 
 class Snowflake:

@@ -41,18 +41,18 @@ class Stream(DatabaseFactory):
         enabled: bool,
         entry_type: str,
         guild_snowflake: int,
-        created_at: datetime | None = datetime.now(timezone.utc),
+        created_at: datetime | None = None,
         snowflakes: list[int | None] = list[None],
-        updated_at: datetime | None = datetime.now(timezone.utc),
+        updated_at: datetime | None = None,
     ):
         self._action: str
         self.channel_snowflake = channel_snowflake
-        self.created_at = created_at
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.enabled = enabled
         self.entry_type = entry_type
         self.guild_snowflake = guild_snowflake
         self.snowflakes = snowflakes
-        self.updated_at = updated_at
+        self.updated_at = updated_at or datetime.now(timezone.utc)
 
     @property
     def action(self):
@@ -60,7 +60,7 @@ class Stream(DatabaseFactory):
 
     @action.setter
     def action(self, action: str):
-        if action not in Stream.ACTION_TYPES:
+        if action not in ("create", "modify", "delete"):
             raise ValueError("Invalid action.")
         self._action = action
 
@@ -70,6 +70,6 @@ class Stream(DatabaseFactory):
 
     @entry_type.setter
     def entry_type(self, entry_type: str):
-        if entry_type not in Stream.ENTRY_TYPES:
+        if entry_type not in ("all", "channel"):
             raise ValueError("Invalid entry type.")
         self._entry_type = entry_type

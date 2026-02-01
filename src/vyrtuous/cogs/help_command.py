@@ -16,21 +16,21 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from collections import defaultdict
 import inspect
+from collections import defaultdict
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.inc.helpers import PERMISSION_TYPES
+from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.roles.moderator_service import moderator_predicator
+from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.logger import logger
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
-from vyrtuous.inc.helpers import PERMISSION_TYPES
 
 
 def skip_help_discovery():

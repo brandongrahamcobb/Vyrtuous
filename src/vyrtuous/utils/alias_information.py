@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.cap import Cap
+from vyrtuous.fields.duration import DurationError, DurationObject
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.fields.duration import DurationObject, DurationError
 from vyrtuous.utils.highest_role import resolve_highest_role
 
 
@@ -25,6 +25,8 @@ class AliasInformation:
             guild_snowflake=message.guild.id,
             singular=True,
         )
+        if not alias:
+            return
         AliasInformation.information["alias"] = alias
         AliasInformation.information["snowflake_kwargs"] = {
             "channel_snowflake": int(alias.channel_snowflake),

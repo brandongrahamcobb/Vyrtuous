@@ -18,45 +18,37 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
-from vyrtuous.utils.permission_check import PermissionCheck
-from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.infractions.server_mute import ServerMute
-from vyrtuous.db.roles.administrator import (
-    AdministratorRole,
-)
-from vyrtuous.service.roles.administrator_service import administrator_predicator
-from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.rooms.stage import Stage
-from vyrtuous.db.rooms.temporary_room import TemporaryRoom
-from vyrtuous.db.rooms.video_room import VideoRoom
-from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.db.mgmt.stream import Stream
-from vyrtuous.inc.helpers import PATH_LOG
-from vyrtuous.fields.duration import Duration, DurationObject
+from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.fields.category import Category
-from vyrtuous.fields.snowflake import (
-    ChannelSnowflake,
-    MemberSnowflake,
-    RoleSnowflake,
+from vyrtuous.fields.duration import Duration, DurationObject
+from vyrtuous.fields.snowflake import ChannelSnowflake, MemberSnowflake, RoleSnowflake
+from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.infractions.server_mute_service import ServerMuteService
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.cap_service import CapService
+from vyrtuous.service.mgmt.stream_service import StreamService
+from vyrtuous.service.roles.administrator_service import (
+    AdministratorRoleService,
+    administrator_predicator,
 )
+from vyrtuous.service.roles.coordinator_service import CoordinatorService
+from vyrtuous.service.rooms.stage_service import StageService
+from vyrtuous.service.rooms.temporary_room_service import TemporaryRoomService
+from vyrtuous.service.rooms.video_room_service import VideoRoomService
+from vyrtuous.service.state_service import StateService
+from vyrtuous.utils.cancel_confirm import VerifyView
+from vyrtuous.utils.check import check
+from vyrtuous.utils.clear import Clear
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
-from vyrtuous.service.discord_object_service import (
-    DiscordObject,
-)
-from vyrtuous.utils.cancel_confirm import VerifyView
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.clear import Clear
-from vyrtuous.utils.check import (
-    check,
-)
+from vyrtuous.utils.permission_check import PermissionCheck
 
 
 class AdminTextCommands(commands.Cog):
@@ -91,7 +83,7 @@ class AdminTextCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         if category == "role":
             role_dict = await do.determine_from_target(target=role)
-        msg = await Alias.create_alias(
+        msg = await AliasService.create_alias(
             alias_name=alias_name,
             category=category,
             channel_dict=channel_dict,
@@ -114,11 +106,11 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await AdministratorRole.build_pages(
+        pages = await AdministratorRoleService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(
-            plural=AdministratorRole.PLURAL, pages=pages, state=state
+            plural="Administrator Roles", pages=pages, state=state
         )
 
     @commands.command(name="cap", help="Cap alias duration for mods.")
@@ -139,7 +131,7 @@ class AdminTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
-        msg = await Cap.toggle_cap(
+        msg = await CapService.toggle_cap(
             category=category, channel_dict=channel_dict, hours=hours
         )
         return await state.end(success=msg)
@@ -158,8 +150,10 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Cap.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Cap.PLURAL, pages=pages, state=state)
+        pages = await CapService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(plural="Caps", pages=pages, state=state)
 
     @commands.command(name="clear", help="Reset database.")
     @administrator_predicator()
@@ -225,7 +219,7 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        msg = await Coordinator.toggle_coordinator(
+        msg = await CoordinatorService.toggle_coordinator(
             channel_dict=channel_dict,
             member_dict=member_dict,
             snowflake_kwargs=snowflake_kwargs,
@@ -378,7 +372,7 @@ class AdminTextCommands(commands.Cog):
         }
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
-        msg = await ServerMute.toggle_server_mute(
+        msg = await ServerMuteService.toggle_server_mute(
             member_dict=member_dict, reason=reason, snowflake_kwargs=snowflake_kwargs
         )
         return await state.end(success=msg)
@@ -396,12 +390,10 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await ServerMute.build_pages(
+        pages = await ServerMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            plural=ServerMute.PLURAL, pages=pages, state=state
-        )
+        await StateService.send_pages(plural="Server Mutes", pages=pages, state=state)
 
     @commands.command(name="stage", help="Start/stop stage")
     @administrator_predicator()
@@ -427,12 +419,12 @@ class AdminTextCommands(commands.Cog):
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = await Stage.toggle_stage(
+        pages = await StageService.toggle_stage(
             channel_dict=channel_dict,
             duration=duration,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Stage", pages=pages, state=state)
 
     @commands.command(name="stages", help="List stages.")
     @administrator_predicator()
@@ -448,8 +440,10 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
+        pages = await StageService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(plural="Stages", pages=pages, state=state)
 
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
@@ -466,7 +460,9 @@ class AdminTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
-        msg = await TemporaryRoom.toggle_temporary_room(channel_dict=channel_dict)
+        msg = await TemporaryRoomService.toggle_temporary_room(
+            channel_dict=channel_dict
+        )
         return await state.end(success=msg)
 
     @commands.command(
@@ -486,11 +482,11 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await TemporaryRoom.build_pages(
+        pages = await TemporaryRoomService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(
-            plural=TemporaryRoom.PLURAL, pages=pages, state=state
+            plural="Temporary Rooms", pages=pages, state=state
         )
 
     @commands.command(name="stream", help="Setup streaming.")
@@ -524,7 +520,7 @@ class AdminTextCommands(commands.Cog):
                 except Exception:
                     failed_snowflakes.append(snowflake)
                     continue
-        pages = await Stream.modify_stream(
+        pages = await StreamService.modify_stream(
             action=action,
             channel_dict=channel_dict,
             channel_mentions=channel_mentions,
@@ -533,7 +529,7 @@ class AdminTextCommands(commands.Cog):
             resolved_channels=resolved_channels,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural=Stream.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Stream", pages=pages, state=state)
 
     @commands.command(name="streams", help="List streaming routes.")
     @administrator_predicator()
@@ -550,8 +546,12 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Stream.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Stream.PLURAL, pages=pages, state=state)
+        pages = await StreamService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(
+            plural="Streaming Routes", pages=pages, state=state
+        )
 
     @commands.command(name="vr", help="Start/stop video-only room.")
     @administrator_predicator()
@@ -566,7 +566,7 @@ class AdminTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
-        msg = await VideoRoom.toggle_video_room(channel_dict=channel_dict)
+        msg = await VideoRoomService.toggle_video_room(channel_dict=channel_dict)
         return await state.end(success=msg)
 
     @commands.command(
@@ -587,10 +587,10 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await VideoRoom.build_pages(
+        pages = await VideoRoomService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=VideoRoom.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Video Rooms", pages=pages, state=state)
 
     @commands.command(name="xalias", help="Delete alias.")
     @administrator_predicator()
@@ -605,7 +605,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        msg = await Alias.delete_alias(
+        msg = await AliasService.delete_alias(
             alias_name=alias_name, snowflake_kwargs=snowflake_kwargs
         )
         return await state.end(success=msg)

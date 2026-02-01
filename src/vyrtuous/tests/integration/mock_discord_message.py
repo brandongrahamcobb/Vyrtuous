@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
+
 import discord
 
 from vyrtuous.tests.integration.mock_discord_member import MockMember

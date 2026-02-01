@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import TypeVar, Type, overload, Literal
+from typing import Literal, Type, TypeVar, overload
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.logger import logger

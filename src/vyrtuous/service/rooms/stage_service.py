@@ -22,32 +22,27 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.fields.duration import DurationObject
 from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    clean_dictionary,
-    flush_page,
-)
-from vyrtuous.utils.check import (
-    check,
-)
 from vyrtuous.db.rooms.stage import Stage
-from vyrtuous.utils.logger import logger
+from vyrtuous.fields.duration import DurationObject
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.roles.administrator_service import is_administrator
 from vyrtuous.service.roles.coordinator_service import is_coordinator
 from vyrtuous.service.roles.developer_service import is_developer
 from vyrtuous.service.roles.guild_owner_service import is_guild_owner
-from vyrtuous.db.roles.moderator import (
-    is_moderator,
-)
+from vyrtuous.service.roles.moderator_service import is_moderator
 from vyrtuous.service.roles.sysadmin_service import is_sysadmin
-from vyrtuous.utils.check import has_equal_or_lower_role
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.check import check, has_equal_or_lower_role
+from vyrtuous.utils.dictionary import (
+    clean_dictionary,
+    flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
+)
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.logger import logger
 
 
 class StageService:
@@ -95,14 +90,14 @@ class StageService:
         )
         if is_at_home:
             if skipped_guilds:
-                Stage.pages.extend(
+                StageService.pages.extend(
                     generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_channels:
-                Stage.pages.extend(
+                StageService.pages.extend(
                     generate_skipped_dict_pages(
                         skipped=skipped_channels,
                         title="Skipped Channels in Server",
@@ -130,27 +125,27 @@ class StageService:
                 "channels"
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                Stage.lines.append(
+                StageService.lines.append(
                     f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
                 )
                 field_count += 1
                 if field_count == CHUNK_SIZE:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(Stage.lines),
+                        value="\n".join(StageService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, Stage.pages, title, guild.name)
-                    Stage.lines = []
+                    embed = flush_page(embed, StageService.pages, title, guild.name)
+                    StageService.lines = []
                     field_count = 0
-                if Stage.lines:
+                if StageService.lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(Stage.lines),
+                        value="\n".join(StageService.lines),
                         inline=False,
                     )
-            Stage.pages.append(embed)
-        return Stage.pages
+            StageService.pages.append(embed)
+        return StageService.pages
 
     @classmethod
     async def toggle_stage(cls, channel_dict, duration, snowflake_kwargs):

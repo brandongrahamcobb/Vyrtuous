@@ -94,7 +94,6 @@ CHECK (category IN (
 
 COMMIT;
 
-ALTER TABLE vegans
 DROP CONSTRAINT vegans_pkey,
 DROP COLUMN channel_snowflake,
 ADD PRIMARY KEY (guild_snowflake, member_snowflake);
@@ -142,8 +141,6 @@ CREATE TABLE roles (
 
 
 
-INSERT INTO active_bans (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, updated_at)
-VALUES (1222056499959042108, NOW(), NULL, 801609515391778826, 910422339810914334, 'Stalking', NOW());
 DELETE FROM command_aliases WHERE category = 'unban';
 DELETE FROM command_aliases WHERE category = 'unvmute';
 DELETE FROM command_aliases WHERE category = 'unflag';

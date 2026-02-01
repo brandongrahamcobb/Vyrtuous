@@ -16,20 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.bug import Bug
-from vyrtuous.db.roles.developer import Developer
-from vyrtuous.service.roles.sysadmin_service import sysadmin_predicator
-from vyrtuous.fields.snowflake import (
-    AppMemberSnowflake,
-)
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
+from vyrtuous.fields.snowflake import AppMemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.mgmt.bug_service import BugService
+from vyrtuous.service.roles.developer_service import DeveloperService
+from vyrtuous.service.roles.sysadmin_service import sysadmin_predicator
+from vyrtuous.service.state_service import StateService
 
 
 class SysadminAppCommands(commands.Cog):
@@ -53,7 +51,7 @@ class SysadminAppCommands(commands.Cog):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         member_dict = await do.determine_from_target(target=member)
-        embed = await Bug.assign_bug_to_developer(
+        embed = await BugService.assign_bug_to_developer(
             reference=reference, member_dict=member_dict
         )
         return await state.end(success=embed)
@@ -72,7 +70,7 @@ class SysadminAppCommands(commands.Cog):
         }
         do = DiscordObject(interaction=interaction)
         member_dict = await do.determine_from_target(target=member)
-        msg = await Developer.toggle_developer(
+        msg = await DeveloperService.toggle_developer(
             member_dict=member_dict, snowflake_kwargs=snowflake_kwargs
         )
         return await state.end(success=msg)

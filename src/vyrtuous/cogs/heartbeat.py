@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from discord.ext import tasks, commands
+from discord.ext import commands, tasks
+
 from vyrtuous.bot.discord_bot import DiscordBot
 
 

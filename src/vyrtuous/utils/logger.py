@@ -16,10 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 from os import makedirs
 from os.path import dirname, exists
 from typing import Any, Dict
-import logging
 
 global logger
 logger = logging.getLogger(__name__)

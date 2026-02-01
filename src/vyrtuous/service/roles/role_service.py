@@ -19,20 +19,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.roles.role import Role
 from vyrtuous.db.mgmt.stream import Stream
+from vyrtuous.db.roles.role import Role
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
     clean_dictionary,
     flush_page,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_members,
+    generate_skipped_set_pages,
 )
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.logger import logger
 
 
 class RoleService:
@@ -196,7 +196,7 @@ class RoleService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Role.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Role {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await Role.build_cleaned_dictionary(

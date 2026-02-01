@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from os.path import dirname, abspath, expanduser, join
+from os.path import abspath, dirname, expanduser, join
 
 #### DEVELOPMENT
 RELEASE_MODE = False

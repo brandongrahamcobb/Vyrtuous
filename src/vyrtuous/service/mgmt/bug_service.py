@@ -19,19 +19,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.mgmt.bug import Bug
 from vyrtuous.db.roles.developer import Developer
-from vyrtuous.utils.logger import logger
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_messages,
     clean_dictionary,
     flush_page,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_messages,
+    generate_skipped_set_pages,
 )
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.db.mgmt import Bug
+from vyrtuous.utils.logger import logger
 
 
 class BugService:

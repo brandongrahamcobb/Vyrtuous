@@ -17,17 +17,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+
 import asyncpg
 import pytest
 import pytest_asyncio
-from discord.ext.commands import Context, view as cmd_view
 from discord import Interaction
+from discord.ext.commands import Context
+from discord.ext.commands import view as cmd_view
 
-from vyrtuous.config import Config
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.tests.integration.mock_discord_bot import MockBot
+from vyrtuous.config import Config
 from vyrtuous.tests.integration.mock_database import dsn
-
+from vyrtuous.tests.integration.mock_discord_bot import MockBot
 
 NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE = 10000000000000002
 

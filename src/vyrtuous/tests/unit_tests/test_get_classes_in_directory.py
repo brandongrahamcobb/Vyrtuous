@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 
-
 from vyrtuous.inc.helpers import DIR_BASE
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 

@@ -18,16 +18,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
+from vyrtuous.inc.helpers import PERMISSION_TYPES
 from vyrtuous.service.roles.administrator_service import is_administrator
 from vyrtuous.service.roles.coordinator_service import is_coordinator
 from vyrtuous.service.roles.developer_service import is_developer
 from vyrtuous.service.roles.guild_owner_service import is_guild_owner
 from vyrtuous.service.roles.moderator_service import is_moderator
 from vyrtuous.service.roles.sysadmin_service import is_sysadmin
-from vyrtuous.inc.helpers import PERMISSION_TYPES
 from vyrtuous.utils.highest_role import resolve_highest_role
 
 

@@ -18,21 +18,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.roles.coordinator_service import coordinator_predicator
-from vyrtuous.db.roles.moderator import Moderator
-from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.fields.snowflake import (
-    AppChannelSnowflake,
-    AppMemberSnowflake,
-)
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
+from vyrtuous.fields.snowflake import AppChannelSnowflake, AppMemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.roles.coordinator_service import coordinator_predicator
+from vyrtuous.service.roles.moderator_service import ModeratorService
+from vyrtuous.service.state_service import StateService
 
 
 class CoordinatorAppCommands(commands.Cog):
@@ -62,7 +59,7 @@ class CoordinatorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        msg = await Moderator.toggle_moderator(
+        msg = await ModeratorService.toggle_moderator(
             channel_dict=channel_dict,
             member_dict=member_dict,
             snowflake_kwargs=snowflake_kwargs,
@@ -86,13 +83,13 @@ class CoordinatorAppCommands(commands.Cog):
         }
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMute.room_mute(
+        pages = VoiceMuteService.room_mute(
             channel_dict=channel_dict,
             guild_snowflake=interaction.guild.id,
             reason=reason,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Voice Mutes", pages=pages, state=state)
 
     @app_commands.command(name="xrmute", description="Unmute all.")
     @app_commands.describe(channel="Tag a channel or include its ID.")
@@ -103,10 +100,10 @@ class CoordinatorAppCommands(commands.Cog):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMute.room_unmute(
+        pages = VoiceMuteService.room_unmute(
             channel_dict=channel_dict, guild_snowflake=interaction.guild.id
         )
-        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Voice Unmutes", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

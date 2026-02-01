@@ -18,32 +18,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-import time
 
 import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.infractions.ban import Ban
 from vyrtuous.db.infractions.flag import Flag
 from vyrtuous.db.infractions.server_mute import ServerMute
 from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.db.infractions.voice_mute import VoiceMute
+from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.mgmt.cap import Cap
+from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.db.roles.coordinator import Coordinator
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
-from vyrtuous.db.rooms.video_room import VideoRoom
-from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.fields.duration import DurationObject
-
-from vyrtuous.utils.logger import logger
+from vyrtuous.service.infractions.ban_service import BanService
+from vyrtuous.service.rooms.video_room_service import VideoRoomService
 from vyrtuous.utils.invincibility import Invincibility
+from vyrtuous.utils.logger import logger
 
 
 class ChannelEventListeners(commands.Cog):
@@ -55,9 +55,9 @@ class ChannelEventListeners(commands.Cog):
         self._ready_done = False
         self.deleted_rooms = {}
 
-    async def cog_load(self):
-        VideoRoom.video_rooms = await VideoRoom.select()
-        self.flags = await Flag.select()
+    # async def cog_load(self):
+    #     VideoRoom.video_rooms = await VideoRoom.select()
+    #     self.flags = await Flag.select()
 
     @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
@@ -124,8 +124,10 @@ class ChannelEventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
-        await VideoRoom.reinforce_video_room(member=member, before=before, after=after)
-        await Ban.ban_overwrites(member=member, after=after)
+        await VideoRoomService.reinforce_video_room(
+            member=member, before=before, after=after
+        )
+        await BanService.ban_overwrites(member=member, after=after)
         # member_role = await role_check_with_specifics(after.channel, member)
 
         target = "user"
@@ -202,7 +204,6 @@ class ChannelEventListeners(commands.Cog):
                         channel_snowflake=after.channel.id,
                         duration=str(duration),
                         is_channel_scope=True,
-                        is_modification=False,
                         member=member,
                         message=None,
                         reason="Right-click voice-mute.",
@@ -229,7 +230,6 @@ class ChannelEventListeners(commands.Cog):
                         channel_snowflake=after.channel.id,
                         duration=str(duration),
                         is_channel_scope=True,
-                        is_modification=False,
                         member=member,
                         message=None,
                         reason="Right-click voice-mute.",

@@ -19,15 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.bug import Bug
-from vyrtuous.db.roles.developer import Developer
-from vyrtuous.service.roles.sysadmin_service import sysadmin_predicator
-from vyrtuous.fields.snowflake import (
-    MemberSnowflake,
-)
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
+from vyrtuous.fields.snowflake import MemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.mgmt.bug_service import BugService
+from vyrtuous.service.roles.developer_service import DeveloperService
+from vyrtuous.service.roles.sysadmin_service import sysadmin_predicator
+from vyrtuous.service.state_service import StateService
 
 
 class SysadminTextCommands(commands.Cog):
@@ -51,7 +49,7 @@ class SysadminTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
-        embed = await Bug.assign_bug_to_developer(
+        embed = await BugService.assign_bug_to_developer(
             reference=reference, member_dict=member_dict
         )
         return await state.end(success=embed)
@@ -73,7 +71,7 @@ class SysadminTextCommands(commands.Cog):
         }
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
-        msg = await Developer.toggle_developer(
+        msg = await DeveloperService.toggle_developer(
             member_dict=member_dict, snowflake_kwargs=snowflake_kwargs
         )
         return await state.end(success=msg)

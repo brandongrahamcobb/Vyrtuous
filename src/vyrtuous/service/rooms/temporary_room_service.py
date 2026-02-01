@@ -19,27 +19,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    clean_dictionary,
-    flush_page,
-)
 from vyrtuous.db.infractions.ban import Ban
+from vyrtuous.db.infractions.flag import Flag
+from vyrtuous.db.infractions.text_mute import TextMute
+from vyrtuous.db.infractions.voice_mute import VoiceMute
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.infractions.flag import Flag
 from vyrtuous.db.roles.moderator import Moderator
-from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.db.roles.vegan import Vegan
-from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.rooms.stage import Stage
-from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
+from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.dictionary import (
+    clean_dictionary,
+    flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
+)
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class TemporaryRoomService:
@@ -95,7 +95,7 @@ class TemporaryRoomService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {TemporaryRoom.PLURAL}"
+        title = f"{get_random_emoji()} Temporary Rooms"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await TemporaryRoomService.build_clean_dictionary(
@@ -155,6 +155,8 @@ class TemporaryRoomService:
         old_room = await TemporaryRoom.select(
             guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
         )
+        if not old_room:
+            return f"No temporary room found with the name {old_name}."
         set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
         temp_where_kwargs = {
             "channel_snowflake": old_room.channel_snowflake,

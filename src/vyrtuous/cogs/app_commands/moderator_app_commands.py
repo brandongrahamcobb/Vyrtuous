@@ -18,43 +18,40 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pathlib import Path
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.infractions.ban import Ban
-from vyrtuous.db.infractions.flag import Flag
-from vyrtuous.db.infractions.text_mute import TextMute
-from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.db.roles.administrator import Administrator
-from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.roles.developer import Developer
-from vyrtuous.db.roles.moderator import (
-    Moderator,
-)
-from vyrtuous.service.roles.moderator_service import moderator_predicator
-from vyrtuous.db.roles.vegan import Vegan
-from vyrtuous.db.rooms.stage import Stage
-from vyrtuous.db.rooms.temporary_room import TemporaryRoom
-from vyrtuous.fields.snowflake import AppMessageSnowflake
 from vyrtuous.fields.snowflake import (
     AppChannelSnowflake,
     AppMemberSnowflake,
+    AppMessageSnowflake,
 )
-from vyrtuous.utils.home import at_home
-from vyrtuous.utils.check import (
-    has_equal_or_lower_role_wrapper,
-    HasEqualOrLowerRole,
-)
-from vyrtuous.utils.moderation_view import ModerationView
-from vyrtuous.utils.duration_modal import DurationModal
-from vyrtuous.utils.reason_modal import ReasonModal
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.infractions.ban_service import BanService
+from vyrtuous.service.infractions.flag_service import FlagService
+from vyrtuous.service.infractions.text_mute_service import TextMuteService
+from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.roles.administrator_service import AdministratorService
+from vyrtuous.service.roles.coordinator_service import CoordinatorService
+from vyrtuous.service.roles.developer_service import DeveloperService
+from vyrtuous.service.roles.moderator_service import (
+    ModeratorService,
+    moderator_predicator,
+)
+from vyrtuous.service.roles.vegan_service import VeganService
+from vyrtuous.service.rooms.stage_service import StageService
+from vyrtuous.service.rooms.temporary_room_service import TemporaryRoomService
+from vyrtuous.service.state_service import StateService
+from vyrtuous.utils.check import HasEqualOrLowerRole, has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
+from vyrtuous.utils.duration_modal import DurationModal
+from vyrtuous.utils.home import at_home
+from vyrtuous.utils.moderation_view import ModerationView
+from vyrtuous.utils.reason_modal import ReasonModal
 
 
 class ModeratorAppCommands(commands.Cog):
@@ -76,12 +73,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Administrator.build_pages(
+        pages = await AdministratorService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            plural=Administrator.PLURAL, pages=pages, state=state
-        )
+        await StateService.send_pages(plural="Administrators", pages=pages, state=state)
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -95,8 +90,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Ban.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
+        pages = await BanService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(plural="Bans", pages=pages, state=state)
 
     @app_commands.command(name="cmds", description="List aliases.")
     @app_commands.describe(
@@ -110,8 +107,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Alias.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Alias.PLURAL, pages=pages, state=state)
+        pages = await AliasService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(plural="Aliases", pages=pages, state=state)
 
     @app_commands.command(name="coords", description="Lists coords.")
     @app_commands.describe(
@@ -125,12 +124,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Coordinator.build_pages(
+        pages = await CoordinatorService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            plural=Coordinator.PLURAL, pages=pages, state=state
-        )
+        await StateService.send_pages(plural="Coordinators", pages=pages, state=state)
 
     @app_commands.command(name="del", description="Delete message.")
     @app_commands.describe(message="Message ID")
@@ -158,8 +155,8 @@ class ModeratorAppCommands(commands.Cog):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Developer.build_pages(object_dict=object_dict)
-        await StateService.send_pages(plural=Developer.PLURAL, pages=pages, state=state)
+        pages = await DeveloperService.build_pages(object_dict=object_dict)
+        await StateService.send_pages(plural="Developer", pages=pages, state=state)
 
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="The ID or mention of the member.")
@@ -197,8 +194,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Flag.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Flag.PLURAL, pages=pages, state=state)
+        pages = await FlagService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(plural="Flags", pages=pages, state=state)
 
     @app_commands.command(name="ls", description="List new vegans.")
     @app_commands.describe(
@@ -212,8 +211,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Vegan.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
+        pages = await VeganService.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(plural="Vegans", pages=pages, state=state)
 
     @app_commands.command(
         name="migrate", description="Migrate a temporary room to a new channel."
@@ -236,7 +237,7 @@ class ModeratorAppCommands(commands.Cog):
         }
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
-        await TemporaryRoom.migrate_temporary_room(
+        await TemporaryRoomService.migrate_temporary_room(
             channel_dict=channel_dict,
             old_name=old_name,
             snowflake_kwargs=snowflake_kwargs,
@@ -257,10 +258,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Moderator.build_pages(
+        pages = await ModeratorService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=Moderator.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Moderators", pages=pages, state=state)
 
     @app_commands.command(name="mutes", description="List mutes.")
     @moderator_predicator()
@@ -271,10 +272,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await VoiceMute.build_pages(
+        pages = await VoiceMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Voice Mutes", pages=pages, state=state)
 
     @app_commands.command(name="mstage", description="Stage mute/unmute.")
     @app_commands.describe(member="Tag a member or include their ID")
@@ -294,7 +295,7 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        msg = await Stage.toggle_stage_mute(
+        msg = await StageService.toggle_stage_mute(
             channel_dict=channel_dict,
             member_dict=member_dict,
             snowflake_kwargs=snowflake_kwargs,
@@ -377,10 +378,10 @@ class ModeratorAppCommands(commands.Cog):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = await Stage.survey(
+        pages = await StageService.survey(
             channel_dict=channel_dict, guild_snowflake=interaction.guild.id
         )
-        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Stage Roles", pages=pages, state=state)
 
     @app_commands.command(name="tmutes", description="List text-mutes.")
     @app_commands.describe(
@@ -394,10 +395,10 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        pages = await TextMute.build_pages(
+        pages = await TextMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=TextMute.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Text Mutes", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

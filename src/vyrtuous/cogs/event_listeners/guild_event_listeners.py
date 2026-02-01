@@ -22,7 +22,6 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.administrator import AdministratorRole
 from vyrtuous.db.roles.guild_owner import GuildOwner
-
 from vyrtuous.utils.logger import logger
 
 

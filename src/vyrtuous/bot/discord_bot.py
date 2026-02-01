@@ -18,9 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from discord.ext import commands
 import asyncpg
 import discord
+from discord.ext import commands
 
 from vyrtuous.inc.helpers import DISCORD_COGS
 from vyrtuous.utils.logger import logger

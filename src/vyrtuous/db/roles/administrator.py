@@ -48,7 +48,7 @@ class Administrator(DatabaseFactory):
 class AdministratorRole(DatabaseFactory):
 
     __tablename__ = "administrator_roles"
-    guild_snowlfake: int
+    guild_snowflake: int
     role_snowflake: int
     created_at: datetime
     updated_at: datetime
@@ -60,7 +60,7 @@ class AdministratorRole(DatabaseFactory):
         created_at: datetime | None = None,
         updated_at: datetime | None = None,
     ):
-        self.created_at = (created_at or datetime.now(timezone.utc),)
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.guild_snowflake = guild_snowflake
         self.role_snowflake = role_snowflake
-        self.updated_at = (updated_at or datetime.now(timezone.utc),)
+        self.updated_at = updated_at or datetime.now(timezone.utc)

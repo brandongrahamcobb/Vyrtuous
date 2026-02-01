@@ -18,14 +18,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timedelta, timezone
 
-from discord.ext import commands, tasks
 import discord
+from discord.ext import commands, tasks
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.database import Database
 from vyrtuous.db.infractions.ban import Ban
 from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
 from vyrtuous.db.roles.developer import Developer
 from vyrtuous.db.roles.guild_owner import GuildOwner

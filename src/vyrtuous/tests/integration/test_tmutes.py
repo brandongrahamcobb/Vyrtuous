@@ -20,7 +20,6 @@ from typing import Optional
 
 import pytest
 
-
 from vyrtuous.tests.integration.conftest import context
 from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 

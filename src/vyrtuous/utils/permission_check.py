@@ -1,16 +1,16 @@
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.inc.helpers import CHUNK_SIZE, TARGET_PERMISSIONS
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
     clean_dictionary,
     flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
 )
-from vyrtuous.inc.helpers import TARGET_PERMISSIONS, CHUNK_SIZE
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class PermissionCheck:

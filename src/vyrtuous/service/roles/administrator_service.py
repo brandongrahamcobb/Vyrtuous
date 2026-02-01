@@ -18,29 +18,28 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.administrator import Administrator, AdministratorRole
-
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.roles.developer_service import is_developer_wrapper
 from vyrtuous.service.roles.guild_owner_service import is_guild_owner_wrapper
 from vyrtuous.service.roles.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.dictionary import (
+    clean_dictionary,
+    flush_page,
     generate_skipped_dict_pages,
-    generate_skipped_set_pages,
     generate_skipped_guilds,
     generate_skipped_members,
     generate_skipped_roles,
-    clean_dictionary,
-    flush_page,
+    generate_skipped_set_pages,
 )
+from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.logger import logger
 
 
 @skip_db_discovery
@@ -142,7 +141,7 @@ class AdministratorService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Administrators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await AdministratorService.build_clean_dictionary(
@@ -315,7 +314,7 @@ class AdministratorRoleService:
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         dictionary = {}
-        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
+        title = f"{get_random_emoji()} Administrator Roles"
         where_kwargs = object_dict.get("columns", None)
 
         dictionary = await AdministratorRoleService.build_clean_dictionary(

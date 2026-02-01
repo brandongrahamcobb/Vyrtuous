@@ -20,23 +20,23 @@ from datetime import datetime, timezone
 
 import discord
 
-from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.data import Data
+from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.stream import Stream
-from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.fields.duration import DurationObject
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.message_service import PaginatorService
-from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.data import Data
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
     clean_dictionary,
     flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
 )
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.highest_role import resolve_highest_role
 
 
 class StreamService:
@@ -288,7 +288,7 @@ class StreamService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Stream.PLURAL}"
+        title = f"{get_random_emoji()} Streaming Routes"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await StreamService.build_clean_dictionary(

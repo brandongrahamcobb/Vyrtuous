@@ -16,22 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import discord
 from discord import app_commands
 from discord.ext import commands
-import discord
 
-from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.roles.administrator import AdministratorRole
-from vyrtuous.service.roles.guild_owner_service import guild_owner_predicator
-from vyrtuous.fields.snowflake import (
-    AppMemberSnowflake,
-    AppRoleSnowflake,
-)
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
+from vyrtuous.cogs.help_command import skip_help_discovery
+from vyrtuous.fields.snowflake import AppMemberSnowflake, AppRoleSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
-
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.roles.administrator_service import AdministratorRoleService
+from vyrtuous.service.roles.guild_owner_service import guild_owner_predicator
+from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.invincibility import Invincibility
 
 
@@ -55,11 +51,11 @@ class GuildOwnerAppCommands(commands.Cog):
         }
         do = DiscordObject(interaction=interaction)
         role_dict = await do.determine_from_target(target=role)
-        pages = await AdministratorRole.toggle_administrator_role(
+        pages = await AdministratorRoleService.toggle_administrator_role(
             role_dict=role_dict, snowflake_kwargs=snowflake_kwargs
         )
         await StateService.send_pages(
-            plural=AdministratorRole.PLURAL, pages=pages, state=state
+            plural="Administrator Role", pages=pages, state=state
         )
 
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")

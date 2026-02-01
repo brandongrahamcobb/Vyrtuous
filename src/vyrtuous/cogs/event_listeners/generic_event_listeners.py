@@ -21,13 +21,12 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.infractions.ban import Ban
-from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
-from vyrtuous.utils.alias_information import AliasInformation
-
-from vyrtuous.utils.logger import logger
+from vyrtuous.service.infractions.ban_service import BanService
+from vyrtuous.service.infractions.text_mute_service import TextMuteService
 from vyrtuous.service.state_service import StateService
+from vyrtuous.utils.alias_information import AliasInformation
+from vyrtuous.utils.logger import logger
 
 
 class GenericEventListeners(commands.Cog):
@@ -57,14 +56,16 @@ class GenericEventListeners(commands.Cog):
                 and message.author.id == self.bot.user.id
             ):
                 return
-            await Ban.ban_overwrite(channel=message.channel, member=message.author)
-            await TextMute.text_mute_overwrite(
+            await BanService.ban_overwrite(
+                channel=message.channel, member=message.author
+            )
+            await TextMuteService.text_mute_overwrite(
                 channel=message.channel, member=message.author
             )
             if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             state = StateService(message=message)
-            information = AliasInformation.build(message=message)
+            information = await AliasInformation.build(message=message)
             if information:
                 information["alias"].service.executre(
                     information=information, message=message, state=state

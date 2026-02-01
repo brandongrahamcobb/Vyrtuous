@@ -214,11 +214,8 @@ async def generate_skipped_messages(dictionary: dict) -> dict:
 
 def flush_page(embed, pages, title, guild_name):
     pages.append(embed)
-    return (
-        discord.Embed(
-            title=title,
-            description=f"{guild_name} continued...",
-            color=discord.Color.blue(),
-        ),
-        0,
+    return discord.Embed(
+        title=title,
+        description=f"{guild_name} continued...",
+        color=discord.Color.blue(),
     )

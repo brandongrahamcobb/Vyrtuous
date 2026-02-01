@@ -16,26 +16,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
-
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 import discord
 
-from vyrtuous.db.rooms.video_room import VideoRoom
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.utils.logger import logger
-from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.db.rooms.video_room import VideoRoom
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
     clean_dictionary,
     flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
 )
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.logger import logger
 
 
 class VideoRoomService:
@@ -180,7 +179,7 @@ class VideoRoomService:
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {VideoRoom.PLURAL}"
+        title = f"{get_random_emoji()} Video Rooms"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await VideoRoomService.build_clean_dictionary(

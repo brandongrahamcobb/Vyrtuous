@@ -18,9 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from unittest.mock import AsyncMock, Mock
 
-from discord.ext import commands
 import asyncpg
 import discord
+from discord.ext import commands
 
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import DISCORD_COGS

@@ -18,16 +18,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.roles.developer import Developer
+from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.roles.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.db.roles.developer import Developer
 
 
 @skip_db_discovery
@@ -91,7 +91,7 @@ class DeveloperService:
     @classmethod
     async def build_pages(cls, object_dict, **kwargs):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), (discord.Guild, discord.Member)) else ''}"
+        title = f"{get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), (discord.Guild, discord.Member)) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await DeveloperService.build_clean_dictionary(
@@ -147,6 +147,7 @@ class DeveloperService:
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
         where_kwargs = member_dict.get("columns", None)
+        del where_kwargs['guild_snowflake']
         developer = await Developer.select(singular=True, **where_kwargs)
         if developer:
             await Developer.delete(**where_kwargs)

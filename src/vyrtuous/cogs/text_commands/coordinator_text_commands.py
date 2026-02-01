@@ -21,16 +21,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.roles.coordinator_service import coordinator_predicator
-from vyrtuous.db.roles.moderator import Moderator
-from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.fields.snowflake import (
-    ChannelSnowflake,
-    MemberSnowflake,
-)
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
+from vyrtuous.fields.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
+from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.roles.coordinator_service import coordinator_predicator
+from vyrtuous.service.roles.moderator_service import ModeratorService
+from vyrtuous.service.state_service import StateService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -60,7 +57,7 @@ class CoordinatorTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        msg = await Moderator.toggle_moderator(
+        msg = await ModeratorService.toggle_moderator(
             channel_dict=channel_dict,
             member_dict=member_dict,
             snowflake_kwargs=snowflake_kwargs,
@@ -88,13 +85,13 @@ class CoordinatorTextCommands(commands.Cog):
         }
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMute.room_mute(
+        pages = VoiceMuteService.room_mute(
             channel_dict=channel_dict,
             guild_snowflake=ctx.guild.id,
             reason=reason,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Room Mutes", pages=pages, state=state)
 
     @commands.command(name="xrmute", help="Unmute all.")
     @coordinator_predicator()
@@ -108,10 +105,10 @@ class CoordinatorTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMute.room_unmute(
+        pages = VoiceMuteService.room_unmute(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id
         )
-        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural="Room Unmutes", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):
