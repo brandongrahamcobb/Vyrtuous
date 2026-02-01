@@ -106,7 +106,7 @@ class StreamService:
             infraction_type=alias.category,
             channel_members_voice_count=channel_members_voice_count,
             channel_snowflake=int(channel.id),
-            executor_member_snowflake=int(message.author.id),
+            executor_member_snowflake=int(message.author.id) if message else None,
             expires_at=expires_at,
             guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count,
             guild_members_online_count=guild_members_online_count,

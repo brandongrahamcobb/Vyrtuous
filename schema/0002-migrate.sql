@@ -156,7 +156,8 @@ CREATE TABLE temporary_rooms (
     PRIMARY KEY (channel_snowflake, guild_snowflake, room_name)
 );
 UPDATE active_bans SET reset = TRUE WHERE guild_snowflake = '801609515391778826' AND channel_snowflake = '1222056499959042108';
-
+ALTER TABLE moderation_logs
+RENAME COLUMN action_type TO infraction_type;
 
 
 

@@ -34,7 +34,7 @@ from vyrtuous.db.infractions.text_mute import TextMute
 from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.db.mgmt.stream import Stream
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.db.roles.coordinator import Coordinator
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.rooms.stage import Stage
@@ -114,21 +114,16 @@ class ChannelEventListeners(commands.Cog):
         before: discord.VoiceState,
         after: discord.VoiceState,
     ):
-        if member.id == self.bot.user.id:
+        if member.bot:
             return
-        allowed = True
+        await BanService.ban_overwrite(channel=after.channel, member=member)
         if before.channel == after.channel:
             if before.mute == after.mute:
                 if before.self_mute == after.self_mute:
-                    allowed = False
-        if member.bot:
-            allowed = False
-        if not allowed:
-            return
+                    return
         await VideoRoomService.reinforce_video_room(
             member=member, before=before, after=after
         )
-        await BanService.ban_overwrites(member=member, after=after)
         # member_role = await role_check_with_specifics(after.channel, member)
 
         target = "user"
@@ -200,10 +195,10 @@ class ChannelEventListeners(commands.Cog):
                     should_be_muted = True
                     alias = SimpleNamespace(category="voice_mute")
                     duration = DurationObject("1h")
-                    await Stream.send_entry(
+                    await StreamService.send_entry(
                         alias=alias,
                         channel_snowflake=after.channel.id,
-                        duration=str(duration),
+                        duration=duration,
                         is_channel_scope=True,
                         member=member,
                         message=None,
@@ -226,10 +221,10 @@ class ChannelEventListeners(commands.Cog):
                     should_be_muted = False
                     alias = SimpleNamespace(category="unvmute")
                     duration = DurationObject("0")
-                    await Stream.send_entry(
+                    await StreamService.send_entry(
                         alias=alias,
                         channel_snowflake=after.channel.id,
-                        duration=str(duration),
+                        duration=duration,
                         is_channel_scope=True,
                         member=member,
                         message=None,

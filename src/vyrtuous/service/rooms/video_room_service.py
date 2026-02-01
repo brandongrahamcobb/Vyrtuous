@@ -102,7 +102,7 @@ class VideoRoomService:
                     if after.channel.permissions_for(
                         after.channel.guild.me
                     ).send_messages:
-                        await VideoRoom.enforce_video_message(
+                        await VideoRoomService.enforce_video_message(
                             channel_snowflake=after.channel.id,
                             member_snowflake=member.id,
                             message=f"{get_random_emoji()} "
@@ -121,9 +121,9 @@ class VideoRoomService:
                     VideoRoomService.video_tasks[key] = task
                 break
             if before.self_video and not after.self_video:
-                VideoRoom.cancel_task(key)
+                VideoRoomService.cancel_task(key)
                 task = asyncio.create_task(
-                    VideoRoom.enforce_video(member, after.channel, 60)
+                    VideoRoomService.enforce_video(member, after.channel, 60)
                 )
                 VideoRoomService.video_tasks[key] = task
                 break
