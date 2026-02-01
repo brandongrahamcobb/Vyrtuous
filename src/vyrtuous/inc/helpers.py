@@ -27,7 +27,6 @@ DIR_HOME = expanduser("~")
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    "vyrtuous.cogs.aliases",
     "vyrtuous.cogs.app_commands.admin_app_commands",
     "vyrtuous.cogs.app_commands.coordinator_app_commands",
     "vyrtuous.cogs.app_commands.dev_app_commands",
@@ -50,7 +49,6 @@ DISCORD_COGS = [
 DISCORD_COGS_CLASSES = [
     "AdminAppCommands",
     "AdminTextCommands",
-    "Aliases",
     "ChannelEventListeners",
     "CoordinatorAppCommands",
     "CoordinatorTextCommands",

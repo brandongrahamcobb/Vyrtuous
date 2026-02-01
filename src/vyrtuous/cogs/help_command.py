@@ -44,7 +44,6 @@ def skip_help_discovery():
 class HelpCommand(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
-        self.aliases_cog = bot.get_cog("Aliases")
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
@@ -69,7 +68,7 @@ class HelpCommand(commands.Cog):
             for alias in aliases:
                 grouped[alias.category].append(alias.alias_name)
             for category, alias_names in grouped.items():
-                help_lines = self.aliases_cog.alias_help.get(category, None)
+                help_lines = Alias.alias_help.get(category, None)
                 if not help_lines:
                     continue
                 for alias_name in alias_names:
@@ -178,11 +177,11 @@ class HelpCommand(commands.Cog):
                 grouped[alias.category].append(alias)
             perm_alias_map = defaultdict(list)
             for category, alias_list in grouped.items():
-                perm_level = self.aliases_cog.category_to_permission_level.get(
+                perm_level = Alias.category_to_permission_level.get(
                     category, "Everyone"
                 )
                 for a in alias_list:
-                    help_lines = self.aliases_cog.alias_help.get(category, [])
+                    help_lines = Alias.alias_help.get(category, [])
                     perm_alias_map[perm_level].append(
                         f"**{self.config['discord_command_prefix']}{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
@@ -246,7 +245,7 @@ class HelpCommand(commands.Cog):
                         )
                         return await state.end(success=embed)
                 alias = obj
-                help_lines = self.aliases_cog.alias_help.get(alias.category, None)
+                help_lines = Alias.alias_help.get(alias.category, None)
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
@@ -283,13 +282,11 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = self.aliases_cog.category_to_description.get(
+                short_desc = Alias.category_to_description.get(
                     alias.category, "No description"
                 )
-                perm_level_for_alias = (
-                    self.aliases_cog.category_to_permission_level.get(
-                        alias.category, "Everyone"
-                    )
+                perm_level_for_alias = Alias.category_to_permission_level.get(
+                    alias.category, "Everyone"
                 )
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
@@ -386,7 +383,7 @@ class HelpCommand(commands.Cog):
                         return await state.end(success=embed)
             if kind == "alias":
                 alias = obj
-                help_lines = self.aliases_cog.alias_help.get(alias.category, None)
+                help_lines = Alias.alias_help.get(alias.category, None)
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
@@ -422,13 +419,11 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = self.aliases_cog.category_to_description.get(
+                short_desc = Alias.category_to_description.get(
                     alias.category, "No description"
                 )
-                perm_level_for_alias = (
-                    self.aliases_cog.category_to_permission_level.get(
-                        alias.category, "Everyone"
-                    )
+                perm_level_for_alias = Alias.category_to_permission_level.get(
+                    alias.category, "Everyone"
                 )
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"

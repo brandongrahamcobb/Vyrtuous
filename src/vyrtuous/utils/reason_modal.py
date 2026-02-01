@@ -22,13 +22,16 @@ import discord
 class ReasonModal(discord.ui.Modal):
 
     def __init__(self, infraction_information):
-        super().__init__(title=f'{infraction_information["alias_class"].SINGULAR} Reason')
+        super().__init__(
+            title=f'{infraction_information["alias_class"].SINGULAR} Reason'
+        )
         self.infraction_information = infraction_information
         self.reason = discord.ui.TextInput(
             label="Type the reason",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=self.infraction_information.get("infraction_existing", None).reason or "",
+            default=self.infraction_information.get("infraction_existing", None).reason
+            or "",
         )
         self.add_item(self.reason)
 

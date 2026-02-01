@@ -27,7 +27,9 @@ from vyrtuous.fields.duration import DurationObject
 class DurationModal(discord.ui.Modal):
 
     def __init__(self, infraction_information):
-        super().__init__(title=f'{infraction_information["alias_class"].SINGULAR} Reason')
+        super().__init__(
+            title=f'{infraction_information["alias_class"].SINGULAR} Reason'
+        )
         self.infraction_information = infraction_information
         self.duration = discord.ui.TextInput(
             label="Type the duration",
@@ -63,7 +65,10 @@ class DurationModal(discord.ui.Modal):
             and expires_in_timedelta.total_seconds() > infraction_channel_cap
             or duration_obj.number == 0
         ):
-            if self.infraction_information.get("infraction_executor_role", None) == "Moderator":
+            if (
+                self.infraction_information.get("infraction_executor_role", None)
+                == "Moderator"
+            ):
                 duration_str = DurationObject.from_seconds(infraction_channel_cap)
                 await interaction.response.send_message(
                     content=f"Cannot set the "

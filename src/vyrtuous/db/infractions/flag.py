@@ -22,7 +22,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.aliases.flag_alias import FlagAlias
-from vyrtuous.utils.author import resolve_author
+from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
@@ -164,3 +164,63 @@ class Flag(FlagAlias):
                 )
             Flag.pages.append(embed)
         return Flag.pages
+
+    @classmethod
+    async def enforce(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        flag = Flag(
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            reason=information["reason"],
+        )
+        await flag.create()
+        bot = DiscordBot.get_instance()
+        cog = bot.get_cog("ChannelEventListeners")
+        cog.flags.append(flag)
+        await Streaming.send_entry(
+            alias=information["alias"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration=information["duration"],
+            is_channel_scope=False,
+            is_modification=information["modification"],
+            member=member,
+            message=message,
+            reason=information["reason"],
+        )
+        embed = await FlagAlias.act_embed(information=information, source=message)
+        return await state.end(success=embed)
+
+    @classmethod
+    async def undo(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        await Flag.delete(
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+        )
+        bot = DiscordBot.get_instance()
+        cog = bot.get_cog("ChannelEventListeners")
+        for flag in cog.flags:
+            if (
+                flag.channel_snowflake
+                == information["snowflake_kwargs"]["channel_snowflake"]
+            ):
+                cog.flags.remove(flag)
+                break
+        await Streaming.send_entry(
+            alias=information["alias"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration="",
+            is_channel_scope=False,
+            is_modification=True,
+            member=member,
+            message=message,
+            reason="No reason provided.",
+        )
+        embed = await FlagAlias.undo_embed(information=information, source=message)
+        return await state.end(success=embed)

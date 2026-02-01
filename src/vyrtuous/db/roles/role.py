@@ -23,6 +23,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.aliases.role_alias import RoleAlias
+from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
@@ -45,7 +46,6 @@ class Role(RoleAlias):
     SCOPES = ["channel", "member"]
     SINGULAR = "Role"
 
-
     REQUIRED_ARGS = [
         "channel_snowflake",
         "guild_snowflake",
@@ -53,7 +53,6 @@ class Role(RoleAlias):
         "role_snowflake",
     ]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
-
 
     def __init__(
         self,
@@ -77,11 +76,13 @@ class Role(RoleAlias):
         self.updated_at = updated_at
 
     @classmethod
-    async def act_embed(cls, infraction_information, source, **kwargs):
+    async def act_embed(cls, information, source, **kwargs):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        member = source.guild.get_member(
+            information["snowflake_kwargs"]["member_snowflake"]
+        )
         role = source.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
@@ -98,11 +99,13 @@ class Role(RoleAlias):
         return embed
 
     @classmethod
-    async def undo_embed(cls, infraction_information, source, **kwargs):
+    async def undo_embed(cls, information, source, **kwargs):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         author = resolve_author(source=source)
-        member = source.guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        member = source.guild.get_member(
+            information["snowflake_kwargs"]["member_snowflake"]
+        )
         role = source.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
@@ -281,11 +284,11 @@ class Role(RoleAlias):
             Role.pages.append(embed)
         return Role.pages
 
-
     @classmethod
-    async def handle_act_alias(
-        cls, alias, infraction_information, member, message, state
-    ):
+    async def enforce(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         added_role = Role(
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
@@ -294,7 +297,7 @@ class Role(RoleAlias):
         )
         await added_role.create()
 
-        role = message.guild.get_role(alias.role_snowflake)
+        role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         if role:
             await Role.administer_role(
                 guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
@@ -303,27 +306,22 @@ class Role(RoleAlias):
             )
 
         await Streaming.send_entry(
-            alias=alias,
+            alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
-            is_channel_scope=False,
-            is_modification=False,
             member=member,
             message=message,
-            reason="No reason provided.",
         )
 
-        embed = await Role.act_embed(
-            infraction_information=infraction_information, source=message
-        )
+        embed = await RoleAlias.act_embed(information=information, source=message)
 
         return await state.end(success=embed)
-    
 
     @classmethod
-    async def handle_undo_alias(
-        cls, alias, infraction_information, member, message, state
-    ):
+    async def undo(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         await Role.delete(
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
@@ -331,7 +329,7 @@ class Role(RoleAlias):
             role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
         )
 
-        role = message.guild.get_role(alias.role_snowflake)
+        role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         if role:
             await Role.revoke_role(
                 guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
@@ -340,18 +338,13 @@ class Role(RoleAlias):
             )
 
         await Streaming.send_entry(
-            alias=alias,
+            alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration="",
-            is_channel_scope=False,
-            is_modification=information["modification"],
+            is_modification=True,
             member=member,
             message=message,
-            reason="No reason provided.",
         )
 
-        embed = await Role.undo_embed(
-            infraction_information=infraction_information, source=message
-        )
+        embed = await RoleAlias.undo_embed(information=information, source=message)
 
         return await state.end(success=embed)

@@ -18,11 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.db.infractions.flag import Flag
-from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -30,11 +27,7 @@ class FlagAlias(Alias):
 
     identifier = "flag"
 
-    ARGS_MAP = {
-        "alias_name": 1,
-        "member": 2,
-        "reason": 3
-    }
+    ARGS_MAP = {"alias_name": 1, "member": 2, "reason": 3}
 
     TABLE_NAME = "active_flags"
 
@@ -49,7 +42,7 @@ class FlagAlias(Alias):
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Reason:** {infraction_information['infraction_reason']}"
+                f"**Reason:** {information['infraction_reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -66,76 +59,9 @@ class FlagAlias(Alias):
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s flag has been removed",
             description=(
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
+                f"**User:** {member.mention}\n" f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
-
-    @classmethod
-    async def enforce(
-        cls, information, message, state
-    ):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        flag = Flag(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-            reason=information["reason"],
-        )
-        await flag.create()
-        bot = DiscordBot.get_instance()
-        cog = bot.get_cog("ChannelEventListeners")
-        cog.flags.append(flag)
-        await Streaming.send_entry(
-            alias=information['alias'],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=information["duration"],
-            is_channel_scope=False,
-            is_modification=information["modification"],
-            member=member,
-            message=message,
-            reason=information["reason"],
-        )
-        embed = await FlagAlias.act_embed(
-            information=information, source=message
-        )
-        return await state.end(success=embed)
-
-
-    @classmethod
-    async def undo(
-        cls, information, message, state
-    ):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await Flag.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-        )
-        bot = DiscordBot.get_instance()
-        cog = bot.get_cog("ChannelEventListeners")
-        for flag in cog.flags:
-            if flag.channel_snowflake == information["snowflake_kwargs"]["channel_snowflake"]:
-                cog.flags.remove(flag)
-                break
-        await Streaming.send_entry(
-            alias=information['alias'],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration="",
-            is_channel_scope=False,
-            is_modification=True,
-            member=member,
-            message=message,
-            reason="No reason provided.",
-        )
-        embed = await FlagAlias.undo_embed(
-            information=information, source=message
-        )
-        return await state.end(success=embed)

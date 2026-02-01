@@ -87,16 +87,62 @@ class Alias(DatabaseFactory):
         self.role_snowflake = role_snowflake
         self.role_mention = f"<@&{role_snowflake}>"
         self.updated_at = updated_at
+        self.alias_help = {
+            "ban": [
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for ban",
+            ],
+            "flag": [
+                "**member**: Tag a member or include their ID",
+                "**reason**: Reason for flag",
+            ],
+            "role": [
+                "**member**: Tag a member or include their ID",
+                "**role**: Tag a role or include its ID",
+            ],
+            "tmute": [
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for text-mute",
+            ],
+            "vegan": ["**member**: Tag a member or include their ID"],
+            "vmute": [
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for voice-mute",
+            ],
+        }
+        self.category_to_description = {
+            "ban": "Toggles a ban.",
+            "flag": "Toggles a moderation flag.",
+            "role": "Toggles a role to a user.",
+            "tmute": "Toggles a mute in text channels.",
+            "vegan": "Toggles a vegan.",
+            "vmute": "Toggles a mute in voice channels.",
+        }
+        self.category_to_permission_level = {
+            "ban": "Moderator",
+            "flag": "Moderator",
+            "role": "Coordinator",
+            "tmute": "Moderator",
+            "vegan": "Moderator",
+            "vmute": "Moderator",
+        }
 
     @classmethod
     async def execute(cls, information, message, state):
-        for sub in information['alias'].__subclasses__():
-            if sub.identifier == information['category']:
+        for sub in information["alias"].__subclasses__():
+            if sub.identifier == information["category"]:
                 obj = await sub.select(**information["snowflake_kwargs"], singular=True)
                 if obj:
-                    await sub.undo(information=information, message=message, state=state)
+                    await sub.undo(
+                        information=information, message=message, state=state
+                    )
                 else:
-                    await sub.enforce(information=information, message=message, state=state)
+                    await sub.enforce(
+                        information=information, message=message, state=state
+                    )
 
     async def undo(self):
         pass
@@ -244,14 +290,13 @@ class Alias(DatabaseFactory):
         await alias.create()
         return msg
 
-        
     def fill_map(self, args) -> Dict[str, Tuple[int, str]]:
         map = self.ARGS_MAP
         sorted_args = sorted(map.items(), key=lambda x: x[1])
         kwargs = {}
         for i, (key, pos) in enumerate(sorted_args):
             if i == len(sorted_args) - 1:
-                value = " ".join(str(a) for a in args[pos - 1:])
+                value = " ".join(str(a) for a in args[pos - 1 :])
             else:
                 value = str(args[pos - 1])
             kwargs[key] = (pos, value)

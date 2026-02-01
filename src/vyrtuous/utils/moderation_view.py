@@ -109,7 +109,9 @@ class ModerationView(discord.ui.View):
             member_snowflake=self.member_snowflake,
             sender_snowflake=interaction.user.id,
         )
-        infraction_existing = await self.infraction_information.get("alias_class", None).select(
+        infraction_existing = await self.infraction_information.get(
+            "alias_class", None
+        ).select(
             channel_snowflake=self.infraction_information.get(
                 "infraction_channel_snowflake", None
             ),
@@ -120,7 +122,10 @@ class ModerationView(discord.ui.View):
         self.information["snowflake_kwargs"]["member_snowflake"] = self.member_snowflake
         self.information["existing"] = infraction_existing
         if hasattr(infraction_existing, "expires_in"):
-            if DurationObject.from_expires_in_to_str(infraction_existing.expires_in) == 0:
+            if (
+                DurationObject.from_expires_in_to_str(infraction_existing.expires_in)
+                == 0
+            ):
                 await interaction.response.send_message(
                     content="This moderation is permanent and can only be undone, not modified.",
                     ephemeral=True,

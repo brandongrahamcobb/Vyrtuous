@@ -16,36 +16,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
-
 import discord
 
-from vyrtuous.db.infractions.ban import Ban
-from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
 
 
 class BanAlias(Alias):
 
     identifier = "ban"
 
-    ARGS_MAP = {
-        "alias_name": 1,
-        "member": 2,
-        "duration": 3,
-        "reason": 4
-    }
+    ARGS_MAP = {"alias_name": 1, "member": 2, "duration": 3, "reason": 4}
 
     TABLE_NAME = "active_bans"
 
     @classmethod
     async def act_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])"
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
         member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
@@ -64,116 +53,16 @@ class BanAlias(Alias):
     @classmethod
     async def undo_embed(cls, information, **kwargs):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])"
+        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
         member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s ban has been removed",
             description=(
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
+                f"**User:** {member.mention}\n" f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
-
-    @classmethod
-    async def enforce(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        ban = Ban(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            expires_in=information["expires_in"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-            reason=information["reason"],
-        )
-        await ban.create()
-        is_channel_scope = False
-        channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
-        )
-        if channel:
-            try:
-                await channel.set_permissions(
-                    member,
-                    view_channel=False,
-                    reason=information["reason"],
-                )
-                if (
-                    member.voice
-                    and member.voice.channel
-                    and member.voice.channel.id == channel.id
-                ):
-                    is_channel_scope = True
-                    await member.move_to(
-                        None, reason=information["reason"]
-                    )
-                    where_kwargs = {
-                        "channel_snowflake": information["snowflake_kwargs"][
-                            "channel_snowflake"
-                        ],
-                        "guild_snowflake": information["snowflake_kwargs"]["guild_snowflake"],
-                        "member_snowflake": information["snowflake_kwargs"][
-                            "member_snowflake"
-                        ],
-                    }
-                    set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
-                    await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            except discord.Forbidden as e:
-                logger.error(str(e).capitalize())
-                return await state.end(error=str(e).capitalize())
-        await Streaming.send_entry(
-            alias=information['alias'],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=information["duration"],
-            is_channel_scope=is_channel_scope,
-            is_modification=False,
-            member=member,
-            message=message,
-            reason=information["reason"],
-        )
-        embed = await BanAlias.act_embed(
-            information=information, source=message
-        )
-        return await state.end(success=embed)
-    
-
-    @classmethod
-    async def undo(
-        cls, information, message, state
-    ):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await Ban.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-        )
-        channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
-        )
-        if channel:
-            try:
-                await channel.set_permissions(member, view_channel=None)
-            except discord.Forbidden as e:
-                logger.error(str(e).capitalize())
-                return await state.end(error=str(e).capitalize())
-        await Streaming.send_entry(
-            alias=information['alias'],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration="",
-            is_channel_scope=False,
-            is_modification=True,
-            member=member,
-            message=message,
-            reason="No reason provided.",
-        )
-        embed = await BanAlias.undo_embed(
-            information=information, source=message
-        )
-        return await state.end(success=embed)

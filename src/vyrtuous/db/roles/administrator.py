@@ -333,7 +333,9 @@ class AdministratorRole(DatabaseFactory):
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
-        administrator_roles = await AdministratorRole.select(singular=False, **where_kwargs)
+        administrator_roles = await AdministratorRole.select(
+            singular=False, **where_kwargs
+        )
         for administrator_role in administrator_roles:
             dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
             dictionary[administrator_role.guild_snowflake]["roles"].setdefault(

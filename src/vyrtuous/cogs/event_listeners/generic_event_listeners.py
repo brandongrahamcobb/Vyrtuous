@@ -58,32 +58,14 @@ class GenericEventListeners(commands.Cog):
             if self.config["release_mode"] and message.author.id == self.bot.user.id:
                 return
             await Ban.ban_overwrite(channel=message.channel, member=message.author)
-            await TextMute.text_mute_overwrite(channel=message.channel, member=message.author)
+            await TextMute.text_mute_overwrite(
+                channel=message.channel, member=message.author
+            )
             if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             state = StateService(message=message)
             information = await AliasInformation.build(message=message)
-            await Alias.execute(information=information, state=state)
-            
-            if infraction := infraction_information.get("infraction_existing", None):
-                await infraction.delete(**kwargs)
-                await infraction.handle_undo_alias(
-                    alias=alias,
-                    infraction_information=infraction_information,
-                    member=member_obj,
-                    message=message,
-                    state=state,
-                )
-            else:
-                infraction = Alias.build_infraction_information
-                infraction.
-                await alias.undo_handlers[alias.category](
-                    alias=alias,
-                    infraction_information=infraction_information,
-                    member=member_obj,
-                    message=message,
-                    state=state,
-                )
+            await Alias.execute(information=information, message=message, state=state)
         except Exception as e:
             return await state.end(warning=str(e).capitalize())
 

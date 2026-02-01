@@ -61,7 +61,8 @@ async def check(
                     return role_name
             elif role_name in ("Guild Owner", "Administrator"):
                 if await verify(
-                    guild_snowflake=int(guild_snowflake), member_snowflake=int(member_snowflake)
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(member_snowflake),
                 ):
                     return role_name
             else:

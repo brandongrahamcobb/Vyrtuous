@@ -25,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.utils.dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -38,7 +39,7 @@ from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class VoiceMute(VoiceMuteAlias):
-    
+
     lines, pages = [], []
 
     PLURAL = "Voice Mutes"
@@ -305,3 +306,68 @@ class VoiceMute(VoiceMuteAlias):
         )
         pages.append(embed)
         return pages
+
+    @classmethod
+    async def enforce(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        voice_mute = VoiceMute(
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            expires_in=information["expires_in"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            reason=information["reason"],
+            target="user",
+        )
+        await voice_mute.create()
+        is_channel_scope = False
+        if member.voice and member.voice.channel:
+            if (
+                member.voice.channel.id
+                == information["snowflake_kwargs"]["channel_snowflake"]
+            ):
+                is_channel_scope = True
+                try:
+                    await member.edit(mute=True, reason=information["reason"])
+                except discord.Forbidden as e:
+                    return await state.end(error=str(e).capitalize())
+        await Streaming.send_entry(
+            alias=information["alias"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            duration=information["duration"],
+            is_channel_scope=is_channel_scope,
+            member=member,
+            message=message,
+            reason=information["reason"],
+        )
+        embed = await VoiceMuteAlias.act_embed(information=information, source=message)
+        return await state.end(success=embed)
+
+    @classmethod
+    async def undo(cls, information, message, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        await VoiceMute.delete(
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
+            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+        )
+        is_channel_scope = False
+        if member.voice and member.voice.channel:
+            try:
+                is_channel_scope = True
+                await member.edit(mute=False)
+            except discord.Forbidden as e:
+                return await state.end(error=str(e).capitalize())
+        await Streaming.send_entry(
+            alias=information["alias"],
+            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            is_channel_scope=is_channel_scope,
+            is_modification=True,
+            member=member,
+            message=message,
+        )
+        embed = await VoiceMuteAlias.undo_embed(information=information, source=message)
+        return await state.end(success=embed)

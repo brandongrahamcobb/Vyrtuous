@@ -62,7 +62,9 @@ def developer_predicator():
 
 
 async def is_developer(member_snowflake: int) -> bool:
-    developer = await Developer.select(member_snowflake=int(member_snowflake), singular=True)
+    developer = await Developer.select(
+        member_snowflake=int(member_snowflake), singular=True
+    )
     if not developer:
         raise NotDeveloper
     return True

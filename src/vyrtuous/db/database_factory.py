@@ -29,9 +29,7 @@ class DatabaseFactory(object):
     async def create(self):
         bot = DiscordBot.get_instance()
         table_name = getattr(self, "TABLE_NAME")
-        fields = getattr(self, "REQUIRED_ARGS") + getattr(
-            self, "OPTIONAL_ARGS"
-        )
+        fields = getattr(self, "REQUIRED_ARGS") + getattr(self, "OPTIONAL_ARGS")
         insert_fields = [
             f for f in fields if hasattr(self, f) and getattr(self, f) is not None
         ]
@@ -53,9 +51,7 @@ class DatabaseFactory(object):
     @classmethod
     async def delete(cls, **kwargs):
         bot = DiscordBot.get_instance()
-        fields = getattr(cls, "REQUIRED_ARGS") + getattr(
-            cls, "OPTIONAL_ARGS"
-        )
+        fields = getattr(cls, "REQUIRED_ARGS") + getattr(cls, "OPTIONAL_ARGS")
         table_name = getattr(cls, "TABLE_NAME")
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         conditions = []
@@ -73,15 +69,13 @@ class DatabaseFactory(object):
     @overload
     async def select(
         cls: Type[T], *, singular: Literal[True], inside=False, **kwargs
-    ) -> T:
-        ...
+    ) -> T: ...
 
     @classmethod
     @overload
     async def select(
         cls: Type[T], *, singular: Literal[False], inside=False, **kwargs
-    ) -> list[T]:
-        ...
+    ) -> list[T]: ...
 
     @classmethod
     async def select(
@@ -89,9 +83,7 @@ class DatabaseFactory(object):
     ) -> T | list[T]:
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_ARGS") + getattr(
-            cls, "OPTIONAL_ARGS"
-        )
+        fields = getattr(cls, "REQUIRED_ARGS") + getattr(cls, "OPTIONAL_ARGS")
         virtual_filters = {"expired"}
         real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
@@ -128,9 +120,7 @@ class DatabaseFactory(object):
     async def update(cls, *, set_kwargs: dict, where_kwargs: dict):
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_ARGS") + getattr(
-            cls, "OPTIONAL_ARGS"
-        )
+        fields = getattr(cls, "REQUIRED_ARGS") + getattr(cls, "OPTIONAL_ARGS")
         set_filtered_kwargs = {k: v for k, v in set_kwargs.items() if k in fields}
         where_filtered_kwargs = {k: v for k, v in where_kwargs.items() if k in fields}
         set_fields = sorted(set_filtered_kwargs.keys())
