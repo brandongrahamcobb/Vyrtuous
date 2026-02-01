@@ -17,54 +17,63 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, Tuple
-
-import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    clean_dictionary,
-    flush_page,
-)
-from vyrtuous.utils.dir_to_classes import dir_to_classes
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class Alias(DatabaseFactory):
 
-    identifier: str
+    __tablename__ = "command_aliases"
+    alias_name: str
+    category: str
+    category: str
+    channel_snowflake: int
+    guild_snowflake: int
+    role_snowflake: int
 
-    lines, pages = [], []
-
-    PLURAL = "Aliases"
-    SINGULAR = "Alias"
-    SCOPES = ["channels"]
-
-    ARGS_MAP = {}
-
-    REQUIRED_ARGS = [
-        "alias_name",
-        "category",
-        "channel_snowflake",
-        "guild_snowflake",
-    ]
-    OPTIONAL_ARGS = [
-        "created_at",
-        "expired",
-        "expires_in",
-        "reason",
-        "role_snowflake",
-        "updated_at",
-    ]
-
-    TABLE_NAME = "command_aliases"
+    CATEGORY_TO_HELP = {
+        "ban": [
+            "**member**: Tag a member or include their ID",
+            "**duration**: m/h/d",
+            "**reason**: Reason for ban",
+        ],
+        "flag": [
+            "**member**: Tag a member or include their ID",
+            "**reason**: Reason for flag",
+        ],
+        "role": [
+            "**member**: Tag a member or include their ID",
+            "**role**: Tag a role or include its ID",
+        ],
+        "tmute": [
+            "**member**: Tag a member or include their ID",
+            "**duration**: m/h/d",
+            "**reason**: Reason for text-mute",
+        ],
+        "vegan": ["**member**: Tag a member or include their ID"],
+        "vmute": [
+            "**member**: Tag a member or include their ID",
+            "**duration**: m/h/d",
+            "**reason**: Reason for voice-mute",
+        ],
+    }
+    CATEGORY_TO_DESCRIPTION = {
+        "ban": "Toggles a ban.",
+        "flag": "Toggles a moderation flag.",
+        "role": "Toggles a role to a user.",
+        "tmute": "Toggles a mute in text channels.",
+        "vegan": "Toggles a vegan.",
+        "vmute": "Toggles a mute in voice channels.",
+    }
+    CATEGORY_TO_PERMISSION_LEVEL = {
+        "ban": "Moderator",
+        "flag": "Moderator",
+        "role": "Coordinator",
+        "tmute": "Moderator",
+        "vegan": "Moderator",
+        "vmute": "Moderator",
+    }
 
     def __init__(
         self,
@@ -72,232 +81,15 @@ class Alias(DatabaseFactory):
         category: str,
         channel_snowflake: int,
         guild_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        role_snowflake: int = 0,
-        updated_at: datetime = datetime.now(timezone.utc),
-        **kwargs,
+        created_at: datetime | None = None,
+        role_snowflake: int | None = None,
+        updated_at: datetime | None = None,
     ):
         self.bot = DiscordBot.get_instance()
         self.alias_name = alias_name
         self.category = category
         self.channel_snowflake = channel_snowflake
-        self.channel_mention = f"<#{channel_snowflake}>"
-        self.created_at = created_at
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.guild_snowflake = guild_snowflake
         self.role_snowflake = role_snowflake
-        self.role_mention = f"<@&{role_snowflake}>"
-        self.updated_at = updated_at
-        self.alias_help = {
-            "ban": [
-                "**member**: Tag a member or include their ID",
-                "**duration**: m/h/d",
-                "**reason**: Reason for ban",
-            ],
-            "flag": [
-                "**member**: Tag a member or include their ID",
-                "**reason**: Reason for flag",
-            ],
-            "role": [
-                "**member**: Tag a member or include their ID",
-                "**role**: Tag a role or include its ID",
-            ],
-            "tmute": [
-                "**member**: Tag a member or include their ID",
-                "**duration**: m/h/d",
-                "**reason**: Reason for text-mute",
-            ],
-            "vegan": ["**member**: Tag a member or include their ID"],
-            "vmute": [
-                "**member**: Tag a member or include their ID",
-                "**duration**: m/h/d",
-                "**reason**: Reason for voice-mute",
-            ],
-        }
-        self.category_to_description = {
-            "ban": "Toggles a ban.",
-            "flag": "Toggles a moderation flag.",
-            "role": "Toggles a role to a user.",
-            "tmute": "Toggles a mute in text channels.",
-            "vegan": "Toggles a vegan.",
-            "vmute": "Toggles a mute in voice channels.",
-        }
-        self.category_to_permission_level = {
-            "ban": "Moderator",
-            "flag": "Moderator",
-            "role": "Coordinator",
-            "tmute": "Moderator",
-            "vegan": "Moderator",
-            "vmute": "Moderator",
-        }
-
-    @classmethod
-    async def execute(cls, information, message, state):
-        for sub in information["alias"].__subclasses__():
-            if sub.identifier == information["category"]:
-                obj = await sub.select(**information["snowflake_kwargs"], singular=True)
-                if obj:
-                    await sub.undo(
-                        information=information, message=message, state=state
-                    )
-                else:
-                    await sub.enforce(
-                        information=information, message=message, state=state
-                    )
-
-    async def undo(self):
-        pass
-
-    async def enforce(self):
-        pass
-
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        bot = DiscordBot.get_instance()
-        dictionary = {}
-        aliases = await Alias.select(singular=False, **where_kwargs)
-        for alias in aliases:
-            dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
-            dictionary[alias.guild_snowflake]["channels"].setdefault(
-                alias.channel_snowflake, {"aliases": {}}
-            )
-            dictionary[alias.guild_snowflake]["channels"][alias.channel_snowflake][
-                "aliases"
-            ].setdefault(alias.category, {})[alias.alias_name] = []
-            if alias.category == "role":
-                guild = bot.get_guild(alias.guild_snowflake)
-                if guild:
-                    role = guild.get_role(alias.role_snowflake)
-                    dictionary[alias.guild_snowflake]["channels"][
-                        alias.channel_snowflake
-                    ]["aliases"][alias.category][alias.alias_name] = role.mention
-        skipped_channels = generate_skipped_channels(dictionary)
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        cleaned_dictionary = clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        if is_at_home:
-            if skipped_guilds:
-                Alias.pages.extend(
-                    generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_channels:
-                Alias.pages.extend(
-                    generate_skipped_dict_pages(
-                        skipped=skipped_channels,
-                        title="Skipped Channels in Server",
-                    )
-                )
-        return cleaned_dictionary
-
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Command Aliases"
-
-        where_kwargs = object_dict.get("columns", None)
-        dictionary = await Alias.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
-        )
-
-        for guild_snowflake, guild_data in dictionary.items():
-            field_count = 0
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
-                channel = guild.get_channel(channel_snowflake)
-                for category, alias_data in dictionary["aliases"].items():
-                    Alias.lines.append(f"{category}")
-                    for name, role_mention in alias_data.items():
-                        if category == "role":
-                            Alias.lines.append(f"  ↳ `{name}` -> {role_mention}")
-                        else:
-                            Alias.lines.append(f"  ↳ `{name}`")
-                    field_count += 1
-                if field_count >= CHUNK_SIZE:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(Alias.lines),
-                        inline=False,
-                    )
-                    embed = flush_page(embed, Alias.pages, title, guild.name)
-                    Alias.lines = []
-                    field_count = 0
-            if Alias.lines:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(Alias.lines),
-                    inline=False,
-                )
-            Alias.pages.append(embed)
-        return Alias.pages
-
-    @classmethod
-    async def delete_alias(cls, alias_name, snowflake_kwargs):
-        bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        where_kwargs = {
-            "alias_name": alias_name,
-            "guild_snowflake": int(guild_snowflake),
-        }
-        alias = await Alias.select(singular=True, **where_kwargs)
-        if not alias:
-            return f"No aliases found for `{alias_name}`."
-        guild = bot.get_guild(guild_snowflake)
-        channel = guild.get_channel(alias.channel_snowflake)
-        if getattr(alias, "role_snowflake"):
-            msg = (
-                f"Alias `{alias.alias_name}` of type "
-                f"`{alias.category}` for channel {channel.mention} "
-                f" and role {alias.role_mention} deleted successfully."
-            )
-        else:
-            msg = (
-                f"Alias `{alias.alias_name}` of type "
-                f"`{alias.category}` for channel {channel.mention} "
-                f"deleted successfully."
-            )
-        await Alias.delete(**where_kwargs)
-        return msg
-
-    @classmethod
-    async def create_alias(cls, alias_name, category, channel_dict, role_dict):
-        where_kwargs = {}
-        where_kwargs.update(channel_dict.get("columns", None))
-        msg = (
-            f"Alias `{alias_name}` of type `{category}` "
-            f"created successfully for channel {channel_dict.get("mention", None)}."
-        )
-        alias = await Alias.select(category=category, **where_kwargs, singular=True)
-        if alias:
-            return (
-                f"Alias of type `{category}` "
-                f"already exists for this channel {channel_dict.get("mention", None)}."
-            )
-        if role_dict:
-            where_kwargs.update(role_dict.get("columns", None))
-            msg = (
-                f"Alias `{alias_name}` of type `{category}` "
-                f"created successfully for channel {channel_dict.get("mention", None)} with role {role_dict.get("mention", None)}."
-            )
-        alias = Alias(alias_name=alias_name, category=str(category), **where_kwargs)
-        await alias.create()
-        return msg
-
-    def fill_map(self, args) -> Dict[str, Tuple[int, str]]:
-        map = self.ARGS_MAP
-        sorted_args = sorted(map.items(), key=lambda x: x[1])
-        kwargs = {}
-        for i, (key, pos) in enumerate(sorted_args):
-            if i == len(sorted_args) - 1:
-                value = " ".join(str(a) for a in args[pos - 1 :])
-            else:
-                value = str(args[pos - 1])
-            kwargs[key] = (pos, value)
-        return kwargs
+        self.updated_at = updated_at or datetime.now(timezone.utc)

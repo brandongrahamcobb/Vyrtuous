@@ -25,7 +25,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.roles.moderator import moderator_predicator
+from vyrtuous.service.roles.moderator_service import moderator_predicator
 from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.logger import logger
 from vyrtuous.service.message_service import MessageService

@@ -18,297 +18,44 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 
-
-import discord
-
-from vyrtuous.fields.duration import DurationObject
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.aliases.ban_alias import BanAlias
-from vyrtuous.db.mgmt.stream import Streaming
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    clean_dictionary,
-    flush_page,
-)
-from vyrtuous.utils.logger import logger
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.db.database_factory import DatabaseFactory
 
 
-class Ban(BanAlias):
+class Ban(DatabaseFactory):
 
-    lines, pages = [], []
-
-    PLURAL = "Bans"
-    SCOPES = ["channel", "guild", "member"]
-    SINGULAR = "Ban"
-    REQUIRED_ARGS = [
-        "channel_snowflake",
-        "guild_snowflake",
-        "member_snowflake",
-    ]
-    OPTIONAL_ARGS = [
-        "created_at",
-        "expires_in",
-        "last_kicked",
-        "reason",
-        "reset",
-        "updated_at",
-    ]
+    __tablename__ = "active_bans"
+    channel_snowflake: int
+    created_at: datetime
+    expires_in: datetime
+    guild_snowflake: int
+    last_kicked: datetime
+    member_snowflake: int
+    reason: str
+    reset: bool
+    updated_at: datetime
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        expired: bool = False,
-        expires_in: datetime = datetime.now(timezone.utc),
-        last_kicked: datetime = datetime.now(timezone.utc),
+        created_at: datetime | None = None,
+        expires_in: datetime | None = None,
+        last_kicked: datetime | None = None,
         reason: str = "No reason provided.",
         reset: bool = False,
-        updated_at: datetime = datetime.now(timezone.utc),
-        **kwargs,
+        updated_at: datetime | None = None,
     ):
         self.channel_snowflake = channel_snowflake
-        self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
-        self.created_at = created_at
-        self.expired = expired
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.expires_in = expires_in
         self.guild_snowflake = guild_snowflake
         self.last_kicked = last_kicked
         self.member_snowflake = member_snowflake
-        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
         self.reset = reset
-        self.updated_at = updated_at
+        self.updated_at = updated_at or datetime.now(timezone.utc)
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        dictionary = {}
-        bans = await Ban.select(singular=False, **where_kwargs)
-        for ban in bans:
-            dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-            dictionary[ban.guild_snowflake]["members"].setdefault(
-                ban.member_snowflake, {"bans": {}}
-            )
-            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
-                "bans"
-            ].setdefault(ban.channel_snowflake, {})
-            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake]["bans"][
-                ban.channel_snowflake
-            ] = {
-                "reason": ban.reason,
-                "expires_in": DurationObject.from_expires_in(ban.expires_in),
-            }
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
-            dictionary=dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-        if is_at_home:
-            if skipped_guilds:
-                Ban.pages.append(
-                    generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_members:
-                Ban.pages.append(
-                    generate_skipped_dict_pages(
-                        skipped=skipped_members,
-                        title="Skipped Members in Server",
-                    )
-                )
-        return cleaned_dictionary
-
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        thumbnail = False
-        where_kwargs = object_dict.get("columns", None)
-        title = f"{get_random_emoji()} {Ban.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-
-        dictionary = await Ban.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
-        )
-
-        for guild_snowflake, guild_data in dictionary.items():
-            field_count = 0
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, ban_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    Ban.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in ban_dictionary.get(
-                    "bans"
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        Ban.lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        Ban.lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        Ban.lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= CHUNK_SIZE:
-                        embed.add_field(
-                            name="Information", value="\n".join(Ban.lines), inline=False
-                        )
-                        embed = flush_page(embed, Ban.pages, title, guild.name)
-                        Ban.lines = []
-                        field_count = 0
-            if Ban.lines:
-                embed.add_field(
-                    name="Information", value="\n".join(Ban.lines), inline=False
-                )
-            Ban.pages.append(embed)
-        return Ban.pages
-
-    @classmethod
-    async def ban_overwrite(cls, channel, member):
-        if channel:
-            kwargs = {
-                "channel_snowflake": channel.id,
-                "guild_snowflake": channel.guild.id,
-                "member_snowflake": member.id,
-            }
-            ban = await Ban.select(**kwargs, singular=True)
-            if ban:
-                targets = []
-                for target, overwrite in channel.overwrites.items():
-                    if any(value is not None for value in overwrite._values.values()):
-                        if isinstance(target, discord.Member):
-                            targets.append(target)
-                if member not in targets:
-                    try:
-                        await channel.set_permissions(
-                            member, view_channel=False, reason="Reinstating active ban."
-                        )
-                    except discord.Forbidden as e:
-                        logger.warning(e)
-                    if (
-                        member.voice
-                        and member.voice.channel
-                        and member.voice.channel.id == channel.id
-                    ):
-                        try:
-                            await member.move_to(None, reason="Reinstating active ban.")
-                            set_kwargs = {
-                                "last_kicked": datetime.now(timezone.utc),
-                                "reset": False,
-                            }
-                            await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
-                        except discord.Forbidden as e:
-                            logger.warning(e)
-
-    @classmethod
-    async def enforce(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        ban = Ban(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            expires_in=information["expires_in"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-            reason=information["reason"],
-        )
-        await ban.create()
-        is_channel_scope = False
-        channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
-        )
-        if channel:
-            try:
-                await channel.set_permissions(
-                    member,
-                    view_channel=False,
-                    reason=information["reason"],
-                )
-                if (
-                    member.voice
-                    and member.voice.channel
-                    and member.voice.channel.id == channel.id
-                ):
-                    is_channel_scope = True
-                    await member.move_to(None, reason=information["reason"])
-                    where_kwargs = {
-                        "channel_snowflake": information["snowflake_kwargs"][
-                            "channel_snowflake"
-                        ],
-                        "guild_snowflake": information["snowflake_kwargs"][
-                            "guild_snowflake"
-                        ],
-                        "member_snowflake": information["snowflake_kwargs"][
-                            "member_snowflake"
-                        ],
-                    }
-                    set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
-                    await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            except discord.Forbidden as e:
-                logger.error(str(e).capitalize())
-                return await state.end(error=str(e).capitalize())
-        await Streaming.send_entry(
-            alias=information["alias"],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=information["duration"],
-            is_channel_scope=is_channel_scope,
-            is_modification=False,
-            member=member,
-            message=message,
-            reason=information["reason"],
-        )
-        embed = await BanAlias.act_embed(information=information, source=message)
-        return await state.end(success=embed)
-
-    @classmethod
-    async def undo(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await Ban.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-        )
-        channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
-        )
-        if channel:
-            try:
-                await channel.set_permissions(member, view_channel=None)
-            except discord.Forbidden as e:
-                logger.error(str(e).capitalize())
-                return await state.end(error=str(e).capitalize())
-        await Streaming.send_entry(
-            alias=information["alias"],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration="",
-            is_channel_scope=False,
-            is_modification=True,
-            member=member,
-            message=message,
-            reason="No reason provided.",
-        )
-        embed = await BanAlias.undo_embed(information=information, source=message)
-        return await state.end(success=embed)
+    @property
+    def expired(self) -> bool:
+        return datetime.now(timezone.utc) > self.expires_in

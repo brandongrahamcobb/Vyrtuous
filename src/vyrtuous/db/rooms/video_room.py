@@ -16,270 +16,28 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-import asyncio
-
-import discord
-
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.utils.logger import logger
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    clean_dictionary,
-    flush_page,
-)
-from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
 class VideoRoom(DatabaseFactory):
 
-    COOLDOWN = timedelta(minutes=30)
-    cooldowns = {}
-    video_rooms = []
-    video_tasks = {}
-
-    ACT = "vr"
-    CATEGORY = "vr"
-    PLURAL = "Video Rooms"
-    SCOPES = ["channels"]
-    SINGULAR = "Video Rooms"
-    UNDO = "vr"
-
-    REQUIRED_ARGS = [
-        "channel_snowflake",
-        "guild_snowflake",
-    ]
-    OPTIONAL_ARGS = [
-        "created_at",
-        "updated_at",
-    ]
-
-    TABLE_NAME = "video_rooms"
-    lines, pages = [], []
+    __tablename__ = "video_rooms"
+    channel_snowflake: int
+    guild_snowflake: int
+    created_at: datetime
+    updated_at: datetime
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        updated_at: datetime = datetime.now(timezone.utc),
-        **kwargs,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ):
-        self.channel_mention = f"<#{channel_snowflake}>"
         self.channel_snowflake = channel_snowflake
-        self.created_at = created_at
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.guild_snowflake = guild_snowflake
         self.is_video_room: bool = True
-        self.updated_at = updated_at
-
-    @classmethod
-    async def enforce_video(cls, member, channel, delay):
-        await asyncio.sleep(delay)
-        if not member.voice:
-            return
-        if member.voice.channel != channel:
-            return
-        if member.voice.self_video:
-            return
-        try:
-            await member.move_to(None)
-        except Exception as e:
-            logger.info(f"Unable to enforce video by kicking the user. {e}")
-        try:
-            await member.send(
-                f"{get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel."
-            )
-        except Exception as e:
-            logger.info(f"Unable to send a message to enforce video. {e}")
-
-    @classmethod
-    def cancel_task(cls, key):
-        task = cls.video_tasks.pop(key, None)
-        if task:
-            task.cancel()
-
-    @classmethod
-    async def enforce_video_message(cls, channel_snowflake, member_snowflake, message):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(channel_snowflake)
-        now = datetime.now(timezone.utc)
-        last_trigger = cls.cooldowns.get(member_snowflake, None)
-        if last_trigger and now - last_trigger < cls.COOLDOWN:
-            return
-        cls.cooldowns[member_snowflake] = now
-        await channel.send(message)
-
-        async def reset_cooldown():
-            await asyncio.sleep(cls.COOLDOWN.total_seconds())
-            if cls.cooldowns.get(member_snowflake) == now:
-                del cls.cooldowns[member_snowflake]
-
-        asyncio.create_task(reset_cooldown())
-
-    @classmethod
-    async def reinforce_video_room(cls, member, before, after):
-        if not after.channel:
-            VideoRoom.cancel_task((member.guild.id, member.id))
-            return
-        for video_room in VideoRoom.video_rooms:
-            if after.channel.id != video_room.channel_snowflake:
-                continue
-            if not after.self_video:
-                if after.channel != before.channel:
-                    if after.channel.permissions_for(
-                        after.channel.guild.me
-                    ).send_messages:
-                        await VideoRoom.enforce_video_message(
-                            channel_snowflake=after.channel.id,
-                            member_snowflake=member.id,
-                            message=f"{get_random_emoji()} "
-                            f"Hi {member.mention}, "
-                            f"{after.channel.mention} is a video "
-                            f"only room. You have 5 minutes to turn "
-                            f"on your camera!",
-                        )
-            key = (member.guild.id, member.id)
-            if before.channel != after.channel:
-                VideoRoom.cancel_task(key)
-                if not after.self_video:
-                    task = asyncio.create_task(
-                        VideoRoom.enforce_video(member, after.channel, 300)
-                    )
-                    VideoRoom.video_tasks[key] = task
-                break
-            if before.self_video and not after.self_video:
-                VideoRoom.cancel_task(key)
-                task = asyncio.create_task(
-                    VideoRoom.enforce_video(member, after.channel, 60)
-                )
-                VideoRoom.video_tasks[key] = task
-                break
-            if not before.self_video and after.self_video:
-                VideoRoom.cancel_task(key)
-                break
-
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        dictionary = {}
-        aliases = await Alias.select(singular=False, **where_kwargs)
-        video_rooms = await VideoRoom.select(singular=False, **where_kwargs)
-        for video_room in video_rooms:
-            dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            dictionary[video_room.guild_snowflake]["channels"].setdefault(
-                video_room.channel_snowflake, {}
-            )
-            if aliases:
-                for alias in aliases:
-                    if (
-                        alias.guild_snowflake == video_room.guild_snowflake
-                        and alias.channel_snowflake == video_room.channel_snowflake
-                    ):
-                        dictionary[video_room.guild_snowflake]["channels"][
-                            video_room.channel_snowflake
-                        ].setdefault(alias.category, [])
-                        dictionary[video_room.guild_snowflake]["channels"][
-                            video_room.channel_snowflake
-                        ][alias.category].append(alias.alias_name)
-        skipped_channels = generate_skipped_channels(dictionary)
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        cleaned_dictionary = clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        if is_at_home:
-            if skipped_channels:
-                VideoRoom.pages.extend(
-                    generate_skipped_dict_pages(
-                        skipped=skipped_channels, title="Skipped Channels in Server,"
-                    )
-                )
-            if skipped_guilds:
-                VideoRoom.pages.extend(
-                    generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-        return cleaned_dictionary
-
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {VideoRoom.PLURAL}"
-
-        where_kwargs = object_dict.get("columns", None)
-        dictionary = await VideoRoom.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
-        )
-
-        for guild_snowflake, guild_data in dictionary.items():
-            field_count = 0
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_data in guild_data.get(
-                "channels", {}
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                VideoRoom.lines.append(f"Channel: {channel.mention}")
-                field_count += 1
-                for category, alias_names in channel_data.items():
-                    VideoRoom.lines.append(f"{category}")
-                    field_count += 1
-                    for name in alias_names:
-                        VideoRoom.lines.append(f"  ↳ {name}")
-                        field_count += 1
-                        if field_count >= CHUNK_SIZE:
-                            embed.add_field(
-                                name="Information",
-                                value="\n".join(VideoRoom.lines),
-                                inline=False,
-                            )
-                            embed = flush_page(
-                                embed, VideoRoom.pages, title, guild.name
-                            )
-                            VideoRoom.lines = []
-                            field_count = 0
-                if field_count >= CHUNK_SIZE:
-                    embed.add_field(
-                        name="Information",
-                        value="\n".join(VideoRoom.lines),
-                        inline=False,
-                    )
-                    embed = flush_page(embed, VideoRoom.pages, title, guild.name)
-                    field_count = 0
-                    VideoRoom.lines = []
-            if VideoRoom.lines:
-                embed.add_field(
-                    name="Information", value="\n".join(VideoRoom.lines), inline=False
-                )
-            VideoRoom.pages.append(embed)
-        return VideoRoom.pages
-
-    @classmethod
-    async def toggle_video_room(cls, channel_dict):
-        kwargs = channel_dict.get("columns", None)
-        video_room = await VideoRoom.select(**kwargs, singular=True)
-        if video_room:
-            action = "removed"
-            VideoRoom.video_rooms = [
-                vr
-                for vr in VideoRoom.video_rooms
-                if vr.channel_snowflake != video_room.channel_snowflake
-            ]
-            await VideoRoom.delete(**kwargs)
-        else:
-            video_room = VideoRoom(**kwargs)
-            await video_room.create()
-            VideoRoom.video_rooms.append(video_room)
-            action = "created"
-        return f"Video-only room {action} in {channel_dict.get("mention", None)}."
+        self.updated_at = updated_at or datetime.now(timezone.utc)

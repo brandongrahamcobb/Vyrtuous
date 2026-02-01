@@ -28,7 +28,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
-from vyrtuous.db.roles.developer import developer_predicator
+from vyrtuous.service.roles.developer_service import developer_predicator
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger

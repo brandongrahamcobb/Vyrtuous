@@ -25,8 +25,6 @@ class AliasInformation:
             guild_snowflake=message.guild.id,
             singular=True,
         )
-        if not alias:
-            return
         AliasInformation.information["alias"] = alias
         AliasInformation.information["snowflake_kwargs"] = {
             "channel_snowflake": int(alias.channel_snowflake),

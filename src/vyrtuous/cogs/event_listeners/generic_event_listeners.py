@@ -21,10 +21,8 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.infractions.ban import Ban
 from vyrtuous.db.infractions.text_mute import TextMute
-from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
 from vyrtuous.utils.alias_information import AliasInformation
 
@@ -53,9 +51,11 @@ class GenericEventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         try:
-            if not message.guild:
-                return
-            if self.config["release_mode"] and message.author.id == self.bot.user.id:
+            if (
+                not message.guild
+                or self.config["release_mode"]
+                and message.author.id == self.bot.user.id
+            ):
                 return
             await Ban.ban_overwrite(channel=message.channel, member=message.author)
             await TextMute.text_mute_overwrite(
@@ -64,8 +64,11 @@ class GenericEventListeners(commands.Cog):
             if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             state = StateService(message=message)
-            information = await AliasInformation.build(message=message)
-            await Alias.execute(information=information, message=message, state=state)
+            information = AliasInformation.build(message=message)
+            if information:
+                information["alias"].service.executre(
+                    information=information, message=message, state=state
+                )
         except Exception as e:
             return await state.end(warning=str(e).capitalize())
 

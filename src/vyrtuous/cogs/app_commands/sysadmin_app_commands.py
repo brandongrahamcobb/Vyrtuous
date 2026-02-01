@@ -23,7 +23,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.bug import Bug
 from vyrtuous.db.roles.developer import Developer
-from vyrtuous.db.roles.sysadmin import sysadmin_predicator
+from vyrtuous.service.roles.sysadmin_service import sysadmin_predicator
 from vyrtuous.fields.snowflake import (
     AppMemberSnowflake,
 )

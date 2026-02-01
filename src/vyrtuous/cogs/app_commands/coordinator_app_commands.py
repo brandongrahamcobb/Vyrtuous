@@ -23,7 +23,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.roles.coordinator import coordinator_predicator
+from vyrtuous.service.roles.coordinator_service import coordinator_predicator
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.fields.snowflake import (

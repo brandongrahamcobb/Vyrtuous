@@ -28,14 +28,14 @@ from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.infractions.server_mute import ServerMute
 from vyrtuous.db.roles.administrator import (
     AdministratorRole,
-    administrator_predicator,
 )
+from vyrtuous.service.roles.administrator_service import administrator_predicator
 from vyrtuous.db.roles.coordinator import Coordinator
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
 from vyrtuous.db.rooms.video_room import VideoRoom
 from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.db.mgmt.stream import Streaming
+from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.fields.duration import Duration, DurationObject
 from vyrtuous.fields.category import Category
@@ -524,7 +524,7 @@ class AdminTextCommands(commands.Cog):
                 except Exception:
                     failed_snowflakes.append(snowflake)
                     continue
-        pages = await Streaming.modify_stream(
+        pages = await Stream.modify_stream(
             action=action,
             channel_dict=channel_dict,
             channel_mentions=channel_mentions,
@@ -533,7 +533,7 @@ class AdminTextCommands(commands.Cog):
             resolved_channels=resolved_channels,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural=Streaming.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(plural=Stream.PLURAL, pages=pages, state=state)
 
     @commands.command(name="streams", help="List streaming routes.")
     @administrator_predicator()
@@ -550,10 +550,8 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        pages = await Streaming.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
-        await StateService.send_pages(plural=Streaming.PLURAL, pages=pages, state=state)
+        pages = await Stream.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Stream.PLURAL, pages=pages, state=state)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
     @administrator_predicator()

@@ -18,174 +18,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 
-
-import discord
-
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.aliases.vegan_alias import VeganAlias
-from vyrtuous.db.mgmt.stream import Streaming
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    clean_dictionary,
-    flush_page,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.db.database_factory import DatabaseFactory
 
 
-class Vegan(VeganAlias):
+class Vegan(DatabaseFactory):
 
-    ACT = "vegan"
-    CATEGORY = "vegan"
-    PLURAL = "Vegans"
-    SCOPES = ["member"]
-    SINGULAR = "Vegan"
-    UNDO = "vegan"
-
-    REQUIRED_ARGS = ["guild_snowflake", "member_snowflake"]
-    OPTIONAL_ARGS = ["created_at", "updated_at"]
-
-    TABLE_NAME = "vegans"
-    lines, pages = [], []
+    __tablename__ = "vegan"
+    created_at: datetime
+    guild_snowflake: int
+    member_snowflake: int
+    reason: str
+    updated_at: datetime
 
     def __init__(
         self,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        updated_at: datetime = datetime.now(timezone.utc),
-        **kwargs,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ):
-        self.created_at = created_at
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
-        self.updated_at = updated_at
-
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        dictionary = {}
-        vegans = await Vegan.select(singular=False, **where_kwargs)
-        for vegan in vegans:
-            dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-            dictionary[vegan.guild_snowflake]["members"].setdefault(
-                vegan.member_snowflake, {"vegans": {}}
-            )
-            dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
-                "vegans"
-            ].setdefault({"placeholder": {}})
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
-            dictionary=dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-        if is_at_home:
-            if skipped_guilds:
-                Vegan.pages.extend(
-                    generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_members:
-                Vegan.pages.extend(
-                    generate_skipped_dict_pages(
-                        skipped=skipped_members,
-                        title="Skipped Members in Server",
-                    )
-                )
-        return cleaned_dictionary
-
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-
-        where_kwargs = object_dict.get("columns", None)
-        dictionary = await Vegan.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
-        )
-
-        for guild_snowflake, guild_data in dictionary.items():
-            field_count = 0
-            thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, vegan_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    Vegan.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
-                else:
-                    if not thumbnail:
-                        embed.set_thumbnail(
-                            url=object_dict.get("object", None).display_avatar.url
-                        )
-                        thumbnail = True
-                field_count += 1
-                if field_count >= CHUNK_SIZE:
-                    embed.add_field(
-                        name="Information", value="\n".join(Vegan.lines), inline=False
-                    )
-                    embed = flush_page(embed, Vegan.pages, title, guild.name)
-                    Vegan.lines = []
-                    field_count = 0
-            if Vegan.lines:
-                embed.add_field(
-                    name="Information", value="\n".join(Vegan.lines), inline=False
-                )
-            Vegan.pages.append(embed)
-        return Vegan.pages
-
-    @classmethod
-    async def enforce(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        vegan = Vegan(
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-        )
-        await vegan.create()
-
-        await Streaming.send_entry(
-            alias=information["alias"],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            member=member,
-            message=message,
-        )
-
-        embed = await Vegan.act_embed(information=information, source=message)
-
-        return await state.end(success=embed)
-
-    @classmethod
-    async def handle_undo_alias(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await Vegan.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-        )
-
-        await Streaming.send_entry(
-            alias=information["alias"],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            is_modification=True,
-            member=member,
-            message=message,
-        )
-
-        embed = await Vegan.undo_embed(information=information, source=message)
-
-        return await state.end(success=embed)
+        self.updated_at = updated_at or datetime.now(timezone.utc)

@@ -23,6 +23,7 @@ import asyncpg
 import discord
 
 from vyrtuous.inc.helpers import DISCORD_COGS
+from vyrtuous.utils.logger import logger
 
 
 class DiscordBot(commands.Bot):
@@ -40,6 +41,7 @@ class DiscordBot(commands.Bot):
         )
         self.config = config
         self.db_pool = db_pool
+        self.logger = logger
         self.testing_guild_snowflake = self.config["discord_testing_guild_snowflake"]
 
     async def setup_hook(self):

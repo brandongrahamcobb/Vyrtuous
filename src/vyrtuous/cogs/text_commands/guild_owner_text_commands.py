@@ -21,7 +21,7 @@ from discord.ext import commands
 from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.administrator import AdministratorRole
-from vyrtuous.db.roles.guild_owner import guild_owner_predicator
+from vyrtuous.service.roles.guild_owner_service import guild_owner_predicator
 from vyrtuous.fields.snowflake import (
     MemberSnowflake,
     RoleSnowflake,

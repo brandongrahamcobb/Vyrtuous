@@ -16,74 +16,41 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+
+from vyrtuous.db.database_factory import DatabaseFactory
 
 
-import discord
+class VoiceMute(DatabaseFactory):
 
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.aliases.voice_mute_alias import VoiceMuteAlias
-from vyrtuous.fields.duration import DurationObject
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.db.mgmt.stream import Streaming
-from vyrtuous.utils.dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    clean_dictionary,
-    flush_page,
-)
-from vyrtuous.utils.logger import logger
-from vyrtuous.inc.helpers import CHUNK_SIZE
-
-
-class VoiceMute(VoiceMuteAlias):
-
-    lines, pages = [], []
-
-    PLURAL = "Voice Mutes"
-    SCOPES = ["channel", "guild", "member"]
-    SINGULAR = "Voice Mute"
-
-    REQUIRED_ARGS = [
-        "channel_snowflake",
-        "guild_snowflake",
-        "member_snowflake",
-    ]
-    OPTIONAL_ARGS = [
-        "created_at",
-        "expires_in",
-        "reason",
-        "target",
-        "updated_at",
-    ]
+    __tablename__ = "active_voice_mutes"
+    channel_snowflake: int
+    created_at: datetime
+    expires_in: datetime
+    guild_snowflake: int
+    member_snowflake: int
+    reason: str
+    updated_at: datetime
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        expired: bool = False,
-        expires_in: datetime = datetime.now(timezone.utc),
+        created_at: datetime | None = None,
+        expires_in: datetime | None = None,
         reason: str = "No reason provided.",
         target: str = "user",
-        updated_at: datetime = datetime.now(timezone.utc),
-        **kwargs,
+        updated_at: datetime | None = None,
     ):
-        self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
-        self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
-        self.created_at = created_at
-        self.expired = expired
-        self.expires_in = expires_in
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.expires_in = expires_in or datetime.now(timezone.utc)
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
-        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
         self.target = target
-        self.updated_at = updated_at
+        self.updated_at = updated_at or datetime.now(timezone.utc)
 
     @property
     def target(self):
@@ -95,279 +62,6 @@ class VoiceMute(VoiceMuteAlias):
             raise ValueError("Invalid target.")
         self._target = target
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
-        dictionary = {}
-        voice_mutes = await VoiceMute.select(target="user", **where_kwargs)
-        for voice_mute in voice_mutes:
-            dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
-            dictionary[voice_mute.guild_snowflake]["members"].setdefault(
-                voice_mute.member_snowflake, {"voice_mutes": {}}
-            )
-            dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
-            dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"][voice_mute.channel_snowflake].update(
-                {
-                    "reason": voice_mute.reason,
-                    "expires_in": DurationObject.from_expires_in(voice_mute.expires_in),
-                }
-            )
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
-            dictionary=dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-        if is_at_home:
-            if skipped_guilds:
-                VoiceMute.pages.extend(
-                    generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_members:
-                VoiceMute.pages.extend(
-                    generate_skipped_dict_pages(
-                        skipped=skipped_members,
-                        title="Skipped Members in Server",
-                    )
-                )
-        return cleaned_dictionary
-
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-
-        where_kwargs = object_dict.get("columns", None)
-        dictionary = await VoiceMute.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
-        )
-
-        for guild_snowflake, guild_data in dictionary.items():
-            field_count = 0
-            thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, voice_mute_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    VoiceMute.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
-                    "voice_mutes", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        VoiceMute.lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        VoiceMute.lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        VoiceMute.lines.append(
-                            f"**Reason:** {channel_dictionary['reason']}"
-                        )
-                    field_count += 1
-                    if field_count >= CHUNK_SIZE:
-                        embed.add_field(
-                            name="Information",
-                            value="\n".join(VoiceMute.lines),
-                            inline=False,
-                        )
-                        embed = flush_page(embed, VoiceMute.pages, title, guild.name)
-                        VoiceMute.lines = []
-                        field_count = 0
-            if VoiceMute.lines:
-                embed.add_field(
-                    name="Information", value="\n".join(VoiceMute.lines), inline=False
-                )
-            VoiceMute.pages.append(embed)
-        return VoiceMute.pages
-
-    @classmethod
-    async def room_mute(cls, channel_dict, guild_snowflake, reason, snowflake_kwargs):
-        bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
-        muted_members, pages, skipped_members, failed_members = [], [], [], []
-        guild = bot.get_guild(guild_snowflake)
-        where_kwargs = channel_dict.get("columns", None)
-
-        for member in channel_dict.get("object", None).members:
-            if member.id == member_snowflake:
-                continue
-            voice_mute = await VoiceMute.select(
-                **where_kwargs, target="user", singular=True
-            )
-            if voice_mute:
-                skipped_members.append(member)
-                continue
-            if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict.get("id", None):
-                    try:
-                        await member.edit(mute=True)
-                    except Exception as e:
-                        logger.warning(
-                            f"Unable to voice-mute member "
-                            f"{member.display_name} ({member.id}) in channel "
-                            f"{channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in guild "
-                            f"{guild.name} ({guild.id}). "
-                            f"{str(e).capitalize()}"
-                        )
-                        failed_members.append(member)
-            expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-            voice_mute = VoiceMute(
-                expires_in=expires_in,
-                member_snowflake=member.id,
-                reason=reason,
-                target="user",
-                **where_kwargs,
-            )
-            await voice_mute.create()
-            muted_members.append(member)
-        description_lines = [
-            f"**Channel:** {channel_dict.get("mention", None)}",
-            f"**Muted:** {len(muted_members)} users",
-            f"**Failed:** {len(failed_members)} users",
-            f'**Skipped:** {len(channel_dict.get('object', None).members) \
-                - len(muted_members) \
-                - len(failed_members)
-            }',
-        ]
-        embed = discord.Embed(
-            description="\n".join(description_lines),
-            title=f"{get_random_emoji()} Room Mute Summary",
-            color=discord.Color.blurple(),
-        )
-        pages.append(embed)
-        return pages
-
-    @classmethod
-    async def room_unmute(cls, channel_dict, guild_snowflake):
-        unmuted_members, pages, skipped_members, failed_members = [], [], [], []
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        where_kwargs = channel_dict.get("columns", None)
-
-        for member in channel_dict.get("object", None).members:
-            voice_mute = await VoiceMute.select(
-                target="user", **where_kwargs, singular=True
-            )
-            if not voice_mute:
-                skipped_members.append(member)
-                continue
-            if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict.get("id", None):
-                    try:
-                        await member.edit(mute=False)
-                    except Exception as e:
-                        logger.warning(
-                            f"Unable to undo voice-mute "
-                            f"for member {member.display_name} ({member.id}) "
-                            f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
-                            f"in guild {guild.name} "
-                            f"({guild.id}). "
-                            f"{str(e).capitalize()}"
-                        )
-                        failed_members.append(member)
-            await VoiceMute.delete(target="user", **where_kwargs)
-            unmuted_members.append(member)
-        description_lines = [
-            f"**Channel:** {channel_dict.get("mention", None)}",
-            f"**Unmuted:** {len(unmuted_members)} users",
-            f"**Failed:** {len(failed_members)} users",
-            f'**Skipped:** {len(channel_dict.get('object', None).members) \
-                - len(unmuted_members) \
-                - len(failed_members)
-            }',
-        ]
-        embed = discord.Embed(
-            description="\n".join(description_lines),
-            title=f"{get_random_emoji()} Room Unmute Summary",
-            color=discord.Color.blurple(),
-        )
-        pages.append(embed)
-        return pages
-
-    @classmethod
-    async def enforce(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        voice_mute = VoiceMute(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            expires_in=information["expires_in"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-            reason=information["reason"],
-            target="user",
-        )
-        await voice_mute.create()
-        is_channel_scope = False
-        if member.voice and member.voice.channel:
-            if (
-                member.voice.channel.id
-                == information["snowflake_kwargs"]["channel_snowflake"]
-            ):
-                is_channel_scope = True
-                try:
-                    await member.edit(mute=True, reason=information["reason"])
-                except discord.Forbidden as e:
-                    return await state.end(error=str(e).capitalize())
-        await Streaming.send_entry(
-            alias=information["alias"],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=information["duration"],
-            is_channel_scope=is_channel_scope,
-            member=member,
-            message=message,
-            reason=information["reason"],
-        )
-        embed = await VoiceMuteAlias.act_embed(information=information, source=message)
-        return await state.end(success=embed)
-
-    @classmethod
-    async def undo(cls, information, message, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await VoiceMute.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-        )
-        is_channel_scope = False
-        if member.voice and member.voice.channel:
-            try:
-                is_channel_scope = True
-                await member.edit(mute=False)
-            except discord.Forbidden as e:
-                return await state.end(error=str(e).capitalize())
-        await Streaming.send_entry(
-            alias=information["alias"],
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            is_channel_scope=is_channel_scope,
-            is_modification=True,
-            member=member,
-            message=message,
-        )
-        embed = await VoiceMuteAlias.undo_embed(information=information, source=message)
-        return await state.end(success=embed)
+    @property
+    def expired(self) -> bool:
+        return datetime.now(timezone.utc) > self.expires_in

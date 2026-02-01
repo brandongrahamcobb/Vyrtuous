@@ -32,7 +32,6 @@ class CategoryObject:
 
     def __init__(self, category=None):
         self.__category = category
-        self.category = category
 
     @property
     def category(self):

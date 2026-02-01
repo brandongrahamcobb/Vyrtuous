@@ -28,8 +28,8 @@ class DatabaseFactory(object):
 
     async def create(self):
         bot = DiscordBot.get_instance()
-        table_name = getattr(self, "TABLE_NAME")
-        fields = getattr(self, "REQUIRED_ARGS") + getattr(self, "OPTIONAL_ARGS")
+        table_name = getattr(self, "__tablename__")
+        fields = list(self.__annotations__.keys())
         insert_fields = [
             f for f in fields if hasattr(self, f) and getattr(self, f) is not None
         ]
@@ -51,8 +51,8 @@ class DatabaseFactory(object):
     @classmethod
     async def delete(cls, **kwargs):
         bot = DiscordBot.get_instance()
-        fields = getattr(cls, "REQUIRED_ARGS") + getattr(cls, "OPTIONAL_ARGS")
-        table_name = getattr(cls, "TABLE_NAME")
+        fields = list(cls.__annotations__.keys())
+        table_name = getattr(cls, "__tablename__")
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         conditions = []
         values = []
@@ -82,8 +82,8 @@ class DatabaseFactory(object):
         cls: Type[T], *, singular=False, inside=False, **kwargs
     ) -> T | list[T]:
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_ARGS") + getattr(cls, "OPTIONAL_ARGS")
+        table_name = getattr(cls, "__tablename__")
+        fields = list(cls.__annotations__.keys())
         virtual_filters = {"expired"}
         real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
@@ -119,8 +119,8 @@ class DatabaseFactory(object):
     @classmethod
     async def update(cls, *, set_kwargs: dict, where_kwargs: dict):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_ARGS") + getattr(cls, "OPTIONAL_ARGS")
+        table_name = getattr(cls, "__tablename__")
+        fields = list(cls.__annotations__.keys())
         set_filtered_kwargs = {k: v for k, v in set_kwargs.items() if k in fields}
         where_filtered_kwargs = {k: v for k, v in where_kwargs.items() if k in fields}
         set_fields = sorted(set_filtered_kwargs.keys())

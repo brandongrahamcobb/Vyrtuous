@@ -39,7 +39,7 @@ from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
 from vyrtuous.db.rooms.video_room import VideoRoom
 from vyrtuous.db.mgmt.cap import Cap
-from vyrtuous.db.mgmt.stream import Streaming
+from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.fields.duration import DurationObject
 
 from vyrtuous.utils.logger import logger
@@ -197,7 +197,7 @@ class ChannelEventListeners(commands.Cog):
                     should_be_muted = True
                     alias = SimpleNamespace(category="voice_mute")
                     duration = DurationObject("1h")
-                    await Streaming.send_entry(
+                    await Stream.send_entry(
                         alias=alias,
                         channel_snowflake=after.channel.id,
                         duration=str(duration),
@@ -224,7 +224,7 @@ class ChannelEventListeners(commands.Cog):
                     should_be_muted = False
                     alias = SimpleNamespace(category="unvmute")
                     duration = DurationObject("0")
-                    await Streaming.send_entry(
+                    await Stream.send_entry(
                         alias=alias,
                         channel_snowflake=after.channel.id,
                         duration=str(duration),

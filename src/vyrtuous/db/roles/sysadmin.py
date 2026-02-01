@@ -17,72 +17,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from typing import Union
 
-from discord.ext import commands
-import discord
-
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
-
-
-@skip_db_discovery
-class NotSysadmin(commands.CheckFailure):
-    def __init__(self, message="Member is not a sysadmin."):
-        super().__init__(message)
-
-
-async def is_sysadmin_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_sysadmin(member_snowflake)
-
-
-def sysadmin_predicator():
-    async def predicate(
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ):
-        if await is_sysadmin_wrapper(source):
-            return True
-        raise commands.CheckFailure("Member is not a sysadmin.")
-
-    predicate._permission_level = "Sysadmin"
-    return commands.check(predicate)
-
-
-async def is_sysadmin(member_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
-    if int(bot.config["discord_owner_id"]) == member_snowflake:
-        return True
-    raise NotSysadmin
 
 
 class Sysadmin(DatabaseFactory):
 
-    ACT = None
-    CATEGORY = None
-    PLURAL = "Sysadmin"
-    SCOPES = [None]
-    SINGULAR = "Sysadmin"
-    UNDO = None
-
-    REQUIRED_ARGS = ["member_snowflake"]
-    OPTIONAL_ARGS = ["created_at", "updated_at"]
-
-    TABLE_NAME = "sysadmin"
+    __tablename__ = "sysadmin"
+    created_at: datetime
+    member_snowflake: int
+    updated_at: datetime
 
     def __init__(
         self,
         member_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        updated_at: datetime = datetime.now(timezone.utc),
-        **kwargs,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ):
-        self.created_at = created_at
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.member_snowflake = member_snowflake
-        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
-        self.updated_at = updated_at
+        self.updated_at = updated_at or datetime.now(timezone.utc)

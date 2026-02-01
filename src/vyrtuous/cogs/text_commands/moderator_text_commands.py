@@ -32,10 +32,8 @@ from vyrtuous.db.infractions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import Administrator
 from vyrtuous.db.roles.coordinator import Coordinator
 from vyrtuous.db.roles.developer import Developer
-from vyrtuous.db.roles.moderator import (
-    Moderator,
-    moderator_predicator,
-)
+from vyrtuous.db.roles.moderator import Moderator
+from vyrtuous.service.roles.moderator_service import moderator_predicator
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
