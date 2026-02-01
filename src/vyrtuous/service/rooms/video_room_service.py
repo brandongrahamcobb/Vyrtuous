@@ -92,9 +92,9 @@ class VideoRoomService:
     @classmethod
     async def reinforce_video_room(cls, member, before, after):
         if not after.channel:
-            VideoRoom.cancel_task((member.guild.id, member.id))
+            VideoRoomService.cancel_task((member.guild.id, member.id))
             return
-        for video_room in VideoRoom.video_rooms:
+        for video_room in VideoRoomService.video_rooms:
             if after.channel.id != video_room.channel_snowflake:
                 continue
             if not after.self_video:
@@ -113,22 +113,22 @@ class VideoRoomService:
                         )
             key = (member.guild.id, member.id)
             if before.channel != after.channel:
-                VideoRoom.cancel_task(key)
+                VideoRoomService.cancel_task(key)
                 if not after.self_video:
                     task = asyncio.create_task(
-                        VideoRoom.enforce_video(member, after.channel, 300)
+                        VideoRoomService.enforce_video(member, after.channel, 300)
                     )
-                    VideoRoom.video_tasks[key] = task
+                    VideoRoomService.video_tasks[key] = task
                 break
             if before.self_video and not after.self_video:
                 VideoRoom.cancel_task(key)
                 task = asyncio.create_task(
                     VideoRoom.enforce_video(member, after.channel, 60)
                 )
-                VideoRoom.video_tasks[key] = task
+                VideoRoomService.video_tasks[key] = task
                 break
             if not before.self_video and after.self_video:
-                VideoRoom.cancel_task(key)
+                VideoRoomService.cancel_task(key)
                 break
 
     @classmethod
@@ -162,13 +162,13 @@ class VideoRoomService:
         )
         if is_at_home:
             if skipped_channels:
-                VideoRoom.pages.extend(
+                VideoRoomService.pages.extend(
                     generate_skipped_dict_pages(
                         skipped=skipped_channels, title="Skipped Channels in Server,"
                     )
                 )
             if skipped_guilds:
-                VideoRoom.pages.extend(
+                VideoRoomService.pages.extend(
                     generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
@@ -196,40 +196,40 @@ class VideoRoomService:
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                VideoRoom.lines.append(f"Channel: {channel.mention}")
+                VideoRoomService.lines.append(f"Channel: {channel.mention}")
                 field_count += 1
                 for category, alias_names in channel_data.items():
-                    VideoRoom.lines.append(f"{category}")
+                    VideoRoomService.lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
-                        VideoRoom.lines.append(f"  ↳ {name}")
+                        VideoRoomService.lines.append(f"  ↳ {name}")
                         field_count += 1
                         if field_count >= CHUNK_SIZE:
                             embed.add_field(
                                 name="Information",
-                                value="\n".join(VideoRoom.lines),
+                                value="\n".join(VideoRoomService.lines),
                                 inline=False,
                             )
                             embed = flush_page(
-                                embed, VideoRoom.pages, title, guild.name
+                                embed, VideoRoomService.pages, title, guild.name
                             )
-                            VideoRoom.lines = []
+                            VideoRoomService.lines = []
                             field_count = 0
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(VideoRoom.lines),
+                        value="\n".join(VideoRoomService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, VideoRoom.pages, title, guild.name)
+                    embed = flush_page(embed, VideoRoomService.pages, title, guild.name)
                     field_count = 0
-                    VideoRoom.lines = []
-            if VideoRoom.lines:
+                    VideoRoomService.lines = []
+            if VideoRoomService.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(VideoRoom.lines), inline=False
+                    name="Information", value="\n".join(VideoRoomService.lines), inline=False
                 )
-            VideoRoom.pages.append(embed)
-        return VideoRoom.pages
+            VideoRoomService.pages.append(embed)
+        return VideoRoomService.pages
 
     @classmethod
     async def toggle_video_room(cls, channel_dict):
@@ -237,15 +237,15 @@ class VideoRoomService:
         video_room = await VideoRoom.select(**kwargs, singular=True)
         if video_room:
             action = "removed"
-            VideoRoom.video_rooms = [
+            VideoRoomService.video_rooms = [
                 vr
-                for vr in VideoRoom.video_rooms
+                for vr in VideoRoomService.video_rooms
                 if vr.channel_snowflake != video_room.channel_snowflake
             ]
             await VideoRoom.delete(**kwargs)
         else:
             video_room = VideoRoom(**kwargs)
             await video_room.create()
-            VideoRoom.video_rooms.append(video_room)
+            VideoRoomService.video_rooms.append(video_room)
             action = "created"
         return f"Video-only room {action} in {channel_dict.get("mention", None)}."

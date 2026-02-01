@@ -41,6 +41,7 @@ from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.infractions.ban_service import BanService
+from vyrtuous.db.rooms.video_room import VideoRoom
 from vyrtuous.service.rooms.video_room_service import VideoRoomService
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.logger import logger
@@ -55,9 +56,9 @@ class ChannelEventListeners(commands.Cog):
         self._ready_done = False
         self.deleted_rooms = {}
 
-    # async def cog_load(self):
-    #     VideoRoom.video_rooms = await VideoRoom.select()
-    #     self.flags = await Flag.select()
+    async def cog_load(self):
+        VideoRoomService.video_rooms = await VideoRoom.select()
+        self.flags = await Flag.select()
 
     @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):

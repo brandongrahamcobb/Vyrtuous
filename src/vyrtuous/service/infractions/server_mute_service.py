@@ -55,14 +55,14 @@ class ServerMuteService:
         )
         if is_at_home:
             if skipped_guilds:
-                ServerMute.pages.extend(
+                ServerMuteService.pages.extend(
                     generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                ServerMute.pages.extend(
+                ServerMuteService.pages.extend(
                     generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
@@ -92,7 +92,7 @@ class ServerMuteService:
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    ServerMute.lines.append(
+                    ServerMuteService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
                     )
                     field_count += 1
@@ -105,18 +105,18 @@ class ServerMuteService:
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(ServerMute.lines),
+                        value="\n".join(ServerMuteService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, ServerMute.pages, title, guild.name)
-                    ServerMute.lines = []
+                    embed = flush_page(embed, ServerMuteService.pages, title, guild.name)
+                    ServerMuteService.lines = []
                     field_count = 0
-            if ServerMute.lines:
+            if ServerMuteService.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(ServerMute.lines), inline=False
+                    name="Information", value="\n".join(ServerMuteService.lines), inline=False
                 )
-            ServerMute.pages.append(embed)
-        return ServerMute.pages
+            ServerMuteService.pages.append(embed)
+        return ServerMuteService.pages
 
     @classmethod
     async def toggle_server_mute(cls, member_dict, reason, snowflake_kwargs):

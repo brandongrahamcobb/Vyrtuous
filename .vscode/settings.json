@@ -1,4 +1,9 @@
 {
+  "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
   "python-envs.defaultEnvManager": "ms-python.python:system",
@@ -7,9 +12,9 @@
   ],
   "python-envs.pythonProjects": [
     {
-      "path": "",
       "envManager": "ms-python.python:venv",
-      "packageManager": "ms-python.python:pip"
+      "packageManager": "ms-python.python:pip",
+      "path": ""
     }
   ],
   "files.hotExit": "off",

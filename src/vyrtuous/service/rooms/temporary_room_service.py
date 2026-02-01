@@ -77,14 +77,14 @@ class TemporaryRoomService:
         )
         if is_at_home:
             if skipped_channels:
-                TemporaryRoom.pages.extend(
+                TemporaryRoomService.pages.extend(
                     generate_skipped_dict_pages(
                         skipped=skipped_channels,
                         title="Skipped Channels in Server",
                     )
                 )
             if skipped_guilds:
-                TemporaryRoom.pages.extend(
+                TemporaryRoomService.pages.extend(
                     pages=generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
@@ -112,42 +112,42 @@ class TemporaryRoomService:
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                TemporaryRoom.lines.append(f"Channel: {channel.mention}")
+                TemporaryRoomService.lines.append(f"Channel: {channel.mention}")
                 field_count += 1
                 for category, alias_names in channel_data.items():
-                    TemporaryRoom.lines.append(f"{category}")
+                    TemporaryRoomService.lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
-                        TemporaryRoom.lines.append(f"  ↳ {name}")
+                        TemporaryRoomService.lines.append(f"  ↳ {name}")
                         field_count += 1
                         if field_count >= CHUNK_SIZE:
                             embed.add_field(
                                 name="Information",
-                                value="\n".join(TemporaryRoom.lines),
+                                value="\n".join(TemporaryRoomService.lines),
                                 inline=False,
                             )
                             embed = flush_page(
-                                embed, TemporaryRoom.pages, title, guild.name
+                                embed, TemporaryRoomService.pages, title, guild.name
                             )
-                            TemporaryRoom.lines = []
+                            TemporaryRoomService.lines = []
                             field_count = 0
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(TemporaryRoom.lines),
+                        value="\n".join(TemporaryRoomService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, TemporaryRoom.pages, title, guild.name)
-                    TemporaryRoom.lines = []
+                    embed = flush_page(embed, TemporaryRoomService.pages, title, guild.name)
+                    TemporaryRoomService.lines = []
                     field_count = 0
-            if TemporaryRoom.lines:
+            if TemporaryRoomService.lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(TemporaryRoom.lines),
+                    value="\n".join(TemporaryRoomService.lines),
                     inline=False,
                 )
-            TemporaryRoom.pages.append(embed)
-        return TemporaryRoom.pages
+            TemporaryRoomService.pages.append(embed)
+        return TemporaryRoomService.pages
 
     @classmethod
     async def migrate_temporary_room(cls, channel_dict, old_name, snowflake_kwargs):
