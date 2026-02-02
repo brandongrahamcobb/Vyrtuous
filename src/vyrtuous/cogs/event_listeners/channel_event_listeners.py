@@ -193,10 +193,9 @@ class ChannelEventListeners(commands.Cog):
                     )
                     await voice_mute.create()
                     should_be_muted = True
-                    alias = SimpleNamespace(category="voice_mute")
                     duration = DurationObject("1h")
                     await StreamService.send_entry(
-                        alias=alias,
+                        event=VoiceMute,
                         channel_snowflake=after.channel.id,
                         duration=duration,
                         is_channel_scope=True,
@@ -219,10 +218,9 @@ class ChannelEventListeners(commands.Cog):
                         target=target,
                     )
                     should_be_muted = False
-                    alias = SimpleNamespace(category="unvmute")
                     duration = DurationObject("0")
                     await StreamService.send_entry(
-                        alias=alias,
+                        alias=VoiceMute,
                         channel_snowflake=after.channel.id,
                         duration=duration,
                         is_channel_scope=True,

@@ -285,7 +285,7 @@ class VoiceMuteService(AliasService):
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=VoiceMute,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
             is_channel_scope=is_channel_scope,
@@ -310,7 +310,7 @@ class VoiceMuteService(AliasService):
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=VoiceMute,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_channel_scope=is_channel_scope,
             is_modification=True,

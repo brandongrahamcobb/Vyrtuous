@@ -212,7 +212,7 @@ class TextMuteService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=TextMute,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
             member=member,
@@ -243,7 +243,7 @@ class TextMuteService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=TextMute,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_modification=True,
             member=member,

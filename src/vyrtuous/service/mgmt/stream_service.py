@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -46,7 +45,7 @@ class StreamService:
     @classmethod
     async def send_entry(
         cls,
-        alias: Alias,
+        event,
         channel_snowflake: int,
         member: discord.Member,
         message: discord.Message,
@@ -69,7 +68,7 @@ class StreamService:
                 channel_obj = bot.get_channel(stream.channel_snowflake)
                 if channel_obj:
                     pages = cls.build_streaming_embeds(
-                        alias=alias,
+                        event=event,
                         channel=channel_obj,
                         duration=duration,
                         highest_role=highest_role,
@@ -103,7 +102,7 @@ class StreamService:
             for channel in channel.guild.voice_channels
         )
         await Data.save(
-            infraction_type=alias.category,
+            infraction_type=event.category,
             channel_members_voice_count=channel_members_voice_count,
             channel_snowflake=int(channel.id),
             executor_member_snowflake=int(message.author.id) if message else None,
@@ -121,7 +120,7 @@ class StreamService:
     @classmethod
     def build_streaming_embeds(
         cls,
-        alias,
+        event,
         channel,
         duration,
         highest_role,
@@ -134,11 +133,11 @@ class StreamService:
         if duration != "permanent":
             if duration is None:
                 duration_info = (
-                    f"**Type:** {alias.category.capitalize()}\n**Expires:** Never"
+                    f"**Type:** {event.category.capitalize()}\n**Expires:** Never"
                 )
             else:
                 duration_info = (
-                    f"**Type:** {alias.category.capitalize()}\n**Expires:** {duration}"
+                    f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
                 )
             if is_modification:
                 color, duration_type = 0xFF6B35, "⏰ Modified"
@@ -147,44 +146,32 @@ class StreamService:
         else:
             color, duration_type = 0xDC143C, "♾️ Permanent"
             duration_info = (
-                f"**Type:** {alias.category.capitalize()}\n**Expires:** {duration}"
+                f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
             )
-        if alias.category == "ban":
+        if event.category == "ban":
             if is_modification:
                 title = "🔄 Ban Modified"
             else:
-                title = "🔨 User Banned"
+                title = "🔨 User Ban Toggled"
             action = "banned"
-        elif alias.category == "flag":
+        elif event.category == "flag":
             if is_modification:
                 title = "🔄 Flag Modified"
             else:
-                title = "🚩 User Flagged"
+                title = "🚩 User Flag Toggled"
             action = "flagged"
-        elif alias.category == "tmute":
+        elif event.category == "tmute":
             if is_modification:
                 title = "🔄 Text Mute Modified"
             else:
-                title = "📝 User Text Muted"
+                title = "📝 User Text Mute Toggled"
             action = "text muted"
-        elif alias.category == "vmute":
+        elif event.category == "vmute":
             if is_modification:
                 title = "🔄 Voice Mute Modified"
             else:
-                title = "🎙️ User Voice Muted"
+                title = "🎙️ User Voice Mute Toggled"
             action = "voice muted"
-        elif alias.category == "unban":
-            title = "⏮️ User Unbanned"
-            action = "unbanned"
-        elif alias.category == "unflag":
-            title = "⏮️ User Unflagged"
-            action = "unflagged"
-        elif alias.category == "untmute":
-            title = "⏮️ User Text-Mute Removed"
-            action = "untext-muted"
-        elif alias.category == "unvmute":
-            title = "⏮️ User Voice-Mute Removed"
-            action = "unvoice-muted"
         else:
             title = None
             action = None
@@ -194,19 +181,18 @@ class StreamService:
             timestamp=datetime.now(timezone.utc),
         )
         bot = DiscordBot.get_instance()
-        channel_obj = bot.get_channel(alias.channel_snowflake)
         if not action:
             embed_user.description = None
         else:
             embed_user.description = (
-                f"**Target:** {member.mention} {action} in {channel_obj.mention}"
+                f"**Target:** {member.mention} {action} in {channel.mention}"
             )
         embed_user.set_thumbnail(url=message.author.display_avatar.url)
         user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
         embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
         exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
         embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
-        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Command Used:** `{alias.alias_name}`"
+        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Alias Type:** `{event.category}`"
         embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
         embed_user.add_field(
             name=f"**Type:** {duration_type}", value=duration_info, inline=False

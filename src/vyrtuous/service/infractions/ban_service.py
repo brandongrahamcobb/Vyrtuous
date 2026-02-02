@@ -232,7 +232,7 @@ class BanService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Ban,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
             is_channel_scope=is_channel_scope,
@@ -264,7 +264,7 @@ class BanService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Ban,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=None,
             is_channel_scope=False,

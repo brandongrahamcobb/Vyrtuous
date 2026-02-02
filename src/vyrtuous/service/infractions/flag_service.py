@@ -154,7 +154,7 @@ class FlagService(AliasService):
         cog = bot.get_cog("ChannelEventListeners")
         cog.flags.append(flag)
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Flag,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=None,
             is_channel_scope=False,
@@ -182,7 +182,7 @@ class FlagService(AliasService):
                 cog.flags.remove(flag)
                 break
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Flag,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=None,
             is_channel_scope=False,
