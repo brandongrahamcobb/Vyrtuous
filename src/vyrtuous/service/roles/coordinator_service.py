@@ -180,8 +180,9 @@ class CoordinatorService:
                 for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
                     "coordinators"
                 ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    CoordinatorService.lines.append(f"**Channel:** {channel.mention}")
+                    if not isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+                        channel = guild.get_channel(channel_snowflake)
+                        CoordinatorService.lines.append(f"**Channel:** {channel.mention}")
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(

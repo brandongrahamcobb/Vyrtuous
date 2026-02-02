@@ -183,8 +183,9 @@ class ModeratorService:
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
                 ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    ModeratorService.lines.append(f"**Channel:** {channel.mention}")
+                    if not isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+                        channel = guild.get_channel(channel_snowflake)
+                        ModeratorService.lines.append(f"**Channel:** {channel.mention}")
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
