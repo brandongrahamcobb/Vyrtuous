@@ -229,7 +229,10 @@ class BanService(AliasService):
                     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
+                import traceback
+                traceback.print_exc()
                 logger.error(str(e).capitalize())
+
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
             event=Ban,
