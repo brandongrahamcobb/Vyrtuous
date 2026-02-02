@@ -74,6 +74,19 @@ async def is_coordinator(
         raise NotCoordinator
     return True
 
+async def is_coordinator_at_all(
+    source: Union[commands.Context, discord.Interaction, discord.Message]
+):
+    member = resolve_author(source=source)
+    member_snowflake = member.id
+    coordinator = await Coordinator.select(
+        guild_snowflake=int(source.guild.id),
+        member_snowflake=int(member_snowflake),
+        singular=True,
+    )
+    if not coordinator:
+        raise NotCoordinator
+    return True
 
 def coordinator_predicator():
     async def predicate(
@@ -84,7 +97,7 @@ def coordinator_predicator():
             is_developer_wrapper,
             is_guild_owner_wrapper,
             is_administrator_wrapper,
-            is_coordinator_wrapper,
+            is_coordinator_at_all,
         ):
             try:
                 if await verify(source):

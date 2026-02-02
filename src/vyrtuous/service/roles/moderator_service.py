@@ -25,7 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.roles.administrator_service import is_administrator_wrapper
-from vyrtuous.service.roles.coordinator_service import is_coordinator_wrapper
+from vyrtuous.service.roles.coordinator_service import is_coordinator_at_all
 from vyrtuous.service.roles.developer_service import is_developer_wrapper
 from vyrtuous.service.roles.guild_owner_service import is_guild_owner_wrapper
 from vyrtuous.service.roles.sysadmin_service import is_sysadmin_wrapper
@@ -76,6 +76,19 @@ async def is_moderator(
         raise NotModerator
     return True
 
+async def is_moderator_at_all(
+    source: Union[commands.Context, discord.Interaction, discord.Message]
+) -> bool:
+    member = resolve_author(source=source)
+    member_snowflake = member.id
+    moderator = await Moderator.select(
+        guild_snowflake=int(source.guild.id),
+        member_snowflake=int(member_snowflake),
+        singular=True,
+    )
+    if not moderator:
+        raise NotModerator
+    return True
 
 def moderator_predicator():
     async def predicate(
@@ -86,8 +99,8 @@ def moderator_predicator():
             is_developer_wrapper,
             is_guild_owner_wrapper,
             is_administrator_wrapper,
-            is_coordinator_wrapper,
-            is_moderator_wrapper,
+            is_coordinator_at_all,
+            is_moderator_at_all,
         ):
             try:
                 if await verify(source):
