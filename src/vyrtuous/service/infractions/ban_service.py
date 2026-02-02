@@ -148,7 +148,7 @@ class BanService(AliasService):
         return BanService.pages
 
     @classmethod
-    async def ban_overwrite(cls, channel, member)
+    async def ban_overwrite(cls, channel, member):
         pass
         # if channel:
         #     kwargs = {
