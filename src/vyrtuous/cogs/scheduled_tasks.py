@@ -426,7 +426,7 @@ class ScheduledTasks(commands.Cog):
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
-            if not text_mute.reset and text_mute.last_muted < now - timedelta(weeks=1):
+            if not text_mute.reset and text_mute.last_muted < now - timedelta(seconds=30):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(
@@ -466,7 +466,7 @@ class ScheduledTasks(commands.Cog):
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
-            if not ban.reset and ban.last_kicked < now - timedelta(weeks=1):
+            if not ban.reset and ban.last_kicked < now - timedelta(seconds=30):
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(

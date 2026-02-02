@@ -201,7 +201,6 @@ class BanService(AliasService):
         channel = message.guild.get_channel(
             information["snowflake_kwargs"]["channel_snowflake"]
         )
-        logger.info(channel.id)
         if channel:
             try:
                 await channel.set_permissions(
@@ -231,8 +230,6 @@ class BanService(AliasService):
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
-                import traceback
-                traceback.print_exc()
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
             event=Ban,
