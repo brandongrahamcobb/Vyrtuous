@@ -56,12 +56,12 @@ class GenericEventListeners(commands.Cog):
                 and message.author.id == self.bot.user.id
             ):
                 return
-            await BanService.ban_overwrite(
-                channel=message.channel, member=message.author
-            )
-            await TextMuteService.text_mute_overwrite(
-                channel=message.channel, member=message.author
-            )
+            # await BanService.ban_overwrite(
+            #     channel=message.channel, member=message.author
+            # )
+            # await TextMuteService.text_mute_overwrite(
+            #     channel=message.channel, member=message.author
+            # )
             if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             state = StateService(message=message)
