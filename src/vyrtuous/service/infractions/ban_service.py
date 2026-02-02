@@ -148,41 +148,42 @@ class BanService(AliasService):
         return BanService.pages
 
     @classmethod
-    async def ban_overwrite(cls, channel, member):
-        if channel:
-            kwargs = {
-                "channel_snowflake": channel.id,
-                "guild_snowflake": channel.guild.id,
-                "member_snowflake": member.id,
-            }
-            ban = await Ban.select(**kwargs, singular=True)
-            if ban:
-                targets = []
-                for target, overwrite in channel.overwrites.items():
-                    if any(value is not None for value in overwrite._values.values()):
-                        if isinstance(target, discord.Member):
-                            targets.append(target)
-                if member not in targets:
-                    try:
-                        await channel.set_permissions(
-                            member, view_channel=False, reason="Reinstating active ban."
-                        )
-                    except discord.Forbidden as e:
-                        logger.warning(e)
-                    if (
-                        member.voice
-                        and member.voice.channel
-                        and member.voice.channel.id == channel.id
-                    ):
-                        try:
-                            await member.move_to(None, reason="Reinstating active ban.")
-                            set_kwargs = {
-                                "last_kicked": datetime.now(timezone.utc),
-                                "reset": False,
-                            }
-                            await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
-                        except discord.Forbidden as e:
-                            logger.warning(e)
+    async def ban_overwrite(cls, channel, member)
+        pass
+        # if channel:
+        #     kwargs = {
+        #         "channel_snowflake": channel.id,
+        #         "guild_snowflake": channel.guild.id,
+        #         "member_snowflake": member.id,
+        #     }
+        #     ban = await Ban.select(**kwargs, singular=True)
+        #     if ban:
+        #         targets = []
+        #         for target, overwrite in channel.overwrites.items():
+        #             if any(value is not None for value in overwrite._values.values()):
+        #                 if isinstance(target, discord.Member):
+        #                     targets.append(target)
+        #         if member not in targets:
+        #             try:
+        #                 await channel.set_permissions(
+        #                     member, view_channel=False, reason="Reinstating active ban."
+        #                 )
+        #             except discord.Forbidden as e:
+        #                 logger.warning(e)
+        #             if (
+        #                 member.voice
+        #                 and member.voice.channel
+        #                 and member.voice.channel.id == channel.id
+        #             ):
+        #                 try:
+        #                     await member.move_to(None, reason="Reinstating active ban.")
+        #                     set_kwargs = {
+        #                         "last_kicked": datetime.now(timezone.utc),
+        #                         "reset": False,
+        #                     }
+        #                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
+        #                 except discord.Forbidden as e:
+        #                     logger.warning(e)
 
     @classmethod
     async def enforce(cls, information, message, state):
@@ -203,32 +204,31 @@ class BanService(AliasService):
         )
         if channel:
             try:
-                pass
-                # await channel.set_permissions(
-                #     member,
-                #     view_channel=False,
-                #     reason=information["reason"],
-                # )
-                # if (
-                #     member.voice
-                #     and member.voice.channel
-                #     and member.voice.channel.id == channel.id
-                # ):
-                #     is_channel_scope = True
-                #     await member.move_to(None, reason=information["reason"])
-                #     where_kwargs = {
-                #         "channel_snowflake": information["snowflake_kwargs"][
-                #             "channel_snowflake"
-                #         ],
-                #         "guild_snowflake": information["snowflake_kwargs"][
-                #             "guild_snowflake"
-                #         ],
-                #         "member_snowflake": information["snowflake_kwargs"][
-                #             "member_snowflake"
-                #         ],
-                #     }
-                #     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
-                #     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                await channel.set_permissions(
+                    member,
+                    view_channel=False,
+                    reason=information["reason"],
+                )
+                if (
+                    member.voice
+                    and member.voice.channel
+                    and member.voice.channel.id == channel.id
+                ):
+                    is_channel_scope = True
+                    await member.move_to(None, reason=information["reason"])
+                    where_kwargs = {
+                        "channel_snowflake": information["snowflake_kwargs"][
+                            "channel_snowflake"
+                        ],
+                        "guild_snowflake": information["snowflake_kwargs"][
+                            "guild_snowflake"
+                        ],
+                        "member_snowflake": information["snowflake_kwargs"][
+                            "member_snowflake"
+                        ],
+                    }
+                    set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
+                    await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
 
