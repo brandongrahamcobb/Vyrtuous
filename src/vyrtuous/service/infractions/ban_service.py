@@ -230,6 +230,8 @@ class BanService(AliasService):
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
+                import traceback
+                traceback.print_exc()
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
             event=Ban,
