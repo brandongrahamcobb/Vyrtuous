@@ -298,7 +298,7 @@ class RoleService(AliasService):
             )
 
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Role,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_modification=True,
             member=member,

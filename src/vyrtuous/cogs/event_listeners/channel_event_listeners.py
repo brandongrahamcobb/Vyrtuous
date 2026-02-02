@@ -204,30 +204,23 @@ class ChannelEventListeners(commands.Cog):
                         reason="Right-click voice-mute.",
                     )
             elif before.mute and not after.mute and before.channel == after.channel:
-                ban = await Ban.select(
+                await VoiceMute.delete(
                     channel_snowflake=before.channel.id,
                     guild_snowflake=before.channel.guild.id,
                     member_snowflake=member.id,
-                    singular=True,
+                    target=target,
                 )
-                if not ban:
-                    await VoiceMute.delete(
-                        channel_snowflake=before.channel.id,
-                        guild_snowflake=before.channel.guild.id,
-                        member_snowflake=member.id,
-                        target=target,
-                    )
-                    should_be_muted = False
-                    duration = DurationObject("0")
-                    await StreamService.send_entry(
-                        event=VoiceMute,
-                        channel_snowflake=after.channel.id,
-                        duration=duration,
-                        is_channel_scope=True,
-                        member=member,
-                        message=None,
-                        reason="Right-click voice-mute.",
-                    )
+                should_be_muted = False
+                duration = DurationObject("0")
+                await StreamService.send_entry(
+                    event=VoiceMute,
+                    channel_snowflake=after.channel.id,
+                    duration=duration,
+                    is_channel_scope=True,
+                    member=member,
+                    message=None,
+                    reason="Right-click voice-mute.",
+                )
             if after.mute != should_be_muted:
                 try:
                     await member.edit(

@@ -136,7 +136,7 @@ class VeganService(AliasService):
         )
         await vegan.create()
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Vegan,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             member=member,
             message=message,
@@ -155,7 +155,7 @@ class VeganService(AliasService):
             member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
         await StreamService.send_entry(
-            alias=information["alias"],
+            event=Vegan,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_modification=True,
             member=member,
