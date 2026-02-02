@@ -220,7 +220,7 @@ class ChannelEventListeners(commands.Cog):
                     should_be_muted = False
                     duration = DurationObject("0")
                     await StreamService.send_entry(
-                        alias=VoiceMute,
+                        event=VoiceMute,
                         channel_snowflake=after.channel.id,
                         duration=duration,
                         is_channel_scope=True,
