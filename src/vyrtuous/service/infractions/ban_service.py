@@ -230,6 +230,7 @@ class BanService(AliasService):
                     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
+                logger.info(f"TEST3 {e}")
                 logger.error(str(e).capitalize())
 
                 return await state.end(error=str(e).capitalize())
@@ -263,6 +264,7 @@ class BanService(AliasService):
             try:
                 await channel.set_permissions(member, view_channel=None)
             except discord.Forbidden as e:
+                logger.info(f"TEST4 {e}")
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
