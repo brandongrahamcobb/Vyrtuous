@@ -112,7 +112,7 @@ class DiscordObject:
         elif isinstance(self._source, discord.Interaction):
             do = DiscordObject(interaction=self._source)
             author = self._source.user
-        if target and target.lower() == "all":
+        if target and str(target).lower() == "all":
             return {"columns": {}}
         try:
             channel = do.resolve_channel(target)

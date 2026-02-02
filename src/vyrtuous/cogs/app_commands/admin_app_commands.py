@@ -65,7 +65,7 @@ class AdminAppCommands(commands.Cog):
     @administrator_predicator()
     @app_commands.describe(
         alias_name="Alias/Pseudonym",
-        category="Specify a category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action.",
+        category="Specify a category for a `ban`, `flag`, `role`, `tmute`, `vegan` or `vmute` action.",
         channel="Tag a channel or include the ID.",
         role="Tag a channel, role or include the ID.",
     )
@@ -106,7 +106,7 @@ class AdminAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(
-            plural="Administrator Roles", pages=pages, state=state
+            title="Administrator Roles", pages=pages, state=state
         )
 
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
@@ -141,12 +141,13 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.channel.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await CapService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Caps", pages=pages, state=state)
+        await StateService.send_pages(title="Caps", pages=pages, state=state)
 
     @app_commands.command(name="clear", description="Reset database.")
     @app_commands.describe(
@@ -373,7 +374,7 @@ class AdminAppCommands(commands.Cog):
         pages = await ServerMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Server Mutes", pages=pages, state=state)
+        await StateService.send_pages(title="Server Mutes", pages=pages, state=state)
 
     @app_commands.command(name="stage", description="Start/stop stage.")
     @app_commands.describe(
@@ -400,7 +401,7 @@ class AdminAppCommands(commands.Cog):
             duration=duration,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural="Stages", pages=pages, state=state)
+        await StateService.send_pages(title="Stages", pages=pages, state=state)
 
     @app_commands.command(name="stages", description="List stages.")
     @app_commands.describe(
@@ -412,12 +413,13 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.channel.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await StageService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Stages", pages=pages, state=state)
+        await StateService.send_pages(title="Stages", pages=pages, state=state)
 
     @app_commands.command(
         name="temp", description="Toggle a temporary room and assign an owner."
@@ -448,14 +450,13 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.channel.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await TemporaryRoomService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            plural="Temporary Rooms", pages=pages, state=state
-        )
+        await StateService.send_pages(title="Temporary Rooms", pages=pages, state=state)
 
     @app_commands.command(name="stream", description="Setup streaming.")
     @app_commands.describe(
@@ -501,7 +502,7 @@ class AdminAppCommands(commands.Cog):
             snowflake_kwargs=snowflake_kwargs,
         )
         await StateService.send_pages(
-            plural="Streaming Routes", pages=pages, state=state
+            title="Streaming Routes", pages=pages, state=state
         )
 
     @app_commands.command(name="streams", description="List streaming routes.")
@@ -520,7 +521,7 @@ class AdminAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(
-            plural="Streaming Routes", pages=pages, state=state
+            title="Streaming Routes", pages=pages, state=state
         )
 
     @app_commands.command(name="vr", description="Start/stop video-only room.")
@@ -545,12 +546,13 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.channel.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await VideoRoomService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Video Rooms", pages=pages, state=state)
+        await StateService.send_pages(title="Video Rooms", pages=pages, state=state)
 
     @app_commands.command(name="xalias", description="Delete alias.")
     @administrator_predicator()

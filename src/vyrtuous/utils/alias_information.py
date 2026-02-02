@@ -12,6 +12,7 @@ from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationError, DurationObject
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.utils.highest_role import resolve_highest_role
+from vyrtuous.utils.check import has_equal_or_lower_role
 
 
 class AliasInformation:
@@ -47,11 +48,8 @@ class AliasInformation:
         AliasInformation.information["snowflake_kwargs"] = {
             "channel_snowflake": int(alias.channel_snowflake),
             "guild_snowflake": int(alias.guild_snowflake),
+            "member_snowflake": int(message.author.id),
         }
-        if getattr(alias, "role_snowflake"):
-            AliasInformation.information["snowflake_kwargs"].update(
-                {"role_snowflake": int(alias.role_snowflake)}
-            )
         AliasInformation.information["executor_role"] = await resolve_highest_role(
             channel_snowflake=int(alias.channel_snowflake),
             guild_snowflake=int(alias.guild_snowflake),
@@ -89,11 +87,12 @@ class AliasInformation:
                     if duration.number == 0
                     else datetime.now(timezone.utc) + duration.to_timedelta()
                 )
-                from vyrtuous.utils.logger import logger
-
-                logger.info(do)
             if field == "member":
                 member_dict = await do.determine_from_target(target=tuple[1])
+                await has_equal_or_lower_role(
+                    snowflake_kwargs=AliasInformation.information["snowflake_kwargs"],
+                    member_snowflake=member_dict.get("id", None),
+                )
                 AliasInformation.information["snowflake_kwargs"].update(
                     {"member_snowflake": member_dict.get("id", None)}
                 )
@@ -103,4 +102,8 @@ class AliasInformation:
                     AliasInformation.information["reason"] = "No reason provided."
                 else:
                     AliasInformation.information["reason"] = reason
+        if getattr(alias, "role_snowflake"):
+            AliasInformation.information["snowflake_kwargs"].update(
+                {"role_snowflake": int(alias.role_snowflake)}
+            )
         return AliasInformation.information

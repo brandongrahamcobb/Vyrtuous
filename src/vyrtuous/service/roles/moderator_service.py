@@ -149,6 +149,8 @@ class ModeratorService:
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         title = f"{get_random_emoji()} Moderator {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
@@ -156,6 +158,10 @@ class ModeratorService:
         dictionary = await ModeratorService.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
+        from vyrtuous.utils.logger import logger
+
+        logger.info(where_kwargs)
+        logger.info(dictionary)
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0

@@ -156,7 +156,7 @@ class DevTextCommands(commands.Cog):
         pages = await BugService.build_pages(
             filter=filter, where_kwargs=where_kwargs, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Bugs", pages=pages, state=state)
+        await StateService.send_pages(title="Bugs", pages=pages, state=state)
 
     @commands.command(
         name="load", help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"
@@ -172,7 +172,7 @@ class DevTextCommands(commands.Cog):
             )
         return await state.end(success=f"Successfully loaded {module}.")
 
-    @commands.command(name="ow")
+    @commands.command(name="ow", help="Overwrite stats.")
     @developer_predicator()
     async def list_overwrites_text_command(
         self,

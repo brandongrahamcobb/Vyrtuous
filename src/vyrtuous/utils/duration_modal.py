@@ -24,66 +24,62 @@ from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationObject
 
 
+from datetime import datetime, timezone
+import discord
+from vyrtuous.fields.duration import DurationObject
+
+
 class DurationModal(discord.ui.Modal):
 
     def __init__(self, information):
-        super().__init__(title=f'{information["alias_class"].SINGULAR} Reason')
+        super().__init__(title=f'{information["alias"].category} Duration')
         self.information = information
+        existing_duration = getattr(information.get("existing"), "expires_in", None)
         self.duration = discord.ui.TextInput(
             label="Type the duration",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=DurationObject.from_expires_in_to_str(
-                self.information.get("existing", None).expires_in
-            )
-            or "",
+            default=DurationObject.from_expires_in_to_str(existing_duration) or "",
         )
         self.add_item(self.duration)
 
-    async def on_submit(self, interaction):
-        channel = interaction.guild.get_channel(
-            self.information.get("channel_snowflake", None)
-        )
+    async def on_submit(self, interaction: discord.Interaction):
         duration_obj = DurationObject(self.duration.value)
-        cap = await Cap.select(
-            category=self.information.get("alias_class", None).ACT,
-            channel_snowflake=self.information.get("channel_snowflake", None),
-            guild_snowflake=interaction.guild.id,
-            singular=True,
+        cap_seconds = self.information.get(
+            "cap_duration", DurationObject("8h").to_seconds()
         )
-        if cap:
-            channel_cap = cap.duration_seconds
-        else:
-            channel_cap = DurationObject("8h").to_seconds()
-        expires_in_timedelta = DurationObject(self.duration.value).to_timedelta()
+
         if (
-            self.information["existing"]
-            and expires_in_timedelta.total_seconds() > channel_cap
-            or duration_obj.number == 0
+            duration_obj.to_timedelta().total_seconds() > cap_seconds
+            and self.information.get("executor_role") == "Moderator"
         ):
-            if self.information.get("executor_role", None) == "Moderator":
-                duration_str = DurationObject.from_seconds(channel_cap)
-                await interaction.response.send_message(
-                    content=f"Cannot set the "
-                    f"{self.information['alias_class'].SINGULAR} beyond {duration_str} as a "
-                    f"{self.information.get("executor_role", None)} in {channel.mention}."
-                )
-        where_kwargs = {
-            "channel_snowflake": self.information.get("channel_snowflake", None),
-            "member_snowflake": self.information.get("member_snowflake", None),
-        }
-        set_kwargs = {
-            "expires_in": (
-                datetime.now(timezone.utc)
-                + DurationObject(self.duration.value).to_timedelta()
-                if duration_obj.number != 0
-                else None
+            duration_str = DurationObject.from_seconds(cap_seconds)
+            channel = interaction.guild.get_channel(
+                self.information["snowflake_kwargs"]["channel_snowflake"]
             )
-        }
-        await self.information.get("alias_class", None).update(
-            where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            await interaction.response.send_message(
+                f"Cannot set {self.information['alias'].category} beyond {duration_str} as a Moderator in {channel.mention}.",
+                ephemeral=True,
+            )
+            return
+
+        expires_in = (
+            None
+            if duration_obj.number == 0
+            else datetime.now(timezone.utc) + duration_obj.to_timedelta()
+        )
+
+        await self.information["category"].update(
+            where_kwargs={
+                "channel_snowflake": self.information["snowflake_kwargs"][
+                    "channel_snowflake"
+                ],
+                "member_snowflake": self.information["snowflake_kwargs"][
+                    "member_snowflake"
+                ],
+            },
+            set_kwargs={"expires_in": expires_in},
         )
         await interaction.response.send_message(
-            content=f"Duration has been updated to {DurationObject(self.duration.value)}.",
-            ephemeral=True,
+            f"Duration has been updated to {duration_obj}.", ephemeral=True
         )

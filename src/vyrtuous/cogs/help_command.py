@@ -177,11 +177,11 @@ class HelpCommand(commands.Cog):
                 grouped[alias.category].append(alias)
             perm_alias_map = defaultdict(list)
             for category, alias_list in grouped.items():
-                perm_level = Alias.category_to_permission_level.get(
+                perm_level = Alias.CATEGORY_TO_PERMISSION_LEVEL.get(
                     category, "Everyone"
                 )
                 for a in alias_list:
-                    help_lines = Alias.alias_help.get(category, [])
+                    help_lines = Alias.CATEGORY_TO_HELP.get(category, [])
                     perm_alias_map[perm_level].append(
                         f"**{self.config['discord_command_prefix']}{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
@@ -245,7 +245,7 @@ class HelpCommand(commands.Cog):
                         )
                         return await state.end(success=embed)
                 alias = obj
-                help_lines = Alias.alias_help.get(alias.category, None)
+                help_lines = Alias.CATEGORY_TO_HELP.get(alias.category, None)
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
@@ -282,10 +282,10 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = Alias.category_to_description.get(
+                short_desc = Alias.CATEGORY_TO_DESCRIPTION.get(
                     alias.category, "No description"
                 )
-                perm_level_for_alias = Alias.category_to_permission_level.get(
+                perm_level_for_alias = Alias.CATEGORY_TO_PERMISSION_LEVEL.get(
                     alias.category, "Everyone"
                 )
                 perm_alias_map[perm_level_for_alias].append(
@@ -383,7 +383,7 @@ class HelpCommand(commands.Cog):
                         return await state.end(success=embed)
             if kind == "alias":
                 alias = obj
-                help_lines = Alias.alias_help.get(alias.category, None)
+                help_lines = Alias.CATEGORY_TO_HELP.get(alias.category, None)
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
@@ -419,10 +419,10 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = Alias.category_to_description.get(
+                short_desc = Alias.CATEGORY_TO_DESCRIPTION.get(
                     alias.category, "No description"
                 )
-                perm_level_for_alias = Alias.category_to_permission_level.get(
+                perm_level_for_alias = Alias.CATEGORY_TO_PERMISSION_LEVEL.get(
                     alias.category, "Everyone"
                 )
                 perm_alias_map[perm_level_for_alias].append(

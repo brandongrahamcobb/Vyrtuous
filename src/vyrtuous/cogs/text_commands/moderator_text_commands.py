@@ -75,61 +75,67 @@ class ModeratorTextCommands(commands.Cog):
         pages = await AdministratorService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Administrators", pages=pages, state=state)
+        await StateService.send_pages(title="Administrators", pages=pages, state=state)
 
     @commands.command(name="bans", description="List bans.")
     @moderator_predicator()
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await BanService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Bans", pages=pages, state=state)
+        await StateService.send_pages(title="Bans", pages=pages, state=state)
 
     @commands.command(name="cmds", help="List aliases.")
     @moderator_predicator()
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await AliasService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Aliases", pages=pages, state=state)
+        await StateService.send_pages(title="Aliases", pages=pages, state=state)
 
     @commands.command(name="coords", help="Lists coords.")
     @moderator_predicator()
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await CoordinatorService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Coordinators", pages=pages, state=state)
+        await StateService.send_pages(title="Coordinators", pages=pages, state=state)
 
     @commands.command(name="del", help="Delete message.")
     @moderator_predicator()
@@ -165,25 +171,27 @@ class ModeratorTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await DeveloperService.build_pages(object_dict=object_dict)
-        await StateService.send_pages(plural="Developers", pages=pages, state=state)
+        await StateService.send_pages(title="Developers", pages=pages, state=state)
 
     @commands.command(name="flags", help="List flags.")
     @moderator_predicator()
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await FlagService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Flags", pages=pages, state=state)
+        await StateService.send_pages(title="Flags", pages=pages, state=state)
 
     @commands.command(name="ls", help="List new vegans.")
     @moderator_predicator()
@@ -203,7 +211,7 @@ class ModeratorTextCommands(commands.Cog):
         pages = await VeganService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Vegans", pages=pages, state=state)
+        await StateService.send_pages(title="Vegans", pages=pages, state=state)
 
     @commands.command(
         name="migrate",
@@ -239,36 +247,40 @@ class ModeratorTextCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await ModeratorService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Moderators", pages=pages, state=state)
+        await StateService.send_pages(title="Moderators", pages=pages, state=state)
 
     @commands.command(name="mutes", help="List mutes.")
     @moderator_predicator()
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await VoiceMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Voice Mutes", pages=pages, state=state)
+        await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
 
     @commands.command(name="mstage", help="Stage mute/unmute.")
     @moderator_predicator()
@@ -335,7 +347,7 @@ class ModeratorTextCommands(commands.Cog):
                 )
                 if object_pages:
                     pages.extend(object_pages)
-        await StateService.send_pages(plural="infractions", pages=pages, state=state)
+        await StateService.send_pages(title="infractions", pages=pages, state=state)
 
     @commands.command(name="survey", help="Survey stage members.")
     @moderator_predicator()
@@ -353,25 +365,27 @@ class ModeratorTextCommands(commands.Cog):
         pages = await StageService.survey(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id
         )
-        await StateService.send_pages(plural="Stage Roles", pages=pages, state=state)
+        await StateService.send_pages(title="Stage Roles", pages=pages, state=state)
 
     @commands.command(name="tmutes", help="List text-mutes.")
     @moderator_predicator()
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await TextMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Text Mutes", pages=pages, state=state)
+        await StateService.send_pages(title="Text Mutes", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

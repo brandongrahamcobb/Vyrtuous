@@ -39,7 +39,6 @@ class GuildOwnerAppCommands(commands.Cog):
 
     @app_commands.command(name="admin", description="Role -> Administrator.")
     @guild_owner_predicator()
-    @skip_help_discovery()
     async def toggle_administrator_by_role_app_command(
         self, interaction: discord.Interaction, role: AppRoleSnowflake
     ):
@@ -55,7 +54,7 @@ class GuildOwnerAppCommands(commands.Cog):
             role_dict=role_dict, snowflake_kwargs=snowflake_kwargs
         )
         await StateService.send_pages(
-            plural="Administrator Role", pages=pages, state=state
+            title="Administrator Role", pages=pages, state=state
         )
 
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")

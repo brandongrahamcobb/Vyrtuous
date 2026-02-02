@@ -154,7 +154,7 @@ class DevAppCommands(commands.Cog):
         pages = await BugService.build_pages(
             filter=filter, where_kwargs=where_kwargs, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Bugs", pages=pages, state=state)
+        await StateService.send_pages(title="Bugs", pages=pages, state=state)
 
     @app_commands.command(
         name="load", description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"

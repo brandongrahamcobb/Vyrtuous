@@ -287,6 +287,8 @@ class StreamService:
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         title = f"{get_random_emoji()} Streaming Routes"
 

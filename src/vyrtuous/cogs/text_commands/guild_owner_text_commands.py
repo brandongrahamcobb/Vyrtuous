@@ -37,7 +37,6 @@ class GuildOwnerTextCommands(commands.Cog):
 
     @commands.command(name="admin", help="Toggle administrator role.")
     @guild_owner_predicator()
-    @skip_help_discovery()
     async def toggle_administrator_by_role_text_command(
         self, ctx: commands.Context, role: RoleSnowflake
     ):
@@ -52,7 +51,7 @@ class GuildOwnerTextCommands(commands.Cog):
         pages = await AdministratorRoleService.toggle_administrator_role(
             role_dict=role_dict, snowflake_kwargs=snowflake_kwargs
         )
-        await StateService.send_pages(plural="Administrators", pages=pages, state=state)
+        await StateService.send_pages(title="Administrators", pages=pages, state=state)
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
     @guild_owner_predicator()

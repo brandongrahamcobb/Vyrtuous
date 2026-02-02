@@ -84,6 +84,8 @@ class FlagService(AliasService):
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         title = f"{get_random_emoji()} Flags {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
@@ -217,8 +219,7 @@ class FlagService(AliasService):
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
         member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member.display_name}'s flag has been removed",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been unflagged",
             description=(
                 f"**User:** {member.mention}\n" f"**Channel:** {channel.mention}"
             ),

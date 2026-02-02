@@ -89,7 +89,7 @@ class CoordinatorAppCommands(commands.Cog):
             reason=reason,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural="Voice Mutes", pages=pages, state=state)
+        await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
 
     @app_commands.command(name="xrmute", description="Unmute all.")
     @app_commands.describe(channel="Tag a channel or include its ID.")
@@ -103,7 +103,7 @@ class CoordinatorAppCommands(commands.Cog):
         pages = VoiceMuteService.room_unmute(
             channel_dict=channel_dict, guild_snowflake=interaction.guild.id
         )
-        await StateService.send_pages(plural="Voice Unmutes", pages=pages, state=state)
+        await StateService.send_pages(title="Voice Unmutes", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

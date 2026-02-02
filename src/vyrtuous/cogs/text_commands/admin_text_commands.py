@@ -66,7 +66,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         category: Category = commands.parameter(
-            description="Specify a category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action."
+            description="Specify a category for a `ban`, `flag`, `role`, `tmute`, `vegan` or `vmute` action."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: ChannelSnowflake = commands.parameter(
@@ -110,7 +110,7 @@ class AdminTextCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(
-            plural="Administrator Roles", pages=pages, state=state
+            title="Administrator Roles", pages=pages, state=state
         )
 
     @commands.command(name="cap", help="Cap alias duration for mods.")
@@ -148,12 +148,13 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await CapService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Caps", pages=pages, state=state)
+        await StateService.send_pages(title="Caps", pages=pages, state=state)
 
     @commands.command(name="clear", help="Reset database.")
     @administrator_predicator()
@@ -393,7 +394,7 @@ class AdminTextCommands(commands.Cog):
         pages = await ServerMuteService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Server Mutes", pages=pages, state=state)
+        await StateService.send_pages(title="Server Mutes", pages=pages, state=state)
 
     @commands.command(name="stage", help="Start/stop stage")
     @administrator_predicator()
@@ -424,7 +425,7 @@ class AdminTextCommands(commands.Cog):
             duration=duration,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural="Stage", pages=pages, state=state)
+        await StateService.send_pages(title="Stage", pages=pages, state=state)
 
     @commands.command(name="stages", help="List stages.")
     @administrator_predicator()
@@ -433,17 +434,19 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: str = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await StageService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Stages", pages=pages, state=state)
+        await StateService.send_pages(title="Stages", pages=pages, state=state)
 
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
@@ -474,20 +477,20 @@ class AdminTextCommands(commands.Cog):
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: `all`, channel ID/mention, " "or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await TemporaryRoomService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            plural="Temporary Rooms", pages=pages, state=state
-        )
+        await StateService.send_pages(title="Temporary Rooms", pages=pages, state=state)
 
     @commands.command(name="stream", help="Setup streaming.")
     @administrator_predicator()
@@ -529,7 +532,7 @@ class AdminTextCommands(commands.Cog):
             resolved_channels=resolved_channels,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(plural="Stream", pages=pages, state=state)
+        await StateService.send_pages(title="Stream", pages=pages, state=state)
 
     @commands.command(name="streams", help="List streaming routes.")
     @administrator_predicator()
@@ -550,7 +553,7 @@ class AdminTextCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(
-            plural="Streaming Routes", pages=pages, state=state
+            title="Streaming Routes", pages=pages, state=state
         )
 
     @commands.command(name="vr", help="Start/stop video-only room.")
@@ -579,18 +582,19 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str = commands.parameter(
-            description="Include `all`, channel or server ID."
+        target: str | None = commands.parameter(
+            default=None, description="Include `all`, channel or server ID."
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await VideoRoomService.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural="Video Rooms", pages=pages, state=state)
+        await StateService.send_pages(title="Video Rooms", pages=pages, state=state)
 
     @commands.command(name="xalias", help="Delete alias.")
     @administrator_predicator()

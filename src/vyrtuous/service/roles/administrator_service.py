@@ -140,6 +140,8 @@ class AdministratorService:
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         title = f"{get_random_emoji()} Administrators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
 
@@ -316,6 +318,8 @@ class AdministratorRoleService:
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         dictionary = {}
         title = f"{get_random_emoji()} Administrator Roles"

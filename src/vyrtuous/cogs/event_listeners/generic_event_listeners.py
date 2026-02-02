@@ -71,9 +71,6 @@ class GenericEventListeners(commands.Cog):
                     information=information, message=message, state=state
                 )
         except Exception as e:
-            import traceback
-
-            traceback.print_exc()
             return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()

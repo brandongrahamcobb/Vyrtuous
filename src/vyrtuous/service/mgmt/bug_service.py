@@ -111,6 +111,8 @@ class BugService:
 
     @classmethod
     async def build_pages(cls, filter, where_kwargs, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         title = f"{get_random_emoji()} Developer Logs"
 

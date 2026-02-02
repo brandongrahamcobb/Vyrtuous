@@ -87,6 +87,8 @@ class BanService(AliasService):
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         thumbnail = False
         where_kwargs = object_dict.get("columns", None)
@@ -300,8 +302,7 @@ class BanService(AliasService):
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
         member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member.display_name}'s ban has been removed",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been unbanned",
             description=(
                 f"**User:** {member.mention}\n" f"**Channel:** {channel.mention}"
             ),

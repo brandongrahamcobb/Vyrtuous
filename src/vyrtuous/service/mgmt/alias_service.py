@@ -94,6 +94,8 @@ class AliasService:
 
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
+        cls.lines = []
+        cls.pages = []
         bot = DiscordBot.get_instance()
         title = f"{get_random_emoji()} Command Aliases"
 
@@ -108,9 +110,11 @@ class AliasService:
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
+            for channel_snowflake, channel_dictionary in guild_data.get(
+                "channels", {}
+            ).items():
                 channel = guild.get_channel(channel_snowflake)
-                for category, alias_data in dictionary["aliases"].items():
+                for category, alias_data in channel_dictionary["aliases"].items():
                     AliasService.lines.append(f"{category}")
                     for name, role_mention in alias_data.items():
                         if category == "role":
@@ -173,7 +177,7 @@ class AliasService:
             f"created successfully for channel {channel_dict.get("mention", None)}."
         )
         alias = await Alias.select(category=category, **where_kwargs, singular=True)
-        if alias:
+        if alias and alias.category != "role":
             return (
                 f"Alias of type `{category}` "
                 f"already exists for this channel {channel_dict.get("mention", None)}."

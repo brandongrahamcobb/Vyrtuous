@@ -19,8 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 
+@skip_db_discovery
 class ServerMute(DatabaseFactory):
 
     __tablename__ = "active_server_voice_mutes"

@@ -23,112 +23,126 @@ import discord
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
+from vyrtuous.utils.alias_information import AliasInformation
 
 
 class ModerationView(discord.ui.View):
 
-    category_paths = []
-    category_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+    category_paths = [Path(__file__).resolve().parents[1] / "db/infractions"]
 
-    def __init__(self, interaction: discord.Interaction, member_snowflake: int, modal):
+    def __init__(self, interaction: discord.Interaction, modal):
         super().__init__(timeout=120)
         self.information = {}
         self.author_snowflake = interaction.user.id
-        self.categories = dir_to_classes(dir_paths=self.category_paths)
         self.interaction = interaction
-        self.member_snowflake = member_snowflake
         self.modal = modal
+        self.categories = dir_to_classes(dir_paths=self.category_paths)
 
-    async def interaction_check(self, interaction):
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.author_snowflake
 
     async def setup(self):
+        # Populate all fields from AliasInformation.build
+        self.information = await AliasInformation.build(self.interaction.message)
+        if not self.information:
+            await self.interaction.response.send_message(
+                "Failed to load alias information.", ephemeral=True
+            )
+            self.stop()
+            return
+
+        self.information["category"] = self.information["alias"]  # convenience
         self.channel_select.options = await self._build_channel_options()
         self.category_select.options = await self._build_category_options()
 
     async def _build_channel_options(self):
         channels = []
-        for category in self.categories:
-            action = await category.select(
-                guild_snowflake=self.interaction.guild.id,
-                member_snowflake=self.member_snowflake,
+        category = self.information.get("category")
+        if category:
+            existing_action = await category.select(
+                guild_snowflake=self.information["snowflake_kwargs"]["guild_snowflake"],
+                member_snowflake=self.information["snowflake_kwargs"].get(
+                    "member_snowflake"
+                ),
                 singular=True,
             )
-            if action:
-                channel = self.interaction.guild.get_channel(action.channel_snowflake)
-                channels.append(channel)
+            if existing_action:
+                ch = self.interaction.guild.get_channel(
+                    existing_action.channel_snowflake
+                )
+                if ch:
+                    channels.append(ch)
         return [
-            discord.SelectOption(label=ch.name, value=str(ch.id))
-            for ch in channels
-            if isinstance(ch, discord.VoiceChannel)
+            discord.SelectOption(label=ch.name, value=str(ch.id)) for ch in channels
         ]
 
     async def _build_category_options(self):
-        actions = []
-        for category in self.categories:
-            action = await category.select(
-                guild_snowflake=self.interaction.guild.id,
-                member_snowflake=self.member_snowflake,
-                singular=True,
-            )
-            if action:
-                actions.append(category)
-        return [
-            discord.SelectOption(label=category.ACT, value=category.__name__)
-            for category in actions
-            if category.ACT != "smute"
-        ]
+        category = self.information.get("category")
+        if category and category.category != "smute":
+            return [
+                discord.SelectOption(label=category.category, value=category.__name__)
+            ]
+        return []
 
-    @discord.ui.select(
-        placeholder="Select channel",
-        options=[],
-    )
-    async def channel_select(self, interaction, select):
+    @discord.ui.select(placeholder="Select channel", options=[])
+    async def channel_select(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        self.information["snowflake_kwargs"]["channel_snowflake"] = int(
+            select.values[0]
+        )
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.information["snowflake_kwargs"]["channel_snowflake"] = channel.id
-        self.channel_select.placeholder = channel.name
+        if channel:
+            self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
-    @discord.ui.select(
-        placeholder="Select category",
-        options=[],
-    )
-    async def category_select(self, interaction, select):
-        category_name = select.values[0]
-        category = next(c for c in self.categories if c.__name__ == category_name)
-        self.category_select.placeholder = category.ACT
-        self.information["alias_class"] = category
+    @discord.ui.select(placeholder="Select category", options=[])
+    async def category_select(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        selected_name = select.values[0]
+        category_class = next(c for c in self.categories if c.__name__ == selected_name)
+        self.information["category"] = category_class
+        self.category_select.placeholder = category_class.category
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
-    async def submit(self, interaction, button):
+    async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
         executor_role = await has_equal_or_lower_role_wrapper(
             source=interaction,
-            member_snowflake=self.member_snowflake,
+            member_snowflake=self.information["snowflake_kwargs"].get(
+                "member_snowflake"
+            ),
             sender_snowflake=interaction.user.id,
         )
-        existing = await self.information.get("alias_class", None).select(
-            channel_snowflake=self.information.get("channel_snowflake", None),
-            member_snowflake=self.member_snowflake,
+        self.information["executor_role"] = executor_role
+
+        existing = await self.information["category"].select(
+            channel_snowflake=self.information["snowflake_kwargs"].get(
+                "channel_snowflake"
+            ),
+            member_snowflake=self.information["snowflake_kwargs"].get(
+                "member_snowflake"
+            ),
             singular=True,
         )
-        self.information["executor_role"] = executor_role
-        self.information["snowflake_kwargs"]["member_snowflake"] = self.member_snowflake
         self.information["existing"] = existing
-        if hasattr(existing, "expires_in"):
-            if DurationObject.from_expires_in_to_str(existing.expires_in) == 0:
-                await interaction.response.send_message(
-                    content="This moderation is permanent and can only be undone, not modified.",
-                    ephemeral=True,
-                )
-                await interaction.message.delete()
-                self.stop()
+
+        if hasattr(existing, "expires_in") and existing.expires_in is None:
+            await interaction.response.send_message(
+                "This moderation is permanent and can only be undone, not modified.",
+                ephemeral=True,
+            )
+            await interaction.message.delete()
+            self.stop()
+            return
+
         modal = self.modal(information=self.information)
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
-    async def cancel(self, interaction, button):
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
         self.stop()
