@@ -82,8 +82,9 @@ class CoordinatorAppCommands(commands.Cog):
             "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMuteService.room_mute(
+        pages = await VoiceMuteService.room_mute(
             channel_dict=channel_dict,
             guild_snowflake=interaction.guild.id,
             reason=reason,
@@ -99,8 +100,9 @@ class CoordinatorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMuteService.room_unmute(
+        pages = await VoiceMuteService.room_unmute(
             channel_dict=channel_dict, guild_snowflake=interaction.guild.id
         )
         await StateService.send_pages(title="Voice Unmutes", pages=pages, state=state)

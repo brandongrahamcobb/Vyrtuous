@@ -77,7 +77,7 @@ class ModeratorTextCommands(commands.Cog):
         )
         await StateService.send_pages(title="Administrators", pages=pages, state=state)
 
-    @commands.command(name="bans", description="List bans.")
+    @commands.command(name="bans", help="List bans.")
     @moderator_predicator()
     async def list_bans_text_command(
         self,
@@ -324,7 +324,7 @@ class ModeratorTextCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
-    @commands.command(name="summary", description="Moderation summary.")
+    @commands.command(name="summary", help="Moderation summary.")
     @moderator_predicator()
     async def list_moderation_summary_text_command(
         self,
@@ -335,19 +335,18 @@ class ModeratorTextCommands(commands.Cog):
     ):
         pages = []
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
+        dir_paths.append(Path(__file__).resolve().parents[2] / "service/infractions")
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         member_dict = await do.determine_from_target(target=member)
         for obj in dir_to_classes(dir_paths=dir_paths):
-            if "member" in obj.SCOPES:
-                object_pages = await obj.build_pages(
-                    object_dict=member_dict, is_at_home=is_at_home
-                )
-                if object_pages:
-                    pages.extend(object_pages)
-        await StateService.send_pages(title="infractions", pages=pages, state=state)
+            object_pages = await obj.build_pages(
+                object_dict=member_dict, is_at_home=is_at_home
+            )
+            if object_pages:
+                pages.extend(object_pages)
+        await StateService.send_pages(title="Infractions", pages=pages, state=state)
 
     @commands.command(name="survey", help="Survey stage members.")
     @moderator_predicator()

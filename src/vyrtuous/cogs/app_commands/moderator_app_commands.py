@@ -362,17 +362,16 @@ class ModeratorAppCommands(commands.Cog):
     ):
         pages = []
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
+        dir_paths.append(Path(__file__).resolve().parents[2] / "service/infractions")
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         is_at_home = at_home(source=interaction)
         member_dict = await do.determine_from_target(target=member)
         for obj in dir_to_classes(dir_paths=dir_paths):
-            if "member" in obj.SCOPES:
-                object_pages = await obj.build_pages(
-                    object_dict=member_dict, is_at_home=is_at_home
-                )
-                pages.extend(object_pages)
+            object_pages = await obj.service.build_pages(
+                object_dict=member_dict, is_at_home=is_at_home
+            )
+            pages.extend(object_pages)
         await StateService.send_pages(title="infractions", pages=pages, state=state)
 
     @app_commands.command(name="survey", description="Survey stage members.")

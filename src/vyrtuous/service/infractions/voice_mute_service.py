@@ -223,11 +223,12 @@ class VoiceMuteService(AliasService):
 
         for member in channel_dict.get("object", None).members:
             voice_mute = await VoiceMute.select(
-                target="user", **where_kwargs, singular=True
+                target="user", **where_kwargs, member_snowflake=member.id, singular=True
             )
             if not voice_mute:
                 skipped_members.append(member)
                 continue
+            await VoiceMute.delete(target="user", **where_kwargs)
             if member.voice and member.voice.channel:
                 if member.voice.channel.id == channel_dict.get("id", None):
                     try:
@@ -242,7 +243,6 @@ class VoiceMuteService(AliasService):
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
-            await VoiceMute.delete(target="user", **where_kwargs)
             unmuted_members.append(member)
         description_lines = [
             f"**Channel:** {channel_dict.get("mention", None)}",

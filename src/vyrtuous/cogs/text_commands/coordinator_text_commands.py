@@ -70,7 +70,7 @@ class CoordinatorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+            default=None, description="Tag a channel or include its ID."
         ),
         *,
         reason: str = commands.parameter(
@@ -84,8 +84,9 @@ class CoordinatorTextCommands(commands.Cog):
             "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
+        channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMuteService.room_mute(
+        pages = await VoiceMuteService.room_mute(
             channel_dict=channel_dict,
             guild_snowflake=ctx.guild.id,
             reason=reason,
@@ -99,13 +100,14 @@ class CoordinatorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+            default=None, description="Tag a channel or include its ID."
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = VoiceMuteService.room_unmute(
+        pages = await VoiceMuteService.room_unmute(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id
         )
         await StateService.send_pages(title="Room Unmutes", pages=pages, state=state)

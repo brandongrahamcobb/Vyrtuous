@@ -257,8 +257,8 @@ class AdminTextCommands(commands.Cog):
     async def list_permissions_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
-            description="Specify one of: `all`, channel " "ID/mention or server ID.",
+        target: str | None = commands.parameter(
+            default=None, description="Specify one of: `all`, channel " "ID/mention or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -267,6 +267,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
+        target = target or int(ctx.channel.id)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
@@ -383,12 +384,13 @@ class AdminTextCommands(commands.Cog):
     async def list_server_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        target: str | None = commands.parameter(
+            default=None, description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.guild.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await ServerMuteService.build_pages(

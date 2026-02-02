@@ -253,6 +253,7 @@ class AdminAppCommands(commands.Cog):
         }
         is_at_home = at_home(source=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.channel.id)
         object_dict = await do.determine_from_target(target=target)
         if target and target.lower() == "all":
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
@@ -369,6 +370,7 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.guild.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await ServerMuteService.build_pages(
