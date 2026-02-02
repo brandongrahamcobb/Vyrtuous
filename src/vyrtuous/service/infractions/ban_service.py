@@ -201,6 +201,7 @@ class BanService(AliasService):
         channel = message.guild.get_channel(
             information["snowflake_kwargs"]["channel_snowflake"]
         )
+        logger.info(channel.id)
         if channel:
             try:
                 await channel.set_permissions(
