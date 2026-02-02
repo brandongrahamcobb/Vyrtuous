@@ -93,7 +93,7 @@ class AliasInformation:
                     snowflake_kwargs=AliasInformation.information["snowflake_kwargs"],
                     member_snowflake=member_dict.get("id", None),
                 )
-                await check(snowflake_kwargs=AliasInformation.information["snowflake_kwargs"], lowest_role="Coordinator")
+                await check(snowflake_kwargs=AliasInformation.information["snowflake_kwargs"], lowest_role="Moderator")
                 AliasInformation.information["snowflake_kwargs"].update(
                     {"member_snowflake": member_dict.get("id", None)}
                 )
