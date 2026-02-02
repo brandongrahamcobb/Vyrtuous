@@ -52,7 +52,7 @@ class ClearService:
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
-            await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Guild Owner")
+            await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if any(

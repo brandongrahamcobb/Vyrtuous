@@ -128,7 +128,7 @@ class StageService:
             ).items():
                 channel = guild.get_channel(channel_snowflake)
                 StageService.lines.append(
-                    f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
+                    f"**Expires in:** {stage_dictionary.get("stages", {}).get("expires_in", None)}"
                 )
                 field_count += 1
                 if field_count == CHUNK_SIZE:

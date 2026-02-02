@@ -23,12 +23,13 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.fields.duration import AppDuration
 from vyrtuous.fields.snowflake import AppChannelSnowflake, AppMemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.roles.coordinator_service import coordinator_predicator
 from vyrtuous.service.roles.moderator_service import ModeratorService
+from vyrtuous.service.rooms.stage_service import StageService
 from vyrtuous.service.state_service import StateService
 
 
@@ -66,14 +67,17 @@ class CoordinatorAppCommands(commands.Cog):
         )
         return await state.end(success=msg)
 
-    @app_commands.command(name="rmute", description="Room mute (except yourself).")
-    @app_commands.describe(channel="Tag a channel or include its ID.")
+    @app_commands.command(name="stage", description="Start/stop stage.")
+    @app_commands.describe(
+        channel="Tag a voice/stage channel",
+        duration="Duration of the stage (e.g., 1h, 30m)",
+    )
     @coordinator_predicator()
-    async def room_mute_app_command(
+    async def toggle_stage_app_command(
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        reason: str = "No reason provided.",
+        duration: AppDuration,
     ):
         state = StateService(interaction=interaction)
         snowflake_kwargs = {
@@ -84,28 +88,12 @@ class CoordinatorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel = channel or int(interaction.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = await VoiceMuteService.room_mute(
+        pages = await StageService.toggle_stage(
             channel_dict=channel_dict,
-            guild_snowflake=interaction.guild.id,
-            reason=reason,
+            duration=duration,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
-
-    @app_commands.command(name="xrmute", description="Unmute all.")
-    @app_commands.describe(channel="Tag a channel or include its ID.")
-    @coordinator_predicator()
-    async def room_unmute_app_command(
-        self, interaction: discord.Interaction, channel: AppChannelSnowflake
-    ):
-        state = StateService(interaction=interaction)
-        do = DiscordObject(interaction=interaction)
-        channel = channel or int(interaction.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await VoiceMuteService.room_unmute(
-            channel_dict=channel_dict, guild_snowflake=interaction.guild.id
-        )
-        await StateService.send_pages(title="Voice Unmutes", pages=pages, state=state)
+        await StateService.send_pages(title="Stages", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

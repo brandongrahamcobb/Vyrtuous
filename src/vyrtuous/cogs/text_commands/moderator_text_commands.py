@@ -64,12 +64,14 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: `all`, " "channel ID/mention or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.guild.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=str(target))
         pages = await AdministratorService.build_pages(
@@ -163,12 +165,13 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str = commands.parameter(
-            description="'all', a specific server or user mention/ID"
+        target: str | None = commands.parameter(
+            default=None, description="'all', a specific server or user mention/ID"
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or "all"
         object_dict = await do.determine_from_target(target=target)
         pages = await DeveloperService.build_pages(object_dict=object_dict)
         await StateService.send_pages(title="Developers", pages=pages, state=state)
@@ -200,12 +203,14 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.guild.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await VeganService.build_pages(
@@ -282,7 +287,7 @@ class ModeratorTextCommands(commands.Cog):
         )
         await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
 
-    @commands.command(name="mstage", help="Stage mute/unmute.")
+    @commands.command(name="mstage", help="Toggle stage mute/unmute.")
     @moderator_predicator()
     @skip_help_discovery()
     async def stage_mute_text_command(
@@ -302,6 +307,7 @@ class ModeratorTextCommands(commands.Cog):
             "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
+        channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
         msg = await StageService.toggle_stage_mute(
@@ -324,7 +330,7 @@ class ModeratorTextCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
-    @commands.command(name="summary", help="Moderation summary.")
+    @commands.command(name="summary", help="List user moderation.")
     @moderator_predicator()
     async def list_moderation_summary_text_command(
         self,
@@ -360,6 +366,7 @@ class ModeratorTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
         pages = await StageService.survey(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id

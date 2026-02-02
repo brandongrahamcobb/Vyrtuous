@@ -77,27 +77,28 @@ class HelpCommand(commands.Cog):
                         lines.append(f"• {line}")
             return lines
 
-    async def get_available_commands(
-        self, all, bot, user_highest
-    ) -> list[commands.Command]:
+    async def get_available_commands(self, all, bot, user_highest):
         available = []
+        skipped = []
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
                 if PERMISSION_TYPES.index(user_highest) >= PERMISSION_TYPES.index(
                     perm_level
                 ):
-                    fail = False
-                    for check in command.checks:
-                        if hasattr(check, "_skip_help_discovery") and not all:
-                            fail = True
-                    if not fail:
+                    has_skip = any(
+                        hasattr(check, "_skip_help_discovery")
+                        for check in command.checks
+                    )
+                    if has_skip:
+                        skipped.append(command)
+                    else:
                         available.append(command)
             except Exception as e:
                 logger.warning(
                     f"Exception while evaluating command {command}: {str(e).capitalize()}"
                 )
-        return available
+        return available, skipped
 
     async def get_command_permission_level(self, bot, command):
         if not hasattr(command, "checks") or not command.checks:
@@ -188,9 +189,7 @@ class HelpCommand(commands.Cog):
                     )
             return perm_alias_map
 
-    @app_commands.command(
-        name="help", description="Show command information or your available commands."
-    )
+    @app_commands.command(name="help", description="List commands.")
     @app_commands.describe(command_name="The command to view details for.")
     @moderator_predicator()
     async def help_app_command(
@@ -269,11 +268,14 @@ class HelpCommand(commands.Cog):
             guild_snowflake=interaction.guild.id,
             member_snowflake=interaction.user.id,
         )
-        all_commands = await self.get_available_commands(
+        all_commands, skipped_commands = await self.get_available_commands(
             all=all, bot=bot, user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
+        )
+        skipped_permission_groups = await self.group_commands_by_permission(
+            bot, interaction, skipped_commands
         )
         aliases = await Alias.select(
             channel_snowflake=interaction.channel.id,
@@ -323,6 +325,28 @@ class HelpCommand(commands.Cog):
             if perm_level in perm_alias_map:
                 aliases_text = "\n".join(perm_alias_map[perm_level])
                 embed.add_field(name="Aliases", value=aliases_text, inline=False)
+            if all:
+                skipped_in_level = sorted(
+                    skipped_permission_groups.get(perm_level, []), key=lambda c: c.name
+                )
+                if skipped_in_level:
+                    skipped_lines = [
+                        f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+                        for cmd in skipped_in_level
+                    ]
+                    skipped_text = "\n".join(skipped_lines)
+                    if len(skipped_text) > 1024:
+                        chunks = self.split_command_list(skipped_in_level)
+                        for i, chunk in enumerate(chunks):
+                            embed.add_field(
+                                name="Additional" if i == 0 else "Additional (cont.)",
+                                value=chunk,
+                                inline=False,
+                            )
+                    else:
+                        embed.add_field(
+                            name="Additional", value=skipped_text, inline=False
+                        )
             pages.append(embed)
         if not pages:
             return await state.end(
@@ -330,7 +354,7 @@ class HelpCommand(commands.Cog):
             )
         return await state.end(success=pages)
 
-    @commands.command(name="help")
+    @commands.command(name="help", help="List commands.")
     @moderator_predicator()
     async def help_text_command(self, ctx, *, command_name: str | None = None):
         state = StateService(ctx=ctx)
@@ -407,11 +431,14 @@ class HelpCommand(commands.Cog):
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
         )
-        all_commands = await self.get_available_commands(
+        all_commands, skipped_commands = await self.get_available_commands(
             all=all, bot=bot, user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
+        )
+        skipped_permission_groups = await self.group_commands_by_permission(
+            bot, ctx, skipped_commands
         )
         aliases = await Alias.select(
             channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id
@@ -460,6 +487,28 @@ class HelpCommand(commands.Cog):
             if perm_level in perm_alias_map:
                 aliases_text = "\n".join(perm_alias_map[perm_level])
                 embed.add_field(name="Aliases", value=aliases_text, inline=False)
+            if all:
+                skipped_in_level = sorted(
+                    skipped_permission_groups.get(perm_level, []), key=lambda c: c.name
+                )
+                if skipped_in_level:
+                    skipped_lines = [
+                        f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+                        for cmd in skipped_in_level
+                    ]
+                    skipped_text = "\n".join(skipped_lines)
+                    if len(skipped_text) > 1024:
+                        chunks = self.split_command_list(skipped_in_level)
+                        for i, chunk in enumerate(chunks):
+                            embed.add_field(
+                                name="Additional" if i == 0 else "Additional (cont.)",
+                                value=chunk,
+                                inline=False,
+                            )
+                    else:
+                        embed.add_field(
+                            name="Additional", value=skipped_text, inline=False
+                        )
             pages.append(embed)
         if not pages:
             return await state.end(warning="No commands available to you.")

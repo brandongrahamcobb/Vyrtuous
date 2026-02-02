@@ -71,6 +71,7 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.guild.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await AdministratorService.build_pages(
@@ -157,6 +158,7 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or "all"
         object_dict = await do.determine_from_target(target=target)
         pages = await DeveloperService.build_pages(object_dict=object_dict)
         await StateService.send_pages(title="Developer", pages=pages, state=state)
@@ -213,6 +215,7 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.guild.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await VeganService.build_pages(
@@ -283,7 +286,7 @@ class ModeratorAppCommands(commands.Cog):
         )
         await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
 
-    @app_commands.command(name="mstage", description="Stage mute/unmute.")
+    @app_commands.command(name="mstage", description="Toggle stage mute/unmute.")
     @app_commands.describe(member="Tag a member or include their ID")
     @moderator_predicator()
     async def stage_mute_app_command(
@@ -299,6 +302,7 @@ class ModeratorAppCommands(commands.Cog):
             "member_snowflake": int(interaction.user.id),
         }
         do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
         msg = await StageService.toggle_stage_mute(
@@ -382,6 +386,7 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
         pages = await StageService.survey(
             channel_dict=channel_dict, guild_snowflake=interaction.guild.id

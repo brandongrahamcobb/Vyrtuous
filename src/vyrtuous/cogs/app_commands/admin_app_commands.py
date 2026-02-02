@@ -24,7 +24,6 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.fields.category import AppCategory
-from vyrtuous.fields.duration import AppDuration
 from vyrtuous.fields.snowflake import (
     AppChannelSnowflake,
     AppMemberSnowflake,
@@ -34,6 +33,7 @@ from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.service.clear_service import ClearService
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.infractions.server_mute_service import ServerMuteService
+from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.mgmt.alias_service import AliasService
 from vyrtuous.service.mgmt.cap_service import CapService
@@ -100,6 +100,7 @@ class AdminAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
+        target = target or int(interaction.guild.id)
         is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
         pages = await AdministratorRoleService.build_pages(
@@ -255,11 +256,11 @@ class AdminAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         target = target or int(interaction.channel.id)
         object_dict = await do.determine_from_target(target=target)
-        if target and target.lower() == "all":
+        if target and str(target).lower() == "all":
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
-        if target and target.lower() == "all":
+        if target and str(target).lower() == "all":
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
-        if target and target.lower() == "all":
+        if target and str(target).lower() == "all":
             channel_objs = [
                 channel_obj
                 for guild in self.bot.guilds
@@ -280,6 +281,47 @@ class AdminAppCommands(commands.Cog):
             return await state.end(
                 success=f"{self.bot.user.display_name} has all permissions for `{target}`."
             )
+
+    @app_commands.command(name="rmute", description="Room mute (except yourself).")
+    @app_commands.describe(channel="Tag a channel or include its ID.")
+    @administrator_predicator()
+    async def room_mute_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: AppChannelSnowflake,
+        reason: str = "No reason provided.",
+    ):
+        state = StateService(interaction=interaction)
+        snowflake_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
+        channel_dict = await do.determine_from_target(target=channel)
+        pages = await VoiceMuteService.room_mute(
+            channel_dict=channel_dict,
+            guild_snowflake=interaction.guild.id,
+            reason=reason,
+            snowflake_kwargs=snowflake_kwargs,
+        )
+        await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
+
+    @app_commands.command(name="xrmute", description="Unmute all.")
+    @app_commands.describe(channel="Tag a channel or include its ID.")
+    @administrator_predicator()
+    async def room_unmute_app_command(
+        self, interaction: discord.Interaction, channel: AppChannelSnowflake
+    ):
+        state = StateService(interaction=interaction)
+        do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
+        channel_dict = await do.determine_from_target(target=channel)
+        pages = await VoiceMuteService.room_unmute(
+            channel_dict=channel_dict, guild_snowflake=interaction.guild.id
+        )
+        await StateService.send_pages(title="Voice Unmutes", pages=pages, state=state)
 
     @app_commands.command(name="rmv", description="VC move.")
     @app_commands.describe(
@@ -377,33 +419,6 @@ class AdminAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(title="Server Mutes", pages=pages, state=state)
-
-    @app_commands.command(name="stage", description="Start/stop stage.")
-    @app_commands.describe(
-        channel="Tag a voice/stage channel",
-        duration="Duration of the stage (e.g., 1h, 30m)",
-    )
-    @administrator_predicator()
-    async def toggle_stage_app_command(
-        self,
-        interaction: discord.Interaction,
-        channel: AppChannelSnowflake,
-        duration: AppDuration,
-    ):
-        state = StateService(interaction=interaction)
-        snowflake_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
-        do = DiscordObject(interaction=interaction)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await StageService.toggle_stage(
-            channel_dict=channel_dict,
-            duration=duration,
-            snowflake_kwargs=snowflake_kwargs,
-        )
-        await StateService.send_pages(title="Stages", pages=pages, state=state)
 
     @app_commands.command(name="stages", description="List stages.")
     @app_commands.describe(

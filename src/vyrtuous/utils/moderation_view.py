@@ -21,9 +21,9 @@ from pathlib import Path
 import discord
 
 from vyrtuous.fields.duration import DurationObject
+from vyrtuous.utils.alias_information import AliasInformation
 from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
-from vyrtuous.utils.alias_information import AliasInformation
 
 
 class ModerationView(discord.ui.View):

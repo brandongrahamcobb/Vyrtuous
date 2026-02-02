@@ -21,12 +21,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cogs.help_command import skip_help_discovery
+from vyrtuous.fields.duration import Duration, DurationObject
 from vyrtuous.fields.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.roles.coordinator_service import coordinator_predicator
 from vyrtuous.service.roles.moderator_service import ModeratorService
+from vyrtuous.service.rooms.stage_service import StageService
 from vyrtuous.service.state_service import StateService
 
 
@@ -64,17 +66,20 @@ class CoordinatorTextCommands(commands.Cog):
         )
         return await state.end(success=msg)
 
-    @commands.command(name="rmute", help="Room mute (except yourself).")
+    @commands.command(name="stage", help="Start/stop stage")
     @coordinator_predicator()
-    async def room_mute_text_command(
+    @skip_help_discovery()
+    async def toggle_stage_text_command(
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID."
+            description="Tag a channel or include its ID."
         ),
         *,
-        reason: str = commands.parameter(
-            default="No reason provided.", description="Specify a reason."
+        duration: Duration = commands.parameter(
+            default=DurationObject("1h"),
+            description="Options: (+|-)duration(m|h|d) "
+            "0 - permanent / 24h - default",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -86,31 +91,12 @@ class CoordinatorTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
-        pages = await VoiceMuteService.room_mute(
+        pages = await StageService.toggle_stage(
             channel_dict=channel_dict,
-            guild_snowflake=ctx.guild.id,
-            reason=reason,
+            duration=duration,
             snowflake_kwargs=snowflake_kwargs,
         )
-        await StateService.send_pages(title="Room Mutes", pages=pages, state=state)
-
-    @commands.command(name="xrmute", help="Unmute all.")
-    @coordinator_predicator()
-    async def room_unmute_text_command(
-        self,
-        ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID."
-        ),
-    ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        channel = channel or int(ctx.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await VoiceMuteService.room_unmute(
-            channel_dict=channel_dict, guild_snowflake=ctx.guild.id
-        )
-        await StateService.send_pages(title="Room Unmutes", pages=pages, state=state)
+        await StateService.send_pages(title="Stage", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

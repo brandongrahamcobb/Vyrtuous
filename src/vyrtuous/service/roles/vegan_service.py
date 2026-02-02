@@ -50,7 +50,7 @@ class VeganService(AliasService):
             )
             dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
-            ].setdefault({"placeholder": {}})
+            ].setdefault("placeholder", {})
         skipped_guilds = generate_skipped_guilds(dictionary)
         skipped_members = generate_skipped_members(dictionary)
         cleaned_dictionary = clean_dictionary(

@@ -64,7 +64,7 @@ class Alias(DatabaseFactory):
         "flag": "Toggles a moderation flag.",
         "role": "Toggles a role to a user.",
         "tmute": "Toggles a mute in text channels.",
-        "vegan": "Toggles a vegan.",
+        "vegan": "Toggles a going vegan flag.",
         "vmute": "Toggles a mute in voice channels.",
     }
     CATEGORY_TO_PERMISSION_LEVEL = {

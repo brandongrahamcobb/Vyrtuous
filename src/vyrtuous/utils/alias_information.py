@@ -11,8 +11,8 @@ from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationError, DurationObject
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.check import has_equal_or_lower_role
+from vyrtuous.utils.highest_role import resolve_highest_role
 
 
 class AliasInformation:

@@ -94,6 +94,7 @@ CHECK (category IN (
 
 COMMIT;
 
+ALTER TABLE vegans
 DROP CONSTRAINT vegans_pkey,
 DROP COLUMN channel_snowflake,
 ADD PRIMARY KEY (guild_snowflake, member_snowflake);
@@ -129,15 +130,6 @@ ALTER TABLE temporary_rooms RENAME CONSTRAINT temporary_rooms_pkey1 TO temporary
 
 ALTER TABLE active_caps
 RENAME COLUMN moderation_type TO category;
-CREATE TABLE roles (
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    channel_snowflake BIGINT NOT NULL,
-    guild_snowflake BIGINT NOT NULL,
-    member_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake)
-);
 
 
 

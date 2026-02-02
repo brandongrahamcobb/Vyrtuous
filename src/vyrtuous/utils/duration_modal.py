@@ -24,11 +24,6 @@ from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationObject
 
 
-from datetime import datetime, timezone
-import discord
-from vyrtuous.fields.duration import DurationObject
-
-
 class DurationModal(discord.ui.Modal):
 
     def __init__(self, information):

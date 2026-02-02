@@ -24,12 +24,12 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.fields.category import Category
-from vyrtuous.fields.duration import Duration, DurationObject
 from vyrtuous.fields.snowflake import ChannelSnowflake, MemberSnowflake, RoleSnowflake
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.service.clear_service import ClearService
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.infractions.server_mute_service import ServerMuteService
+from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.mgmt.alias_service import AliasService
 from vyrtuous.service.mgmt.cap_service import CapService
@@ -98,12 +98,14 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', " "channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
+        target = target or int(ctx.guild.id)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
         pages = await AdministratorRoleService.build_pages(
@@ -142,7 +144,8 @@ class AdminTextCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: str | None = commands.parameter(
+            default=None,
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
@@ -258,7 +261,8 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: str | None = commands.parameter(
-            default=None, description="Specify one of: `all`, channel " "ID/mention or server ID.",
+            default=None,
+            description="Specify one of: `all`, channel " "ID/mention or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -271,9 +275,9 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        if target and target.lower() == "all":
+        if target and str(target).lower() == "all":
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
-        if target and target.lower() == "all":
+        if target and str(target).lower() == "all":
             channel_objs = [
                 channel_obj
                 for guild in self.bot.guilds
@@ -294,6 +298,36 @@ class AdminTextCommands(commands.Cog):
             return await state.end(
                 success=f"{self.bot.user.display_name} has all permissions for `{target}`."
             )
+
+    @commands.command(name="rmute", help="Room mute (except yourself).")
+    @administrator_predicator()
+    async def room_mute_text_command(
+        self,
+        ctx: commands.Context,
+        channel: ChannelSnowflake = commands.parameter(
+            default=None, description="Tag a channel or include its ID."
+        ),
+        *,
+        reason: str = commands.parameter(
+            default="No reason provided.", description="Specify a reason."
+        ),
+    ):
+        state = StateService(ctx=ctx)
+        snowflake_kwargs = {
+            "channel_snowflake": int(ctx.channel.id),
+            "guild_snowflake": int(ctx.guild.id),
+            "member_snowflake": int(ctx.author.id),
+        }
+        do = DiscordObject(ctx=ctx)
+        channel = channel or int(ctx.channel.id)
+        channel_dict = await do.determine_from_target(target=channel)
+        pages = await VoiceMuteService.room_mute(
+            channel_dict=channel_dict,
+            guild_snowflake=ctx.guild.id,
+            reason=reason,
+            snowflake_kwargs=snowflake_kwargs,
+        )
+        await StateService.send_pages(title="Room Mutes", pages=pages, state=state)
 
     @commands.command(name="rmv", help="VC move.")
     @administrator_predicator()
@@ -385,7 +419,8 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: str | None = commands.parameter(
-            default=None, description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -397,37 +432,6 @@ class AdminTextCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(title="Server Mutes", pages=pages, state=state)
-
-    @commands.command(name="stage", help="Start/stop stage")
-    @administrator_predicator()
-    @skip_help_discovery()
-    async def toggle_stage_text_command(
-        self,
-        ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
-        ),
-        *,
-        duration: Duration = commands.parameter(
-            default=DurationObject("1h"),
-            description="Options: (+|-)duration(m|h|d) "
-            "0 - permanent / 24h - default",
-        ),
-    ):
-        state = StateService(ctx=ctx)
-        snowflake_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await StageService.toggle_stage(
-            channel_dict=channel_dict,
-            duration=duration,
-            snowflake_kwargs=snowflake_kwargs,
-        )
-        await StateService.send_pages(title="Stage", pages=pages, state=state)
 
     @commands.command(name="stages", help="List stages.")
     @administrator_predicator()
@@ -615,6 +619,24 @@ class AdminTextCommands(commands.Cog):
             alias_name=alias_name, snowflake_kwargs=snowflake_kwargs
         )
         return await state.end(success=msg)
+
+    @commands.command(name="xrmute", help="Unmute all.")
+    @administrator_predicator()
+    async def room_unmute_text_command(
+        self,
+        ctx: commands.Context,
+        channel: ChannelSnowflake = commands.parameter(
+            default=None, description="Tag a channel or include its ID."
+        ),
+    ):
+        state = StateService(ctx=ctx)
+        do = DiscordObject(ctx=ctx)
+        channel = channel or int(ctx.channel.id)
+        channel_dict = await do.determine_from_target(target=channel)
+        pages = await VoiceMuteService.room_unmute(
+            channel_dict=channel_dict, guild_snowflake=ctx.guild.id
+        )
+        await StateService.send_pages(title="Room Unmutes", pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):
