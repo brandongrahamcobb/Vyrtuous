@@ -22,28 +22,29 @@ import discord
 class ReasonModal(discord.ui.Modal):
 
     def __init__(self, information):
-        super().__init__(title=f'{information["alias"].category} Reason')
+        super().__init__(title=f'{information["category"].category.capitalize()} Reason')
         self.information = information
         self.reason = discord.ui.TextInput(
             label="Type the reason",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=self.information.get("reason") or "",
+            default=self.information.get("existing", None).reason or "",
         )
         self.add_item(self.reason)
 
-    async def on_submit(self, interaction: discord.Interaction):
-        await self.information["alias"].update(
-            where_kwargs={
-                "channel_snowflake": self.information["snowflake_kwargs"][
-                    "channel_snowflake"
-                ],
-                "member_snowflake": self.information["snowflake_kwargs"][
-                    "member_snowflake"
-                ],
-            },
-            set_kwargs={"reason": self.reason.value},
+    async def on_submit(self, interaction):
+        where_kwargs = {
+            "channel_snowflake": self.information.get(
+                "channel_snowflake", None
+            ),
+            "member_snowflake": self.information.get(
+                "member_snowflake", None
+            ),
+        }
+        set_kwargs = {"reason": self.reason.value}
+        await self.information.get("category", None).update(
+            where_kwargs=where_kwargs, set_kwargs=set_kwargs
         )
         await interaction.response.send_message(
-            "Reason has been updated.", ephemeral=True
+            content="Reason has been updated.", ephemeral=True
         )
