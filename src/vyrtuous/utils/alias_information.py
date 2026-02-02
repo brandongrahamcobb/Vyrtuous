@@ -11,7 +11,7 @@ from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationError, DurationObject
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.utils.check import has_equal_or_lower_role
+from vyrtuous.utils.check import has_equal_or_lower_role, check
 from vyrtuous.utils.highest_role import resolve_highest_role
 
 
@@ -93,6 +93,7 @@ class AliasInformation:
                     snowflake_kwargs=AliasInformation.information["snowflake_kwargs"],
                     member_snowflake=member_dict.get("id", None),
                 )
+                await check(snowflake_kwargs=AliasInformation.information["snowflake_kwargs"], lowest_role="Coordinator")
                 AliasInformation.information["snowflake_kwargs"].update(
                     {"member_snowflake": member_dict.get("id", None)}
                 )
