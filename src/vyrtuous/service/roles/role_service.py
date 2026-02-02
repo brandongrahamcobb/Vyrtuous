@@ -89,7 +89,6 @@ class RoleService(AliasService):
         try:
             await member.add_roles(role, reason="Granting role.")
         except discord.Forbidden as e:
-            logger.info(f"TEST8 {e}")
             logger.error(str(e).capitalize())
 
     @classmethod
@@ -101,8 +100,6 @@ class RoleService(AliasService):
         try:
             await member.remove_roles(role, reason="Revoking role.")
         except discord.Forbidden as e:
-
-            logger.info(f"TEST10 {e}")
             logger.error(str(e).capitalize())
 
     @classmethod

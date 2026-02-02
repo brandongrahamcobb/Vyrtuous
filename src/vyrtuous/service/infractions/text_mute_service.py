@@ -184,7 +184,6 @@ class TextMuteService(AliasService):
                     }
                     await TextMute.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                 except discord.Forbidden as e:
-                    logger.info(f"TEST5 {e}")
                     logger.warning(e)
 
     @classmethod
@@ -210,7 +209,6 @@ class TextMuteService(AliasService):
                     reason=information["reason"],
                 )
             except discord.Forbidden as e:
-                logger.info(f"TEST6 {e}")
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
@@ -242,7 +240,6 @@ class TextMuteService(AliasService):
                     reason=information["reason"],
                 )
             except discord.Forbidden as e:
-                logger.info(f"TEST7 {e}")
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(

@@ -259,7 +259,6 @@ class StateService:
             try:
                 await user.send(embed=embed)
             except discord.Forbidden as e:
-                logger.info(f"TEST1 {e}")
                 logger.info(str(e).capitalize())
 
     async def report_issue(self, user):
@@ -268,7 +267,6 @@ class StateService:
             try:
                 await user.send("You already reported this message.")
             except discord.Forbidden as e:
-                logger.info(f"TEST2 {e}")
                 logger.info(str(e).capitalize())
             return
         self._reported_users.add(user.id)
@@ -283,7 +281,6 @@ class StateService:
             )
             await bug.create()
         except discord.Forbidden as e:
-            logger.info(f"TEST3 {e}")
             logger.info(str(e).capitalize())
         online_developer_mentions = []
         member = self.bot.get_user(self.config["discord_owner_id"])

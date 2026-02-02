@@ -204,34 +204,32 @@ class BanService(AliasService):
         )
         if channel:
             try:
-                pass
-                # await channel.set_permissions(
-                #     member,
-                #     view_channel=False,
-                #     reason=information["reason"],
-                # )
-                # if (
-                #     member.voice
-                #     and member.voice.channel
-                #     and member.voice.channel.id == channel.id
-                # ):
-                #     is_channel_scope = True
-                #     await member.move_to(None, reason=information["reason"])
-                #     where_kwargs = {
-                #         "channel_snowflake": information["snowflake_kwargs"][
-                #             "channel_snowflake"
-                #         ],
-                #         "guild_snowflake": information["snowflake_kwargs"][
-                #             "guild_snowflake"
-                #         ],
-                #         "member_snowflake": information["snowflake_kwargs"][
-                #             "member_snowflake"
-                #         ],
-                #     }
-                #     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
-                #     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                await channel.set_permissions(
+                    member,
+                    view_channel=False,
+                    reason=information["reason"],
+                )
+                if (
+                    member.voice
+                    and member.voice.channel
+                    and member.voice.channel.id == channel.id
+                ):
+                    is_channel_scope = True
+                    await member.move_to(None, reason=information["reason"])
+                    where_kwargs = {
+                        "channel_snowflake": information["snowflake_kwargs"][
+                            "channel_snowflake"
+                        ],
+                        "guild_snowflake": information["snowflake_kwargs"][
+                            "guild_snowflake"
+                        ],
+                        "member_snowflake": information["snowflake_kwargs"][
+                            "member_snowflake"
+                        ],
+                    }
+                    set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
+                    await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             except discord.Forbidden as e:
-                logger.info(f"TEST3 {e}")
                 logger.error(str(e).capitalize())
 
                 return await state.end(error=str(e).capitalize())
@@ -265,7 +263,6 @@ class BanService(AliasService):
             try:
                 await channel.set_permissions(member, view_channel=None)
             except discord.Forbidden as e:
-                logger.info(f"TEST4 {e}")
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
