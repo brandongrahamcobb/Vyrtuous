@@ -29,6 +29,7 @@ class AliasInformation:
 
     @classmethod
     async def build(cls, message):
+        AliasInformation.information.clear()
         bot = DiscordBot.get_instance()
         do = DiscordObject(message=message)
         args = (
