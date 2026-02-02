@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Role(DatabaseFactory):
 
     __tablename__ = "roles"
+    category = "role"
     channel_snowflake: int
     created_at: datetime
     guild_snowflake: int

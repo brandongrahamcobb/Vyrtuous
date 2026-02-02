@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Stream(DatabaseFactory):
 
     __tablename__ = "streaming"
+    category = "stream"
     channel_snowflake: int
     enabled: bool
     entry_type: str

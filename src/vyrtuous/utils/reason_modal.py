@@ -21,31 +21,24 @@ import discord
 
 class ReasonModal(discord.ui.Modal):
 
-    def __init__(self, infraction_information):
-        super().__init__(
-            title=f'{infraction_information["alias_class"].SINGULAR} Reason'
-        )
-        self.infraction_information = infraction_information
+    def __init__(self, information):
+        super().__init__(title=f'{information["alias_class"].SINGULAR} Reason')
+        self.information = information
         self.reason = discord.ui.TextInput(
             label="Type the reason",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=self.infraction_information.get("infraction_existing", None).reason
-            or "",
+            default=self.information.get("existing", None).reason or "",
         )
         self.add_item(self.reason)
 
     async def on_submit(self, interaction):
         where_kwargs = {
-            "channel_snowflake": self.infraction_information.get(
-                "infraction_channel_snowflake", None
-            ),
-            "member_snowflake": self.infraction_information.get(
-                "infraction_member_snowflake", None
-            ),
+            "channel_snowflake": self.information.get("channel_snowflake", None),
+            "member_snowflake": self.information.get("member_snowflake", None),
         }
         set_kwargs = {"reason": self.reason.value}
-        await self.infraction_information.get("alias_class", None).update(
+        await self.information.get("alias_class", None).update(
             where_kwargs=where_kwargs, set_kwargs=set_kwargs
         )
         await interaction.response.send_message(

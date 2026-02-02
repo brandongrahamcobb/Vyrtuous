@@ -44,7 +44,7 @@ class AliasService:
         kwargs = information["snowflake_kwargs"]
         obj = await cls.model.select(**kwargs, singular=True)
         if obj:
-            await cls.undo(obj, information=information, message=message, state=state)
+            await cls.undo(information=information, message=message, state=state)
         else:
             await cls.enforce(information=information, message=message, state=state)
 
@@ -188,14 +188,19 @@ class AliasService:
         await alias.create()
         return msg
 
-    def fill_map(self, args) -> Dict[str, Tuple[int, str]]:
-        map = self.ARGS_MAP
+    @classmethod
+    def fill_map(cls, alias_class, args) -> Dict[str, Tuple[int, str]]:
+        map = alias_class.ARGS_MAP
         sorted_args = sorted(map.items(), key=lambda x: x[1])
         kwargs = {}
         for i, (key, pos) in enumerate(sorted_args):
             if i == len(sorted_args) - 1:
-                value = " ".join(str(a) for a in args[pos - 1 :])
+                value = (
+                    " ".join(str(a) for a in args[pos - 1 :])
+                    if len(args) >= pos
+                    else ""
+                )
             else:
-                value = str(args[pos - 1])
+                value = str(args[pos - 1]) if len(args) >= pos else ""
             kwargs[key] = (pos, value)
         return kwargs

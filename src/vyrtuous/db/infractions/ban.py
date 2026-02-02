@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Ban(DatabaseFactory):
 
     __tablename__ = "active_bans"
+    category = "ban"
     channel_snowflake: int
     created_at: datetime
     expires_in: datetime

@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Sysadmin(DatabaseFactory):
 
     __tablename__ = "sysadmin"
+    category = "sysadmin"
     created_at: datetime
     member_snowflake: int
     updated_at: datetime

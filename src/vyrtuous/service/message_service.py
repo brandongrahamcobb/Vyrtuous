@@ -157,7 +157,7 @@ class PaginatorService:
         self.current_page = 0
         self.timeout = timeout
         self.message = None
-        self._reinfraction_lock = asyncio.Lock()
+        self._reaction_lock = asyncio.Lock()
 
     async def start(self):
         embed = self.get_current_embed()
@@ -194,7 +194,7 @@ class PaginatorService:
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
-                    "reinfraction_add", timeout=self.timeout, check=look
+                    "reaction_add", timeout=self.timeout, check=look
                 )
             except asyncio.TimeoutError:
                 try:
@@ -209,7 +209,7 @@ class PaginatorService:
                 logger.warning(str(e).capitalize())
 
     async def handle_reaction(self, reaction):
-        async with self._reinfraction_lock:
+        async with self._reaction_lock:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):
                 self.current_page = max(

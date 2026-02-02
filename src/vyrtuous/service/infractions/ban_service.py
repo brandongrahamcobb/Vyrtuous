@@ -22,10 +22,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.ban import Ban
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -229,7 +229,7 @@ class BanService(AliasService):
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
@@ -239,7 +239,7 @@ class BanService(AliasService):
             message=message,
             reason=information["reason"],
         )
-        embed = await BanService.act_embed(information=information, source=message)
+        embed = await BanService.act_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
@@ -261,21 +261,21 @@ class BanService(AliasService):
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration="",
+            duration=None,
             is_channel_scope=False,
             is_modification=True,
             member=member,
             message=message,
             reason="No reason provided.",
         )
-        embed = await BanService.undo_embed(information=information, source=message)
+        embed = await BanService.undo_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
-    async def act_embed(cls, information, **kwargs):
+    async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
@@ -294,7 +294,7 @@ class BanService(AliasService):
         return embed
 
     @classmethod
-    async def undo_embed(cls, information, **kwargs):
+    async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])

@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class VoiceMute(DatabaseFactory):
 
     __tablename__ = "active_voice_mutes"
+    category = "vmute"
     channel_snowflake: int
     created_at: datetime
     expires_in: datetime

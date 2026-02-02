@@ -1,5 +1,11 @@
 from datetime import datetime, timezone
 
+from vyrtuous.aliases.ban_alias import BanAlias
+from vyrtuous.aliases.flag_alias import FlagAlias
+from vyrtuous.aliases.role_alias import RoleAlias
+from vyrtuous.aliases.text_mute_alias import TextMuteAlias
+from vyrtuous.aliases.vegan_alias import VeganAlias
+from vyrtuous.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.mgmt.cap import Cap
@@ -11,6 +17,14 @@ from vyrtuous.utils.highest_role import resolve_highest_role
 class AliasInformation:
 
     information = {}
+    ALIAS_MAP = {
+        "ban": BanAlias,
+        "flag": FlagAlias,
+        "role": RoleAlias,
+        "tmute": TextMuteAlias,
+        "vegan": VeganAlias,
+        "vmute": VoiceMuteAlias,
+    }
 
     @classmethod
     async def build(cls, message):
@@ -27,7 +41,9 @@ class AliasInformation:
         )
         if not alias:
             return
-        AliasInformation.information["alias"] = alias
+        alias_class = cls.ALIAS_MAP[alias.category]
+        kwargs = alias_class.service.fill_map(alias_class=alias_class, args=args)
+        AliasInformation.information["alias"] = alias_class
         AliasInformation.information["snowflake_kwargs"] = {
             "channel_snowflake": int(alias.channel_snowflake),
             "guild_snowflake": int(alias.guild_snowflake),
@@ -41,14 +57,14 @@ class AliasInformation:
             guild_snowflake=int(alias.guild_snowflake),
             member_snowflake=int(message.author.id),
         )
-        kwargs = alias.fill_map(args)
         for field, tuple in kwargs.items():
             if field == "duration":
-                duration = (
-                    DurationObject(tuple[1])
-                    if tuple[1] is not None
-                    else DurationObject("8h")
-                )
+                value = tuple[1]
+                if not value:
+                    duration = DurationObject("8h")
+                else:
+                    duration = DurationObject(value)
+                AliasInformation.information["duration"] = duration
                 cap = await Cap.select(
                     category=AliasInformation.information["alias"].category,
                     channel_snowflake=int(alias.channel_snowflake),
@@ -67,14 +83,15 @@ class AliasInformation:
                     or duration.number == 0
                 ):
                     if AliasInformation.information["executor_role"] == "Moderator":
-                        duration_str = DurationObject.from_seconds(
-                            AliasInformation.information["cap_duration"]
-                        )
-                        AliasInformation.information["duration"] = duration_str
                         raise DurationError(information=AliasInformation.information)
                 AliasInformation.information["expires_in"] = (
-                    datetime.now(timezone.utc) + duration.to_timedelta()
+                    None
+                    if duration.number == 0
+                    else datetime.now(timezone.utc) + duration.to_timedelta()
                 )
+                from vyrtuous.utils.logger import logger
+
+                logger.info(do)
             if field == "member":
                 member_dict = await do.determine_from_target(target=tuple[1])
                 AliasInformation.information["snowflake_kwargs"].update(
@@ -82,5 +99,8 @@ class AliasInformation:
                 )
             if field == "reason":
                 reason = tuple[1]
-                AliasInformation.information["reason"] = reason
+                if not reason:
+                    AliasInformation.information["reason"] = "No reason provided."
+                else:
+                    AliasInformation.information["reason"] = reason
         return AliasInformation.information

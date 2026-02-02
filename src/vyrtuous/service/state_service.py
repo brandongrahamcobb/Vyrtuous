@@ -215,7 +215,7 @@ class StateService:
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
-                    "reinfraction_add", timeout=30.0, check=look
+                    "reaction_add", timeout=30.0, check=look
                 )
             except asyncio.TimeoutError:
                 try:

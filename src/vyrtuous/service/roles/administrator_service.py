@@ -209,47 +209,9 @@ class AdministratorRoleService:
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         member_snowflake = snowflake_kwargs.get("member_snowflake", None)
         role_snowflake = snowflake_kwargs.get("role_snowflake", None)
-        kwargs = {
-            "guild_snowflake": int(guild_snowflake),
-            "role_snowflakes": [role_snowflake],
-        }
-        administrator_role = await AdministratorRole.select(**kwargs, singular=True)
-        if not administrator_role:
-            return
-        administrator = await Administrator.select(
-            guild_snowflake=int(guild_snowflake),
-            member_snowflake=int(member_snowflake),
-            singular=True,
-        )
-        if not administrator:
-            administrator = Administrator(
-                guild_snowflake=int(guild_snowflake),
-                member_snowflake=int(member_snowflake),
-                role_snowflake=list(role_snowflake),
-            )
-            await administrator.create()
-        else:
-            administrator_role_snowflakes = administrator.role_snowflakes
-            administrator_role_snowflakes.append(role_snowflake)
-            where_kwargs = {
-                "guild_snowflake": int(guild_snowflake),
-                "member_snowflake": member_snowflake,
-            }
-            set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
-            await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        logger.info(
-            f"Granted administrator to member ({member_snowflake}) in guild ({guild_snowflake})."
-        )
-
-    @classmethod
-    async def removed_role(cls, snowflake_kwargs):
-        administrator_role_snowflakes = []
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
-        role_snowflake = snowflake_kwargs.get("role_snowflake", None)
         where_kwargs = {
             "guild_snowflake": int(guild_snowflake),
-            "role_snowflakes": [role_snowflake],
+            "role_snowflake": int(role_snowflake),
         }
         administrator_role = await AdministratorRole.select(
             **where_kwargs, singular=True
@@ -261,6 +223,48 @@ class AdministratorRoleService:
             member_snowflake=int(member_snowflake),
             singular=True,
         )
+        if not administrator:
+            administrator = Administrator(
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(member_snowflake),
+                role_snowflakes=[int(role_snowflake)],
+            )
+            await administrator.create()
+        else:
+            administrator_role_snowflakes = administrator.role_snowflakes
+            administrator_role_snowflakes.append(role_snowflake)
+            where_kwargs = {
+                "guild_snowflake": int(guild_snowflake),
+                "member_snowflake": member_snowflake,
+            }
+            set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
+            await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            logger.info(
+                f"Granted administrator to member ({member_snowflake}) in guild ({guild_snowflake})."
+            )
+
+    @classmethod
+    async def removed_role(cls, snowflake_kwargs):
+        administrator_role_snowflakes = []
+        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
+        role_snowflake = snowflake_kwargs.get("role_snowflake", None)
+        where_kwargs = {
+            "guild_snowflake": int(guild_snowflake),
+            "role_snowflake": int(role_snowflake),
+        }
+        administrator_role = await AdministratorRole.select(
+            **where_kwargs, singular=True
+        )
+        if not administrator_role:
+            return
+        administrator = await Administrator.select(
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            role_snowflakes=[role_snowflake],
+            singular=True,
+            inside_fields=["role_snowflakes"],
+        )
         if administrator:
             administrator_role_snowflakes = administrator.role_snowflakes
             administrator_role_snowflakes.remove(role_snowflake)
@@ -270,9 +274,9 @@ class AdministratorRoleService:
             }
             set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
             await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        logger.info(
-            f"Revoked administrator from member ({member_snowflake}) in guild ({guild_snowflake})."
-        )
+            logger.info(
+                f"Revoked administrator from member ({member_snowflake}) in guild ({guild_snowflake})."
+            )
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
@@ -348,7 +352,7 @@ class AdministratorRoleService:
         kwargs = role_dict.get("columns", None)
 
         administrators = await Administrator.select(
-            role_snowflakes=role_dict.get("id", None), inside=True
+            role_snowflakes=role_dict.get("id", None), inside_fields=["role_snowflakes"]
         )
         administrator_roles = await AdministratorRole.select(
             role_snowflake=role_dict.get("id", None)

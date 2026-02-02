@@ -68,18 +68,18 @@ class DatabaseFactory(object):
     @classmethod
     @overload
     async def select(
-        cls: Type[T], *, singular: Literal[True], inside=False, **kwargs
+        cls: Type[T], *, singular: Literal[True], inside_fields=[], **kwargs
     ) -> T: ...
 
     @classmethod
     @overload
     async def select(
-        cls: Type[T], *, singular: Literal[False], inside=False, **kwargs
+        cls: Type[T], *, singular: Literal[False], inside_fields=[], **kwargs
     ) -> list[T]: ...
 
     @classmethod
     async def select(
-        cls: Type[T], *, singular=False, inside=False, **kwargs
+        cls: Type[T], *, singular=False, inside_fields=[], **kwargs
     ) -> T | list[T]:
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, "__tablename__")
@@ -93,7 +93,7 @@ class DatabaseFactory(object):
             conditions.append("expires_in IS NOT NULL AND expires_in < NOW()")
             real_kwargs.pop("expired", None)
         for field, value in real_kwargs.items():
-            if inside:
+            if field in inside_fields:
                 conditions.append(f"${len(values)+1} = ANY({field})")
             else:
                 conditions.append(f"{field}=${len(values)+1}")

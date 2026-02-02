@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Bug(DatabaseFactory):
 
     __tablename__ = "bug_tracking"
+    category = "bug"
     channel_snowflake: int
     guild_snowflake: int
     id: str

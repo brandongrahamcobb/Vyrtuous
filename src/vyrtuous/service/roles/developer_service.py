@@ -147,7 +147,7 @@ class DeveloperService:
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
         where_kwargs = member_dict.get("columns", None)
-        del where_kwargs['guild_snowflake']
+        del where_kwargs["guild_snowflake"]
         developer = await Developer.select(singular=True, **where_kwargs)
         if developer:
             await Developer.delete(**where_kwargs)

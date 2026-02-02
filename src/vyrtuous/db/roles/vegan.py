@@ -23,7 +23,8 @@ from vyrtuous.db.database_factory import DatabaseFactory
 
 class Vegan(DatabaseFactory):
 
-    __tablename__ = "vegan"
+    __tablename__ = "vegans"
+    category = "vegan"
     created_at: datetime
     guild_snowflake: int
     member_snowflake: int

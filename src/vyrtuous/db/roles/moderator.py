@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Moderator(DatabaseFactory):
 
     __tablename__ = "moderators"
+    category = "mod"
     channel_snowflake: int
     created_at: datetime
     guild_snowflake: int

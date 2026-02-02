@@ -226,7 +226,9 @@ class VideoRoomService:
                     VideoRoomService.lines = []
             if VideoRoomService.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(VideoRoomService.lines), inline=False
+                    name="Information",
+                    value="\n".join(VideoRoomService.lines),
+                    inline=False,
                 )
             VideoRoomService.pages.append(embed)
         return VideoRoomService.pages

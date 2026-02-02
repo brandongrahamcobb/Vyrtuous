@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Stage(DatabaseFactory):
 
     __tablename__ = "active_stages"
+    category = "stage"
     channel_snowflake: int
     expires_in: datetime
     guild_snowflake: int

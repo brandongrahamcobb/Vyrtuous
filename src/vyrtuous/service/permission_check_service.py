@@ -13,7 +13,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class PermissionCheck:
+class PermissionCheckService:
 
     lines, pages = [], []
 
@@ -42,14 +42,14 @@ class PermissionCheck:
         )
         if is_at_home:
             if skipped_channels:
-                PermissionCheck.pages.extend(
+                PermissionCheckService.pages.extend(
                     generate_skipped_dict_pages(
                         skipped=skipped_channels,
                         title="Skipped Channels in Server",
                     )
                 )
             if skipped_guilds:
-                PermissionCheck.pages.extend(
+                PermissionCheckService.pages.extend(
                     generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
@@ -65,7 +65,7 @@ class PermissionCheck:
         guild = bot.get_guild(guild_snowflake)
         title = f"{get_random_emoji()} {bot.user.display_name} Missing Permissions"
 
-        dictionary = await PermissionCheck.build_clean_dictionary(
+        dictionary = await PermissionCheckService.build_clean_dictionary(
             channel_objs=channel_objs, is_at_home=is_at_home, me=guild.me
         )
 
@@ -79,24 +79,26 @@ class PermissionCheck:
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                PermissionCheck.lines.append(f"Channel: {channel.mention}")
+                PermissionCheckService.lines.append(f"Channel: {channel.mention}")
                 for section_name, permissions in channel_data.items():
                     for permission in permissions:
-                        PermissionCheck.lines.append(f"  ↳ {permission}")
+                        PermissionCheckService.lines.append(f"  ↳ {permission}")
                 field_count += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(PermissionCheck.lines),
+                        value="\n".join(PermissionCheckService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, PermissionCheck.pages, title, guild.name)
-                    PermissionCheck.lines = []
-            if PermissionCheck.lines:
+                    embed = flush_page(
+                        embed, PermissionCheckService.pages, title, guild.name
+                    )
+                    PermissionCheckService.lines = []
+            if PermissionCheckService.lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(PermissionCheck.lines),
+                    value="\n".join(PermissionCheckService.lines),
                     inline=False,
                 )
-            PermissionCheck.pages.append(embed)
-        return PermissionCheck.pages
+            PermissionCheckService.pages.append(embed)
+        return PermissionCheckService.pages

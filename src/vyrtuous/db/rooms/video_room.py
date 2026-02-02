@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class VideoRoom(DatabaseFactory):
 
     __tablename__ = "video_rooms"
+    category = "vroom"
     channel_snowflake: int
     guild_snowflake: int
     created_at: datetime

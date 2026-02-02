@@ -22,10 +22,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -282,7 +282,7 @@ class VoiceMuteService(AliasService):
                     await member.edit(mute=True, reason=information["reason"])
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
@@ -291,9 +291,7 @@ class VoiceMuteService(AliasService):
             message=message,
             reason=information["reason"],
         )
-        embed = await VoiceMuteService.act_embed(
-            information=information, source=message
-        )
+        embed = await VoiceMuteService.act_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
@@ -309,7 +307,7 @@ class VoiceMuteService(AliasService):
                 await member.edit(mute=False)
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_channel_scope=is_channel_scope,
@@ -317,13 +315,11 @@ class VoiceMuteService(AliasService):
             member=member,
             message=message,
         )
-        embed = await VoiceMuteService.undo_embed(
-            information=information, source=message
-        )
+        embed = await VoiceMuteService.undo_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
-    async def act_embed(cls, information, **kwargs):
+    async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
@@ -334,8 +330,8 @@ class VoiceMuteService(AliasService):
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {information['infraction_duration']}\n"
-                f"**Reason:** {information['infraction_reason']}"
+                f"**Expires:** {information['duration']}\n"
+                f"**Reason:** {information['reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -343,7 +339,7 @@ class VoiceMuteService(AliasService):
         return embed
 
     @classmethod
-    async def undo_embed(cls, information, **kwargs):
+    async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])

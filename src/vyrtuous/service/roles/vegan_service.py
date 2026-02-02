@@ -19,10 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.author import resolve_author
+from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -34,9 +34,10 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class VeganService:
+class VeganService(AliasService):
 
     lines, pages = [], []
+    model = Vegan
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
@@ -132,16 +133,13 @@ class VeganService:
             member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
         await vegan.create()
-
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             member=member,
             message=message,
         )
-
-        embed = await VeganService.act_embed(information=information, source=message)
-
+        embed = await VeganService.act_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
@@ -154,44 +152,39 @@ class VeganService:
             guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
             member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
         )
-
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_modification=True,
             member=member,
             message=message,
         )
-
-        embed = await VeganService.undo_embed(information=information, source=message)
-
+        embed = await VeganService.undo_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
-    async def act_embed(cls, information, source, **kwargs):
-        author = resolve_author(source=source)
-        member = source.guild.get_member(
-            information["snowflake_kwargs"]["member_snowflake"]
-        )
+    async def act_embed(cls, information):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
-            description=(f"**By:** {author.mention}\n" f"**User:** {member.mention}\n"),
+            description=(f"**User:** {member.mention}\n"),
             color=discord.Color.blue(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     @classmethod
-    async def undo_embed(cls, information, source, **kwargs):
-        author = resolve_author(source=source)
-        member = source.guild.get_member(
-            information["snowflake_kwargs"]["member_snowflake"]
-        )
+    async def undo_embed(cls, information):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
             f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",
-            description=(f"**By:** {author.mention}\n" f"**User:** {member.mention}\n"),
+            description=(f"**User:** {member.mention}\n"),
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)

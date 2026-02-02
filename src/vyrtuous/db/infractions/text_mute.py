@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class TextMute(DatabaseFactory):
 
     __tablename__ = "active_text_mutes"
+    category = "tmute"
     channel_snowflake: int
     created_at: datetime
     expires_in: datetime

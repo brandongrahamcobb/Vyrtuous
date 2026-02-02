@@ -20,8 +20,8 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.roles.administrator import AdministratorRole
 from vyrtuous.db.roles.guild_owner import GuildOwner
+from vyrtuous.service.roles.administrator_service import AdministratorRoleService
 from vyrtuous.utils.logger import logger
 
 
@@ -59,12 +59,16 @@ class GuildEventListeners(commands.Cog):
         if added_roles:
             for added_role in added_roles:
                 snowflake_kwargs.update({"role_snowflake": int(added_role)})
-                await AdministratorRole.added_role(snowflake_kwargs=snowflake_kwargs)
+                await AdministratorRoleService.added_role(
+                    snowflake_kwargs=snowflake_kwargs
+                )
                 logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             for removed_role in removed_roles:
                 snowflake_kwargs.update({"role_snowflake": int(removed_role)})
-            await AdministratorRole.removed_role(snowflake_kwargs=snowflake_kwargs)
+            await AdministratorRoleService.removed_role(
+                snowflake_kwargs=snowflake_kwargs
+            )
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
@@ -75,7 +79,9 @@ class GuildEventListeners(commands.Cog):
             "role_snowflake": str(role.id),
         }
         for member in role.members:
-            await AdministratorRole.removed_role(snowflake_kwargs=snowflake_kwargs)
+            await AdministratorRoleService.removed_role(
+                snowflake_kwargs=snowflake_kwargs
+            )
             logger.info(f"Removed role ({role.id}) from server ({role.guild.name}).")
 
 

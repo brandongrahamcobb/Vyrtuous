@@ -55,7 +55,7 @@ class VerifyView(discord.ui.View):
                 self.action = "Deletes all moderators."
             case "stage":
                 self.action = "Deletes all stages."
-            case "temp":
+            case "troom":
                 self.action = "Deletes all temporary rooms."
             case "tmute":
                 self.action = "Deletes all text-mutes."
@@ -63,7 +63,7 @@ class VerifyView(discord.ui.View):
                 self.action = "Deletes all vegans."
             case "vmute":
                 self.action = "Deletes all voice-mutes."
-            case "vr":
+            case "vroom":
                 self.action = "Deletes all video rooms."
             case _:
                 raise ValueError("Invalid action type specified for confirmation view.")
@@ -75,7 +75,7 @@ class VerifyView(discord.ui.View):
         self.result = None
         self.mention = mention
 
-    async def interinfraction_check(self, interaction):
+    async def interaction_check(self, interaction):
         return interaction.user.id == self.author_snowflake
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)

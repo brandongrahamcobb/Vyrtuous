@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Administrator(DatabaseFactory):
 
     __tablename__ = "administrators"
+    category = "admin"
     guild_snowflake: int
     member_snowflake: int
     role_snowflakes: list[int | None]

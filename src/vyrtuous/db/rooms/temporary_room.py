@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class TemporaryRoom(DatabaseFactory):
 
     __tablename__ = "temporary_rooms"
+    category = "troom"
     channel_snowflake: int
     guild_snowflake: int
     room_name: str

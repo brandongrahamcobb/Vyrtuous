@@ -108,12 +108,16 @@ class ServerMuteService:
                         value="\n".join(ServerMuteService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, ServerMuteService.pages, title, guild.name)
+                    embed = flush_page(
+                        embed, ServerMuteService.pages, title, guild.name
+                    )
                     ServerMuteService.lines = []
                     field_count = 0
             if ServerMuteService.lines:
                 embed.add_field(
-                    name="Information", value="\n".join(ServerMuteService.lines), inline=False
+                    name="Information",
+                    value="\n".join(ServerMuteService.lines),
+                    inline=False,
                 )
             ServerMuteService.pages.append(embed)
         return ServerMuteService.pages

@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class ServerMute(DatabaseFactory):
 
     __tablename__ = "active_server_voice_mutes"
+    category = "smute"
     guild_snowflake: int
     member_snowflake: int
     created_at: datetime

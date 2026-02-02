@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class GuildOwner(DatabaseFactory):
 
     __tablename__ = "guild_owners"
+    category = "go"
     created_at: datetime
     guild_snowflake: int
     member_snowflake: int

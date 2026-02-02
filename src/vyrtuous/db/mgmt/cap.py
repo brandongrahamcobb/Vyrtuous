@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Cap(DatabaseFactory):
 
     __tablename__ = "active_caps"
+    category = "cap"
     category: str
     channel_snowflake: int
     duration_seconds: int

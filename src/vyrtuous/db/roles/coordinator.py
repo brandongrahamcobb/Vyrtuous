@@ -23,6 +23,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Coordinator(DatabaseFactory):
 
     __tablename__ = "coordinators"
+    category = "coord"
     channel_snowflake: int
     created_at: datetime
     guild_snowflake: int

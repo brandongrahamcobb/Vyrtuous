@@ -25,6 +25,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Alias(DatabaseFactory):
 
     __tablename__ = "command_aliases"
+    category = "alias"
     alias_name: str
     category: str
     category: str

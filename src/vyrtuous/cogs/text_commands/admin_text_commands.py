@@ -27,12 +27,14 @@ from vyrtuous.fields.category import Category
 from vyrtuous.fields.duration import Duration, DurationObject
 from vyrtuous.fields.snowflake import ChannelSnowflake, MemberSnowflake, RoleSnowflake
 from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.service.clear_service import ClearService
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.infractions.server_mute_service import ServerMuteService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.mgmt.alias_service import AliasService
 from vyrtuous.service.mgmt.cap_service import CapService
 from vyrtuous.service.mgmt.stream_service import StreamService
+from vyrtuous.service.permission_check_service import PermissionCheckService
 from vyrtuous.service.roles.administrator_service import (
     AdministratorRoleService,
     administrator_predicator,
@@ -44,11 +46,9 @@ from vyrtuous.service.rooms.video_room_service import VideoRoomService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.check import check
-from vyrtuous.utils.clear import Clear
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.permission_check import PermissionCheck
 
 
 class AdminTextCommands(commands.Cog):
@@ -167,7 +167,7 @@ class AdminTextCommands(commands.Cog):
         category: Category = commands.parameter(
             default="all",
             description="Specify one of: `alias`, `arole`, `all`, `ban`, `coord`, "
-            "flag`, `mod`, `temp`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vr`.",
+            "flag`, `mod`, `troom`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vroom`.",
         ),
     ):
         snowflake_kwargs = {
@@ -188,7 +188,7 @@ class AdminTextCommands(commands.Cog):
         await ctx.reply(embed=embed, view=view)
         await view.wait()
         state = StateService(ctx=ctx)
-        msg = await Clear.clear(
+        msg = await ClearService.clear(
             category=category,
             object_dict=object_dict,
             snowflake_kwargs=snowflake_kwargs,
@@ -281,7 +281,7 @@ class AdminTextCommands(commands.Cog):
             channel_objs = object_dict.get("object", None).channels
         else:
             channel_objs = [object_dict.get("object", None)]
-        pages = await PermissionCheck.build_pages(
+        pages = await PermissionCheckService.build_pages(
             channel_objs=channel_objs,
             is_at_home=is_at_home,
             snowflake_kwargs=snowflake_kwargs,

@@ -20,9 +20,9 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.flag import Flag
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -151,17 +151,17 @@ class FlagService(AliasService):
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("ChannelEventListeners")
         cog.flags.append(flag)
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=information["duration"],
+            duration=None,
             is_channel_scope=False,
-            is_modification=information["modification"],
+            is_modification=False,
             member=member,
             message=message,
             reason=information["reason"],
         )
-        embed = await FlagService.act_embed(information=information, source=message)
+        embed = await FlagService.act_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
@@ -179,21 +179,21 @@ class FlagService(AliasService):
             ):
                 cog.flags.remove(flag)
                 break
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration="",
+            duration=None,
             is_channel_scope=False,
             is_modification=True,
             member=member,
             message=message,
             reason="No reason provided.",
         )
-        embed = await FlagService.undo_embed(information=information, source=message)
+        embed = await FlagService.undo_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
-    async def act_embed(cls, information, **kwargs):
+    async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
@@ -203,7 +203,7 @@ class FlagService(AliasService):
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Reason:** {information['infraction_reason']}"
+                f"**Reason:** {information['reason']}"
             ),
             color=discord.Color.blue(),
         )
@@ -211,7 +211,7 @@ class FlagService(AliasService):
         return embed
 
     @classmethod
-    async def undo_embed(cls, information, **kwargs):
+    async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
         guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])

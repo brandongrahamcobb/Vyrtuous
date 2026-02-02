@@ -137,7 +137,9 @@ class TemporaryRoomService:
                         value="\n".join(TemporaryRoomService.lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, TemporaryRoomService.pages, title, guild.name)
+                    embed = flush_page(
+                        embed, TemporaryRoomService.pages, title, guild.name
+                    )
                     TemporaryRoomService.lines = []
                     field_count = 0
             if TemporaryRoomService.lines:

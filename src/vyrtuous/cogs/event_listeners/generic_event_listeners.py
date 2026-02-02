@@ -67,10 +67,13 @@ class GenericEventListeners(commands.Cog):
             state = StateService(message=message)
             information = await AliasInformation.build(message=message)
             if information:
-                information["alias"].service.executre(
+                await information["alias"].service.execute(
                     information=information, message=message, state=state
                 )
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()

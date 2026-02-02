@@ -24,6 +24,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class Flag(DatabaseFactory):
 
     __tablename__ = "active_flags"
+    category = "flag"
     channel_snowflake: int
     created_at: datetime
     guild_snowflake: int

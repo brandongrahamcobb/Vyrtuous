@@ -8,7 +8,7 @@ from vyrtuous.utils.check import check, has_equal_or_lower_role
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
-class Clear:
+class ClearService:
 
     @classmethod
     async def clear(
@@ -27,43 +27,49 @@ class Clear:
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
         if isinstance(object_dict.get("object", None), discord.Member):
-            has_equal_or_lower_role(
+            await has_equal_or_lower_role(
                 snowflake_kwargs=snowflake_kwargs,
                 member_snowflake=object_dict.get("id", None),
             )
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
-                    if "member" in obj.SCOPES:
+                    if "member_snowflake" in getattr(obj, "__annotations__", {}):
                         if str(category) == "all":
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
-                        elif str(category).lower() == obj.CATEGORY:
+                        elif str(category).lower() == obj.category:
                             await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated {obj.PLURAL.lower()} for {object_dict.get('mention', None)}."
+                            msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Guild Owner")
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
-                    if "channel" in obj.SCOPES:
+                    if "channel_snowflake" in getattr(obj, "__annotations__", {}):
                         if category == "all":
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all database information for {object_dict.get('mention')}."
-                        elif str(category).lower() == obj.CATEGORY:
+                        elif str(category).lower() == obj.category:
                             await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('mention', None)}."
+                            msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
             await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Guild Owner")
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if any(
-                        scope in obj.SCOPES for scope in ("guild", "channel", "member")
+                        getattr(obj, attr, None) is not None
+                        or attr in getattr(obj, "__annotations__", {})
+                        for attr in (
+                            "channel_snowflake",
+                            "guild_snowflake",
+                            "member_snowflake",
+                        )
                     ):
                         if str(category).lower() == "all":
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all database information for {object_dict.get('name')}."
-                        elif str(category).lower() == obj.CATEGORY:
+                        elif str(category).lower() == obj.category:
                             await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('name', None)}."
+                            msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
                         elif isinstance(obj, AdministratorRole):
                             administrator_roles = AdministratorRole.select(
                                 guild_snowflake=int(guild_snowflake),

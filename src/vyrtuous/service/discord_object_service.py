@@ -106,7 +106,7 @@ class DiscordObject:
     async def determine_from_target(self, target) -> dict[str, Any]:
         if target is None:
             raise TypeError()
-        if isinstance(self._source, commands.Context):
+        if isinstance(self._source, (commands.Context, discord.Message)):
             do = DiscordObject(ctx=self._source)
             author = self._source.author
         elif isinstance(self._source, discord.Interaction):

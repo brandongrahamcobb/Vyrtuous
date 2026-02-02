@@ -19,10 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.db.roles.role import Role
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.author import resolve_author
+from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -35,24 +35,22 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-class RoleService:
+class RoleService(AliasService):
 
     lines, pages = [], []
+    model = Role
 
     @classmethod
-    async def act_embed(cls, information, source, **kwargs):
+    async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(
-            information["snowflake_kwargs"]["member_snowflake"]
-        )
-        role = source.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        role = guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been granted a role",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Role:** {role.mention}"
@@ -63,19 +61,16 @@ class RoleService:
         return embed
 
     @classmethod
-    async def undo_embed(cls, information, source, **kwargs):
+    async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        author = resolve_author(source=source)
-        member = source.guild.get_member(
-            information["snowflake_kwargs"]["member_snowflake"]
-        )
-        role = source.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
+        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        role = guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s role has been revoked",
             description=(
-                f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Role:** {role.mention}"
@@ -263,21 +258,20 @@ class RoleService:
 
         role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         if role:
-            await Role.administer_role(
+            await RoleService.administer_role(
                 guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
                 member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
                 role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
             )
 
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=information["duration"],
             member=member,
             message=message,
         )
 
-        embed = await RoleService.act_embed(information=information, source=message)
+        embed = await RoleService.act_embed(information=information)
 
         return await state.end(success=embed)
 
@@ -295,13 +289,13 @@ class RoleService:
 
         role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
         if role:
-            await Role.revoke_role(
+            await RoleService.revoke_role(
                 guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
                 member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
                 role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
             )
 
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_modification=True,
@@ -309,6 +303,6 @@ class RoleService:
             message=message,
         )
 
-        embed = await RoleService.undo_embed(information=information, source=message)
+        embed = await RoleService.undo_embed(information=information)
 
         return await state.end(success=embed)

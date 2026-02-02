@@ -194,7 +194,7 @@ class HelpCommand(commands.Cog):
     @app_commands.describe(command_name="The command to view details for.")
     @moderator_predicator()
     async def help_app_command(
-        self, interaction: discord.Interaction, command_name: str
+        self, interaction: discord.Interaction, *, command_name: str | None = None
     ):
         state = StateService(interaction=interaction)
         bot = interaction.client
@@ -332,7 +332,7 @@ class HelpCommand(commands.Cog):
 
     @commands.command(name="help")
     @moderator_predicator()
-    async def help_text_command(self, ctx, *, command_name: str):
+    async def help_text_command(self, ctx, *, command_name: str | None = None):
         state = StateService(ctx=ctx)
         bot = ctx.bot
         pages, param_details, parameters = [], [], []

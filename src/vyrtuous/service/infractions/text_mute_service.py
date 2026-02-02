@@ -22,10 +22,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.text_mute import TextMute
-from vyrtuous.db.mgmt.stream import Stream
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.service.mgmt.alias_service import AliasService
+from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -209,7 +209,7 @@ class TextMuteService(AliasService):
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
@@ -217,7 +217,7 @@ class TextMuteService(AliasService):
             message=message,
             reason=information["reason"],
         )
-        embed = await TextMuteService.act_embed(information=information, source=message)
+        embed = await TextMuteService.act_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
@@ -240,16 +240,14 @@ class TextMuteService(AliasService):
             except discord.Forbidden as e:
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await Stream.send_entry(
+        await StreamService.send_entry(
             alias=information["alias"],
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             is_modification=True,
             member=member,
             message=message,
         )
-        embed = await TextMuteService.undo_embed(
-            information=information, source=message
-        )
+        embed = await TextMuteService.undo_embed(information=information)
         return await state.end(success=embed)
 
     @classmethod
@@ -263,8 +261,8 @@ class TextMuteService(AliasService):
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {information['infraction_duration']}\n"
-                f"**Reason:** {information['infraction_reason']}"
+                f"**Expires:** {information['duration']}\n"
+                f"**Reason:** {information['reason']}"
             ),
             color=discord.Color.blue(),
         )
