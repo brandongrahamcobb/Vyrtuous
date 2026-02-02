@@ -130,112 +130,111 @@ class StreamService:
         message,
         reason,
     ):
-        pass
-        # if duration != "permanent":
-        #     if duration is None:
-        #         duration_info = (
-        #             f"**Type:** {event.category.capitalize()}\n**Expires:** Never"
-        #         )
-        #     else:
-        #         duration_info = (
-        #             f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
-        #         )
-        #     if is_modification:
-        #         color, duration_type = 0xFF6B35, "⏰ Modified"
-        #     else:
-        #         color, duration_type = 0xFF8C00, "⏱️ Temporary"
-        # else:
-        #     color, duration_type = 0xDC143C, "♾️ Permanent"
-        #     duration_info = (
-        #         f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
-        #     )
-        # if event.category == "ban":
-        #     if is_modification:
-        #         title = "🔄 Ban Modified"
-        #     else:
-        #         title = "🔨 User Ban Toggled"
-        #     action = "banned"
-        # elif event.category == "flag":
-        #     if is_modification:
-        #         title = "🔄 Flag Modified"
-        #     else:
-        #         title = "🚩 User Flag Toggled"
-        #     action = "flagged"
-        # elif event.category == "tmute":
-        #     if is_modification:
-        #         title = "🔄 Text Mute Modified"
-        #     else:
-        #         title = "📝 User Text Mute Toggled"
-        #     action = "text muted"
-        # elif event.category == "vmute":
-        #     if is_modification:
-        #         title = "🔄 Voice Mute Modified"
-        #     else:
-        #         title = "🎙️ User Voice Mute Toggled"
-        #     action = "voice muted"
-        # else:
-        #     title = None
-        #     action = None
-        # embed_user = discord.Embed(
-        #     title=f"{title} - User Identity",
-        #     color=color,
-        #     timestamp=datetime.now(timezone.utc),
-        # )
-        # bot = DiscordBot.get_instance()
-        # if not action:
-        #     embed_user.description = None
-        # else:
-        #     embed_user.description = (
-        #         f"**Target:** {member.mention} {action} in {channel.mention}"
-        #     )
-        # embed_user.set_thumbnail(url=message.author.display_avatar.url)
-        # user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
-        # embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
-        # exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
-        # embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
-        # ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Alias Type:** `{event.category}`"
-        # embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
-        # embed_user.add_field(
-        #     name=f"**Type:** {duration_type}", value=duration_info, inline=False
-        # )
-        # embed_user.add_field(name="📝 Reason", value=f"```{reason}```", inline=False)
-        # embed_user.set_footer(
-        #     text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}",
-        #     icon_url=message.guild.icon.url,
-        # )
-        # embed_duration = discord.Embed(
-        #     title=f"{title} - Duration Info",
-        #     color=color,
-        #     timestamp=datetime.now(timezone.utc),
-        # )
-        # embed_duration.add_field(
-        #     name=f"{duration_type}", value=duration_info, inline=False
-        # )
-        # infraction_details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
-        # embed_duration.add_field(
-        #     name="⚙️ Action Details", value=infraction_details, inline=True
-        # )
-        # channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
-        # embed_duration.add_field(
-        #     name="📍 Channel Info", value=channel_basic, inline=True
-        # )
-        # embeds = [embed_user, embed_duration]
-        # if reason:
-        #     reason_chunks = [reason[i : i + 1000] for i in range(0, len(reason), 1000)]
-        #     if len(reason_chunks) > 1:
-        #         for i, chunk in enumerate(reason_chunks):
-        #             reason_embed = discord.Embed(
-        #                 title=f"{title} - Reason (cont.)",
-        #                 color=color,
-        #                 timestamp=datetime.now(timezone.utc),
-        #             )
-        #             reason_embed.add_field(
-        #                 name=f"📝 Reason (Part {i+1})",
-        #                 value=f"```{chunk}```",
-        #                 inline=False,
-        #             )
-        #             embeds.append(reason_embed)
-        # return embeds
+        if duration != "permanent":
+            if duration is None:
+                duration_info = (
+                    f"**Type:** {event.category.capitalize()}\n**Expires:** Never"
+                )
+            else:
+                duration_info = (
+                    f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
+                )
+            if is_modification:
+                color, duration_type = 0xFF6B35, "⏰ Modified"
+            else:
+                color, duration_type = 0xFF8C00, "⏱️ Temporary"
+        else:
+            color, duration_type = 0xDC143C, "♾️ Permanent"
+            duration_info = (
+                f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
+            )
+        if event.category == "ban":
+            if is_modification:
+                title = "🔄 Ban Modified"
+            else:
+                title = "🔨 User Ban Toggled"
+            action = "banned"
+        elif event.category == "flag":
+            if is_modification:
+                title = "🔄 Flag Modified"
+            else:
+                title = "🚩 User Flag Toggled"
+            action = "flagged"
+        elif event.category == "tmute":
+            if is_modification:
+                title = "🔄 Text Mute Modified"
+            else:
+                title = "📝 User Text Mute Toggled"
+            action = "text muted"
+        elif event.category == "vmute":
+            if is_modification:
+                title = "🔄 Voice Mute Modified"
+            else:
+                title = "🎙️ User Voice Mute Toggled"
+            action = "voice muted"
+        else:
+            title = None
+            action = None
+        embed_user = discord.Embed(
+            title=f"{title} - User Identity",
+            color=color,
+            timestamp=datetime.now(timezone.utc),
+        )
+        bot = DiscordBot.get_instance()
+        if not action:
+            embed_user.description = None
+        else:
+            embed_user.description = (
+                f"**Target:** {member.mention} {action} in {channel.mention}"
+            )
+        embed_user.set_thumbnail(url=message.author.display_avatar.url)
+        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+        embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
+        exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
+        embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
+        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Alias Type:** `{event.category}`"
+        embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
+        embed_user.add_field(
+            name=f"**Type:** {duration_type}", value=duration_info, inline=False
+        )
+        embed_user.add_field(name="📝 Reason", value=f"```{reason}```", inline=False)
+        embed_user.set_footer(
+            text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}",
+            icon_url=message.guild.icon.url,
+        )
+        embed_duration = discord.Embed(
+            title=f"{title} - Duration Info",
+            color=color,
+            timestamp=datetime.now(timezone.utc),
+        )
+        embed_duration.add_field(
+            name=f"{duration_type}", value=duration_info, inline=False
+        )
+        infraction_details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
+        embed_duration.add_field(
+            name="⚙️ Action Details", value=infraction_details, inline=True
+        )
+        channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
+        embed_duration.add_field(
+            name="📍 Channel Info", value=channel_basic, inline=True
+        )
+        embeds = [embed_user, embed_duration]
+        if reason:
+            reason_chunks = [reason[i : i + 1000] for i in range(0, len(reason), 1000)]
+            if len(reason_chunks) > 1:
+                for i, chunk in enumerate(reason_chunks):
+                    reason_embed = discord.Embed(
+                        title=f"{title} - Reason (cont.)",
+                        color=color,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    reason_embed.add_field(
+                        name=f"📝 Reason (Part {i+1})",
+                        value=f"```{chunk}```",
+                        inline=False,
+                    )
+                    embeds.append(reason_embed)
+        return embeds
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
