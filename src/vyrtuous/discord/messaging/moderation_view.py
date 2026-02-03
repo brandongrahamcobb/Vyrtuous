@@ -20,8 +20,8 @@ from pathlib import Path
 
 import discord
 
+from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role_wrapper
 from vyrtuous.discord.fields.duration import DurationObject
-from vyrtuous.permissions.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 

@@ -36,14 +36,14 @@ from vyrtuous.db.mgmt.cap.cap import Cap
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.db.roles.coord.coordinator import Coordinator
 from vyrtuous.db.roles.mod.moderator import Moderator
+from vyrtuous.db.roles.permissions.check import check
+from vyrtuous.db.roles.permissions.invincibility import Invincibility
 from vyrtuous.db.rooms.stage.stage import Stage
 from vyrtuous.db.rooms.temp.temporary_room import TemporaryRoom
 from vyrtuous.db.rooms.video.video_room import VideoRoom
 from vyrtuous.db.rooms.video.video_room_service import VideoRoomService
 from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.discord.fields.duration import DurationObject
-from vyrtuous.permissions.check import check
-from vyrtuous.permissions.invincibility import Invincibility
 from vyrtuous.utils.logger import logger
 
 

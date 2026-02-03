@@ -22,13 +22,13 @@ from discord.ext import commands
 
 from vyrtuous.db.roles.admin.administrator_service import AdministratorRoleService
 from vyrtuous.db.roles.owner.guild_owner_service import guild_owner_predicator
+from vyrtuous.db.roles.permissions.invincibility import Invincibility
 from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.discord.cogs.help_command import skip_help_discovery
 from vyrtuous.discord.discord_object_service import DiscordObject
 from vyrtuous.discord.fields.snowflake import AppMemberSnowflake, AppRoleSnowflake
 from vyrtuous.discord.messaging.message_service import MessageService
 from vyrtuous.discord.messaging.state_service import StateService
-from vyrtuous.permissions.invincibility import Invincibility
 
 
 class GuildOwnerAppCommands(commands.Cog):

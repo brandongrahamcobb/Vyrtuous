@@ -224,7 +224,7 @@ class ModeratorService:
 
     @classmethod
     async def toggle_moderator(cls, channel_dict, member_dict, snowflake_kwargs):
-        from vyrtuous.permissions.check import has_equal_or_lower_role
+        from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
 
         await has_equal_or_lower_role(
             snowflake_kwargs=snowflake_kwargs,

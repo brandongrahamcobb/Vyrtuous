@@ -25,11 +25,11 @@ from discord.ext import commands
 
 from vyrtuous.db.base.alias.alias import Alias
 from vyrtuous.db.roles.mod.moderator_service import moderator_predicator
+from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
 from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.discord.messaging.message_service import MessageService
 from vyrtuous.discord.messaging.state_service import StateService
 from vyrtuous.inc.helpers import PERMISSION_TYPES
-from vyrtuous.permissions.highest_role import resolve_highest_role
 from vyrtuous.utils.logger import logger
 
 

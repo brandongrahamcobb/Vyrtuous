@@ -32,10 +32,12 @@ from vyrtuous.db.roles.admin.administrator_service import (
     administrator_predicator,
 )
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
+from vyrtuous.db.roles.permissions.check import check
 from vyrtuous.db.rooms.stage.stage_service import StageService
 from vyrtuous.db.rooms.temp.temporary_room_service import TemporaryRoomService
 from vyrtuous.db.rooms.video.video_room_service import VideoRoomService
 from vyrtuous.discord.bot.discord_bot import DiscordBot
+from vyrtuous.discord.clear_service import ClearService
 from vyrtuous.discord.discord_object_service import DiscordObject
 from vyrtuous.discord.fields.category import AppCategory
 from vyrtuous.discord.fields.snowflake import (
@@ -47,10 +49,8 @@ from vyrtuous.discord.home import at_home
 from vyrtuous.discord.messaging.cancel_confirm import VerifyView
 from vyrtuous.discord.messaging.message_service import MessageService
 from vyrtuous.discord.messaging.state_service import StateService
+from vyrtuous.discord.permission_check_service import PermissionCheckService
 from vyrtuous.inc.helpers import PATH_LOG
-from vyrtuous.permissions.check import check
-from vyrtuous.permissions.permission_check_service import PermissionCheckService
-from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 

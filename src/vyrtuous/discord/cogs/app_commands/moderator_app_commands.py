@@ -34,6 +34,10 @@ from vyrtuous.db.roles.mod.moderator_service import (
     ModeratorService,
     moderator_predicator,
 )
+from vyrtuous.db.roles.permissions.check import (
+    HasEqualOrLowerRole,
+    has_equal_or_lower_role_wrapper,
+)
 from vyrtuous.db.roles.vegan.vegan_service import VeganService
 from vyrtuous.db.rooms.stage.stage_service import StageService
 from vyrtuous.db.rooms.temp.temporary_room_service import TemporaryRoomService
@@ -50,10 +54,6 @@ from vyrtuous.discord.messaging.message_service import MessageService
 from vyrtuous.discord.messaging.moderation_view import ModerationView
 from vyrtuous.discord.messaging.reason_modal import ReasonModal
 from vyrtuous.discord.messaging.state_service import StateService
-from vyrtuous.permissions.check import (
-    HasEqualOrLowerRole,
-    has_equal_or_lower_role_wrapper,
-)
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 

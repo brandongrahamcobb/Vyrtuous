@@ -28,13 +28,13 @@ from vyrtuous.db.infractions.flag.flag_alias import FlagAlias
 from vyrtuous.db.infractions.tmute.text_mute_alias import TextMuteAlias
 from vyrtuous.db.infractions.vmute.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.db.mgmt.cap.cap import Cap
+from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
+from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
 from vyrtuous.db.roles.vegan.vegan_alias import VeganAlias
 from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.discord.discord_object_service import DiscordObject
 from vyrtuous.discord.fields.duration import DurationError, DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.permissions.check import has_equal_or_lower_role
-from vyrtuous.permissions.highest_role import resolve_highest_role
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
