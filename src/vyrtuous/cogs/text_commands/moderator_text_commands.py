@@ -148,9 +148,9 @@ class ModeratorTextCommands(commands.Cog):
         message: MessageSnowflake = commands.parameter(description="Message snowflake"),
     ):
         state = StateService(ctx=ctx)
-        for channel_obj in ctx.guild.channels:
-            msg = await channel_obj.fetch_message(message)
-        else:
+        try:
+            msg = await ctx.channel.fetch_message(message)
+        except discord.NotFound:
             return await state.end(warning=f"Message `{message}` not found.")
         try:
             await msg.delete()

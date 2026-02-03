@@ -140,9 +140,9 @@ class ModeratorAppCommands(commands.Cog):
         self, interaction: discord.Interaction, message: AppMessageSnowflake
     ):
         state = StateService(interaction=interaction)
-        for channel_obj in interaction.guild.channels:
-            msg = await channel_obj.fetch_message(message)
-        else:
+        try:
+            msg = await interaction.channel.fetch_message(message)
+        except discord.NotFound:
             return await state.end(warning=f"Message `{message}` not found.")
         try:
             await msg.delete()
