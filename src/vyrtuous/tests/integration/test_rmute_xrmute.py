@@ -84,8 +84,8 @@ async def test_rmute_xrmute(bot, command: str, channel):
         message=msg,
         prefix="!",
     )
-    coord_commands = bot.get_cog("CoordinatorTextCommands")
-    command = await coord_commands.room_mute_text_command(
+    admin_commands = bot.get_cog("AdminTextCommands")
+    command = await admin_commands.room_mute_text_command(
         ctx, channel=c, reason="test_reason"
     )
-    command = await coord_commands.room_unmute_text_command(ctx, channel=c)
+    command = await admin_commands.room_unmute_text_command(ctx, channel=c)

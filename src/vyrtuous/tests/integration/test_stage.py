@@ -72,5 +72,5 @@ async def test_stage(bot, command: str, channel):
         message=msg,
         prefix="!",
     )
-    admin_commands = bot.get_cog("AdminTextCommands")
-    command = await admin_commands.toggle_stage_text_command(ctx, channel=c)
+    coord_commands = bot.get_cog("CoordinatorTextCommands")
+    command = await coord_commands.toggle_stage_text_command(ctx, channel=c)
