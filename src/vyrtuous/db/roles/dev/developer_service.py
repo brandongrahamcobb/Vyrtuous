@@ -25,8 +25,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
+from vyrtuous.utils.discord.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 
 

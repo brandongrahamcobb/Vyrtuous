@@ -23,10 +23,10 @@ from vyrtuous.cogs.help_command import skip_help_discovery
 from vyrtuous.db.roles.admin.administrator_service import AdministratorRoleService
 from vyrtuous.db.roles.owner.guild_owner_service import guild_owner_predicator
 from vyrtuous.fields.snowflake import MemberSnowflake, RoleSnowflake
+from vyrtuous.messaging.message_service import MessageService
+from vyrtuous.messaging.state_service import StateService
+from vyrtuous.permissions.invincibility import Invincibility
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
-from vyrtuous.utils.invincibility import Invincibility
 
 
 class GuildOwnerTextCommands(commands.Cog):

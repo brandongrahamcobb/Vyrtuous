@@ -43,9 +43,9 @@ from vyrtuous.fields.snowflake import (
     MemberSnowflake,
     MessageSnowflake,
 )
+from vyrtuous.messaging.message_service import MessageService
+from vyrtuous.messaging.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.home import at_home
 

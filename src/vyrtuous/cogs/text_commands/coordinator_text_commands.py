@@ -27,9 +27,9 @@ from vyrtuous.db.roles.mod.moderator_service import ModeratorService
 from vyrtuous.db.rooms.stage.stage_service import StageService
 from vyrtuous.fields.duration import Duration, DurationObject
 from vyrtuous.fields.snowflake import ChannelSnowflake, MemberSnowflake
+from vyrtuous.messaging.message_service import MessageService
+from vyrtuous.messaging.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
 
 
 class CoordinatorTextCommands(commands.Cog):

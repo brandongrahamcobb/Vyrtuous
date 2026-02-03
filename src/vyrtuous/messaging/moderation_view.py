@@ -21,7 +21,7 @@ from pathlib import Path
 import discord
 
 from vyrtuous.fields.duration import DurationObject
-from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
+from vyrtuous.permissions.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 

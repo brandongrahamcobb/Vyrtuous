@@ -23,9 +23,9 @@ from vyrtuous.db.mgmt.bug.bug_service import BugService
 from vyrtuous.db.roles.dev.developer_service import DeveloperService
 from vyrtuous.db.roles.sysadmin.sysadmin_service import sysadmin_predicator
 from vyrtuous.fields.snowflake import MemberSnowflake
+from vyrtuous.messaging.message_service import MessageService
+from vyrtuous.messaging.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
 
 
 class SysadminTextCommands(commands.Cog):

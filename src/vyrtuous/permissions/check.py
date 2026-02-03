@@ -28,7 +28,7 @@ from vyrtuous.db.roles.mod.moderator_service import is_moderator
 from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.inc.helpers import PERMISSION_TYPES
-from vyrtuous.utils.highest_role import resolve_highest_role
+from vyrtuous.permissions.highest_role import resolve_highest_role
 
 
 class HasEqualOrLowerRole(commands.CheckFailure):

@@ -42,8 +42,8 @@ from vyrtuous.db.rooms.temp.temporary_room import TemporaryRoom
 from vyrtuous.db.rooms.video.video_room import VideoRoom
 from vyrtuous.db.rooms.video.video_room_service import VideoRoomService
 from vyrtuous.fields.duration import DurationObject
-from vyrtuous.utils.check import check
-from vyrtuous.utils.invincibility import Invincibility
+from vyrtuous.permissions.check import check
+from vyrtuous.permissions.invincibility import Invincibility
 from vyrtuous.utils.logger import logger
 
 

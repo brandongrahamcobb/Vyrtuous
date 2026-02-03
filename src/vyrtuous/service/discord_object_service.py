@@ -23,8 +23,8 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.discord.source import DiscordSourceNotFound
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.source import DiscordSourceNotFound
 
 
 class DiscordObjectNotFound(commands.CheckFailure):

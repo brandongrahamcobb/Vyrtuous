@@ -32,7 +32,7 @@ from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.db.rooms.stage.stage import Stage
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.check import check, has_equal_or_lower_role
+from vyrtuous.permissions.check import check, has_equal_or_lower_role
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,

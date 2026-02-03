@@ -29,7 +29,6 @@ from vyrtuous.db.roles.mod.moderator import Moderator
 from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner_wrapper
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,
@@ -39,6 +38,7 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_set_pages,
 )
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
+from vyrtuous.utils.discord.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -224,7 +224,7 @@ class ModeratorService:
 
     @classmethod
     async def toggle_moderator(cls, channel_dict, member_dict, snowflake_kwargs):
-        from vyrtuous.utils.check import has_equal_or_lower_role
+        from vyrtuous.permissions.check import has_equal_or_lower_role
 
         await has_equal_or_lower_role(
             snowflake_kwargs=snowflake_kwargs,

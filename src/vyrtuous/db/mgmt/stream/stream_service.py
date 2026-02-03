@@ -24,7 +24,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.stream.stream import Stream
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.service.message_service import PaginatorService
+from vyrtuous.messaging.message_service import PaginatorService
+from vyrtuous.permissions.highest_role import resolve_highest_role
 from vyrtuous.utils.data import Data
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
@@ -35,7 +36,6 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_set_pages,
 )
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.highest_role import resolve_highest_role
 
 
 class StreamService:

@@ -21,7 +21,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.smute.server_mute import ServerMute
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.check import has_equal_or_lower_role
+from vyrtuous.permissions.check import has_equal_or_lower_role
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
     flush_page,

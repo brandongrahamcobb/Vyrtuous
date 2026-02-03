@@ -24,8 +24,8 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
+from vyrtuous.utils.discord.author import resolve_author
 
 
 @skip_db_discovery

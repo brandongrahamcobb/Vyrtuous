@@ -30,9 +30,9 @@ from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.mgmt.bug.bug_service import BugService
 from vyrtuous.db.roles.dev.developer_service import developer_predicator
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
+from vyrtuous.messaging.message_service import MessageService
+from vyrtuous.messaging.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger

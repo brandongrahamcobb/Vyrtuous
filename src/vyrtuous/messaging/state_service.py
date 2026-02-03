@@ -27,11 +27,11 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.roles.dev.developer import Developer
-from vyrtuous.service.message_service import MessageService, PaginatorService
-from vyrtuous.utils.author import resolve_author
+from vyrtuous.messaging.message_service import MessageService, PaginatorService
+from vyrtuous.utils.discord.author import resolve_author
+from vyrtuous.utils.discord.source import DiscordSourceNotFound
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.source import DiscordSourceNotFound
 from vyrtuous.utils.time_to_complete import TimeToComplete
 
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
