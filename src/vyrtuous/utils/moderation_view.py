@@ -27,14 +27,14 @@ from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 class ModerationView(discord.ui.View):
 
-    category_paths = []
-    category_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
+    infraction_paths = []
+    infraction_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
 
     def __init__(self, interaction: discord.Interaction, member_snowflake: int, modal):
         super().__init__(timeout=120)
         self.information = {}
         self.author_snowflake = interaction.user.id
-        self.categories = dir_to_classes(dir_paths=self.category_paths)
+        self.infractions = dir_to_classes(dir_paths=self.infraction_paths)
         self.interaction = interaction
         self.member_snowflake = member_snowflake
         self.modal = modal
@@ -44,8 +44,8 @@ class ModerationView(discord.ui.View):
 
     async def setup(self):
         channel_options = await self._build_channel_options()
-        category_options = await self._build_category_options()
-        if not category_options:
+        identifier_options = await self._build_identfier_options()
+        if not identifier_options:
             await self.interaction.response.send_message(
                 content='No moderation actions exist for this member.',
                 ephemeral=True
@@ -53,12 +53,12 @@ class ModerationView(discord.ui.View):
             self.stop()
             return
         self.channel_select.options = channel_options
-        self.category_select.options = category_options
+        self.identifier_select.options = identifier_options
 
     async def _build_channel_options(self):
         channels = []
-        for category in self.categories:
-            action = await category.select(
+        for infraction in self.infractions:
+            action = await infraction.select(
                 guild_snowflake=self.interaction.guild.id,
                 member_snowflake=self.member_snowflake,
                 singular=True,
@@ -74,18 +74,18 @@ class ModerationView(discord.ui.View):
 
     async def _build_category_options(self):
         actions = []
-        for category in self.categories:
-            action = await category.select(
+        for infraction in self.infractions:
+            action = await infraction.select(
                 guild_snowflake=self.interaction.guild.id,
                 member_snowflake=self.member_snowflake,
                 singular=True,
             )
             if action:
-                actions.append(category)
+                actions.append(infraction)
         return [
-            discord.SelectOption(label=category.category, value=category.__name__)
-            for category in actions
-            if category.category != "smute"
+            discord.SelectOption(label=infraction.identfier, value=infraction.__name__)
+            for infraction in actions
+            if infraction.identifier != "smute"
         ]
 
     @discord.ui.select(
@@ -105,9 +105,9 @@ class ModerationView(discord.ui.View):
     )
     async def category_select(self, interaction, select):
         category_name = select.values[0]
-        category = next(c for c in self.categories if c.__name__ == category_name)
-        self.category_select.placeholder = category.category
-        self.information["category"] = category
+        infraction = next(c for c in self.infractions if c.__name__ == category_name)
+        self.category_select.placeholder, self.information["category"] = infraction.identifier
+        self.information["infraction"] = infraction
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -118,7 +118,7 @@ class ModerationView(discord.ui.View):
             member_snowflake=self.member_snowflake,
             sender_snowflake=interaction.user.id,
         )
-        existing = await self.information.get("category", None).select(
+        existing = await self.information.get("infraction", None).select(
             channel_snowflake=self.information.get(
                 "channel_snowflake", None
             ),

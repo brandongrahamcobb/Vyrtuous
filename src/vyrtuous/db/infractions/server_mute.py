@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
@@ -23,26 +24,13 @@ from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 
 @skip_db_discovery
+@dataclass(frozen=True)
 class ServerMute(DatabaseFactory):
 
     __tablename__ = "active_server_voice_mutes"
-    category = "smute"
+    identifier = "smute"
     guild_snowflake: int
     member_snowflake: int
-    created_at: datetime
-    reason: str
-    updated_at: datetime
-
-    def __init__(
-        self,
-        guild_snowflake: int,
-        member_snowflake: int,
-        created_at: datetime | None = None,
-        reason: str = "No reason provided.",
-        updated_at: datetime | None = None,
-    ):
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.guild_snowflake = guild_snowflake
-        self.member_snowflake = member_snowflake
-        self.reason = reason
-        self.updated_at = updated_at or datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    reason: str = "No reason provided."
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

@@ -16,43 +16,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-
+@dataclass(frozen=True)
 class Bug(DatabaseFactory):
 
     __tablename__ = "bug_tracking"
-    category = "bug"
+    identifier = "bug"
     channel_snowflake: int
     guild_snowflake: int
     id: str
     member_snowflakes: list[int]
     message_snowflake: int
-    notes: str
-    resolved: bool
-    created_at: datetime
-    updated_at: datetime
-
-    def __init__(
-        self,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        id: str,
-        member_snowflakes: list[int],
-        message_snowflake: int,
-        notes: str | None = None,
-        resolved: bool = False,
-        created_at: datetime | None = None,
-        updated_at: datetime | None = None,
-    ):
-        self.channel_snowflake = channel_snowflake
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.member_snowflakes = member_snowflakes
-        self.id = id
-        self.guild_snowflake = guild_snowflake
-        self.message_snowflake = message_snowflake
-        self.notes = notes
-        self.resolved = resolved
-        self.updated_at = updated_at or datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    resolved: bool = False
+    notes: str = "No notes provided."
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

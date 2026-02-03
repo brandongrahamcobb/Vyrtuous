@@ -16,61 +16,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-
+@dataclass(frozen=True)
 class Stream(DatabaseFactory):
 
     __tablename__ = "streaming"
-    category = "stream"
+    identifier = "stream"
     channel_snowflake: int
     enabled: bool
     entry_type: str
     guild_snowflake: int
-    created_at: datetime
-    snowflakes: list[int | None]
-    updated_at: datetime
-
-    TABLE_NAME = "streaming"
-    lines, pages = [], []
-
-    def __init__(
-        self,
-        channel_snowflake: int,
-        enabled: bool,
-        entry_type: str,
-        guild_snowflake: int,
-        created_at: datetime | None = None,
-        snowflakes: list[int | None] = list[None],
-        updated_at: datetime | None = None,
-    ):
-        self._action: str
-        self.channel_snowflake = channel_snowflake
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.enabled = enabled
-        self.entry_type = entry_type
-        self.guild_snowflake = guild_snowflake
-        self.snowflakes = snowflakes
-        self.updated_at = updated_at or datetime.now(timezone.utc)
-
-    @property
-    def action(self):
-        return self._action
-
-    @action.setter
-    def action(self, action: str):
-        if action not in ("create", "modify", "delete"):
-            raise ValueError("Invalid action.")
-        self._action = action
-
-    @property
-    def entry_type(self):
-        return self._entry_type
-
-    @entry_type.setter
-    def entry_type(self, entry_type: str):
-        if entry_type not in ("all", "channel"):
-            raise ValueError("Invalid entry type.")
-        self._entry_type = entry_type
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    snowflakes: list[int | None] = [None]
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

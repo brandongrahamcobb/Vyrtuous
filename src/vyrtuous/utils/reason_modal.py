@@ -22,7 +22,7 @@ import discord
 class ReasonModal(discord.ui.Modal):
 
     def __init__(self, information):
-        super().__init__(title=f'{information["category"].category.capitalize()} Reason')
+        super().__init__(title=f'{information["category"].capitalize()} Reason')
         self.information = information
         self.reason = discord.ui.TextInput(
             label="Type the reason",
@@ -42,7 +42,7 @@ class ReasonModal(discord.ui.Modal):
             ),
         }
         set_kwargs = {"reason": self.reason.value}
-        await self.information.get("category", None).update(
+        await self.information.get("infraction", None).update(
             where_kwargs=where_kwargs, set_kwargs=set_kwargs
         )
         await interaction.response.send_message(

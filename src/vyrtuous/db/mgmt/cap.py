@@ -16,34 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-
+@dataclass(frozen=True)
 class Cap(DatabaseFactory):
 
     __tablename__ = "active_caps"
-    category = "cap"
+    identifier = "cap"
     category: str
     channel_snowflake: int
     duration_seconds: int
     guild_snowflake: int
-    created_at: datetime
-    updated_at: datetime
-
-    def __init__(
-        self,
-        category: str,
-        channel_snowflake: int,
-        duration_seconds: int,
-        guild_snowflake: int,
-        created_at: datetime | None = None,
-        updated_at: datetime | None = None,
-    ):
-        self.category = category
-        self.channel_snowflake = channel_snowflake
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.duration_seconds = duration_seconds
-        self.guild_snowflake = guild_snowflake
-        self.updated_at = updated_at or datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    udpated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

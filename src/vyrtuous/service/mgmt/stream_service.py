@@ -102,7 +102,7 @@ class StreamService:
             for channel in channel.guild.voice_channels
         )
         await Data.save(
-            infraction_type=event.category,
+            infraction_type=event.identifier,
             channel_members_voice_count=channel_members_voice_count,
             channel_snowflake=int(channel.id),
             executor_member_snowflake=int(message.author.id) if message else None,
@@ -133,11 +133,11 @@ class StreamService:
         if duration != "permanent":
             if duration is None:
                 duration_info = (
-                    f"**Type:** {event.category.capitalize()}\n**Expires:** Never"
+                    f"**Type:** {event.identifier.capitalize()}\n**Expires:** Never"
                 )
             else:
                 duration_info = (
-                    f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
+                    f"**Type:** {event.identifier.capitalize()}\n**Expires:** {duration}"
                 )
             if is_modification:
                 color, duration_type = 0xFF6B35, "⏰ Modified"
@@ -146,27 +146,27 @@ class StreamService:
         else:
             color, duration_type = 0xDC143C, "♾️ Permanent"
             duration_info = (
-                f"**Type:** {event.category.capitalize()}\n**Expires:** {duration}"
+                f"**Type:** {event.identifier.capitalize()}\n**Expires:** {duration}"
             )
-        if event.category == "ban":
+        if event.identifier == "ban":
             if is_modification:
                 title = "🔄 Ban Modified"
             else:
                 title = "🔨 User Ban Toggled"
             action = "banned"
-        elif event.category == "flag":
+        elif event.identifier == "flag":
             if is_modification:
                 title = "🔄 Flag Modified"
             else:
                 title = "🚩 User Flag Toggled"
             action = "flagged"
-        elif event.category == "tmute":
+        elif event.identifier == "tmute":
             if is_modification:
                 title = "🔄 Text Mute Modified"
             else:
                 title = "📝 User Text Mute Toggled"
             action = "text muted"
-        elif event.category == "vmute":
+        elif event.identifier == "vmute":
             if is_modification:
                 title = "🔄 Voice Mute Modified"
             else:
@@ -192,7 +192,7 @@ class StreamService:
         embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
         exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
         embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
-        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Alias Type:** `{event.category}`"
+        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Alias Type:** `{event.identifier}`"
         embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
         embed_user.add_field(
             name=f"**Type:** {duration_type}", value=duration_info, inline=False

@@ -27,7 +27,7 @@ from vyrtuous.fields.duration import DurationObject
 class DurationModal(discord.ui.Modal):
 
     def __init__(self, information):
-        super().__init__(title=f'{information["category"].category.capitalize()} Duration')
+        super().__init__(title=f'{information["category"].capitalize()} Duration')
         self.information = information
         self.duration = discord.ui.TextInput(
             label="Type the duration",
@@ -46,7 +46,7 @@ class DurationModal(discord.ui.Modal):
         )
         duration_obj = DurationObject(self.duration.value)
         cap = await Cap.select(
-            category=self.information.get("category", None).category,
+            category=self.information.get("category", None),
             channel_snowflake=self.information.get(
                 "channel_snowflake", None
             ),
@@ -67,7 +67,7 @@ class DurationModal(discord.ui.Modal):
                 duration_str = DurationObject.from_seconds(channel_cap)
                 await interaction.response.send_message(
                     content=f"Cannot set the "
-                    f"{self.information['category'].category.capitalize()} beyond {duration_str} as a "
+                    f"{self.information['category'].capitalize()} beyond {duration_str} as a "
                     f"{self.information.get("executor_role", None)} in {channel.mention}."
                 )
         where_kwargs = {
@@ -86,7 +86,7 @@ class DurationModal(discord.ui.Modal):
                 else None
             )
         }
-        await self.information.get("category", None).update(
+        await self.information.get("infraction", None).update(
             where_kwargs=where_kwargs, set_kwargs=set_kwargs
         )
         await interaction.response.send_message(

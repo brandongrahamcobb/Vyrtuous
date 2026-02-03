@@ -15,36 +15,20 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-
+@dataclass
 class Role(DatabaseFactory):
 
     __tablename__ = "roles"
-    category = "role"
+    identifier = "role"
     channel_snowflake: int
-    created_at: datetime
     guild_snowflake: int
     member_snowflake: int
     role_snowflake: int
-    reason: str
-    updated_at: datetime
-
-    def __init__(
-        self,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        member_snowflake: int,
-        role_snowflake: int,
-        created_at: datetime = datetime.now(timezone.utc),
-        updated_at: datetime = datetime.now(timezone.utc),
-    ):
-        self.created_at = created_at
-        self.channel_snowflake = channel_snowflake
-        self.guild_snowflake = guild_snowflake
-        self.member_snowflake = member_snowflake
-        self.role_snowflake = role_snowflake
-        self.updated_at = updated_at
+    reason: str = "No reason provided."
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

@@ -37,7 +37,7 @@ class ClearService:
                         if str(category) == "all":
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
-                        elif str(category).lower() == obj.category:
+                        elif str(category).lower() == obj.identifier:
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
@@ -48,7 +48,7 @@ class ClearService:
                         if category == "all":
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all database information for {object_dict.get('mention')}."
-                        elif str(category).lower() == obj.category:
+                        elif str(category).lower() == obj.identifier:
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
@@ -67,7 +67,7 @@ class ClearService:
                         if str(category).lower() == "all":
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all database information for {object_dict.get('name')}."
-                        elif str(category).lower() == obj.category:
+                        elif str(category).lower() == obj.identifier:
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
                         elif isinstance(obj, AdministratorRole):

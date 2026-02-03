@@ -45,7 +45,7 @@ class CategoryObject:
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
         classes = dir_to_classes(dir_paths=dir_paths)
-        categories = [obj.category for obj in classes if obj.category is not None]
+        categories = [obj.identifier for obj in classes if obj.identifier is not None]
         for extra in self.EXTRA_CATEGORIES:
             categories.append(extra)
         if new_cat not in categories:
