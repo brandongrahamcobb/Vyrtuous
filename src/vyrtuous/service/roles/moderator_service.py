@@ -84,8 +84,7 @@ async def is_moderator_at_all(
     member_snowflake = member.id
     moderator = await Moderator.select(
         guild_snowflake=int(source.guild.id),
-        member_snowflake=int(member_snowflake),
-        singular=True,
+        member_snowflake=int(member_snowflake)
     )
     if not moderator:
         raise NotModerator

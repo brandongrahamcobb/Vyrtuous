@@ -83,7 +83,6 @@ async def is_coordinator_at_all(
     coordinator = await Coordinator.select(
         guild_snowflake=int(source.guild.id),
         member_snowflake=int(member_snowflake),
-        singular=True,
     )
     if not coordinator:
         raise NotCoordinator
