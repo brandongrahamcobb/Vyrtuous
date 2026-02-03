@@ -17,7 +17,6 @@ from vyrtuous.utils.highest_role import resolve_highest_role
 
 class AliasInformation:
 
-    information = {}
     ALIAS_MAP = {
         "ban": BanAlias,
         "flag": FlagAlias,
@@ -29,7 +28,7 @@ class AliasInformation:
 
     @classmethod
     async def build(cls, message):
-        AliasInformation.information.clear()
+        information = {}
         bot = DiscordBot.get_instance()
         do = DiscordObject(message=message)
         args = (
@@ -45,13 +44,13 @@ class AliasInformation:
             return
         alias_class = cls.ALIAS_MAP[alias.category]
         kwargs = alias_class.service.fill_map(alias_class=alias_class, args=args)
-        AliasInformation.information["alias"] = alias_class
-        AliasInformation.information["snowflake_kwargs"] = {
+        information["alias"] = alias_class
+        information["snowflake_kwargs"] = {
             "channel_snowflake": int(alias.channel_snowflake),
             "guild_snowflake": int(alias.guild_snowflake),
             "member_snowflake": int(message.author.id),
         }
-        AliasInformation.information["executor_role"] = await resolve_highest_role(
+        information["executor_role"] = await resolve_highest_role(
             channel_snowflake=int(alias.channel_snowflake),
             guild_snowflake=int(alias.guild_snowflake),
             member_snowflake=int(message.author.id),
@@ -63,27 +62,27 @@ class AliasInformation:
                     duration = DurationObject("8h")
                 else:
                     duration = DurationObject(value)
-                AliasInformation.information["duration"] = duration
+                information["duration"] = duration
                 cap = await Cap.select(
-                    category=AliasInformation.information["alias"].category,
+                    category=information["alias"].category,
                     channel_snowflake=int(alias.channel_snowflake),
                     guild_snowflake=int(alias.guild_snowflake),
                     singular=True,
                 )
                 if not hasattr(cap, "duration"):
-                    AliasInformation.information["cap_duration"] = DurationObject(
+                    information["cap_duration"] = DurationObject(
                         "8h"
                     ).to_seconds()
                 else:
-                    AliasInformation.information["cap_duration"] = cap.duration_seconds
+                    information["cap_duration"] = cap.duration_seconds
                 if (
                     duration.to_timedelta().total_seconds()
-                    > AliasInformation.information["cap_duration"]
+                    > information["cap_duration"]
                     or duration.number == 0
                 ):
-                    if AliasInformation.information["executor_role"] == "Moderator":
-                        raise DurationError(information=AliasInformation.information)
-                AliasInformation.information["expires_in"] = (
+                    if information["executor_role"] == "Moderator":
+                        raise DurationError(information=information)
+                information["expires_in"] = (
                     None
                     if duration.number == 0
                     else datetime.now(timezone.utc) + duration.to_timedelta()
@@ -91,20 +90,20 @@ class AliasInformation:
             if field == "member":
                 member_dict = await do.determine_from_target(target=tuple[1])
                 await has_equal_or_lower_role(
-                    snowflake_kwargs=AliasInformation.information["snowflake_kwargs"],
+                    snowflake_kwargs=information["snowflake_kwargs"],
                     member_snowflake=member_dict.get("id", None),
                 )
-                AliasInformation.information["snowflake_kwargs"].update(
+                information["snowflake_kwargs"].update(
                     {"member_snowflake": member_dict.get("id", None)}
                 )
             if field == "reason":
                 reason = tuple[1]
                 if not reason:
-                    AliasInformation.information["reason"] = "No reason provided."
+                    information["reason"] = "No reason provided."
                 else:
-                    AliasInformation.information["reason"] = reason
+                    information["reason"] = reason
         if getattr(alias, "role_snowflake"):
-            AliasInformation.information["snowflake_kwargs"].update(
+            information["snowflake_kwargs"].update(
                 {"role_snowflake": int(alias.role_snowflake)}
             )
-        return AliasInformation.information
+        return information
