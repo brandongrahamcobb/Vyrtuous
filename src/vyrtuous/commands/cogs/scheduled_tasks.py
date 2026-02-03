@@ -448,8 +448,7 @@ class ScheduledTasks(commands.Cog):
                 try:
                     await channel.set_permissions(
                         target=member,
-                        send_messages=None,
-                        add_reactions=None,
+                        overwrite=None,
                         reason="Resetting text-mute overwrite",
                     )
                 except discord.Forbidden as e:
@@ -487,7 +486,7 @@ class ScheduledTasks(commands.Cog):
                     continue
                 try:
                     await channel.set_permissions(
-                        member, view_channel=None, reason="Resetting ban overwrite."
+                        target=member, overwrite=None, reason="Resetting ban overwrite."
                     )
                 except discord.Forbidden as e:
                     logger.error(str(e).capitalize())
