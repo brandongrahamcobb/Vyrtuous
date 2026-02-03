@@ -71,12 +71,12 @@ class ScheduledTasks(commands.Cog):
         expired_bans = await Ban.select(expired=True)
         if expired_bans:
             for expired_ban in expired_bans:
-                channel_snowflake = expired_ban.channel_snowflake
-                guild_snowflake = expired_ban.guild_snowflake
-                member_snowflake = expired_ban.member_snowflake
+                channel_snowflake = int(expired_ban.channel_snowflake)
+                guild_snowflake = int(expired_ban.guild_snowflake)
+                member_snowflake = int(expired_ban.member_snowflake)
                 kwargs = {
-                    "channel_snowflake": int(channel_snowflake),
-                    "guild_snowflake": int(guild_snowflake),
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
                     "member_snowflake": member_snowflake,
                 }
                 guild = self.bot.get_guild(guild_snowflake)
@@ -128,14 +128,14 @@ class ScheduledTasks(commands.Cog):
         expired_voice_mutes = await VoiceMute.select(expired=True)
         if expired_voice_mutes:
             for expired_voice_mute in expired_voice_mutes:
-                guild_snowflake = expired_voice_mute.guild_snowflake
-                member_snowflake = expired_voice_mute.member_snowflake
-                channel_snowflake = expired_voice_mute.channel_snowflake
+                channel_snowflake = int(expired_voice_mute.channel_snowflake)
+                guild_snowflake = int(expired_voice_mute.guild_snowflake)
+                member_snowflake = int(expired_voice_mute.member_snowflake)
                 target = expired_voice_mute.target
                 guild = self.bot.get_guild(guild_snowflake)
                 kwargs = {
-                    "channel_snowflake": int(channel_snowflake),
-                    "guild_snowflake": int(guild_snowflake),
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
                     "member_snowflake": member_snowflake,
                     "target": target,
                 }
@@ -185,13 +185,13 @@ class ScheduledTasks(commands.Cog):
         expired_stages = await Stage.select(expired=True)
         if expired_stages:
             for expired_stage in expired_stages:
-                channel_snowflake = expired_stage.channel_snowflake
-                guild_snowflake = expired_stage.guild_snowflake
+                channel_snowflake = int(expired_stage.channel_snowflake)
+                guild_snowflake = int(expired_stage.guild_snowflake)
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     await Stage.delete(
-                        channel_snowflake=int(channel_snowflake),
-                        guild_snowflake=int(guild_snowflake),
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
                     )
                     logger.info(
                         f"Unable to locate guild {guild_snowflake}, cleaning up expired stage."
@@ -200,8 +200,8 @@ class ScheduledTasks(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 if channel is None:
                     await Stage.delete(
-                        channel_snowflake=int(channel_snowflake),
-                        guild_snowflake=int(guild_snowflake),
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
                     )
                     logger.info(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
@@ -276,10 +276,10 @@ class ScheduledTasks(commands.Cog):
         bugs = await Bug.select(resolved=True)
         if bugs:
             for bug in bugs:
-                channel_snowflake = bug.channel_snowflake
-                guild_snowflake = bug.guild_snowflake
-                member_snowflakes = bug.member_snowflakes
-                message_snowflake = bug.message_snowflake
+                channel_snowflake = int(bug.channel_snowflake)
+                guild_snowflake = int(bug.guild_snowflake)
+                member_snowflakes = int(bug.member_snowflakes)
+                message_snowflake = int(bug.message_snowflake)
                 reference = bug.id
                 if bug.created_at < now - timedelta(weeks=1):
                     guild = self.bot.get_guild(bug.guild_snowflake)
@@ -351,12 +351,12 @@ class ScheduledTasks(commands.Cog):
         expired_text_mutes = await TextMute.select(expired=True)
         if expired_text_mutes:
             for expired_text_mute in expired_text_mutes:
-                channel_snowflake = expired_text_mute.channel_snowflake
-                guild_snowflake = expired_text_mute.guild_snowflake
-                member_snowflake = expired_text_mute.member_snowflake
+                channel_snowflake = int(expired_text_mute.channel_snowflake)
+                guild_snowflake = int(expired_text_mute.guild_snowflake)
+                member_snowflake = int(expired_text_mute.member_snowflake)
                 kwargs = {
-                    "channel_snowflake": int(channel_snowflake),
-                    "guild_snowflake": int(guild_snowflake),
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
                     "member_snowflake": member_snowflake,
                 }
                 guild = self.bot.get_guild(guild_snowflake)
@@ -417,12 +417,12 @@ class ScheduledTasks(commands.Cog):
         now = datetime.now(timezone.utc)
         text_mutes = await TextMute.select()
         for text_mute in text_mutes:
-            channel_snowflake = text_mute.channel_snowflake
-            guild_snowflake = text_mute.guild_snowflake
-            member_snowflake = text_mute.member_snowflake
+            channel_snowflake = int(text_mute.channel_snowflake)
+            guild_snowflake = int(text_mute.guild_snowflake)
+            member_snowflake = int(text_mute.member_snowflake)
             where_kwargs = {
-                "channel_snowflake": int(channel_snowflake),
-                "guild_snowflake": int(guild_snowflake),
+                "channel_snowflake": channel_snowflake,
+                "guild_snowflake": guild_snowflake,
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
@@ -456,12 +456,12 @@ class ScheduledTasks(commands.Cog):
                 await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         bans = await Ban.select()
         for ban in bans:
-            channel_snowflake = ban.channel_snowflake
-            guild_snowflake = ban.guild_snowflake
-            member_snowflake = ban.member_snowflake
+            channel_snowflake = int(ban.channel_snowflake)
+            guild_snowflake = int(ban.guild_snowflake)
+            member_snowflake = int(ban.member_snowflake)
             where_kwargs = {
-                "channel_snowflake": int(channel_snowflake),
-                "guild_snowflake": int(guild_snowflake),
+                "channel_snowflake": channel_snowflake,
+                "guild_snowflake": guild_snowflake,
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
