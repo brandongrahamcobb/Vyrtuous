@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 import discord
 
-from vyrtuous.db.mgmt.cap import Cap
+from vyrtuous.db.mgmt.cap.cap import Cap
 from vyrtuous.fields.duration import DurationObject
 
 

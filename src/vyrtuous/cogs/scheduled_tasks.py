@@ -23,16 +23,16 @@ from discord.ext import commands, tasks
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
-from vyrtuous.db.infractions.ban import Ban
-from vyrtuous.db.infractions.text_mute import TextMute
-from vyrtuous.db.infractions.voice_mute import VoiceMute
-from vyrtuous.db.mgmt.bug import Bug
-from vyrtuous.db.roles.developer import Developer
-from vyrtuous.db.roles.guild_owner import GuildOwner
-from vyrtuous.db.roles.sysadmin import Sysadmin
-from vyrtuous.db.rooms.stage import Stage
+from vyrtuous.db.infractions.ban.ban import Ban
+from vyrtuous.db.infractions.tmute.text_mute import TextMute
+from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
+from vyrtuous.db.mgmt.bug.bug import Bug
+from vyrtuous.db.roles.dev.developer import Developer
+from vyrtuous.db.roles.owner.guild_owner import GuildOwner
+from vyrtuous.db.roles.sysadmin.sysadmin import Sysadmin
+from vyrtuous.db.rooms.stage.stage import Stage
 
-# from vyrtuous.db.rooms.video_room import VideoRoom
+# from vyrtuous.db.rooms.video.video_room import VideoRoom
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.logger import logger
 

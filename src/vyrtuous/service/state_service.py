@@ -25,8 +25,8 @@ from cachetools import TTLCache
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.bug import Bug
-from vyrtuous.db.roles.developer import Developer
+from vyrtuous.db.mgmt.bug.bug import Bug
+from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.service.message_service import MessageService, PaginatorService
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji

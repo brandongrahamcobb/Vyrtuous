@@ -1,14 +1,14 @@
 from datetime import datetime, timezone
 
-from vyrtuous.aliases.ban_alias import BanAlias
-from vyrtuous.aliases.flag_alias import FlagAlias
-from vyrtuous.aliases.role_alias import RoleAlias
-from vyrtuous.aliases.text_mute_alias import TextMuteAlias
-from vyrtuous.aliases.vegan_alias import VeganAlias
-from vyrtuous.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.mgmt.cap import Cap
+from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.base.role.role_alias import RoleAlias
+from vyrtuous.db.infractions.ban.ban_alias import BanAlias
+from vyrtuous.db.infractions.flag.flag_alias import FlagAlias
+from vyrtuous.db.infractions.tmute.text_mute_alias import TextMuteAlias
+from vyrtuous.db.infractions.vmute.voice_mute_alias import VoiceMuteAlias
+from vyrtuous.db.mgmt.cap.cap import Cap
+from vyrtuous.db.roles.vegan.vegan_alias import VeganAlias
 from vyrtuous.fields.duration import DurationError, DurationObject
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.utils.check import has_equal_or_lower_role
@@ -70,9 +70,7 @@ class AliasInformation:
                     singular=True,
                 )
                 if not hasattr(cap, "duration"):
-                    information["cap_duration"] = DurationObject(
-                        "8h"
-                    ).to_seconds()
+                    information["cap_duration"] = DurationObject("8h").to_seconds()
                 else:
                     information["cap_duration"] = cap.duration_seconds
                 if (

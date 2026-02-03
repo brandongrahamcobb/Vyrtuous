@@ -2,8 +2,8 @@ from pathlib import Path
 
 import discord
 
-from vyrtuous.db.roles.administrator import AdministratorRole
-from vyrtuous.service.roles.sysadmin_service import is_sysadmin
+from vyrtuous.db.roles.admin.administrator import AdministratorRole
+from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.utils.check import check, has_equal_or_lower_role
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 

@@ -16,15 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from vyrtuous.service.roles.administrator_service import (
+from vyrtuous.db.roles.admin.administrator_service import (
     NotAdministrator,
     is_administrator,
 )
-from vyrtuous.service.roles.coordinator_service import NotCoordinator, is_coordinator
-from vyrtuous.service.roles.developer_service import NotDeveloper, is_developer
-from vyrtuous.service.roles.guild_owner_service import NotGuildOwner, is_guild_owner
-from vyrtuous.service.roles.moderator_service import NotModerator, is_moderator
-from vyrtuous.service.roles.sysadmin_service import NotSysadmin, is_sysadmin
+from vyrtuous.db.roles.coord.coordinator_service import NotCoordinator, is_coordinator
+from vyrtuous.db.roles.dev.developer_service import NotDeveloper, is_developer
+from vyrtuous.db.roles.mod.moderator_service import NotModerator, is_moderator
+from vyrtuous.db.roles.owner.guild_owner_service import NotGuildOwner, is_guild_owner
+from vyrtuous.db.roles.sysadmin.sysadmin_service import NotSysadmin, is_sysadmin
 from vyrtuous.utils.logger import logger
 
 

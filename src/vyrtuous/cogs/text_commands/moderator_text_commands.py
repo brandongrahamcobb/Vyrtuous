@@ -23,28 +23,28 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cogs.help_command import skip_help_discovery
+from vyrtuous.db.base.alias.alias_service import AliasService
+from vyrtuous.db.infractions.ban.ban_service import BanService
+from vyrtuous.db.infractions.flag.flag_service import FlagService
+from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
+from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
+from vyrtuous.db.roles.admin.administrator_service import AdministratorService
+from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
+from vyrtuous.db.roles.dev.developer_service import DeveloperService
+from vyrtuous.db.roles.mod.moderator_service import (
+    ModeratorService,
+    moderator_predicator,
+)
+from vyrtuous.db.roles.vegan.vegan_service import VeganService
+from vyrtuous.db.rooms.stage.stage_service import StageService
+from vyrtuous.db.rooms.temp.temporary_room_service import TemporaryRoomService
 from vyrtuous.fields.snowflake import (
     ChannelSnowflake,
     MemberSnowflake,
     MessageSnowflake,
 )
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.service.infractions.ban_service import BanService
-from vyrtuous.service.infractions.flag_service import FlagService
-from vyrtuous.service.infractions.text_mute_service import TextMuteService
-from vyrtuous.service.infractions.voice_mute_service import VoiceMuteService
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.mgmt.alias_service import AliasService
-from vyrtuous.service.roles.administrator_service import AdministratorService
-from vyrtuous.service.roles.coordinator_service import CoordinatorService
-from vyrtuous.service.roles.developer_service import DeveloperService
-from vyrtuous.service.roles.moderator_service import (
-    ModeratorService,
-    moderator_predicator,
-)
-from vyrtuous.service.roles.vegan_service import VeganService
-from vyrtuous.service.rooms.stage_service import StageService
-from vyrtuous.service.rooms.temporary_room_service import TemporaryRoomService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.home import at_home

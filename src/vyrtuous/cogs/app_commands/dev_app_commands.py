@@ -27,12 +27,12 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
-from vyrtuous.db.mgmt.bug import Bug
+from vyrtuous.db.mgmt.bug.bug import Bug
+from vyrtuous.db.mgmt.bug.bug_service import BugService
+from vyrtuous.db.roles.dev.developer_service import developer_predicator
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.mgmt.bug_service import BugService
-from vyrtuous.service.roles.developer_service import developer_predicator
 from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.home import at_home

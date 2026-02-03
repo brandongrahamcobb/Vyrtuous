@@ -23,13 +23,13 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.roles.coord.coordinator_service import coordinator_predicator
+from vyrtuous.db.roles.mod.moderator_service import ModeratorService
+from vyrtuous.db.rooms.stage.stage_service import StageService
 from vyrtuous.fields.duration import AppDuration
 from vyrtuous.fields.snowflake import AppChannelSnowflake, AppMemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.roles.coordinator_service import coordinator_predicator
-from vyrtuous.service.roles.moderator_service import ModeratorService
-from vyrtuous.service.rooms.stage_service import StageService
 from vyrtuous.service.state_service import StateService
 
 

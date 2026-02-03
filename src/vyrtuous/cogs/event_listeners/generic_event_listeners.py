@@ -21,9 +21,9 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.infractions.ban.ban_service import BanService
+from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
-from vyrtuous.service.infractions.ban_service import BanService
-from vyrtuous.service.infractions.text_mute_service import TextMuteService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.alias_information import AliasInformation
 from vyrtuous.utils.logger import logger
@@ -72,6 +72,7 @@ class GenericEventListeners(commands.Cog):
                 )
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             return await state.end(warning=str(e).capitalize())
 

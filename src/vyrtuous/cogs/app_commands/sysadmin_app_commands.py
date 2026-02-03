@@ -21,12 +21,12 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.mgmt.bug.bug_service import BugService
+from vyrtuous.db.roles.dev.developer_service import DeveloperService
+from vyrtuous.db.roles.sysadmin.sysadmin_service import sysadmin_predicator
 from vyrtuous.fields.snowflake import AppMemberSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.mgmt.bug_service import BugService
-from vyrtuous.service.roles.developer_service import DeveloperService
-from vyrtuous.service.roles.sysadmin_service import sysadmin_predicator
 from vyrtuous.service.state_service import StateService
 
 

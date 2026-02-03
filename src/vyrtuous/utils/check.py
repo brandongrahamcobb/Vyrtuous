@@ -21,13 +21,13 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.db.roles.admin.administrator_service import is_administrator
+from vyrtuous.db.roles.coord.coordinator_service import is_coordinator
+from vyrtuous.db.roles.dev.developer_service import is_developer
+from vyrtuous.db.roles.mod.moderator_service import is_moderator
+from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner
+from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.inc.helpers import PERMISSION_TYPES
-from vyrtuous.service.roles.administrator_service import is_administrator
-from vyrtuous.service.roles.coordinator_service import is_coordinator
-from vyrtuous.service.roles.developer_service import is_developer
-from vyrtuous.service.roles.guild_owner_service import is_guild_owner
-from vyrtuous.service.roles.moderator_service import is_moderator
-from vyrtuous.service.roles.sysadmin_service import is_sysadmin
 from vyrtuous.utils.highest_role import resolve_highest_role
 
 

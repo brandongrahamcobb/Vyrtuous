@@ -20,11 +20,11 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cogs.help_command import skip_help_discovery
+from vyrtuous.db.roles.admin.administrator_service import AdministratorRoleService
+from vyrtuous.db.roles.owner.guild_owner_service import guild_owner_predicator
 from vyrtuous.fields.snowflake import MemberSnowflake, RoleSnowflake
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.roles.administrator_service import AdministratorRoleService
-from vyrtuous.service.roles.guild_owner_service import guild_owner_predicator
 from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.invincibility import Invincibility
 

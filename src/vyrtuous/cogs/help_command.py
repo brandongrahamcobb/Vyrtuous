@@ -24,10 +24,10 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.roles.mod.moderator_service import moderator_predicator
 from vyrtuous.inc.helpers import PERMISSION_TYPES
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.roles.moderator_service import moderator_predicator
 from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.highest_role import resolve_highest_role
 from vyrtuous.utils.logger import logger
