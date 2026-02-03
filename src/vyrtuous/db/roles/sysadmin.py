@@ -15,10 +15,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
+
 
 @dataclass(frozen=True)
 class Sysadmin(DatabaseFactory):

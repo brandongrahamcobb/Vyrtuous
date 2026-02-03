@@ -74,8 +74,9 @@ async def is_coordinator(
         raise NotCoordinator
     return True
 
+
 async def is_coordinator_at_all(
-    source: Union[commands.Context, discord.Interaction, discord.Message]
+    source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member = resolve_author(source=source)
     member_snowflake = member.id
@@ -87,6 +88,7 @@ async def is_coordinator_at_all(
     if not coordinator:
         raise NotCoordinator
     return True
+
 
 def coordinator_predicator():
     async def predicate(
@@ -193,9 +195,13 @@ class CoordinatorService:
                 for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
                     "coordinators"
                 ).items():
-                    if not isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object", None), discord.abc.GuildChannel
+                    ):
                         channel = guild.get_channel(channel_snowflake)
-                        CoordinatorService.lines.append(f"**Channel:** {channel.mention}")
+                        CoordinatorService.lines.append(
+                            f"**Channel:** {channel.mention}"
+                        )
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(

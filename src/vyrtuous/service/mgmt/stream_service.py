@@ -180,7 +180,6 @@ class StreamService:
             color=color,
             timestamp=datetime.now(timezone.utc),
         )
-        bot = DiscordBot.get_instance()
         if not action:
             embed_user.description = None
         else:
@@ -211,9 +210,7 @@ class StreamService:
             name=f"{duration_type}", value=duration_info, inline=False
         )
         details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
-        embed_duration.add_field(
-            name="⚙️ Action Details", value=details, inline=True
-        )
+        embed_duration.add_field(name="⚙️ Action Details", value=details, inline=True)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
         embed_duration.add_field(
             name="📍 Channel Info", value=channel_basic, inline=True

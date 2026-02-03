@@ -42,9 +42,9 @@ from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.infractions.ban_service import BanService
 from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.service.rooms.video_room_service import VideoRoomService
+from vyrtuous.utils.check import check
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.check import check
 
 
 class ChannelEventListeners(commands.Cog):
@@ -147,16 +147,20 @@ class ChannelEventListeners(commands.Cog):
             should_be_muted = False
             stage = await Stage.select(channel_snowlfake=after.channel)
             if stage:
-                Stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
+                Stage.send_stage_ask_to_speak_message(
+                    join_log=self.join_log, member=member
+                )
                 snowflake_kwargs = {
                     "channel_snowflake": after.channel.id,
                     "guild_snowflake": after.channel.guild.id,
-                    "member_snowflake": member.id
+                    "member_snowflake": member.id,
                 }
-                highest_role = await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Everyone")
+                highest_role = await check(
+                    snowflake_kwargs=snowflake_kwargs, lowest_role="Everyone"
+                )
                 if highest_role == "Everyone":
                     should_be_muted = True
-                    target = 'room'
+                    target = "room"
                     expires_in = stage.expires_in
             voice_mute = await VoiceMute.select(
                 channel_snowflake=after.channel.id,

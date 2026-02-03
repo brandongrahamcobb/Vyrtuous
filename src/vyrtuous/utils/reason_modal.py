@@ -34,12 +34,8 @@ class ReasonModal(discord.ui.Modal):
 
     async def on_submit(self, interaction):
         where_kwargs = {
-            "channel_snowflake": self.information.get(
-                "channel_snowflake", None
-            ),
-            "member_snowflake": self.information.get(
-                "member_snowflake", None
-            ),
+            "channel_snowflake": self.information.get("channel_snowflake", None),
+            "member_snowflake": self.information.get("member_snowflake", None),
         }
         set_kwargs = {"reason": self.reason.value}
         await self.information.get("infraction", None).update(

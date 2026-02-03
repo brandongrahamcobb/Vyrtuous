@@ -21,9 +21,9 @@ from pathlib import Path
 import discord
 
 from vyrtuous.fields.duration import DurationObject
-from vyrtuous.utils.alias_information import AliasInformation
 from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
+
 
 class ModerationView(discord.ui.View):
 
@@ -44,16 +44,15 @@ class ModerationView(discord.ui.View):
 
     async def setup(self):
         channel_options = await self._build_channel_options()
-        identifier_options = await self._build_identfier_options()
+        identifier_options = await self._build_identifier_options()
         if not identifier_options:
             await self.interaction.response.send_message(
-                content='No moderation actions exist for this member.',
-                ephemeral=True
+                content="No moderation actions exist for this member.", ephemeral=True
             )
             self.stop()
             return
         self.channel_select.options = channel_options
-        self.identifier_select.options = identifier_options
+        self.category_select.options = identifier_options
 
     async def _build_channel_options(self):
         channels = []
@@ -72,7 +71,7 @@ class ModerationView(discord.ui.View):
             if isinstance(ch, discord.VoiceChannel)
         ]
 
-    async def _build_category_options(self):
+    async def _build_identifier_options(self):
         actions = []
         for infraction in self.infractions:
             action = await infraction.select(
@@ -83,7 +82,7 @@ class ModerationView(discord.ui.View):
             if action:
                 actions.append(infraction)
         return [
-            discord.SelectOption(label=infraction.identfier, value=infraction.__name__)
+            discord.SelectOption(label=infraction.identifier, value=infraction.__name__)
             for infraction in actions
             if infraction.identifier != "smute"
         ]
@@ -106,7 +105,9 @@ class ModerationView(discord.ui.View):
     async def category_select(self, interaction, select):
         category_name = select.values[0]
         infraction = next(c for c in self.infractions if c.__name__ == category_name)
-        self.category_select.placeholder, self.information["category"] = infraction.identifier
+        self.category_select.placeholder = self.information["category"] = (
+            infraction.identifier
+        )
         self.information["infraction"] = infraction
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -119,9 +120,7 @@ class ModerationView(discord.ui.View):
             sender_snowflake=interaction.user.id,
         )
         existing = await self.information.get("infraction", None).select(
-            channel_snowflake=self.information.get(
-                "channel_snowflake", None
-            ),
+            channel_snowflake=self.information.get("channel_snowflake", None),
             member_snowflake=self.member_snowflake,
             singular=True,
         )

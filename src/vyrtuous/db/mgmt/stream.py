@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
+
 @dataclass(frozen=True)
 class Stream(DatabaseFactory):
 

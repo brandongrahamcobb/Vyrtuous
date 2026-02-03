@@ -76,8 +76,9 @@ async def is_moderator(
         raise NotModerator
     return True
 
+
 async def is_moderator_at_all(
-    source: Union[commands.Context, discord.Interaction, discord.Message]
+    source: Union[commands.Context, discord.Interaction, discord.Message],
 ) -> bool:
     member = resolve_author(source=source)
     member_snowflake = member.id
@@ -89,6 +90,7 @@ async def is_moderator_at_all(
     if not moderator:
         raise NotModerator
     return True
+
 
 def moderator_predicator():
     async def predicate(
@@ -196,7 +198,9 @@ class ModeratorService:
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
                 ).items():
-                    if not isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object", None), discord.abc.GuildChannel
+                    ):
                         channel = guild.get_channel(channel_snowflake)
                         ModeratorService.lines.append(f"**Channel:** {channel.mention}")
                     field_count += 1

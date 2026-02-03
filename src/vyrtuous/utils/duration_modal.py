@@ -47,9 +47,7 @@ class DurationModal(discord.ui.Modal):
         duration_obj = DurationObject(self.duration.value)
         cap = await Cap.select(
             category=self.information.get("category", None),
-            channel_snowflake=self.information.get(
-                "channel_snowflake", None
-            ),
+            channel_snowflake=self.information.get("channel_snowflake", None),
             guild_snowflake=interaction.guild.id,
             singular=True,
         )
@@ -71,12 +69,8 @@ class DurationModal(discord.ui.Modal):
                     f"{self.information.get("executor_role", None)} in {channel.mention}."
                 )
         where_kwargs = {
-            "channel_snowflake": self.information.get(
-                "channel_snowflake", None
-            ),
-            "member_snowflake": self.information.get(
-                "member_snowflake", None
-            ),
+            "channel_snowflake": self.information.get("channel_snowflake", None),
+            "member_snowflake": self.information.get("member_snowflake", None),
         }
         set_kwargs = {
             "expires_in": (
