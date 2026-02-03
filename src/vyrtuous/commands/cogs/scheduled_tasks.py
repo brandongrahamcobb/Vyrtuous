@@ -448,7 +448,8 @@ class ScheduledTasks(commands.Cog):
                 try:
                     await channel.set_permissions(
                         target=member,
-                        overwrite=None,
+                        send_messages=None,
+                        add_reactions=None,
                         reason="Resetting text-mute overwrite",
                     )
                 except discord.Forbidden as e:
@@ -486,7 +487,7 @@ class ScheduledTasks(commands.Cog):
                     continue
                 try:
                     await channel.set_permissions(
-                        target=member, overwrite=None, reason="Resetting ban overwrite."
+                        target=member, view_channel=None, reason="Resetting ban overwrite."
                     )
                 except discord.Forbidden as e:
                     logger.error(str(e).capitalize())
@@ -544,6 +545,9 @@ class ScheduledTasks(commands.Cog):
     async def before_check_sysadmin(self):
         await self.bot.wait_until_ready()
 
+    @temporarily_cleanup_overwrites.before_loop
+    async def before_temporarily_cleanup_overwrites(self):
+        await self.bot.wait_until_ready()
 
 #    @update_video_room_status.before_loop
 #    async def before_update_video_room_status(self):
