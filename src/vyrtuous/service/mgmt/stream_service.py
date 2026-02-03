@@ -45,10 +45,10 @@ class StreamService:
     @classmethod
     async def send_entry(
         cls,
-        event,
         channel_snowflake: int,
+        identifier: str,
         member: discord.Member,
-        message: discord.Message,
+        message: discord.Message | None = None,
         is_channel_scope: bool = False,
         is_modification: bool = False,
         reason: str = "No reason provided",
@@ -68,10 +68,10 @@ class StreamService:
                 channel_obj = bot.get_channel(stream.channel_snowflake)
                 if channel_obj:
                     pages = cls.build_streaming_embeds(
-                        event=event,
                         channel=channel_obj,
                         duration=duration,
                         highest_role=highest_role,
+                        identifier=identifier,
                         is_channel_scope=is_channel_scope,
                         is_modification=is_modification,
                         member=member,
@@ -102,7 +102,6 @@ class StreamService:
             for channel in channel.guild.voice_channels
         )
         await Data.save(
-            infraction_type=event.identifier,
             channel_members_voice_count=channel_members_voice_count,
             channel_snowflake=int(channel.id),
             executor_member_snowflake=int(message.author.id) if message else None,
@@ -112,6 +111,7 @@ class StreamService:
             guild_members_voice_count=guild_members_voice_count,
             guild_snowflake=int(channel.guild.id),
             highest_role=highest_role,
+            identifier=identifier,
             is_modification=is_modification,
             target_member_snowflake=int(member.id),
             reason=reason,
@@ -120,24 +120,24 @@ class StreamService:
     @classmethod
     def build_streaming_embeds(
         cls,
-        event,
-        channel,
-        duration,
-        highest_role,
-        is_channel_scope,
-        is_modification,
-        member,
-        message,
-        reason,
+        channel: discord.abc.GuildChannel,
+        highest_role: str,
+        identifier: str,
+        member: discord.Member,
+        duration: str | None = None,
+        is_channel_scope: bool = False,
+        is_modification: bool = False,
+        message: discord.Message | None = None,
+        reason: str = "No reason provided",
     ):
         if duration != "permanent":
             if duration is None:
                 duration_info = (
-                    f"**Type:** {event.identifier.capitalize()}\n**Expires:** Never"
+                    f"**Type:** {identifier.capitalize()}\n**Expires:** Never"
                 )
             else:
                 duration_info = (
-                    f"**Type:** {event.identifier.capitalize()}\n**Expires:** {duration}"
+                    f"**Type:** {identifier.capitalize()}\n**Expires:** {duration}"
                 )
             if is_modification:
                 color, duration_type = 0xFF6B35, "⏰ Modified"
@@ -146,31 +146,31 @@ class StreamService:
         else:
             color, duration_type = 0xDC143C, "♾️ Permanent"
             duration_info = (
-                f"**Type:** {event.identifier.capitalize()}\n**Expires:** {duration}"
+                f"**Type:** {identifier.capitalize()}\n**Expires:** {duration}"
             )
-        if event.identifier == "ban":
+        if identifier in ("ban", "unban"):
             if is_modification:
-                title = "🔄 Ban Modified"
+                title = "🔄 User Unbanned"
             else:
-                title = "🔨 User Ban Toggled"
+                title = "🔨 User Banned"
             action = "banned"
-        elif event.identifier == "flag":
+        elif identifier in ("flag", "unflag"):
             if is_modification:
-                title = "🔄 Flag Modified"
+                title = "🔄 User Unflagged"
             else:
-                title = "🚩 User Flag Toggled"
+                title = "🚩 User Flaged"
             action = "flagged"
-        elif event.identifier == "tmute":
+        elif identifier in ("tmute", "untmute"):
             if is_modification:
-                title = "🔄 Text Mute Modified"
+                title = "🔄 User Unmuted"
             else:
-                title = "📝 User Text Mute Toggled"
+                title = "📝 User Text Muted"
             action = "text muted"
-        elif event.identifier == "vmute":
+        elif identifier in ("vmute", "unvmute"):
             if is_modification:
-                title = "🔄 Voice Mute Modified"
+                title = "🔄 User Unmuted"
             else:
-                title = "🎙️ User Voice Mute Toggled"
+                title = "🎙️ User Voice Muted"
             action = "voice muted"
         else:
             title = None
@@ -192,7 +192,7 @@ class StreamService:
         embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
         exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
         embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
-        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Alias Type:** `{event.identifier}`"
+        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Type:** `{identifier}`"
         embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
         embed_user.add_field(
             name=f"**Type:** {duration_type}", value=duration_info, inline=False
@@ -210,9 +210,9 @@ class StreamService:
         embed_duration.add_field(
             name=f"{duration_type}", value=duration_info, inline=False
         )
-        infraction_details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
+        details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
         embed_duration.add_field(
-            name="⚙️ Action Details", value=infraction_details, inline=True
+            name="⚙️ Action Details", value=details, inline=True
         )
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
         embed_duration.add_field(

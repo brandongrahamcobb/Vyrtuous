@@ -21,7 +21,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 
 import discord
 from discord.ext import commands
@@ -45,6 +44,7 @@ from vyrtuous.service.mgmt.stream_service import StreamService
 from vyrtuous.service.rooms.video_room_service import VideoRoomService
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.logger import logger
+from vyrtuous.utils.check import check
 
 
 class ChannelEventListeners(commands.Cog):
@@ -124,25 +124,7 @@ class ChannelEventListeners(commands.Cog):
         await VideoRoomService.reinforce_video_room(
             member=member, before=before, after=after
         )
-        # member_role = await role_check_with_specifics(after.channel, member)
-
         target = "user"
-        # if after.channel:
-        # stage = await Stage.fetch_stage_by_channel(after.channel)
-        # temporary_stage_coordinator_ids = await stage.fetch_coordinator_temporary_stage_coordinator_ids(member, after.channel)
-        # if stage:
-        #     target = 'room'
-        #     stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
-        # else:
-        #     target = 'user'
-        # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
-        #      expires_in = stage.expires_in
-        #      await conn.execute('''
-        #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_in, target, room_name)
-        #          VALUES ($1, $2, $3, $4, 'room', $5)
-        #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
-        #          DO UPDATE SET expires_in = EXCLUDED.expires_in
-        #      ''', member.guild.id, member.id, after.channel.id, expires_in, after.channel.name)
         server_mute = await ServerMute.select(member_snowflake=member.id, singular=True)
         if server_mute:
             if member.guild.id == server_mute.guild_snowflake:
@@ -163,6 +145,19 @@ class ChannelEventListeners(commands.Cog):
                 return
         if after.channel:
             should_be_muted = False
+            stage = await Stage.select(channel_snowlfake=after.channel)
+            if stage:
+                Stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
+                snowflake_kwargs = {
+                    "channel_snowflake": after.channel.id,
+                    "guild_snowflake": after.channel.guild.id,
+                    "member_snowflake": member.id
+                }
+                highest_role = await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Everyone")
+                if highest_role == "Everyone":
+                    should_be_muted = True
+                    target = 'room'
+                    expires_in = stage.expires_in
             voice_mute = await VoiceMute.select(
                 channel_snowflake=after.channel.id,
                 guild_snowflake=after.channel.guild.id,
@@ -193,14 +188,13 @@ class ChannelEventListeners(commands.Cog):
                     )
                     await voice_mute.create()
                     should_be_muted = True
-                    duration = DurationObject("1h")
+                    duration = DurationObject.from_expires_in(expires_in=expires_in)
                     await StreamService.send_entry(
-                        event=VoiceMute,
                         channel_snowflake=after.channel.id,
                         duration=duration,
+                        identifier="vmute",
                         is_channel_scope=True,
                         member=member,
-                        message=None,
                         reason="Right-click voice-mute.",
                     )
             elif before.mute and not after.mute and before.channel == after.channel:
@@ -213,13 +207,12 @@ class ChannelEventListeners(commands.Cog):
                 should_be_muted = False
                 duration = DurationObject("0")
                 await StreamService.send_entry(
-                    event=VoiceMute,
                     channel_snowflake=after.channel.id,
                     duration=duration,
+                    identifier="unvmute",
                     is_channel_scope=True,
                     member=member,
-                    message=None,
-                    reason="Right-click voice-mute.",
+                    reason="Right-click unvoice-mute.",
                 )
             if after.mute != should_be_muted:
                 try:

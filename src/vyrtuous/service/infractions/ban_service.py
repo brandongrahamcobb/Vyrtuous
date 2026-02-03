@@ -233,11 +233,10 @@ class BanService(AliasService):
 
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            event=Ban,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
             duration=information["duration"],
+            identifier="ban",
             is_channel_scope=is_channel_scope,
-            is_modification=False,
             member=member,
             message=message,
             reason=information["reason"],
@@ -265,14 +264,11 @@ class BanService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            event=Ban,
             channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            duration=None,
-            is_channel_scope=False,
+            identifier="unban",
             is_modification=True,
             member=member,
             message=message,
-            reason="No reason provided.",
         )
         embed = await BanService.undo_embed(information=information)
         return await state.end(success=embed)
