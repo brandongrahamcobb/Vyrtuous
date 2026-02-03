@@ -22,7 +22,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.ban.ban import Ban
-from vyrtuous.db.infractions.flag import Flag
+from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.utils.logger import logger

@@ -22,18 +22,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
-
 
 class DurationError(commands.CheckFailure):
-    def __init__(self, information):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["channel_snowflake"])
+    def __init__(self, cap_duration, duration):
         super().__init__(
             message=(
-                f"Cannot set the "
-                f"{information["alias"].SINGULAR} beyond {information["duration"]} as a "
-                f"{information['executor_role']} in {channel.mention}."
+                f"Cannot set the duration ({str(duration)}) beyond the cap ({str(cap_duration)})."
             ),
         )
 

@@ -25,15 +25,9 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.discord_object_service import DiscordObject
 from vyrtuous.commands.fields.duration import DurationError, DurationObject
 from vyrtuous.db.base.alias.alias import Alias
-from vyrtuous.db.base.role.role_alias import RoleAlias
-from vyrtuous.db.infractions.ban.ban_alias import BanAlias
-from vyrtuous.db.infractions.flag.flag_alias import FlagAlias
-from vyrtuous.db.infractions.tmute.text_mute_alias import TextMuteAlias
-from vyrtuous.db.infractions.vmute.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.db.mgmt.cap.cap import Cap
 from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
 from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
-from vyrtuous.db.roles.vegan.vegan_alias import VeganAlias
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
@@ -50,14 +44,7 @@ class AliasService:
 
     lines, pages = [], []
     model = None
-    ALIAS_MAP = {
-        "ban": BanAlias,
-        "flag": FlagAlias,
-        "role": RoleAlias,
-        "tmute": TextMuteAlias,
-        "vegan": VeganAlias,
-        "vmute": VoiceMuteAlias,
-    }
+    ALIAS_MAP = {}
 
     @classmethod
     async def execute(cls, information: dict, message, state):
@@ -245,6 +232,21 @@ class AliasService:
         )
         if not alias:
             return
+        from vyrtuous.db.base.role.role_alias import RoleAlias
+        from vyrtuous.db.infractions.ban.ban_alias import BanAlias
+        from vyrtuous.db.infractions.flag.flag_alias import FlagAlias
+        from vyrtuous.db.infractions.tmute.text_mute_alias import TextMuteAlias
+        from vyrtuous.db.infractions.vmute.voice_mute_alias import VoiceMuteAlias
+        from vyrtuous.db.roles.vegan.vegan_alias import VeganAlias
+
+        cls.ALIAS_MAP = {
+            "ban": BanAlias,
+            "flag": FlagAlias,
+            "role": RoleAlias,
+            "tmute": TextMuteAlias,
+            "vegan": VeganAlias,
+            "vmute": VoiceMuteAlias,
+        }
         alias_class = cls.ALIAS_MAP[alias.category]
         kwargs = alias_class.service.fill_map(alias_class=alias_class, args=args)
         information["alias"] = alias_class
@@ -282,7 +284,12 @@ class AliasService:
                     or duration.number == 0
                 ):
                     if information["executor_role"] == "Moderator":
-                        raise DurationError(information=information)
+                        raise DurationError(
+                            cap_duration=DurationObject.from_seconds(
+                                cap.duration_seconds
+                            ),
+                            duration=duration,
+                        )
                 information["expires_in"] = (
                     None
                     if duration.number == 0

@@ -44,17 +44,17 @@ async def test_load_reload_unload(bot, command: str, cog):
 
     Examples
     --------
-    >>> !load vyrtuous.cogs.scheduled_tasks
+    >>> !load vyrtuous.commands.cogs.scheduled_tasks
     [{emoji} Loaded ScheduledTasks]
 
-    >>> !reload vyrtuous.cogs.scheduled_tasks
+    >>> !reload vyrtuous.commands.cogs.scheduled_tasks
     [{emoji} Reloaded ScheduledTasks]
 
-    >>> !unload vyrtuous.cogs.scheduled_tasks
+    >>> !unload vyrtuous.commands.cogs.scheduled_tasks
     [{emoji} Unloaded ScheduledTasks]
 
     """
-    c = cog.format(cog="vyrtuous.cogs.scheduled_tasks")
+    c = cog.format(cog="vyrtuous.commands.cogs.scheduled_tasks")
     full = f"{command} {c}"
     captured = await send_message(bot=bot, content=full)
     assert captured

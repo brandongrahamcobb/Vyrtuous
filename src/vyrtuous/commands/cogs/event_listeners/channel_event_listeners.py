@@ -30,7 +30,7 @@ from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.db.base.alias.alias import Alias
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.ban.ban_service import BanService
-from vyrtuous.db.infractions.flag import Flag
+from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.infractions.smute.server_mute import ServerMute
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
