@@ -21,6 +21,9 @@ from typing import Dict, Tuple
 
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.discord_object_service import DiscordObject
+from vyrtuous.commands.fields.duration import DurationError, DurationObject
 from vyrtuous.db.base.alias.alias import Alias
 from vyrtuous.db.base.role.role_alias import RoleAlias
 from vyrtuous.db.infractions.ban.ban_alias import BanAlias
@@ -31,9 +34,6 @@ from vyrtuous.db.mgmt.cap.cap import Cap
 from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
 from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
 from vyrtuous.db.roles.vegan.vegan_alias import VeganAlias
-from vyrtuous.discord.bot.discord_bot import DiscordBot
-from vyrtuous.discord.discord_object_service import DiscordObject
-from vyrtuous.discord.fields.duration import DurationError, DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,

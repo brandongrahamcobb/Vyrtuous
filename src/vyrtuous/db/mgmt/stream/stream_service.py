@@ -20,11 +20,11 @@ from datetime import datetime, timezone
 
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.commands.messaging.message_service import PaginatorService
 from vyrtuous.db.mgmt.stream.stream import Stream
 from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
-from vyrtuous.discord.bot.discord_bot import DiscordBot
-from vyrtuous.discord.fields.duration import DurationObject
-from vyrtuous.discord.messaging.message_service import PaginatorService
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.data import Data
 from vyrtuous.utils.dictionary import (

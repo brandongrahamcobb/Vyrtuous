@@ -20,13 +20,13 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.author import resolve_author
 from vyrtuous.db.roles.admin.administrator_service import is_administrator_wrapper
 from vyrtuous.db.roles.coord.coordinator import Coordinator
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
 from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner_wrapper
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.discord.author import resolve_author
-from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,

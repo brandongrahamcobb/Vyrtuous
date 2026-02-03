@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 
-from vyrtuous.discord.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot
 
 
 class Data:

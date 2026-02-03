@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Literal, Type, TypeVar, overload
 
-from vyrtuous.discord.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.logger import logger
 
 T = TypeVar("T", bound="DatabaseFactory")

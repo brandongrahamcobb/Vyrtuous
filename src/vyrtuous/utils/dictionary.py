@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.discord.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 
 
