@@ -27,7 +27,7 @@ class Administrator(DatabaseFactory):
     identifier = "admin"
     guild_snowflake: int
     member_snowflake: int
-    role_snowflakes: list[int | None] = [None]
+    role_snowflakes: list[int | None] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 

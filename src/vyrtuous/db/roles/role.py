@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-@dataclass
+@dataclass(frozen=True)
 class Role(DatabaseFactory):
 
     __tablename__ = "roles"

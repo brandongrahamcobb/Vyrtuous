@@ -31,5 +31,5 @@ class Stream(DatabaseFactory):
     entry_type: str
     guild_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    snowflakes: list[int | None] = [None]
+    snowflakes: list[int | None] = field(default_factory=list)
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

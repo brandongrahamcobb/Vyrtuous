@@ -15,33 +15,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-
+@dataclass(frozen=True)
 class TemporaryRoom(DatabaseFactory):
 
     __tablename__ = "temporary_rooms"
-    category = "troom"
+    identifier = "troom"
     channel_snowflake: int
     guild_snowflake: int
     room_name: str
-    created_at: datetime
-    updated_at: datetime
-
-    def __init__(
-        self,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        room_name: str,
-        created_at: datetime | None = None,
-        updated_at: datetime | None = None,
-    ):
-        self.channel_snowflake = channel_snowflake
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.guild_snowflake = guild_snowflake
-        self.is_temp_room: bool = True
-        self.room_name = room_name
-        self.updated_at = updated_at or datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

@@ -203,8 +203,8 @@ class DurationObject:
             case _:
                 raise ValueError(f"Unsupported unit: {self.unit}")
 
-    def target_datetime(self, base: datetime = datetime.now(timezone.utc)) -> datetime:
-        base = base or self.base
+    def target_datetime(self, base: datetime = None) -> datetime:
+        base = base or datetime.now(timezone.utc)
         return base + self.to_timedelta()
 
     def discord_unix_timestamp(

@@ -64,8 +64,6 @@ class AliasInformation:
                 else:
                     duration = DurationObject(value)
                 AliasInformation.information["duration"] = duration
-                from vyrtuous.utils.logger import logger
-                logger.info(duration)
                 cap = await Cap.select(
                     category=AliasInformation.information["alias"].category,
                     channel_snowflake=int(alias.channel_snowflake),

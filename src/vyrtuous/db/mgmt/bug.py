@@ -29,9 +29,9 @@ class Bug(DatabaseFactory):
     channel_snowflake: int
     guild_snowflake: int
     id: str
-    member_snowflakes: list[int]
     message_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     resolved: bool = False
+    role_snowflakes: list[int | None] = field(default_factory=list)
     notes: str = "No notes provided."
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

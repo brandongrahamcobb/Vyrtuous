@@ -15,26 +15,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from vyrtuous.db.database_factory import DatabaseFactory
 
-
+@dataclass(frozen=True)
 class Sysadmin(DatabaseFactory):
 
     __tablename__ = "sysadmin"
-    category = "sysadmin"
-    created_at: datetime
+    identifier = "sysadmin"
     member_snowflake: int
-    updated_at: datetime
-
-    def __init__(
-        self,
-        member_snowflake: int,
-        created_at: datetime | None = None,
-        updated_at: datetime | None = None,
-    ):
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.member_snowflake = member_snowflake
-        self.updated_at = updated_at or datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
