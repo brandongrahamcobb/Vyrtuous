@@ -21,9 +21,9 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.base.alias.alias import Alias
 from vyrtuous.db.rooms.video.video_room import VideoRoom
+from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,

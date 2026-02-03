@@ -18,9 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.cap.cap import Cap
-from vyrtuous.fields.duration import DurationObject
+from vyrtuous.discord.bot.discord_bot import DiscordBot
+from vyrtuous.discord.fields.duration import DurationObject
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,

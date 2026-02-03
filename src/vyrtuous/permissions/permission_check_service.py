@@ -1,6 +1,6 @@
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE, TARGET_PERMISSIONS
 from vyrtuous.utils.dictionary import (
     clean_dictionary,

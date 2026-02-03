@@ -18,10 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.base.alias.alias_service import AliasService
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.db.roles.vegan.vegan import Vegan
+from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,

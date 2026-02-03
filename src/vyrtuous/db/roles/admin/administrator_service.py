@@ -21,11 +21,12 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.roles.admin.administrator import Administrator, AdministratorRole
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
 from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner_wrapper
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
+from vyrtuous.discord.author import resolve_author
+from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
@@ -37,7 +38,6 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_set_pages,
 )
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
-from vyrtuous.utils.discord.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 

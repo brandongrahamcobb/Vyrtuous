@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.base.alias.alias import Alias
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.flag import Flag
@@ -30,6 +29,7 @@ from vyrtuous.db.roles.mod.moderator import Moderator
 from vyrtuous.db.roles.vegan.vegan import Vegan
 from vyrtuous.db.rooms.stage.stage import Stage
 from vyrtuous.db.rooms.temp.temporary_room import TemporaryRoom
+from vyrtuous.discord.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
