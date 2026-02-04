@@ -68,19 +68,21 @@ class StreamService(Service):
             for stream in streaming:
                 channel_obj = bot.get_channel(stream.channel_snowflake)
                 if channel_obj:
-                    pages = cls.build_streaming_embeds(
-                        channel=channel_obj,
-                        duration=duration,
-                        highest_role=highest_role,
-                        identifier=identifier,
-                        is_channel_scope=is_channel_scope,
-                        is_modification=is_modification,
-                        member=member,
-                        message=message,
-                        reason=reason,
-                    )
-                    paginator = PaginatorService(bot, channel_obj, pages)
-                    await paginator.start()
+                    perms = channel_obj.permissions_for(channel_obj.guild.me)
+                    if perms.send_messages:
+                        pages = cls.build_streaming_embeds(
+                            channel=channel_obj,
+                            duration=duration,
+                            highest_role=highest_role,
+                            identifier=identifier,
+                            is_channel_scope=is_channel_scope,
+                            is_modification=is_modification,
+                            member=member,
+                            message=message,
+                            reason=reason,
+                        )
+                        paginator = PaginatorService(bot, channel_obj, pages)
+                        await paginator.start()
         if isinstance(duration, DurationObject):
             expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
         elif duration is not None:
