@@ -280,15 +280,13 @@ class AliasService(Service):
                 else:
                     information["cap_duration"] = cap.duration_seconds
                 if (
-                    duration.to_timedelta().total_seconds()
+                    int(duration.to_timedelta().total_seconds())
                     > information["cap_duration"]
                     or duration.number == 0
                 ):
                     if information["executor_role"] == "Moderator":
                         raise DurationError(
-                            cap_duration=DurationObject.from_seconds(
-                                information["cap_duration"]
-                            ),
+                            cap_duration=DurationObject.from_seconds(information["cap_duration"]).duration
                         )
                 information["expires_in"] = (
                     None
