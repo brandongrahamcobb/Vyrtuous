@@ -24,7 +24,8 @@ class ClearService(Service):
     ):
         guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
         dir_paths = []
-        dir_paths.append(Path("src") / "vyrtuous/db")
+        dir_paths.append(Path("/app/vyrtuous/db"))
+
         if isinstance(object_dict.get("object", None), discord.Member):
             await has_equal_or_lower_role(
                 snowflake_kwargs=snowflake_kwargs,

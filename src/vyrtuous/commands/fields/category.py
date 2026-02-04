@@ -41,7 +41,7 @@ class CategoryObject:
     @category.setter
     def category(self, new_cat):
         dir_paths = []
-        dir_paths.append(Path("src") / "vyrtuous/db")
+        dir_paths.append(Path("/app/vyrtuous/db"))
         classes = dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory)
         categories = [obj.identifier for obj in classes if obj.identifier is not None]
         for extra in self.EXTRA_CATEGORIES:

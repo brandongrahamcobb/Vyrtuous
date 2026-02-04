@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.smute.server_mute import ServerMute
 from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
@@ -33,7 +34,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class ServerMuteService:
+class ServerMuteService(Service):
 
     lines, pages = [], []
 

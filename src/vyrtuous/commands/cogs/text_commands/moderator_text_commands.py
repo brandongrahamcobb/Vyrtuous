@@ -341,7 +341,8 @@ class ModeratorTextCommands(commands.Cog):
     ):
         pages = []
         dir_paths = []
-        dir_paths.append(Path("src") / "vyrtuous/db/infractions")
+        dir_paths.append(Path("/app/vyrtuous/db/infractions"))
+
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
