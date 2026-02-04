@@ -69,7 +69,7 @@ class StreamService(Service):
                 channel_obj = bot.get_channel(stream.channel_snowflake)
                 if channel_obj:
                     perms = channel_obj.permissions_for(channel_obj.guild.me)
-                    if perms.send_messages:
+                    if perms.send_messages and not channel.guild.me.is_timed_out():
                         pages = cls.build_streaming_embeds(
                             channel=channel_obj,
                             duration=duration,
