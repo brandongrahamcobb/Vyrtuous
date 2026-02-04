@@ -32,4 +32,4 @@ class Cap(DatabaseFactory):
     duration_seconds: int
     guild_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    udpated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

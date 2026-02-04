@@ -279,11 +279,15 @@ class AliasService(Service):
                     information["cap_duration"] = DurationObject("8h").to_seconds()
                 else:
                     information["cap_duration"] = cap.duration_seconds
+                from vyrtuous.utils.logger import logger
+                logger.info(int(duration.to_timedelta().total_seconds()))
+                logger.info(information["cap_duration"])
                 if (
                     int(duration.to_timedelta().total_seconds())
                     > information["cap_duration"]
                     or duration.number == 0
                 ):
+                    logger.info("TEST TRUE")
                     if information["executor_role"] == "Moderator":
                         raise DurationError(
                             cap_duration=DurationObject.from_seconds(information["cap_duration"]).duration
