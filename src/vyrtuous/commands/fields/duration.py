@@ -24,10 +24,10 @@ from discord.ext import commands
 
 
 class DurationError(commands.CheckFailure):
-    def __init__(self, cap_duration, duration):
+    def __init__(self, cap_duration):
         super().__init__(
             message=(
-                f"Cannot set the duration ({str(duration)}) beyond the cap ({str(cap_duration)})."
+                f"Cannot set the duration beyond the cap ({str(cap_duration)})."
             ),
         )
 

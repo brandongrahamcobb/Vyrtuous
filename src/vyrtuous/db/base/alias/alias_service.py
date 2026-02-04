@@ -286,9 +286,8 @@ class AliasService:
                     if information["executor_role"] == "Moderator":
                         raise DurationError(
                             cap_duration=DurationObject.from_seconds(
-                                cap.duration_seconds
+                                information["cap_duration"]
                             ),
-                            duration=duration,
                         )
                 information["expires_in"] = (
                     None
