@@ -27,7 +27,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
-from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.flag.flag import Flag

@@ -21,6 +21,7 @@ import time
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
@@ -45,7 +46,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-class StageService:
+class StageService(Service):
 
     lines, pages = [], []
 

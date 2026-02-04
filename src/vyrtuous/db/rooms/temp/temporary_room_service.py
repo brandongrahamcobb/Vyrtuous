@@ -18,8 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
@@ -42,7 +43,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class TemporaryRoomService:
+class TemporaryRoomService(Service):
 
     lines, pages = [], []
 

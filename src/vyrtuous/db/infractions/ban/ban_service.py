@@ -22,7 +22,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
-from vyrtuous.db.base.alias.alias_service import AliasService
+from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.inc.helpers import CHUNK_SIZE

@@ -21,16 +21,15 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-@skip_db_discovery
 class NotDeveloper(commands.CheckFailure):
     def __init__(self, message="Member is not a sysadmin or developer."):
         super().__init__(message)
@@ -69,7 +68,7 @@ async def is_developer(member_snowflake: int) -> bool:
     return True
 
 
-class DeveloperService:
+class DeveloperService(Service):
 
     lines, pages = [], []
 

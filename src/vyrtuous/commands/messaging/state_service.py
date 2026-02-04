@@ -24,6 +24,7 @@ import discord
 from cachetools import TTLCache
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.messaging.message_service import MessageService, PaginatorService
@@ -37,7 +38,7 @@ from vyrtuous.utils.time_to_complete import TimeToComplete
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
 
 
-class StateService:
+class StateService(Service):
 
     COLOR_MAP = {"\u2705": 0x57F287, "\u26a0\ufe0f": 0xFEE65C, "\u274c": 0xED4245}
 

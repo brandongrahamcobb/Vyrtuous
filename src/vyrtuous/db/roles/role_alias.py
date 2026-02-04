@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from vyrtuous.db.base.alias.alias import Alias
-from vyrtuous.db.base.role.role_service import RoleService
+from vyrtuous.db.alias.alias import Alias
+from vyrtuous.db.roles.role_service import RoleService
 
 
 class RoleAlias(Alias):

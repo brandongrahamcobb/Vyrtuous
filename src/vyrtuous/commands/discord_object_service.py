@@ -22,6 +22,7 @@ from typing import Any, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.source import DiscordSourceNotFound
 from vyrtuous.utils.logger import logger
@@ -89,7 +90,7 @@ class TargetIsBot(commands.CheckFailure):
         )
 
 
-class DiscordObject:
+class DiscordObject(Service):
 
     def __init__(
         self,

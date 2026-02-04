@@ -22,6 +22,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.logger import logger
 
@@ -40,11 +41,8 @@ class CategoryObject:
     @category.setter
     def category(self, new_cat):
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
-        dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
-        classes = dir_to_classes(dir_paths=dir_paths)
+        dir_paths.append(Path("src") / "vyrtuous/db")
+        classes = dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory)
         categories = [obj.identifier for obj in classes if obj.identifier is not None]
         for extra in self.EXTRA_CATEGORIES:
             categories.append(extra)

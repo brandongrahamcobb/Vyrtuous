@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.commands.messaging.message_service import PaginatorService
@@ -38,7 +39,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class StreamService:
+class StreamService(Service):
 
     lines, pages = [], []
 

@@ -21,8 +21,9 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.rooms.video.video_room import VideoRoom
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
@@ -37,7 +38,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-class VideoRoomService:
+class VideoRoomService(Service):
 
     COOLDOWN = timedelta(minutes=30)
     cooldowns = {}

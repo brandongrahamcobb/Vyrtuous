@@ -548,6 +548,7 @@ class ScheduledTasks(commands.Cog):
     async def before_temporarily_cleanup_overwrites(self):
         await self.bot.wait_until_ready()
 
+
 #    @update_video_room_status.before_loop
 #    async def before_update_video_room_status(self):
 #        await self.bot.wait_until_ready()

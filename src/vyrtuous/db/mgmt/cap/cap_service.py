@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.db.mgmt.cap.cap import Cap
@@ -33,7 +34,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class CapService:
+class CapService(Service):
 
     lines, pages = [], []
 

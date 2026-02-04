@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.roles.dev.developer import Developer
@@ -34,7 +35,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-class BugService:
+class BugService(Service):
 
     lines, pages = [], []
 

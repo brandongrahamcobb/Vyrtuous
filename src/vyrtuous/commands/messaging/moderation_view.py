@@ -21,20 +21,20 @@ from pathlib import Path
 import discord
 
 from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.db.infractions.ban.ban import Ban
+from vyrtuous.db.infractions.flag.flag import Flag
+from vyrtuous.db.infractions.tmute.text_mute import TextMute
+from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role_wrapper
-from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
 class ModerationView(discord.ui.View):
-
-    infraction_paths = []
-    infraction_paths.append(Path(__file__).resolve().parents[1] / "db/infractions")
 
     def __init__(self, interaction: discord.Interaction, member_snowflake: int, modal):
         super().__init__(timeout=120)
         self.information = {}
         self.author_snowflake = interaction.user.id
-        self.infractions = dir_to_classes(dir_paths=self.infraction_paths)
+        self.infractions = [Ban, Flag, TextMute, VoiceMute]
         self.interaction = interaction
         self.member_snowflake = member_snowflake
         self.modal = modal

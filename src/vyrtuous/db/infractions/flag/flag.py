@@ -19,11 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from vyrtuous.db.base.database_factory import DatabaseFactory
+from vyrtuous.base.infraction import Infraction
 
 
 @dataclass(frozen=True)
-class Flag(DatabaseFactory):
+class Flag(Infraction):
 
     __tablename__ = "active_flags"
     identifier = "flag"

@@ -21,14 +21,13 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 
-@skip_db_discovery
 class NotGuildOwner(commands.CheckFailure):
     def __init__(
         self,
@@ -77,6 +76,6 @@ async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     raise NotGuildOwner
 
 
-class GuildOwnerService:
+class GuildOwnerService(Service):
 
     pass

@@ -36,7 +36,7 @@ from vyrtuous.commands.messaging.cancel_confirm import VerifyView
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.commands.permission_check_service import PermissionCheckService
-from vyrtuous.db.base.alias.alias_service import AliasService
+from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.infractions.smute.server_mute_service import ServerMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.mgmt.cap.cap_service import CapService

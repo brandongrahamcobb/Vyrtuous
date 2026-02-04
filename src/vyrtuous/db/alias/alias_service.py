@@ -21,10 +21,11 @@ from typing import Dict, Tuple
 
 import discord
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.discord_object_service import DiscordObject
 from vyrtuous.commands.fields.duration import DurationError, DurationObject
-from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.mgmt.cap.cap import Cap
 from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
 from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
@@ -40,7 +41,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class AliasService:
+class AliasService(Service):
 
     lines, pages = [], []
     model = None
@@ -232,11 +233,11 @@ class AliasService:
         )
         if not alias:
             return
-        from vyrtuous.db.base.role.role_alias import RoleAlias
         from vyrtuous.db.infractions.ban.ban_alias import BanAlias
         from vyrtuous.db.infractions.flag.flag_alias import FlagAlias
         from vyrtuous.db.infractions.tmute.text_mute_alias import TextMuteAlias
         from vyrtuous.db.infractions.vmute.voice_mute_alias import VoiceMuteAlias
+        from vyrtuous.db.roles.role_alias import RoleAlias
         from vyrtuous.db.roles.vegan.vegan_alias import VeganAlias
 
         cls.ALIAS_MAP = {

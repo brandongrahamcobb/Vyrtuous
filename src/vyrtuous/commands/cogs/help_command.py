@@ -26,7 +26,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
-from vyrtuous.db.base.alias.alias import Alias
+from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.roles.mod.moderator_service import moderator_predicator
 from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
 from vyrtuous.inc.helpers import PERMISSION_TYPES

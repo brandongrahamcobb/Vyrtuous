@@ -37,12 +37,10 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_roles,
     generate_skipped_set_pages,
 )
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-@skip_db_discovery
 class NotAdministrator(commands.CheckFailure):
     def __init__(
         self,

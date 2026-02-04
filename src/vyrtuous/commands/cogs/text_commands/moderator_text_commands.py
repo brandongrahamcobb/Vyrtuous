@@ -32,7 +32,7 @@ from vyrtuous.commands.fields.snowflake import (
 from vyrtuous.commands.home import at_home
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
-from vyrtuous.db.base.alias.alias_service import AliasService
+from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.flag.flag_service import FlagService
 from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
@@ -341,12 +341,12 @@ class ModeratorTextCommands(commands.Cog):
     ):
         pages = []
         dir_paths = []
-        dir_paths.append(Path(__file__).resolve().parents[2] / "service/infractions")
+        dir_paths.append(Path("src") / "vyrtuous/db/infractions")
         state = StateService(ctx=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         member_dict = await do.determine_from_target(target=member)
-        for obj in dir_to_classes(dir_paths=dir_paths):
+        for obj in dir_to_classes(dir_paths=dir_paths, parent=AliasService):
             object_pages = await obj.build_pages(
                 object_dict=member_dict, is_at_home=is_at_home
             )

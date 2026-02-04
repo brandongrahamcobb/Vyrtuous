@@ -23,7 +23,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.discord_object_service import DiscordObjectNotFound
 from vyrtuous.commands.messaging.state_service import StateService
-from vyrtuous.db.base.alias.alias_service import AliasService
+from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.utils.logger import logger

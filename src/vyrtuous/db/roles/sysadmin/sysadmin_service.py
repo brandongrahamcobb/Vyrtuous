@@ -21,12 +21,11 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 
-@skip_db_discovery
 class NotSysadmin(commands.CheckFailure):
     def __init__(self, message="Member is not a sysadmin."):
         super().__init__(message)
@@ -57,3 +56,7 @@ async def is_sysadmin(member_snowflake: int) -> bool:
     if int(bot.config["discord_owner_id"]) == member_snowflake:
         return True
     raise NotSysadmin
+
+
+class SysadminService(Service):
+    pass

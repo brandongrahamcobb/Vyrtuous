@@ -21,6 +21,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.db.roles.admin.administrator_service import is_administrator_wrapper
@@ -38,11 +39,9 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_members,
     generate_skipped_set_pages,
 )
-from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-@skip_db_discovery
 class NotModerator(commands.CheckFailure):
     def __init__(
         self,
@@ -115,7 +114,7 @@ def moderator_predicator():
     return commands.check(predicate)
 
 
-class ModeratorService:
+class ModeratorService(Service):
 
     lines, pages = [], []
 

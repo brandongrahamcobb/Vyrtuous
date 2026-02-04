@@ -17,24 +17,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import importlib.util
-import inspect
 
 
-def dir_to_classes(dir_paths):
-    classes = []
+def dir_to_classes(dir_paths, parent):
     for dir_path in dir_paths:
         for py_file in dir_path.rglob("*.py"):
             module_name = py_file.stem
             spec = importlib.util.spec_from_file_location(module_name, str(py_file))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            for _, cls in inspect.getmembers(module, inspect.isclass):
-                if cls.__module__ != module.__name__:
-                    continue
-                if getattr(cls, "__skip_db_discovery__", False):
-                    continue
-                classes.append(cls)
-    return classes
+
+    def walk(cls):
+        found = []
+        for sub in cls.__subclasses__():
+            if not getattr(sub, "__skip_db_discovery__", False):
+                found.append(sub)
+            found.extend(walk(sub))
+        return found
+
+    return walk(parent)
 
 
 def skip_db_discovery(cls):

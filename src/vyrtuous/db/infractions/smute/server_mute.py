@@ -19,13 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from vyrtuous.db.base.database_factory import DatabaseFactory
+from vyrtuous.base.infraction import Infraction
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 
 @skip_db_discovery
 @dataclass(frozen=True)
-class ServerMute(DatabaseFactory):
+class ServerMute(Infraction):
 
     __tablename__ = "active_server_voice_mutes"
     identifier = "smute"
