@@ -137,6 +137,12 @@ class NewInfractionView(discord.ui.View):
             self.stop()
             return
         self.channel_select.placeholder = channel.name
+        executor_role = await PermissionService.resolve_highest_role(
+            channel_snowflake=channel.id,
+            guild_snowflake=interaction.guild.id,
+            member_snowflake=interaction.user.id
+        )
+        self.information["executor_role"] = executor_role
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -152,12 +158,6 @@ class NewInfractionView(discord.ui.View):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        executor_role = await PermissionService.has_equal_or_lower_role_wrapper(
-            source=interaction,
-            member_snowflake=self.member_snowflake,
-            sender_snowflake=interaction.user.id,
-        )
-        self.information["executor_role"] = executor_role
         self.information["member_snowflake"] = self.member_snowflake
         modal = self.modal(information=self.information)
         if (

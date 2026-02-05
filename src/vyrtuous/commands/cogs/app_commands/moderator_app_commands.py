@@ -93,12 +93,18 @@ class ModeratorAppCommands(commands.Cog):
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
         do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
         member_dict = await do.determine_from_target(target=member)
         try:
-            await PermissionService.has_equal_or_lower_role_wrapper(
-                source=interaction,
-                member_snowflake=member_dict.get("id", None),
-                sender_snowflake=interaction.user.id,
+            updated_kwargs = default_kwargs.copy()
+            updated_kwargs.update(member_dict.get("columns", None))
+            await PermissionService.has_equal_or_lower_role(
+                member_snowflake=int(member_dict.get("id", None)),
+                updated_kwargs=updated_kwargs
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
@@ -205,12 +211,18 @@ class ModeratorAppCommands(commands.Cog):
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
         do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
         member_dict = await do.determine_from_target(target=member)
         try:
-            await PermissionService.has_equal_or_lower_role_wrapper(
-                source=interaction,
-                member_snowflake=member_dict.get("id", None),
-                sender_snowflake=interaction.user.id,
+            updated_kwargs = default_kwargs.copy()
+            updated_kwargs.update(member_dict.get("columns", None))
+            await PermissionService.has_equal_or_lower_role(
+                member_snowflake=int(member_dict.get("id", None)),
+                updated_kwargs=updated_kwargs
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
@@ -354,12 +366,19 @@ class ModeratorAppCommands(commands.Cog):
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
         do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        
         member_dict = await do.determine_from_target(target=member)
         try:
-            await PermissionService.has_equal_or_lower_role_wrapper(
-                source=interaction,
-                member_snowflake=member_dict.get("id", None),
-                sender_snowflake=interaction.user.id,
+            updated_kwargs = default_kwargs.copy()
+            updated_kwargs.update(member_dict.get("columns", None))
+            await PermissionService.has_equal_or_lower_role(
+                member_snowflake=int(member_dict.get("id", None)),
+                updated_kwargs=updated_kwargs
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)

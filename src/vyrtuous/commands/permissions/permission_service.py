@@ -237,32 +237,16 @@ class PermissionService:
         return "Everyone"
 
     @classmethod
-    async def has_equal_or_lower_role_wrapper(
-        cls,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-        member_snowflake: int,
-        sender_snowflake: int,
-    ) -> bool:
-        default_kwargs = {
-            "channel_snowflake": source.channel.id,
-            "guild_snowflake": source.guild.id,
-            "member_snowflake": sender_snowflake,
-        }
-        return await PermissionService.has_equal_or_lower_role(
-            default_kwargs=default_kwargs, member_snowflake=int(member_snowflake)
-        )
-
-    @classmethod
     async def has_equal_or_lower_role(
         cls,
-        default_kwargs,
+        updated_kwargs,
         member_snowflake: int,
     ) -> bool:
-        sender_name = await PermissionService.resolve_highest_role(**default_kwargs)
+        sender_name = await PermissionService.resolve_highest_role(**updated_kwargs)
         sender_rank = PERMISSION_TYPES.index(sender_name)
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update({"member_snowflake": member_snowflake})
-        target_name = await PermissionService.resolve_highest_role(**updated_kwargs)
+        new_kwargs = updated_kwargs.copy()
+        new_kwargs.update({"member_snowflake": member_snowflake})
+        target_name = await PermissionService.resolve_highest_role(**new_kwargs)
         target_rank = PERMISSION_TYPES.index(target_name)
         if sender_rank <= target_rank:
             raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])

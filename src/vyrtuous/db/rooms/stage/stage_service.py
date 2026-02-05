@@ -354,7 +354,7 @@ class StageService(Service):
     @classmethod
     async def toggle_stage_mute(cls, channel_dict, default_kwargs, member_dict):
         await PermissionService.has_equal_or_lower_role(
-            default_kwargs=default_kwargs,
+            updated_kwargs=default_kwargs,
             member_snowflake=member_dict.get("id", None),
         )
         updated_kwargs = default_kwargs.copy()

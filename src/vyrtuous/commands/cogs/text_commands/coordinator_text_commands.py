@@ -60,10 +60,11 @@ class CoordinatorTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await PermissionService.has_equal_or_lower_role_wrapper(
-            source=ctx,
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
+        await PermissionService.has_equal_or_lower_role(
             member_snowflake=int(member_dict.get("id", None)),
-            sender_snowflake=int(ctx.author.id),
+            updated_kwargs=updated_kwargs
         )
         msg = await ModeratorService.toggle_moderator(
             channel_dict=channel_dict,

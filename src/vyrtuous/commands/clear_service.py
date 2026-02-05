@@ -29,7 +29,7 @@ class ClearService(Service):
         updated_kwargs.update(object_dict.get("columns", None))
         if isinstance(object_dict.get("object", None), discord.Member):
             await PermissionService.has_equal_or_lower_role(
-                default_kwargs=default_kwargs,
+                updated_kwargs=default_kwargs,
                 member_snowflake=object_dict.get("id", None),
             )
             if view.result:

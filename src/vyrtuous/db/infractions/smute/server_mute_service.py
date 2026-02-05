@@ -132,7 +132,7 @@ class ServerMuteService(Service):
         guild_snowflake = default_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
         await PermissionService.has_equal_or_lower_role(
-            default_kwargs=default_kwargs,
+            updated_kwargs=default_kwargs,
             member_snowflake=member_dict.get("id", None),
         )
         updated_kwargs.update(member_dict.get("columns", None))

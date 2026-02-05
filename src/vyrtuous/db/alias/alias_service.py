@@ -320,7 +320,7 @@ class AliasService(Service):
             elif field == "member":
                 member_dict = await do.determine_from_target(target=value)
                 await PermissionService.has_equal_or_lower_role(
-                    default_kwargs=default_kwargs,
+                    updated_kwargs=default_kwargs,
                     member_snowflake=member_dict.get("id", None),
                 )
                 information["updated_kwargs"].update(
