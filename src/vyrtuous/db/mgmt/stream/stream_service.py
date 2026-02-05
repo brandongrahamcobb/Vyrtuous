@@ -59,9 +59,12 @@ class StreamService(Service):
         channel = bot.get_channel(channel_snowflake)
         expires_at = None
         streaming = await Stream.select(singular=False)
-        executor_highest_role = await PermissionService.resolve_highest_role_at_all(
-            member_snowflake=int(message.author.id),
-        )
+        if message:
+            executor_highest_role = await PermissionService.resolve_highest_role_at_all(
+                member_snowflake=int(message.author.id),
+            )
+        else:
+            executor_highest_role = "Role undetermined"
         target_highest_role = await PermissionService.resolve_highest_role_at_all(
             member_snowflake=int(member.id),
         )
