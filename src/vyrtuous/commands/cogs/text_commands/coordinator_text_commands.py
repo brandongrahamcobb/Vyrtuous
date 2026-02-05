@@ -28,12 +28,15 @@ from vyrtuous.commands.fields.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.commands.permissions.permission_service import PermissionService
+from vyrtuous.db.roles.coord.coordinator import Coordinator
 from vyrtuous.db.roles.coord.coordinator_service import coordinator_predicator
 from vyrtuous.db.roles.mod.moderator_service import ModeratorService
 from vyrtuous.db.rooms.stage.stage_service import StageService
 
 
 class CoordinatorTextCommands(commands.Cog):
+
+    ROLE = Coordinator
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot

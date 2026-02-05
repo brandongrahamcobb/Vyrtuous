@@ -32,6 +32,7 @@ from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.mgmt.bug.bug_service import BugService
+from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.dev.developer_service import developer_predicator
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.utils.emojis import get_random_emoji
@@ -39,6 +40,8 @@ from vyrtuous.utils.logger import logger
 
 
 class DevTextCommands(commands.Cog):
+
+    ROLE = Developer
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot

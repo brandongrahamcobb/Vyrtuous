@@ -26,10 +26,13 @@ from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorRoleService
+from vyrtuous.db.roles.owner.guild_owner import GuildOwner
 from vyrtuous.db.roles.owner.guild_owner_service import guild_owner_predicator
 
 
 class GuildOwnerTextCommands(commands.Cog):
+
+    ROLE = GuildOwner
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot

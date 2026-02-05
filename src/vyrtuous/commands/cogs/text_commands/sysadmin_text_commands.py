@@ -25,10 +25,13 @@ from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.db.mgmt.bug.bug_service import BugService
 from vyrtuous.db.roles.dev.developer_service import DeveloperService
+from vyrtuous.db.roles.sysadmin.sysadmin import Sysadmin
 from vyrtuous.db.roles.sysadmin.sysadmin_service import sysadmin_predicator
 
 
 class SysadminTextCommands(commands.Cog):
+
+    ROLE = Sysadmin
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot

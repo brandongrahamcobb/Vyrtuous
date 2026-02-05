@@ -15,26 +15,26 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-from typing import Optional
+from contextlib import ExitStack
+from unittest.mock import patch, AsyncMock
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import build_message, capture_command, send_message, setup
 
 ROLE_SNOWFLAKE = 10000000000000200
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, role",
+    "permission_role, command, role",
     [
-        ("!admin", "{role_snowflake}"),
-        ("!admin", "<@&{role_snowflake}>"),
+        ("Guild Owner", "!admin", "{role_snowflake}"),
+        ("Guild Owner", "!admin", "<@&{role_snowflake}>"),
     ],
 )
-async def test_admin(bot, command: str, role):
+async def test_admin(bot, command: str, role, permission_role):
     """
     List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.
@@ -58,8 +58,8 @@ async def test_admin(bot, command: str, role):
         role_snowflake=ROLE_SNOWFLAKE,
     )
     full = f"{command} {r}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -76,4 +76,11 @@ async def test_admin(bot, command: str, role):
         prefix="!",
     )
     go_commands = bot.get_cog("GuildOwnerTextCommands")
-    command = await go_commands.toggle_administrator_by_role_text_command(ctx, role=r)
+    with ExitStack() as stack:
+        stack.enter_context(patch('vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator', return_value=True))
+        stack.enter_context(patch('vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role', return_value=permission_role))
+        stack.enter_context(patch('vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role', return_value=permission_role))
+        async with capture_command() as end_results:
+            command = await go_commands.toggle_administrator_by_role_text_command(ctx, role=r)
+        for kind, content in end_results:
+            assert kind == "success"

@@ -19,7 +19,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import asyncio
 import threading
 from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock
 
+from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.tests.integration.mock_discord_channel import MockChannel
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
@@ -43,13 +45,32 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @asynccontextmanager
 async def capture(channel):
+    called = []
     before = list(channel._messages)
-    yield
-    after = channel._messages
-    if not after:
-        await asyncio.sleep(1)
-    new_messages = after[len(before) :]
-    channel._captured = new_messages
+    channel._end_result = []
+    original_end = StateService.end
+    async def patched_end(self, *args, **kwargs):
+        called.append((args, kwargs))
+        if 'success' in kwargs:
+            channel._end_result.append('success')
+        elif 'warning' in kwargs:
+            channel._end_result.append('warning')
+        elif 'error' in kwargs:
+            channel._end_result.append('error')
+        return await original_end(self, *args, **kwargs)
+    if called:
+        print("called")
+    StateService.end = patched_end
+    try:
+        yield
+    finally:
+        StateService.end = original_end
+        after = channel._messages
+        if not after:
+            await asyncio.sleep(1)
+        new_messages = after[len(before):]
+        channel._captured = new_messages
+
 
 
 def build_guild(bot, state):
@@ -154,3 +175,24 @@ async def send_message(bot, content: str = None):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
     return objects.get("text_channel", None)._captured[-1]
+
+@asynccontextmanager
+async def capture_command():
+    results = []
+    original_end = StateService.end
+    async def patched_end(self, *args, **kwargs):
+        if getattr(self, '_ended', False):
+            return
+        self._ended = True
+        if 'success' in kwargs:
+            results.append(('success', kwargs['success']))
+        elif 'warning' in kwargs:
+            results.append(('warning', kwargs['warning']))
+        elif 'error' in kwargs:
+            results.append(('error', kwargs['error']))
+        self._add_reactions = AsyncMock()
+    StateService.end = patched_end
+    try:
+        yield results
+    finally:
+        StateService.end = original_end

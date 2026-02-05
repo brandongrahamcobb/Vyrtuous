@@ -307,12 +307,6 @@ class StateService(Service):
     @classmethod
     async def send_pages(cls, title, pages, state):
         if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                logger.info(str(e).capitalize())
-                return await state.end(
-                    warning="Embed size is too large. Limit the scope."
-                )
+            return await state.end(success=pages)
         else:
             return await state.end(warning=f"No {title.lower()} found.")

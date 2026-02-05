@@ -41,6 +41,9 @@ from vyrtuous.db.infractions.smute.server_mute_service import ServerMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.mgmt.cap.cap_service import CapService
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
+from vyrtuous.db.roles.admin.administrator import (
+    Administrator
+)
 from vyrtuous.db.roles.admin.administrator_service import (
     AdministratorRoleService,
     administrator_predicator,
@@ -55,6 +58,8 @@ from vyrtuous.utils.logger import logger
 
 
 class AdminTextCommands(commands.Cog):
+
+    ROLE = Administrator
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot

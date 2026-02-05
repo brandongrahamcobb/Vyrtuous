@@ -51,6 +51,7 @@ from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorService
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
 from vyrtuous.db.roles.dev.developer_service import DeveloperService
+from vyrtuous.db.roles.mod.moderator import Moderator
 from vyrtuous.db.roles.mod.moderator_service import (
     ModeratorService,
     moderator_predicator,
@@ -62,6 +63,9 @@ from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
 class ModeratorAppCommands(commands.Cog):
+
+    ROLE = Moderator
+
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.config = bot.config

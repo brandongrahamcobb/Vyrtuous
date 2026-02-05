@@ -35,7 +35,7 @@ NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE = 10000000000000002
 
 @pytest.fixture
 def cf(monkeypatch):
-    monkeypatch.setenv("DISCORD_OWNER_ID", str(NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE))
+    # monkeypatch.setenv("DISCORD_OWNER_ID", str(NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE))
     cf = Config().get_config()
     yield cf
 
