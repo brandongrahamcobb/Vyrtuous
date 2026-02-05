@@ -155,8 +155,8 @@ class TemporaryRoomService(Service):
         return TemporaryRoomService.pages
 
     @classmethod
-    async def migrate_temporary_room(cls, channel_dict, old_name, snowflake_kwargs):
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+    async def migrate_temporary_room(cls, channel_dict, default_kwargs, old_name):
+        guild_snowflake = default_kwargs.get("guild_snowflake", None)
         old_room = await TemporaryRoom.select(
             guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
         )

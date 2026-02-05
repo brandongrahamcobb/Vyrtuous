@@ -52,36 +52,31 @@ class GuildEventListeners(commands.Cog):
         after_role_snowflakes = {str(r.id) for r in after.roles}
         added_roles = after_role_snowflakes - before_role_snowflakes
         removed_roles = before_role_snowflakes - after_role_snowflakes
-        snowflake_kwargs = {
+        default_kwargs = {
             "guild_snowflake": int(guild_snowflake),
             "member_snowflake": int(before.id),
         }
+        updated_kwargs = default_kwargs.copy()
         if added_roles:
             for added_role in added_roles:
-                snowflake_kwargs.update({"role_snowflake": int(added_role)})
-                await AdministratorRoleService.added_role(
-                    snowflake_kwargs=snowflake_kwargs
-                )
+                updated_kwargs.update({"role_snowflake": int(added_role)})
+                await AdministratorRoleService.added_role(kwargs=updated_kwargs)
                 logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             for removed_role in removed_roles:
-                snowflake_kwargs.update({"role_snowflake": int(removed_role)})
-            await AdministratorRoleService.removed_role(
-                snowflake_kwargs=snowflake_kwargs
-            )
+                updated_kwargs.update({"role_snowflake": int(removed_role)})
+            await AdministratorRoleService.removed_role(kwargs=updated_kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
         guild_snowflake = role.guild.id
-        snowflake_kwargs = {
+        default_kwargs = {
             "guild_snowflake": int(guild_snowflake),
             "role_snowflake": str(role.id),
         }
         for member in role.members:
-            await AdministratorRoleService.removed_role(
-                snowflake_kwargs=snowflake_kwargs
-            )
+            await AdministratorRoleService.removed_role(kwargs=default_kwargs)
             logger.info(f"Removed role ({role.id}) from server ({role.guild.name}).")
 
 

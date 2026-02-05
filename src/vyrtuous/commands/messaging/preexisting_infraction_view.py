@@ -21,14 +21,14 @@ from pathlib import Path
 import discord
 
 from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
-from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role_wrapper
 
 
-class ModerationView(discord.ui.View):
+class PreexistingInfractionView(discord.ui.View):
 
     def __init__(self, interaction: discord.Interaction, member_snowflake: int, modal):
         super().__init__(timeout=120)
@@ -105,16 +105,14 @@ class ModerationView(discord.ui.View):
     async def category_select(self, interaction, select):
         category_name = select.values[0]
         infraction = next(c for c in self.infractions if c.__name__ == category_name)
-        self.category_select.placeholder = self.information["category"] = (
-            infraction.identifier
-        )
+        self.category_select.placeholder = infraction.identifier
         self.information["infraction"] = infraction
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        executor_role = await has_equal_or_lower_role_wrapper(
+        executor_role = await PermissionService.has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=self.member_snowflake,
             sender_snowflake=interaction.user.id,

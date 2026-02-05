@@ -27,6 +27,7 @@ from vyrtuous.commands.fields.duration import Duration, DurationObject
 from vyrtuous.commands.fields.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.coord.coordinator_service import coordinator_predicator
 from vyrtuous.db.roles.mod.moderator_service import ModeratorService
 from vyrtuous.db.rooms.stage.stage_service import StageService
@@ -51,7 +52,7 @@ class CoordinatorTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -59,10 +60,15 @@ class CoordinatorTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
+        await PermissionService.has_equal_or_lower_role_wrapper(
+            source=ctx,
+            member_snowflake=int(member_dict.get("id", None)),
+            sender_snowflake=int(ctx.author.id),
+        )
         msg = await ModeratorService.toggle_moderator(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             member_dict=member_dict,
-            snowflake_kwargs=snowflake_kwargs,
         )
         return await state.end(success=msg)
 
@@ -83,7 +89,7 @@ class CoordinatorTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -93,8 +99,8 @@ class CoordinatorTextCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         pages = await StageService.toggle_stage(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             duration=duration,
-            snowflake_kwargs=snowflake_kwargs,
         )
         await StateService.send_pages(title="Stage", pages=pages, state=state)
 

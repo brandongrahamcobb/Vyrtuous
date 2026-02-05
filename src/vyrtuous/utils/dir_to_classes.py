@@ -16,11 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pathlib import Path
 import importlib.util
 import inspect
 import sys
+from pathlib import Path
+
 from vyrtuous.utils.logger import logger
+
 
 def dir_to_classes(dir_paths, parent):
     classes = []

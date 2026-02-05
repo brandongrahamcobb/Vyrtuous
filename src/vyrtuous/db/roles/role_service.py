@@ -43,10 +43,10 @@ class RoleService(AliasService):
     @classmethod
     async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        role = guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        role = guild.get_role(information["updated_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been granted a role",
@@ -63,10 +63,10 @@ class RoleService(AliasService):
     @classmethod
     async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        role = guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        role = guild.get_role(information["updated_kwargs"]["role_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s role has been revoked",
@@ -248,26 +248,26 @@ class RoleService(AliasService):
     @classmethod
     async def enforce(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         added_role = Role(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-            role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+            member_snowflake=information["updated_kwargs"]["member_snowflake"],
+            role_snowflake=information["updated_kwargs"]["role_snowflake"],
         )
         await added_role.create()
 
-        role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
+        role = message.guild.get_role(information["updated_kwargs"]["role_snowflake"])
         if role:
             await RoleService.administer_role(
-                guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-                member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-                role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
+                guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+                member_snowflake=information["updated_kwargs"]["member_snowflake"],
+                role_snowflake=information["updated_kwargs"]["role_snowflake"],
             )
 
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="role",
             member=member,
             message=message,
@@ -280,25 +280,25 @@ class RoleService(AliasService):
     @classmethod
     async def undo(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         await Role.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-            role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+            member_snowflake=information["updated_kwargs"]["member_snowflake"],
+            role_snowflake=information["updated_kwargs"]["role_snowflake"],
         )
 
-        role = message.guild.get_role(information["snowflake_kwargs"]["role_snowflake"])
+        role = message.guild.get_role(information["updated_kwargs"]["role_snowflake"])
         if role:
             await RoleService.revoke_role(
-                guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-                member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
-                role_snowflake=information["snowflake_kwargs"]["role_snowflake"],
+                guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+                member_snowflake=information["updated_kwargs"]["member_snowflake"],
+                role_snowflake=information["updated_kwargs"]["role_snowflake"],
             )
 
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="unrole",
             is_modification=True,
             member=member,

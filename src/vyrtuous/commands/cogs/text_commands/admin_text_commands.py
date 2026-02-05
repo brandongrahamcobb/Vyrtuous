@@ -35,7 +35,7 @@ from vyrtuous.commands.home import at_home
 from vyrtuous.commands.messaging.cancel_confirm import VerifyView
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
-from vyrtuous.commands.permission_check_service import PermissionCheckService
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.infractions.smute.server_mute_service import ServerMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
@@ -46,7 +46,6 @@ from vyrtuous.db.roles.admin.administrator_service import (
     administrator_predicator,
 )
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
-from vyrtuous.db.roles.permissions.check import check
 from vyrtuous.db.rooms.stage.stage_service import StageService
 from vyrtuous.db.rooms.temp.temporary_room_service import TemporaryRoomService
 from vyrtuous.db.rooms.video.video_room_service import VideoRoomService
@@ -178,7 +177,7 @@ class AdminTextCommands(commands.Cog):
             "flag`, `mod`, `troom`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vroom`.",
         ),
     ):
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -198,8 +197,8 @@ class AdminTextCommands(commands.Cog):
         state = StateService(ctx=ctx)
         msg = await ClearService.clear(
             category=category,
+            default_kwargs=default_kwargs,
             object_dict=object_dict,
-            snowflake_kwargs=snowflake_kwargs,
             where_kwargs=where_kwargs,
             target=target,
             view=view,
@@ -219,7 +218,7 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -227,10 +226,15 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
+        await PermissionService.has_equal_or_lower_role_wrapper(
+            source=ctx,
+            member_snowflake=int(member_dict.get("id", None)),
+            sender_snowflake=int(ctx.author.id),
+        )
         msg = await CoordinatorService.toggle_coordinator(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             member_dict=member_dict,
-            snowflake_kwargs=snowflake_kwargs,
         )
         return await state.end(success=msg)
 
@@ -270,7 +274,7 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -279,9 +283,12 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(object_dict.get("columns", None))
         if target and str(target).lower() == "all":
-            await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
-        if target and str(target).lower() == "all":
+            await PermissionService.check(
+                updated_kwargs=updated_kwargs, lowest_role="Developer"
+            )
             channel_objs = [
                 channel_obj
                 for guild in self.bot.guilds
@@ -291,10 +298,10 @@ class AdminTextCommands(commands.Cog):
             channel_objs = object_dict.get("object", None).channels
         else:
             channel_objs = [object_dict.get("object", None)]
-        pages = await PermissionCheckService.build_pages(
+        pages = await PermissionService.build_pages(
             channel_objs=channel_objs,
+            default_kwargs=default_kwargs,
             is_at_home=is_at_home,
-            snowflake_kwargs=snowflake_kwargs,
         )
         if pages:
             return await state.end(warning=pages)
@@ -317,7 +324,7 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -327,9 +334,8 @@ class AdminTextCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         pages = await VoiceMuteService.room_mute(
             channel_dict=channel_dict,
-            guild_snowflake=ctx.guild.id,
+            default_kwargs=default_kwargs,
             reason=reason,
-            snowflake_kwargs=snowflake_kwargs,
         )
         await StateService.send_pages(title="Room Mutes", pages=pages, state=state)
 
@@ -405,7 +411,7 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -413,7 +419,7 @@ class AdminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
         msg = await ServerMuteService.toggle_server_mute(
-            member_dict=member_dict, reason=reason, snowflake_kwargs=snowflake_kwargs
+            default_kwargs=default_kwargs, member_dict=member_dict, reason=reason
         )
         return await state.end(success=msg)
 
@@ -517,7 +523,7 @@ class AdminTextCommands(commands.Cog):
     ):
         state = StateService(ctx=ctx)
         channel_mentions, failed_snowflakes, resolved_channels = [], [], []
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -537,10 +543,10 @@ class AdminTextCommands(commands.Cog):
             action=action,
             channel_dict=channel_dict,
             channel_mentions=channel_mentions,
+            default_kwargs=default_kwargs,
             entry_type=entry_type,
             failed_snowflakes=failed_snowflakes,
             resolved_channels=resolved_channels,
-            snowflake_kwargs=snowflake_kwargs,
         )
         await StateService.send_pages(title="Stream", pages=pages, state=state)
 
@@ -614,13 +620,13 @@ class AdminTextCommands(commands.Cog):
         alias_name: str = commands.parameter(description="Include an alias name"),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
         msg = await AliasService.delete_alias(
-            alias_name=alias_name, snowflake_kwargs=snowflake_kwargs
+            alias_name=alias_name, default_kwargs=default_kwargs
         )
         return await state.end(success=msg)
 

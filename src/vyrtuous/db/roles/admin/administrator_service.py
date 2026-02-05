@@ -23,6 +23,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
+from vyrtuous.commands.errors import NotAdministrator
 from vyrtuous.db.roles.admin.administrator import Administrator, AdministratorRole
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
 from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner_wrapper
@@ -39,14 +40,6 @@ from vyrtuous.utils.dictionary import (
 )
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
-
-
-class NotAdministrator(commands.CheckFailure):
-    def __init__(
-        self,
-        message="Member is not a sysadmin, developer, guild owner or administrator in this server.",
-    ):
-        super().__init__(message)
 
 
 async def is_administrator_wrapper(
@@ -70,6 +63,15 @@ async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
         raise NotAdministrator
     return True
 
+async def is_administrator_at_all(
+    member_snowflake: int,
+):
+    administrator = await Administrator.select(
+        member_snowflake=int(member_snowflake),
+    )
+    if not administrator:
+        raise NotAdministrator
+    return True
 
 def administrator_predicator():
     async def predicate(
@@ -86,9 +88,7 @@ def administrator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure(
-            "Member is not a sysadmin, developer, guild owner or administrator in this server."
-        )
+        raise NotAdministrator
 
     predicate._permission_level = "Administrator"
     return commands.check(predicate)
@@ -204,11 +204,11 @@ class AdministratorRoleService:
     lines, pages = [], []
 
     @classmethod
-    async def added_role(cls, snowflake_kwargs):
+    async def added_role(cls, updated_kwargs):
         administrator_role_snowflakes = []
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
-        role_snowflake = snowflake_kwargs.get("role_snowflake", None)
+        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
+        member_snowflake = updated_kwargs.get("member_snowflake", None)
+        role_snowflake = updated_kwargs.get("role_snowflake", None)
         where_kwargs = {
             "guild_snowflake": int(guild_snowflake),
             "role_snowflake": int(role_snowflake),
@@ -244,11 +244,11 @@ class AdministratorRoleService:
             )
 
     @classmethod
-    async def removed_role(cls, snowflake_kwargs):
+    async def removed_role(cls, updated_kwargs):
         administrator_role_snowflakes = []
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
-        role_snowflake = snowflake_kwargs.get("role_snowflake", None)
+        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
+        member_snowflake = updated_kwargs.get("member_snowflake", None)
+        role_snowflake = updated_kwargs.get("role_snowflake", None)
         where_kwargs = {
             "guild_snowflake": int(guild_snowflake),
             "role_snowflake": int(role_snowflake),
@@ -345,9 +345,9 @@ class AdministratorRoleService:
         return AdministratorRoleService.pages
 
     @classmethod
-    async def toggle_administrator_role(cls, role_dict, snowflake_kwargs):
+    async def toggle_administrator_role(cls, updated_kwargs, role_dict):
         bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
         chunk_size, field_count, pages = 7, 0, []
         guild = bot.get_guild(guild_snowflake)
         title = f"{get_random_emoji()} Administrators and Roles"

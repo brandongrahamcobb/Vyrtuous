@@ -18,29 +18,53 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
+from vyrtuous.commands.messaging.state_service import StateService
+
 
 class ReasonModal(discord.ui.Modal):
 
     def __init__(self, information):
-        super().__init__(title=f'{information["category"].capitalize()} Reason')
+        super().__init__(
+            title=f'{information.get("infraction", None).identifier.capitalize()} Reason'
+        )
         self.information = information
         self.reason = discord.ui.TextInput(
             label="Type the reason",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=self.information.get("existing", None).reason or "",
+            default=(
+                self.information.get("existing", None).reason
+                if self.information.get("existing", None)
+                else ""
+            ),
         )
         self.add_item(self.reason)
 
     async def on_submit(self, interaction):
-        where_kwargs = {
-            "channel_snowflake": self.information.get("channel_snowflake", None),
-            "member_snowflake": self.information.get("member_snowflake", None),
-        }
-        set_kwargs = {"reason": self.reason.value}
-        await self.information.get("infraction", None).update(
-            where_kwargs=where_kwargs, set_kwargs=set_kwargs
-        )
-        await interaction.response.send_message(
-            content="Reason has been updated.", ephemeral=True
-        )
+        state = StateService(interaction=interaction)
+        if self.information.get("existing", None):
+            where_kwargs = {
+                "channel_snowflake": self.information.get("channel_snowflake", None),
+                "member_snowflake": self.information.get("member_snowflake", None),
+            }
+            set_kwargs = {"reason": self.reason.value}
+            await self.information.get("infraction", None).update(
+                where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            )
+            await interaction.response.send_message(
+                content="Reason has been updated.", ephemeral=True
+            )
+        else:
+            where_kwargs = {
+                "channel_snowflake": self.information.get("channel_snowflake", None),
+                "expires_in": self.information.get("expires_in", None),
+                "guild_snowflake": self.information.get("guild_snowflake", None),
+                "member_snowflake": self.information.get("member_snowflake", None),
+                "reason": self.reason.value,
+            }
+            infraction = self.information.get("infraction", None)(**where_kwargs)
+            await infraction.create()
+            await interaction.response.send_message(
+                content=f"{self.information.get('infraction', None).identifier.capitalize()} updated.",
+                ephemeral=True,
+            )

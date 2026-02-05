@@ -22,7 +22,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from vyrtuous.base.infraction import Infraction
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.discord_object_service import DiscordObject
 from vyrtuous.commands.fields.snowflake import (
@@ -33,10 +32,18 @@ from vyrtuous.commands.fields.snowflake import (
 from vyrtuous.commands.home import at_home
 from vyrtuous.commands.messaging.duration_modal import DurationModal
 from vyrtuous.commands.messaging.message_service import MessageService
-from vyrtuous.commands.messaging.moderation_view import ModerationView
+from vyrtuous.commands.messaging.new_infraction_view import NewInfractionView
+from vyrtuous.commands.messaging.preexisting_infraction_view import (
+    PreexistingInfractionView,
+)
 from vyrtuous.commands.messaging.reason_modal import ReasonModal
 from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.commands.permissions.permission_service import (
+    HasEqualOrLowerRole,
+    PermissionService,
+)
 from vyrtuous.db.alias.alias_service import AliasService
+from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.flag.flag_service import FlagService
 from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
@@ -47,10 +54,6 @@ from vyrtuous.db.roles.dev.developer_service import DeveloperService
 from vyrtuous.db.roles.mod.moderator_service import (
     ModeratorService,
     moderator_predicator,
-)
-from vyrtuous.db.roles.permissions.check import (
-    HasEqualOrLowerRole,
-    has_equal_or_lower_role_wrapper,
 )
 from vyrtuous.db.roles.vegan.vegan_service import VeganService
 from vyrtuous.db.rooms.stage.stage_service import StageService
@@ -82,6 +85,34 @@ class ModeratorAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(title="Administrators", pages=pages, state=state)
+
+    @app_commands.command(name="ban", description="Create a ban.")
+    @app_commands.describe(member="The ID or mention of the member.")
+    @moderator_predicator()
+    async def create_ban_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        do = DiscordObject(interaction=interaction)
+        member_dict = await do.determine_from_target(target=member)
+        try:
+            await PermissionService.has_equal_or_lower_role_wrapper(
+                source=interaction,
+                member_snowflake=member_dict.get("id", None),
+                sender_snowflake=interaction.user.id,
+            )
+        except HasEqualOrLowerRole as e:
+            state = StateService(interaction=interaction)
+            return await state.end(warning=str(e).capitalize())
+        view = NewInfractionView(
+            infraction=Ban,
+            interaction=interaction,
+            member_snowflake=member_dict.get("id", None),
+            modal=ReasonModal,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel and a duration", view=view, ephemeral=True
+        )
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -176,7 +207,7 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         member_dict = await do.determine_from_target(target=member)
         try:
-            await has_equal_or_lower_role_wrapper(
+            await PermissionService.has_equal_or_lower_role_wrapper(
                 source=interaction,
                 member_snowflake=member_dict.get("id", None),
                 sender_snowflake=interaction.user.id,
@@ -184,7 +215,7 @@ class ModeratorAppCommands(commands.Cog):
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
             return await state.end(warning=str(e).capitalize())
-        view = ModerationView(
+        view = PreexistingInfractionView(
             interaction=interaction,
             member_snowflake=member_dict.get("id", None),
             modal=DurationModal,
@@ -241,7 +272,7 @@ class ModeratorAppCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(interaction=interaction)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
@@ -250,8 +281,8 @@ class ModeratorAppCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         await TemporaryRoomService.migrate_temporary_room(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             old_name=old_name,
-            snowflake_kwargs=snowflake_kwargs,
         )
         return await state.end(
             success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
@@ -300,7 +331,7 @@ class ModeratorAppCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(interaction=interaction)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
@@ -311,8 +342,8 @@ class ModeratorAppCommands(commands.Cog):
         member_dict = await do.determine_from_target(target=member)
         msg = await StageService.toggle_stage_mute(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             member_dict=member_dict,
-            snowflake_kwargs=snowflake_kwargs,
         )
         await state.end(success=msg)
 
@@ -325,7 +356,7 @@ class ModeratorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         member_dict = await do.determine_from_target(target=member)
         try:
-            await has_equal_or_lower_role_wrapper(
+            await PermissionService.has_equal_or_lower_role_wrapper(
                 source=interaction,
                 member_snowflake=member_dict.get("id", None),
                 sender_snowflake=interaction.user.id,
@@ -333,7 +364,7 @@ class ModeratorAppCommands(commands.Cog):
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
             return await state.end(warning=str(e).capitalize())
-        view = ModerationView(
+        view = PreexistingInfractionView(
             interaction=interaction,
             member_snowflake=member_dict.get("id", None),
             modal=ReasonModal,

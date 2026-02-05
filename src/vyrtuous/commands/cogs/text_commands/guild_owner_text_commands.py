@@ -24,9 +24,9 @@ from vyrtuous.commands.discord_object_service import DiscordObject
 from vyrtuous.commands.fields.snowflake import MemberSnowflake, RoleSnowflake
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorRoleService
 from vyrtuous.db.roles.owner.guild_owner_service import guild_owner_predicator
-from vyrtuous.db.roles.permissions.invincibility import Invincibility
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -41,15 +41,17 @@ class GuildOwnerTextCommands(commands.Cog):
         self, ctx: commands.Context, role: RoleSnowflake
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
         do = DiscordObject(ctx=ctx)
         role_dict = await do.determine_from_target(target=role)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(role_dict.get("columns", None))
         pages = await AdministratorRoleService.toggle_administrator_role(
-            role_dict=role_dict, snowflake_kwargs=snowflake_kwargs
+            role_dict=role_dict, updated_kwargs=updated_kwargs
         )
         await StateService.send_pages(title="Administrators", pages=pages, state=state)
 
@@ -67,16 +69,16 @@ class GuildOwnerTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
         where_kwargs = member_dict.get("columns", None)
-        enabled = Invincibility.toggle_enabled()
+        enabled = PermissionService.toggle_enabled()
         if enabled:
-            Invincibility.add_invincible_member(**where_kwargs)
-            await Invincibility.unrestrict(**where_kwargs)
+            PermissionService.add_invincible_member(**where_kwargs)
+            await PermissionService.unrestrict(**where_kwargs)
             msg = (
                 f"All moderation events have been forgiven "
                 f"and invincibility has been enabled for {member_dict.get("mention", None)}."
             )
         else:
-            Invincibility.remove_invincible_member(**where_kwargs)
+            PermissionService.remove_invincible_member(**where_kwargs)
             msg = f"Invincibility has been disabled for {member_dict.get("mention", None)}"
         return await state.end(success=msg)
 

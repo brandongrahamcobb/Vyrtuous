@@ -233,7 +233,7 @@ class ModeratorTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -242,8 +242,8 @@ class ModeratorTextCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         msg = await TemporaryRoomService.migrate_temporary_room(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             old_name=old_name,
-            snowflake_kwargs=snowflake_kwargs,
         )
         return await state.end(success=msg)
 
@@ -301,7 +301,7 @@ class ModeratorTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -310,10 +310,13 @@ class ModeratorTextCommands(commands.Cog):
         channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
+        updated_kwargs.update(member_dict.get("columns", None))
         msg = await StageService.toggle_stage_mute(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             member_dict=member_dict,
-            snowflake_kwargs=snowflake_kwargs,
         )
         await state.end(success=msg)
 

@@ -20,8 +20,8 @@ import discord
 
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.smute.server_mute import ServerMute
-from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.dictionary import (
     clean_dictionary,
@@ -126,27 +126,28 @@ class ServerMuteService(Service):
         return ServerMuteService.pages
 
     @classmethod
-    async def toggle_server_mute(cls, member_dict, reason, snowflake_kwargs):
+    async def toggle_server_mute(cls, default_kwargs, member_dict, reason):
         bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        updated_kwargs = default_kwargs.copy()
+        guild_snowflake = default_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
-        await has_equal_or_lower_role(
-            snowflake_kwargs=snowflake_kwargs,
+        await PermissionService.has_equal_or_lower_role(
+            default_kwargs=default_kwargs,
             member_snowflake=member_dict.get("id", None),
         )
-        where_kwargs = member_dict.get("columns", None)
-
-        server_mute = await ServerMute.select(singular=True, **where_kwargs)
+        updated_kwargs.update(member_dict.get("columns", None))
+        del updated_kwargs["channel_snowflake"]
+        server_mute = await ServerMute.select(singular=True, **updated_kwargs)
         if not server_mute:
             server_mute = ServerMute(
-                **where_kwargs,
+                **updated_kwargs,
                 reason=reason,
             )
             await server_mute.create()
             action = "muted"
             should_be_muted = True
         else:
-            await ServerMute.delete(**where_kwargs)
+            await ServerMute.delete(**updated_kwargs)
             action = "unmuted"
             should_be_muted = False
 

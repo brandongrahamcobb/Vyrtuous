@@ -27,8 +27,8 @@ from discord.ext import commands
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
+from vyrtuous.commands.errors import DiscordSourceNotFound
 from vyrtuous.commands.messaging.message_service import MessageService, PaginatorService
-from vyrtuous.commands.source import DiscordSourceNotFound
 from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.utils.emojis import get_random_emoji

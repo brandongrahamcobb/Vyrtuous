@@ -23,6 +23,7 @@ from discord.ext import commands
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
+from vyrtuous.commands.errors import NotCoordinator
 from vyrtuous.db.roles.admin.administrator_service import is_administrator_wrapper
 from vyrtuous.db.roles.coord.coordinator import Coordinator
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
@@ -38,14 +39,6 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_set_pages,
 )
 from vyrtuous.utils.emojis import get_random_emoji
-
-
-class NotCoordinator(commands.CheckFailure):
-    def __init__(
-        self,
-        message="Member is not a sysadmin, developer, guild owner, administrator or coordinator in this channel.",
-    ):
-        super().__init__(message)
 
 
 async def is_coordinator_wrapper(
@@ -74,19 +67,22 @@ async def is_coordinator(
     return True
 
 
-async def is_coordinator_at_all(
+async def is_coordinator_at_all_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member = resolve_author(source=source)
     member_snowflake = member.id
+    await is_coordinator_at_all(member_snowflake=member_snowflake)
+
+async def is_coordinator_at_all(
+    member_snowflake: int,
+):
     coordinator = await Coordinator.select(
-        guild_snowflake=int(source.guild.id),
         member_snowflake=int(member_snowflake),
     )
     if not coordinator:
         raise NotCoordinator
     return True
-
 
 def coordinator_predicator():
     async def predicate(
@@ -97,16 +93,14 @@ def coordinator_predicator():
             is_developer_wrapper,
             is_guild_owner_wrapper,
             is_administrator_wrapper,
-            is_coordinator_at_all,
+            is_coordinator_at_all_wrapper,
         ):
             try:
                 if await verify(source):
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure(
-            "Member is not a sysadmin, developer, guild owner, administrator or coordinator in this channel."
-        )
+        raise NotCoordinator
 
     predicate._permission_level = "Coordinator"
     return commands.check(predicate)
@@ -222,22 +216,16 @@ class CoordinatorService(Service):
         return CoordinatorService.pages
 
     @classmethod
-    async def toggle_coordinator(cls, channel_dict, member_dict, snowflake_kwargs):
-        from vyrtuous.db.roles.permissions.check import has_equal_or_lower_role
-
-        await has_equal_or_lower_role(
-            snowflake_kwargs=snowflake_kwargs,
-            member_snowflake=member_dict.get("id", None),
-        )
-        where_kwargs = {}
-        where_kwargs.update(channel_dict.get("columns", None))
-        where_kwargs.update(member_dict.get("columns", None))
-        coordinator = await Coordinator.select(singular=True, **where_kwargs)
+    async def toggle_coordinator(cls, channel_dict, default_kwargs, member_dict):
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
+        updated_kwargs.update(member_dict.get("columns", None))
+        coordinator = await Coordinator.select(singular=True, **updated_kwargs)
         if coordinator:
-            await Coordinator.delete(**where_kwargs)
+            await Coordinator.delete(**updated_kwargs)
             action = "revoked"
         else:
-            coordinator = Coordinator(**where_kwargs)
+            coordinator = Coordinator(**updated_kwargs)
             await coordinator.create()
             action = "granted"
         return (

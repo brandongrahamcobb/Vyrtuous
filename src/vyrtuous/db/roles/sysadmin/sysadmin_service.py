@@ -24,11 +24,7 @@ from discord.ext import commands
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
-
-
-class NotSysadmin(commands.CheckFailure):
-    def __init__(self, message="Member is not a sysadmin."):
-        super().__init__(message)
+from vyrtuous.commands.errors import NotSysadmin
 
 
 async def is_sysadmin_wrapper(
@@ -45,7 +41,7 @@ def sysadmin_predicator():
     ):
         if await is_sysadmin_wrapper(source):
             return True
-        raise commands.CheckFailure("Member is not a sysadmin.")
+        raise NotSysadmin
 
     predicate._permission_level = "Sysadmin"
     return commands.check(predicate)

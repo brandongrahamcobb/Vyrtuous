@@ -24,8 +24,8 @@ from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.commands.messaging.message_service import PaginatorService
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.mgmt.stream.stream import Stream
-from vyrtuous.db.roles.permissions.highest_role import resolve_highest_role
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.data import Data
 from vyrtuous.utils.dictionary import (
@@ -59,9 +59,10 @@ class StreamService(Service):
         channel = bot.get_channel(channel_snowflake)
         expires_at = None
         streaming = await Stream.select(singular=False)
-        highest_role = await resolve_highest_role(
-            channel_snowflake=int(channel.id),
-            guild_snowflake=int(channel.guild.id),
+        executor_highest_role = await PermissionService.resolve_highest_role_at_all(
+            member_snowflake=int(message.author.id),
+        )
+        target_highest_role = await PermissionService.resolve_highest_role_at_all(
             member_snowflake=int(member.id),
         )
         if message:
@@ -73,13 +74,14 @@ class StreamService(Service):
                         pages = cls.build_streaming_embeds(
                             channel=channel_obj,
                             duration=duration,
-                            highest_role=highest_role,
+                            executor_highest_role=executor_highest_role,
                             identifier=identifier,
                             is_channel_scope=is_channel_scope,
                             is_modification=is_modification,
                             member=member,
                             message=message,
                             reason=reason,
+                            target_highest_role=target_highest_role,
                         )
                         paginator = PaginatorService(bot, channel_obj, pages)
                         await paginator.start()
@@ -113,10 +115,11 @@ class StreamService(Service):
             guild_members_online_count=guild_members_online_count,
             guild_members_voice_count=guild_members_voice_count,
             guild_snowflake=int(channel.guild.id),
-            highest_role=highest_role,
+            executor_highest_role=executor_highest_role,
             identifier=identifier,
             is_modification=is_modification,
             target_member_snowflake=int(member.id),
+            target_highest_role=target_highest_role,
             reason=reason,
         )
 
@@ -124,9 +127,10 @@ class StreamService(Service):
     def build_streaming_embeds(
         cls,
         channel: discord.abc.GuildChannel,
-        highest_role: str,
+        executor_highest_role: str,
         identifier: str,
         member: discord.Member,
+        target_highest_role: str,
         duration: str | None = None,
         is_channel_scope: bool = False,
         is_modification: bool = False,
@@ -190,9 +194,9 @@ class StreamService(Service):
                 f"**Target:** {member.mention} {action} in {channel.mention}"
             )
         embed_user.set_thumbnail(url=message.author.display_avatar.url)
-        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>\n**Top Role:** {target_highest_role}"
         embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
-        exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
+        exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {executor_highest_role}"
         embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
         ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Type:** `{identifier}`"
         embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
@@ -324,12 +328,13 @@ class StreamService(Service):
         action,
         channel_dict,
         channel_mentions,
+        default_kwargs,
         entry_type,
         failed_snowflakes,
         resolved_channels,
-        snowflake_kwargs,
     ):
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        updated_kwargs = default_kwargs.copy()
+        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
         channel_kwargs = channel_dict.get("columns", None)
         where_kwargs = {
             "channel_snowflake": channel_kwargs["channel_snowflake"],
@@ -337,7 +342,7 @@ class StreamService(Service):
             "guild_snowflake": int(guild_snowflake),
         }
         if action is None and entry_type is None:
-            stream = await Stream.select(singular=True, **channel_kwargs)
+            stream = await Stream.select(singular=True, **where_kwargs)
             enabled = not stream.enabled
             action = "enabled" if enabled else "disabled"
             set_kwargs = {"enabled": enabled}
@@ -348,9 +353,8 @@ class StreamService(Service):
                     resolved_channels = []
                     if action.lower() == "create":
                         stream = Stream(
-                            **channel_kwargs,
+                            **where_kwargs,
                             enabled=True,
-                            entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
                         await stream.create()
@@ -362,7 +366,7 @@ class StreamService(Service):
                         )
                         action = "modified"
                 case "delete":
-                    await Stream.delete(**channel_kwargs)
+                    await Stream.delete(**where_kwargs)
                     action = "deleted"
         embed = discord.Embed(
             title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict.get("mention", None)}",

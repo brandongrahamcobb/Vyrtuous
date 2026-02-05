@@ -143,10 +143,10 @@ class FlagService(AliasService):
     @classmethod
     async def enforce(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         flag = Flag(
-            **information["snowflake_kwargs"],
+            **information["updated_kwargs"],
             reason=information["reason"],
         )
         await flag.create()
@@ -154,7 +154,7 @@ class FlagService(AliasService):
         cog = bot.get_cog("ChannelEventListeners")
         cog.flags.append(flag)
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="flag",
             member=member,
             message=message,
@@ -166,20 +166,20 @@ class FlagService(AliasService):
     @classmethod
     async def undo(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await Flag.delete(**information["snowflake_kwargs"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        await Flag.delete(**information["updated_kwargs"])
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("ChannelEventListeners")
         for flag in cog.flags:
             if (
                 flag.channel_snowflake
-                == information["snowflake_kwargs"]["channel_snowflake"]
+                == information["updated_kwargs"]["channel_snowflake"]
             ):
                 cog.flags.remove(flag)
                 break
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="unflag",
             is_modification=True,
             member=member,
@@ -191,9 +191,9 @@ class FlagService(AliasService):
     @classmethod
     async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been flagged",
             description=(
@@ -209,9 +209,9 @@ class FlagService(AliasService):
     @classmethod
     async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been unflagged",
             description=(

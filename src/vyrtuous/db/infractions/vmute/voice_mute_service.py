@@ -157,19 +157,17 @@ class VoiceMuteService(AliasService):
         return VoiceMuteService.pages
 
     @classmethod
-    async def room_mute(cls, channel_dict, guild_snowflake, reason, snowflake_kwargs):
+    async def room_mute(cls, channel_dict, default_kwargs, reason):
         bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
         muted_members, pages, skipped_members, failed_members = [], [], [], []
-        guild = bot.get_guild(guild_snowflake)
-        where_kwargs = channel_dict.get("columns", None)
-
+        guild = bot.get_guild(updated_kwargs.get("guild_snowflake", None))
         for member in channel_dict.get("object", None).members:
-            if member.id == member_snowflake:
+            if member.id == updated_kwargs.get("member_snowflake", None):
                 continue
             voice_mute = await VoiceMute.select(
-                **where_kwargs, target="user", singular=True
+                **updated_kwargs, target="user", singular=True
             )
             if voice_mute:
                 skipped_members.append(member)
@@ -193,7 +191,7 @@ class VoiceMuteService(AliasService):
                 member_snowflake=member.id,
                 reason=reason,
                 target="user",
-                **where_kwargs,
+                **updated_kwargs,
             )
             await voice_mute.create()
             muted_members.append(member)
@@ -264,10 +262,10 @@ class VoiceMuteService(AliasService):
     @classmethod
     async def enforce(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         voice_mute = VoiceMute(
-            **information["snowflake_kwargs"],
+            **information["updated_kwargs"],
             expires_in=information["expires_in"],
             reason=information["reason"],
             target="user",
@@ -277,7 +275,7 @@ class VoiceMuteService(AliasService):
         if member.voice and member.voice.channel:
             if (
                 member.voice.channel.id
-                == information["snowflake_kwargs"]["channel_snowflake"]
+                == information["updated_kwargs"]["channel_snowflake"]
             ):
                 is_channel_scope = True
                 try:
@@ -285,7 +283,7 @@ class VoiceMuteService(AliasService):
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             duration=information["duration"],
             identifier="vmute",
             is_channel_scope=is_channel_scope,
@@ -299,9 +297,9 @@ class VoiceMuteService(AliasService):
     @classmethod
     async def undo(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await VoiceMute.delete(**information["snowflake_kwargs"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        await VoiceMute.delete(**information["updated_kwargs"])
         is_channel_scope = False
         if member.voice and member.voice.channel:
             try:
@@ -310,7 +308,7 @@ class VoiceMuteService(AliasService):
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="unvmute",
             is_channel_scope=is_channel_scope,
             is_modification=True,
@@ -323,9 +321,9 @@ class VoiceMuteService(AliasService):
     @classmethod
     async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name} has been voice-muted",
@@ -343,9 +341,9 @@ class VoiceMuteService(AliasService):
     @classmethod
     async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been unmuted",
             description=(

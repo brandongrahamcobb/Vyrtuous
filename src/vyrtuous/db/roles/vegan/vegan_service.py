@@ -128,15 +128,15 @@ class VeganService(AliasService):
     @classmethod
     async def enforce(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         vegan = Vegan(
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+            member_snowflake=information["updated_kwargs"]["member_snowflake"],
         )
         await vegan.create()
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="vegan",
             member=member,
             message=message,
@@ -147,15 +147,15 @@ class VeganService(AliasService):
     @classmethod
     async def undo(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         await Vegan.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+            member_snowflake=information["updated_kwargs"]["member_snowflake"],
         )
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="carnist",
             is_modification=True,
             member=member,
@@ -167,8 +167,8 @@ class VeganService(AliasService):
     @classmethod
     async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
@@ -181,8 +181,8 @@ class VeganService(AliasService):
     @classmethod
     async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
             f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",

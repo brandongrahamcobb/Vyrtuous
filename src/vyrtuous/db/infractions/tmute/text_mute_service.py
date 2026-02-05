@@ -189,16 +189,16 @@ class TextMuteService(AliasService):
     @classmethod
     async def enforce(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         text_mute = TextMute(
-            **information["snowflake_kwargs"],
+            **information["updated_kwargs"],
             expires_in=information["expires_in"],
             reason=information["reason"],
         )
         await text_mute.create()
         channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
+            information["updated_kwargs"]["channel_snowflake"]
         )
         if channel:
             try:
@@ -212,7 +212,7 @@ class TextMuteService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             duration=information["duration"],
             identifier="tmute",
             member=member,
@@ -225,11 +225,11 @@ class TextMuteService(AliasService):
     @classmethod
     async def undo(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
-        await TextMute.delete(**information["snowflake_kwargs"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        await TextMute.delete(**information["updated_kwargs"])
         channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
+            information["updated_kwargs"]["channel_snowflake"]
         )
         if channel:
             try:
@@ -243,7 +243,7 @@ class TextMuteService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="untmute",
             is_modification=True,
             member=member,
@@ -255,9 +255,9 @@ class TextMuteService(AliasService):
     @classmethod
     async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been Text-Muted",
             description=(
@@ -274,9 +274,9 @@ class TextMuteService(AliasService):
     @classmethod
     async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
             description=(

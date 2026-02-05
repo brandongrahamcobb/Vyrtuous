@@ -24,70 +24,16 @@ from discord.ext import commands
 
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.commands.source import DiscordSourceNotFound
+from vyrtuous.commands.errors import (
+    DiscordObjectNotFound,
+    DiscordSourceNotFound,
+    GuildChannelNotFound,
+    GuildMemberNotFound,
+    GuildNotFound,
+    GuildRoleNotFound,
+    TargetIsBot,
+)
 from vyrtuous.utils.logger import logger
-
-
-class DiscordObjectNotFound(commands.CheckFailure):
-    "Returns an error if a channel, guild, member or role is not found."
-
-    def __init__(self, target: str, *, message: str | None = None):
-        super().__init__(
-            message=message
-            or f"Unable to resolve a valid channel, guild, member or role for target (`{target}`)."
-        )
-
-
-class GuildChannelNotFound(DiscordObjectNotFound):
-
-    def __init__(self, target: str):
-        super().__init__(
-            message=f"Unable to resolve a valid Discord guild channel with the provided context and target (`{target}`).",
-            target=target,
-        )
-
-
-class GuildNotFound(DiscordObjectNotFound):
-
-    def __init__(self, target: str):
-        super().__init__(
-            message=f"Unable to resolve a valid Discord guild with the provided context and target (`{target}`).",
-            target=target,
-        )
-
-
-class GuildMemberNotFound(DiscordObjectNotFound):
-
-    def __init__(self, target: str):
-        super().__init__(
-            message=f"Unable to resolve a valid Discord guild member with the provided context and target (`{target}`).",
-            target=target,
-        )
-
-
-class GuildRoleNotFound(DiscordObjectNotFound):
-
-    def __init__(self, target: str):
-        super().__init__(
-            message=f"Unable to resolve a valid Discord guild role with the provided context and target (`{target}`).",
-            target=target,
-        )
-
-
-class TargetIsBot(commands.CheckFailure):
-    def __init__(
-        self,
-        *,
-        ctx: commands.Context | None = None,
-        interaction: discord.Interaction | None = None,
-        message: discord.Message | None = None,
-    ):
-        if (ctx is None) == (interaction is None) == (message is None):
-            raise DiscordSourceNotFound()
-        self._source = ctx or interaction or message
-        super().__init__(
-            message=f"You cannot execute actions on {self._source.guild.me.mention}."
-        )
 
 
 class DiscordObject(Service):

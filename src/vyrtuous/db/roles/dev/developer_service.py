@@ -24,15 +24,11 @@ from discord.ext import commands
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
+from vyrtuous.commands.errors import NotDeveloper
 from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.utils.emojis import get_random_emoji
-
-
-class NotDeveloper(commands.CheckFailure):
-    def __init__(self, message="Member is not a sysadmin or developer."):
-        super().__init__(message)
 
 
 async def is_developer_wrapper(
@@ -53,7 +49,7 @@ def developer_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure("Member is not a sysadmin or developer.")
+        raise NotDeveloper
 
     predicate._permission_level = "Developer"
     return commands.check(predicate)
@@ -141,10 +137,8 @@ class DeveloperService(Service):
         return DeveloperService.pages
 
     @classmethod
-    async def toggle_developer(cls, member_dict, snowflake_kwargs):
+    async def toggle_developer(cls, member_dict):
         bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        guild = bot.get_guild(guild_snowflake)
         where_kwargs = member_dict.get("columns", None)
         del where_kwargs["guild_snowflake"]
         developer = await Developer.select(singular=True, **where_kwargs)
@@ -155,4 +149,4 @@ class DeveloperService(Service):
             developer = Developer(**where_kwargs)
             await developer.create()
             action = "granted"
-        return f"Developer access for {member_dict.get("mention", None)} has been {action} in {guild.name}."
+        return f"Developer access for {member_dict.get("mention", None)} has been {action} globally."

@@ -24,13 +24,13 @@ from discord.ext import commands
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.roles.admin.administrator_service import is_administrator
 from vyrtuous.db.roles.coord.coordinator_service import is_coordinator
 from vyrtuous.db.roles.dev.developer_service import is_developer
 from vyrtuous.db.roles.mod.moderator_service import is_moderator
 from vyrtuous.db.roles.owner.guild_owner_service import is_guild_owner
-from vyrtuous.db.roles.permissions.check import check, has_equal_or_lower_role
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.db.rooms.stage.stage import Stage
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -151,26 +151,29 @@ class StageService(Service):
         return StageService.pages
 
     @classmethod
-    async def toggle_stage(cls, channel_dict, duration, snowflake_kwargs):
+    async def toggle_stage(cls, channel_dict, default_kwargs, duration):
         bot = DiscordBot.get_instance()
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
-        member_snowflake = snowflake_kwargs.get("member_snowflake", None)
-        guild = bot.get_guild(guild_snowflake)
+        updated_kwargs = default_kwargs.copy()
+        guild = bot.get_guild(updated_kwargs.get("guild_snowflake", None))
         failed, pages, skipped, succeeded = [], [], [], []
-        kwargs = channel_dict.get("columns", None)
-
-        stage = await Stage.select(**kwargs, singular=True)
+        updated_kwargs.update(channel_dict.get("columns", None))
+        stage_kwargs = updated_kwargs.copy()
+        del stage_kwargs["member_snowflake"]
+        stage = await Stage.select(**stage_kwargs, singular=True)
         if stage:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict.get("mention", None)}"
-            await Stage.delete(**kwargs)
+            await Stage.delete(**updated_kwargs)
             for member in channel_dict.get("object", None).members:
                 await VoiceMute.delete(
-                    **kwargs,
+                    **updated_kwargs,
                     member_snowflake=member.id,
                     target="room",
                 )
                 voice_mute = await VoiceMute.select(
-                    **kwargs, member_snowflake=member.id, target="user", singular=True
+                    **updated_kwargs,
+                    member_snowflake=member.id,
+                    target="user",
+                    singular=True,
                 )
                 if not voice_mute and member.voice and member.voice.mute:
                     try:
@@ -202,22 +205,19 @@ class StageService(Service):
             pages.append(embed)
         else:
             stage = Stage(
-                **kwargs,
+                **stage_kwargs,
                 expires_in=duration.expires_in,
             )
             await stage.create()
             for member in channel_dict.get("object", None).members:
-                if (
-                    await check(
-                        snowflake_kwargs=snowflake_kwargs,
-                        lowest_role="Coordinator",
-                    )
-                    or member.id == member_snowflake
-                ):
+                if await PermissionService.check(
+                    updated_kwargs=updated_kwargs,
+                    lowest_role="Coordinator",
+                ) or member.id == updated_kwargs.get("member_snowflake", None):
                     skipped.append(member)
                     continue
                 voice_mute = await VoiceMute(
-                    **kwargs,
+                    **updated_kwargs,
                     expires_in=duration.expires_in,
                     member_snowflake=member.id,
                     target="room",
@@ -352,13 +352,14 @@ class StageService(Service):
         return pages
 
     @classmethod
-    async def toggle_stage_mute(cls, channel_dict, member_dict, snowflake_kwargs):
-        await has_equal_or_lower_role(
-            snowflake_kwargs=snowflake_kwargs,
+    async def toggle_stage_mute(cls, channel_dict, default_kwargs, member_dict):
+        await PermissionService.has_equal_or_lower_role(
+            default_kwargs=default_kwargs,
             member_snowflake=member_dict.get("id", None),
         )
-        where_kwargs = channel_dict.get("columns", None)
-        stage = await Stage.select(singular=True, **where_kwargs)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
+        stage = await Stage.select(singular=True, **updated_kwargs)
         if stage:
             await member_dict.get("object", None).edit(
                 mute=not member_dict.get("object", None).voice.mute

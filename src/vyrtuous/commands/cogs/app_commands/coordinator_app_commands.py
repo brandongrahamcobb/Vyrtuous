@@ -28,6 +28,7 @@ from vyrtuous.commands.fields.duration import AppDuration
 from vyrtuous.commands.fields.snowflake import AppChannelSnowflake, AppMemberSnowflake
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.coord.coordinator_service import coordinator_predicator
 from vyrtuous.db.roles.mod.moderator_service import ModeratorService
 from vyrtuous.db.rooms.stage.stage_service import StageService
@@ -52,7 +53,7 @@ class CoordinatorAppCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(interaction=interaction)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
@@ -60,10 +61,15 @@ class CoordinatorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
+        await PermissionService.has_equal_or_lower_role_wrapper(
+            source=interaction,
+            member_snowflake=int(member_dict.get("id", None)),
+            sender_snowflake=int(interaction.user.id),
+        )
         msg = await ModeratorService.toggle_moderator(
             channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
             member_dict=member_dict,
-            snowflake_kwargs=snowflake_kwargs,
         )
         return await state.end(success=msg)
 
@@ -80,7 +86,7 @@ class CoordinatorAppCommands(commands.Cog):
         duration: AppDuration,
     ):
         state = StateService(interaction=interaction)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
@@ -88,10 +94,12 @@ class CoordinatorAppCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel = channel or int(interaction.channel.id)
         channel_dict = await do.determine_from_target(target=channel)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
         pages = await StageService.toggle_stage(
             channel_dict=channel_dict,
             duration=duration,
-            snowflake_kwargs=snowflake_kwargs,
+            updated_kwargs=updated_kwargs,
         )
         await StateService.send_pages(title="Stages", pages=pages, state=state)
 

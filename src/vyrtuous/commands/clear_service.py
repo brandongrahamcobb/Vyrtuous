@@ -4,8 +4,8 @@ import discord
 
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.base.service import Service
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.admin.administrator import AdministratorRole
-from vyrtuous.db.roles.permissions.check import check, has_equal_or_lower_role
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
@@ -16,19 +16,20 @@ class ClearService(Service):
     async def clear(
         cls,
         category,
-        where_kwargs,
+        default_kwargs,
         object_dict,
-        snowflake_kwargs,
         target,
         view,
+        where_kwargs,
     ):
-        guild_snowflake = snowflake_kwargs.get("guild_snowflake", None)
+        guild_snowflake = default_kwargs.get("guild_snowflake", None)
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous/db"))
-
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(object_dict.get("columns", None))
         if isinstance(object_dict.get("object", None), discord.Member):
-            await has_equal_or_lower_role(
-                snowflake_kwargs=snowflake_kwargs,
+            await PermissionService.has_equal_or_lower_role(
+                default_kwargs=default_kwargs,
                 member_snowflake=object_dict.get("id", None),
             )
             if view.result:
@@ -41,7 +42,9 @@ class ClearService(Service):
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
-            await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Guild Owner")
+            await PermissionService.check(
+                updated_kwargs=updated_kwargs, lowest_role="Guild Owner"
+            )
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
                     if "channel_snowflake" in getattr(obj, "__annotations__", {}):
@@ -52,7 +55,9 @@ class ClearService(Service):
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
-            await check(snowflake_kwargs=snowflake_kwargs, lowest_role="Developer")
+            await PermissionService.check(
+                updated_kwargs=updated_kwargs, lowest_role="Developer"
+            )
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
                     if any(
@@ -80,7 +85,7 @@ class ClearService(Service):
                                     role_snowflake=administrator_role.role_snowflake,
                                 )
         elif target == "all" and await is_sysadmin(
-            member_snowflake=snowflake_kwargs.get("member_snowflake")
+            member_snowflake=default_kwargs.get("member_snowflake")
         ):
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):

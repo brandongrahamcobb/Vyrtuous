@@ -187,19 +187,19 @@ class BanService(AliasService):
     @classmethod
     async def enforce(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         ban = Ban(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             expires_in=information["expires_in"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+            member_snowflake=information["updated_kwargs"]["member_snowflake"],
             reason=information["reason"],
         )
         await ban.create()
         is_channel_scope = False
         channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
+            information["updated_kwargs"]["channel_snowflake"]
         )
         if channel:
             try:
@@ -216,13 +216,13 @@ class BanService(AliasService):
                     is_channel_scope = True
                     await member.move_to(None, reason=information["reason"])
                     where_kwargs = {
-                        "channel_snowflake": information["snowflake_kwargs"][
+                        "channel_snowflake": information["updated_kwargs"][
                             "channel_snowflake"
                         ],
-                        "guild_snowflake": information["snowflake_kwargs"][
+                        "guild_snowflake": information["updated_kwargs"][
                             "guild_snowflake"
                         ],
-                        "member_snowflake": information["snowflake_kwargs"][
+                        "member_snowflake": information["updated_kwargs"][
                             "member_snowflake"
                         ],
                     }
@@ -233,7 +233,7 @@ class BanService(AliasService):
 
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             duration=information["duration"],
             identifier="ban",
             is_channel_scope=is_channel_scope,
@@ -247,15 +247,15 @@ class BanService(AliasService):
     @classmethod
     async def undo(cls, information, message, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         await Ban.delete(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["snowflake_kwargs"]["guild_snowflake"],
-            member_snowflake=information["snowflake_kwargs"]["member_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
+            member_snowflake=information["updated_kwargs"]["member_snowflake"],
         )
         channel = message.guild.get_channel(
-            information["snowflake_kwargs"]["channel_snowflake"]
+            information["updated_kwargs"]["channel_snowflake"]
         )
         if channel:
             try:
@@ -264,7 +264,7 @@ class BanService(AliasService):
                 logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await StreamService.send_entry(
-            channel_snowflake=information["snowflake_kwargs"]["channel_snowflake"],
+            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
             identifier="unban",
             is_modification=True,
             member=member,
@@ -276,9 +276,9 @@ class BanService(AliasService):
     @classmethod
     async def act_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been banned",
             description=(
@@ -295,9 +295,9 @@ class BanService(AliasService):
     @classmethod
     async def undo_embed(cls, information):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["snowflake_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["snowflake_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["snowflake_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
+        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
+        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been unbanned",
             description=(

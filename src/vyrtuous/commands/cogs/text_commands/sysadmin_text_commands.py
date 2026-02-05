@@ -64,7 +64,7 @@ class SysadminTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        snowflake_kwargs = {
+        default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
@@ -72,7 +72,7 @@ class SysadminTextCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
         msg = await DeveloperService.toggle_developer(
-            member_dict=member_dict, snowflake_kwargs=snowflake_kwargs
+            member_dict=member_dict,
         )
         return await state.end(success=msg)
 

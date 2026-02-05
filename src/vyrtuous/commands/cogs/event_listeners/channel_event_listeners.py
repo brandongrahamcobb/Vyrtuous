@@ -27,6 +27,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.ban.ban_service import BanService
@@ -38,8 +39,6 @@ from vyrtuous.db.mgmt.cap.cap import Cap
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.db.roles.coord.coordinator import Coordinator
 from vyrtuous.db.roles.mod.moderator import Moderator
-from vyrtuous.db.roles.permissions.check import check
-from vyrtuous.db.roles.permissions.invincibility import Invincibility
 from vyrtuous.db.rooms.stage.stage import Stage
 from vyrtuous.db.rooms.temp.temporary_room import TemporaryRoom
 from vyrtuous.db.rooms.video.video_room import VideoRoom
@@ -150,13 +149,14 @@ class ChannelEventListeners(commands.Cog):
                 Stage.send_stage_ask_to_speak_message(
                     join_log=self.join_log, member=member
                 )
-                snowflake_kwargs = {
+                default_kwargs = {
                     "channel_snowflake": after.channel.id,
                     "guild_snowflake": after.channel.guild.id,
                     "member_snowflake": member.id,
                 }
-                highest_role = await check(
-                    snowflake_kwargs=snowflake_kwargs, lowest_role="Everyone"
+                updated_kwargs = default_kwargs.copy()
+                highest_role = await PermissionService.resolve_highest_role(
+                    updated_kwargs=updated_kwargs
                 )
                 if highest_role == "Everyone":
                     should_be_muted = True
@@ -172,7 +172,7 @@ class ChannelEventListeners(commands.Cog):
             if voice_mute:
                 should_be_muted = True
             if not before.mute and before.channel == after.channel and after.mute:
-                if member.id in Invincibility.get_invincible_members():
+                if member.id in PermissionService.get_invincible_members():
                     embed = discord.Embed(
                         title=f"\u1f4aB {member.display_name} is a hero!",
                         description=f"{member.display_name} cannot be muted.",

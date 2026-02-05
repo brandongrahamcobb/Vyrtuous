@@ -24,16 +24,9 @@ from discord.ext import commands
 from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
+from vyrtuous.commands.errors import NotGuildOwner
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
-
-
-class NotGuildOwner(commands.CheckFailure):
-    def __init__(
-        self,
-        message="Member is not a sysadmin, developer or guild owner in this server.",
-    ):
-        super().__init__(message)
 
 
 async def is_guild_owner_wrapper(
@@ -45,6 +38,14 @@ async def is_guild_owner_wrapper(
         guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
     )
 
+async def is_guild_owner_at_all(
+    member_snowflake: int,
+):
+    bot = DiscordBot.get_instance()
+    for guild in bot.guilds:
+        if guild and guild.owner_id == member_snowflake:
+            return True
+    raise NotGuildOwner
 
 def guild_owner_predicator():
     async def predicate(
@@ -60,9 +61,7 @@ def guild_owner_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure(
-            "Member is not a sysadmin, developer or guild owner in this server."
-        )
+        raise NotGuildOwner
 
     predicate._permission_level = "Guild Owner"
     return commands.check(predicate)
