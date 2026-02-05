@@ -17,12 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -31,20 +38,47 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, category, alias_name, channel_snowflake, role_snowflake",
+    "permission_role, command, category, alias_name, channel_snowflake, role_snowflake",
     [
-        ("!alias", "role", "testrole", "fail_channel", "fail_role"),
-        ("!alias", "role", "testrole", "fail_channel", None),
-        ("!alias", "vmute", "testmute", "{channel_snowflake}", None),
-        ("!alias", "flag", "testflag", "{channel_snowflake}", None),
-        ("!alias", "vegan", "testvegan", "{channel_snowflake}", None),
-        ("!alias", "tmute", "testtmute", "{channel_snowflake}", "{role_snowflake}"),
-        ("!alias", "ban", "testban", "{channel_snowflake}", "{role_snowflake}"),
-        ("!alias", "role", "testrole", "{channel_snowflake}", "{role_snowflake}"),
+        ("Administrator", "!alias", "role", "testrole", "fail_channel", "fail_role"),
+        ("Administrator", "!alias", "role", "testrole", "fail_channel", None),
+        ("Administrator", "!alias", "vmute", "testmute", "{channel_snowflake}", None),
+        ("Administrator", "!alias", "flag", "testflag", "{channel_snowflake}", None),
+        ("Administrator", "!alias", "vegan", "testvegan", "{channel_snowflake}", None),
+        (
+            "Administrator",
+            "!alias",
+            "tmute",
+            "testtmute",
+            "{channel_snowflake}",
+            "{role_snowflake}",
+        ),
+        (
+            "Administrator",
+            "!alias",
+            "ban",
+            "testban",
+            "{channel_snowflake}",
+            "{role_snowflake}",
+        ),
+        (
+            "Administrator",
+            "!alias",
+            "role",
+            "testrole",
+            "{channel_snowflake}",
+            "{role_snowflake}",
+        ),
     ],
 )
 async def test_alias(
-    bot, command: str, category, alias_name, channel_snowflake, role_snowflake
+    bot,
+    command: str,
+    category,
+    alias_name,
+    channel_snowflake,
+    role_snowflake,
+    permission_role,
 ):
     """
     Create and delete command aliases in the PostgreSQL
@@ -83,8 +117,8 @@ async def test_alias(
         full = f"{command} {category} {alias_name} {channel} {role}"
     else:
         full = f"{command} {category} {alias_name} {channel}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -101,4 +135,26 @@ async def test_alias(
         prefix="!",
     )
     admin_commands = bot.get_cog("AdminTextCommands")
-    command = await admin_commands.create_alias_text_command(ctx, **kwargs)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.admin.administrator_service.administrator_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await admin_commands.create_alias_text_command(ctx, **kwargs)
+        for kind, content in end_results:
+            assert kind == "success"

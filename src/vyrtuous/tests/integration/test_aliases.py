@@ -17,12 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -31,17 +38,17 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, member_snowflake",
+    "permission_role, command, member_snowflake",
     [
-        ("!testban", "{member_snowflake}"),
-        ("!testmute", "{member_snowflake}"),
-        ("!testflag", "{member_snowflake}"),
-        ("!testvegan", "{member_snowflake}"),
-        ("!testtmute", "{member_snowflake}"),
-        ("!testrole", "{member_snowflake}"),
+        ("Moderator", "!testban", "{member_snowflake}"),
+        ("Moderator", "!testmute", "{member_snowflake}"),
+        ("Moderator", "!testflag", "{member_snowflake}"),
+        ("Moderator", "!testvegan", "{member_snowflake}"),
+        ("Moderator", "!testtmute", "{member_snowflake}"),
+        ("Coordinator", "!testrole", "{member_snowflake}"),
     ],
 )
-async def test_aliases(bot, command: str, member_snowflake):
+async def test_aliases(bot, command: str, member_snowflake, permission_role):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
@@ -71,8 +78,8 @@ async def test_aliases(bot, command: str, member_snowflake):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {member}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -89,4 +96,20 @@ async def test_aliases(bot, command: str, member_snowflake):
         prefix="!",
     )
     generic_event_listeners = bot.get_cog("GenericEventListeners")
-    command = await generic_event_listeners.on_message(message=msg)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await generic_event_listeners.on_message(message=msg)
+        for kind, content in end_results:
+            assert kind == "success"

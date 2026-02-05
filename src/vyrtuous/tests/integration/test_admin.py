@@ -15,13 +15,19 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from contextlib import ExitStack
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, capture_command, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 ROLE_SNOWFLAKE = 10000000000000200
 
@@ -77,10 +83,27 @@ async def test_admin(bot, command: str, role, permission_role):
     )
     go_commands = bot.get_cog("GuildOwnerTextCommands")
     with ExitStack() as stack:
-        stack.enter_context(patch('vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator', return_value=True))
-        stack.enter_context(patch('vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role', return_value=permission_role))
-        stack.enter_context(patch('vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role', return_value=permission_role))
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
         async with capture_command() as end_results:
-            command = await go_commands.toggle_administrator_by_role_text_command(ctx, role=r)
+            command = await go_commands.toggle_administrator_by_role_text_command(
+                ctx, role=r
+            )
         for kind, content in end_results:
             assert kind == "success"

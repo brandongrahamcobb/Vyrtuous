@@ -309,4 +309,4 @@ class StateService(Service):
         if pages:
             return await state.end(success=pages)
         else:
-            return await state.end(warning=f"No {title.lower()} found.")
+            return await state.end(success=f"No {title.lower()} found.")

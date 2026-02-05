@@ -140,7 +140,7 @@ class NewInfractionView(discord.ui.View):
         executor_role = await PermissionService.resolve_highest_role(
             channel_snowflake=channel.id,
             guild_snowflake=interaction.guild.id,
-            member_snowflake=interaction.user.id
+            member_snowflake=interaction.user.id,
         )
         self.information["executor_role"] = executor_role
         await interaction.response.defer()

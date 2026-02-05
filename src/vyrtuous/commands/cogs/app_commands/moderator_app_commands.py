@@ -50,7 +50,6 @@ from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorService
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
-from vyrtuous.db.roles.dev.developer_service import DeveloperService
 from vyrtuous.db.roles.mod.moderator import Moderator
 from vyrtuous.db.roles.mod.moderator_service import (
     ModeratorService,
@@ -108,7 +107,7 @@ class ModeratorAppCommands(commands.Cog):
             updated_kwargs.update(member_dict.get("columns", None))
             await PermissionService.has_equal_or_lower_role(
                 member_snowflake=int(member_dict.get("id", None)),
-                updated_kwargs=updated_kwargs
+                updated_kwargs=updated_kwargs,
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
@@ -195,19 +194,6 @@ class ModeratorAppCommands(commands.Cog):
             return await state.end(error=str(e).capitalize())
         return await state.end(success=f"Message `{message}` deleted successfully.")
 
-    @app_commands.command(name="devs", description="List devs.")
-    @app_commands.describe(target="Specify one of: 'all', or server ID.")
-    @moderator_predicator()
-    async def list_developers_app_command(
-        self, interaction: discord.Interaction, target: str
-    ):
-        state = StateService(interaction=interaction)
-        do = DiscordObject(interaction=interaction)
-        target = target or "all"
-        object_dict = await do.determine_from_target(target=target)
-        pages = await DeveloperService.build_pages(object_dict=object_dict)
-        await StateService.send_pages(title="Developer", pages=pages, state=state)
-
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="The ID or mention of the member.")
     @moderator_predicator()
@@ -226,7 +212,7 @@ class ModeratorAppCommands(commands.Cog):
             updated_kwargs.update(member_dict.get("columns", None))
             await PermissionService.has_equal_or_lower_role(
                 member_snowflake=int(member_dict.get("id", None)),
-                updated_kwargs=updated_kwargs
+                updated_kwargs=updated_kwargs,
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
@@ -375,14 +361,14 @@ class ModeratorAppCommands(commands.Cog):
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
         }
-        
+
         member_dict = await do.determine_from_target(target=member)
         try:
             updated_kwargs = default_kwargs.copy()
             updated_kwargs.update(member_dict.get("columns", None))
             await PermissionService.has_equal_or_lower_role(
                 member_snowflake=int(member_dict.get("id", None)),
-                updated_kwargs=updated_kwargs
+                updated_kwargs=updated_kwargs,
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
@@ -396,21 +382,6 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Select a channel and a category", view=view, ephemeral=True
         )
-
-    @app_commands.command(name="roleid", description="Get role by name.")
-    @app_commands.describe(role_name="The name of the role to look up")
-    @moderator_predicator()
-    async def get_role_id_app_command(
-        self, interaction: discord.Interaction, role_name: str
-    ):
-        state = StateService(interaction=interaction)
-        role = discord.utils.get(interaction.guild.roles, name=role_name)
-        if role:
-            return await state.end(success=f"Role `{role.name}` has ID `{role.id}`.")
-        else:
-            return await state.end(
-                warning=f"No role named `{role_name}` found in this server."
-            )
 
     @app_commands.command(name="summary", description="Moderation summary.")
     @app_commands.describe(

@@ -16,24 +16,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, cog",
+    "permission_role, command, cog",
     [
-        ("!unload", "{cog}"),
-        ("!load", "{cog}"),
-        ("!reload", "{cog}"),
+        ("Developer", "!unload", "{cog}"),
+        ("Developer", "!load", "{cog}"),
+        ("Developer", "!reload", "{cog}"),
     ],
 )
-async def test_load_reload_unload(bot, command: str, cog):
+async def test_load_reload_unload(bot, command: str, cog, permission_role):
     """
     Load, reload or unload cogs.
 
@@ -74,6 +81,32 @@ async def test_load_reload_unload(bot, command: str, cog):
         prefix="!",
     )
     dev_commands = bot.get_cog("DevTextCommands")
-    command = await dev_commands.load_text_command(ctx, module=c)
-    command = await dev_commands.reload_text_command(ctx, module=c)
-    command = await dev_commands.unload_text_command(ctx, module=c)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await dev_commands.load_text_command(ctx, module=c)
+            for kind, content in end_results:
+                assert kind == "success"
+            command = await dev_commands.reload_text_command(ctx, module=c)
+            for kind, content in end_results:
+                assert kind == "success"
+            command = await dev_commands.unload_text_command(ctx, module=c)
+            for kind, content in end_results:
+                assert kind == "success"

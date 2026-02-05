@@ -1,12 +1,7 @@
-ALTER TABLE active_caps
-DROP CONSTRAINT active_caps_moderation_type_check1;
-UPDATE active_caps
-SET category = 'vmute'
-WHERE category = 'voice_mute';
-
-UPDATE active_caps
-SET category = 'tmute'
-WHERE category = 'text_mute';
-ALTER TABLE active_caps
-ADD CONSTRAINT active_caps_moderation_type_check
-CHECK (category = ANY (ARRAY['ban','vmute','tmute']));
+ALTER TABLE moderation_logs
+ADD COLUMN executor_highest_role TEXT,
+ADD COLUMN target_highest_role TEXT;
+UPDATE moderation_logs
+SET executor_highest_role = highest_role;
+ALTER TABLE moderation_logs
+DROP COLUMN highest_role;

@@ -63,6 +63,7 @@ async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
         raise NotAdministrator
     return True
 
+
 async def is_administrator_at_all(
     member_snowflake: int,
 ):
@@ -72,6 +73,7 @@ async def is_administrator_at_all(
     if not administrator:
         raise NotAdministrator
     return True
+
 
 def administrator_predicator():
     async def predicate(

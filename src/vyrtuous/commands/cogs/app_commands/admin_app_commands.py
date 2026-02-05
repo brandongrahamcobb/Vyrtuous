@@ -41,9 +41,7 @@ from vyrtuous.db.infractions.smute.server_mute_service import ServerMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.mgmt.cap.cap_service import CapService
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
-from vyrtuous.db.roles.admin.administrator import (
-    Administrator
-)
+from vyrtuous.db.roles.admin.administrator import Administrator
 from vyrtuous.db.roles.admin.administrator_service import (
     AdministratorRoleService,
     administrator_predicator,
@@ -220,7 +218,7 @@ class AdminAppCommands(commands.Cog):
         updated_kwargs.update(channel_dict.get("columns", None))
         await PermissionService.has_equal_or_lower_role(
             member_snowflake=int(member_dict.get("id", None)),
-            updated_kwargs=updated_kwargs
+            updated_kwargs=updated_kwargs,
         )
         msg = await CoordinatorService.toggle_coordinator(
             channel_dict=channel_dict,
@@ -270,7 +268,7 @@ class AdminAppCommands(commands.Cog):
         updated_kwargs.update(object_dict.get("columns", None))
         if target and str(target).lower() == "all":
             await PermissionService.check(
-                updated_kwargs=updated_kwargs, lowest_role="Developer"
+                updated_kwargs=updated_kwargs, lowest_role="Guild Owner"
             )
             channel_objs = [
                 channel_obj
@@ -317,6 +315,21 @@ class AdminAppCommands(commands.Cog):
             reason=reason,
         )
         await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
+
+    @app_commands.command(name="roleid", description="Get role by name.")
+    @app_commands.describe(role_name="The name of the role to look up")
+    @administrator_predicator()
+    async def get_role_id_app_command(
+        self, interaction: discord.Interaction, role_name: str
+    ):
+        state = StateService(interaction=interaction)
+        role = discord.utils.get(interaction.guild.roles, name=role_name)
+        if role:
+            return await state.end(success=f"Role `{role.name}` has ID `{role.id}`.")
+        else:
+            return await state.end(
+                warning=f"No role named `{role_name}` found in this server."
+            )
 
     @app_commands.command(name="xrmute", description="Unmute all.")
     @app_commands.describe(channel="Tag a channel or include its ID.")

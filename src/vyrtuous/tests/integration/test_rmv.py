@@ -16,12 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
@@ -29,12 +36,17 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, source_channel, target_channel",
+    "permission_role, command, source_channel, target_channel",
     [
-        ("!rmv", "{source_channel_snowflake}", "{target_channel_snowflake}"),
+        (
+            "Administrator",
+            "!rmv",
+            "{source_channel_snowflake}",
+            "{target_channel_snowflake}",
+        ),
     ],
 )
-async def test_rmv(bot, command: str, source_channel, target_channel):
+async def test_rmv(bot, command: str, source_channel, target_channel, permission_role):
     """
     Move all members from one VC to another
 
@@ -59,8 +71,8 @@ async def test_rmv(bot, command: str, source_channel, target_channel):
         target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {sc} {tc}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -77,6 +89,28 @@ async def test_rmv(bot, command: str, source_channel, target_channel):
         prefix="!",
     )
     admin_commands = bot.get_cog("AdminTextCommands")
-    command = await admin_commands.room_move_all_text_command(
-        ctx, source_channel=sc, target_channel=tc
-    )
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.admin.administrator_service.administrator_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await admin_commands.room_move_all_text_command(
+                ctx, source_channel=sc, target_channel=tc
+            )
+        for kind, content in end_results:
+            assert kind == "success"

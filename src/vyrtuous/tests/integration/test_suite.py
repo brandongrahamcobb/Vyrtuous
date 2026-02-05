@@ -49,15 +49,17 @@ async def capture(channel):
     before = list(channel._messages)
     channel._end_result = []
     original_end = StateService.end
+
     async def patched_end(self, *args, **kwargs):
         called.append((args, kwargs))
-        if 'success' in kwargs:
-            channel._end_result.append('success')
-        elif 'warning' in kwargs:
-            channel._end_result.append('warning')
-        elif 'error' in kwargs:
-            channel._end_result.append('error')
+        if "success" in kwargs:
+            channel._end_result.append("success")
+        elif "warning" in kwargs:
+            channel._end_result.append("warning")
+        elif "error" in kwargs:
+            channel._end_result.append("error")
         return await original_end(self, *args, **kwargs)
+
     if called:
         print("called")
     StateService.end = patched_end
@@ -68,9 +70,8 @@ async def capture(channel):
         after = channel._messages
         if not after:
             await asyncio.sleep(1)
-        new_messages = after[len(before):]
+        new_messages = after[len(before) :]
         channel._captured = new_messages
-
 
 
 def build_guild(bot, state):
@@ -176,21 +177,24 @@ async def send_message(bot, content: str = None):
         bot.dispatch("message", msg)
     return objects.get("text_channel", None)._captured[-1]
 
+
 @asynccontextmanager
 async def capture_command():
     results = []
     original_end = StateService.end
+
     async def patched_end(self, *args, **kwargs):
-        if getattr(self, '_ended', False):
+        if getattr(self, "_ended", False):
             return
         self._ended = True
-        if 'success' in kwargs:
-            results.append(('success', kwargs['success']))
-        elif 'warning' in kwargs:
-            results.append(('warning', kwargs['warning']))
-        elif 'error' in kwargs:
-            results.append(('error', kwargs['error']))
+        if "success" in kwargs:
+            results.append(("success", kwargs["success"]))
+        elif "warning" in kwargs:
+            results.append(("warning", kwargs["warning"]))
+        elif "error" in kwargs:
+            results.append(("error", kwargs["error"]))
         self._add_reactions = AsyncMock()
+
     StateService.end = patched_end
     try:
         yield results

@@ -38,6 +38,7 @@ async def is_guild_owner_wrapper(
         guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
     )
 
+
 async def is_guild_owner_at_all(
     member_snowflake: int,
 ):
@@ -46,6 +47,7 @@ async def is_guild_owner_at_all(
         if guild and guild.owner_id == member_snowflake:
             return True
     raise NotGuildOwner
+
 
 def guild_owner_predicator():
     async def predicate(

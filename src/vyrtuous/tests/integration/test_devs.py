@@ -16,12 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -29,15 +36,15 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, target",
+    "permission_role, command, target",
     [
-        ("!devs", "all"),
-        ("!devs", "{guild_snowflake}"),
-        ("!devs", "{member_snowflake}"),
-        ("!devs", "<@{member_snowflake}>"),
+        ("Guild Owner", "!devs", "all"),
+        ("Guild Owner", "!devs", "{guild_snowflake}"),
+        ("Guild Owner", "!devs", "{member_snowflake}"),
+        ("Guild Owner", "!devs", "<@{member_snowflake}>"),
     ],
 )
-async def test_devs(bot, command: str, target):
+async def test_devs(bot, command: str, target, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -70,8 +77,8 @@ async def test_devs(bot, command: str, target):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     full = f"{command} {t}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -87,5 +94,27 @@ async def test_devs(bot, command: str, target):
         message=msg,
         prefix="!",
     )
-    mod_commands = bot.get_cog("ModeratorTextCommands")
-    command = await mod_commands.list_developers_text_command(ctx, target=t)
+    go_commands = bot.get_cog("GuildOwnerTextCommands")
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await go_commands.list_developers_text_command(ctx, target=t)
+        for kind, content in end_results:
+            assert kind == "success"

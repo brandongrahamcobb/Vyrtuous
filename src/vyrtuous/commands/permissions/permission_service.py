@@ -12,7 +12,7 @@ from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.roles.admin.administrator_service import (
     NotAdministrator,
     is_administrator,
-    is_administrator_at_all
+    is_administrator_at_all,
 )
 from vyrtuous.db.roles.coord.coordinator_service import (
     NotCoordinator,
@@ -25,7 +25,11 @@ from vyrtuous.db.roles.mod.moderator_service import (
     is_moderator,
     is_moderator_at_all,
 )
-from vyrtuous.db.roles.owner.guild_owner_service import NotGuildOwner, is_guild_owner, is_guild_owner_at_all
+from vyrtuous.db.roles.owner.guild_owner_service import (
+    NotGuildOwner,
+    is_guild_owner,
+    is_guild_owner_at_all,
+)
 from vyrtuous.db.roles.sysadmin.sysadmin_service import NotSysadmin, is_sysadmin
 from vyrtuous.inc.helpers import CHUNK_SIZE, PERMISSION_TYPES, TARGET_PERMISSIONS
 from vyrtuous.utils.dictionary import (

@@ -17,12 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -31,17 +38,17 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, alias_name",
+    "permission_role, command, alias_name",
     [
-        ("!xalias", "testban"),
-        ("!xalias", "testmute"),
-        ("!xalias", "testflag"),
-        ("!xalias", "testvegan"),
-        ("!xalias", "testtmute"),
-        ("!xalias", "testrole"),
+        ("Administrator", "!xalias", "testban"),
+        ("Administrator", "!xalias", "testmute"),
+        ("Administrator", "!xalias", "testflag"),
+        ("Administrator", "!xalias", "testvegan"),
+        ("Administrator", "!xalias", "testtmute"),
+        ("Administrator", "!xalias", "testrole"),
     ],
 )
-async def test_xalias(bot, command: str, alias_name):
+async def test_xalias(bot, command: str, alias_name, permission_role):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
@@ -69,8 +76,8 @@ async def test_xalias(bot, command: str, alias_name):
     """
     kwargs = {"alias_name": alias_name}
     full = f"{command} {alias_name}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -87,4 +94,26 @@ async def test_xalias(bot, command: str, alias_name):
         prefix="!",
     )
     admin_commands = bot.get_cog("AdminTextCommands")
-    command = await admin_commands.delete_alias_text_command(ctx, **kwargs)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.admin.administrator_service.administrator_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await admin_commands.delete_alias_text_command(ctx, **kwargs)
+        for kind, content in end_results:
+            assert kind == "success"

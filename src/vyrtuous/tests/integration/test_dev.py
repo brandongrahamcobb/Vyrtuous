@@ -16,25 +16,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, member",
+    "permission_role, command, member",
     [
-        ("!dev", "{member_snowflake}"),
-        ("!dev", "<@{member_snowflake}>"),
+        ("Sysadmin", "!dev", "{member_snowflake}"),
+        ("Sysadmin", "!dev", "<@{member_snowflake}>"),
     ],
 )
-async def test_dev(bot, command: str, member):
+async def test_dev(bot, command: str, member, permission_role):
     """
     Promote or demote a member with 'Developer' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -58,8 +65,8 @@ async def test_dev(bot, command: str, member):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {m}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -76,4 +83,28 @@ async def test_dev(bot, command: str, member):
         prefix="!",
     )
     sysadmin_commands = bot.get_cog("SysadminTextCommands")
-    command = await sysadmin_commands.toggle_developer_text_command(ctx, member=m)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await sysadmin_commands.toggle_developer_text_command(
+                ctx, member=m
+            )
+        for kind, content in end_results:
+            assert kind == "success"

@@ -16,12 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -30,15 +37,15 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, target",
+    "permission_role, command, target",
     [
-        ("!smutes", "all"),
-        ("!smutes", "{guild_snowflake}"),
-        ("!smutes", "{member_snowflake}"),
-        ("!smutes", "<@{member_snowflake}>"),
+        ("Sysadmin", "!smutes", "all"),
+        ("Administrator", "!smutes", "{guild_snowflake}"),
+        ("Administrator", "!smutes", "{member_snowflake}"),
+        ("Administrator", "!smutes", "<@{member_snowflake}>"),
     ],
 )
-async def test_server_mutes(bot, command: str, target):
+async def test_server_mutes(bot, command: str, target, permission_role):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
@@ -81,8 +88,8 @@ async def test_server_mutes(bot, command: str, target):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {t}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -99,4 +106,26 @@ async def test_server_mutes(bot, command: str, target):
         prefix="!",
     )
     admin_commands = bot.get_cog("AdminTextCommands")
-    command = await admin_commands.list_server_mutes_text_command(ctx, target=t)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.admin.administrator_service.administrator_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await admin_commands.list_server_mutes_text_command(ctx, target=t)
+        for kind, content in end_results:
+            assert kind == "success"

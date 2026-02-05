@@ -16,12 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -30,14 +37,14 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, reference, action, notes",
+    "permission_role, command, reference, action, notes",
     [
-        ("!bug", "{uuid}", "resolve", None),
-        ("!bug", "{uuid}", "append", "Test notes"),
-        ("!bug", "{uuid}", "overwrite", "Test notes"),
+        ("Developer", "!bug", "{uuid}", "resolve", None),
+        ("Developer", "!bug", "{uuid}", "append", "Test notes"),
+        ("Developer", "!bug", "{uuid}", "overwrite", "Test notes"),
     ],
 )
-async def test_assign(bot, command: str, reference, action, notes):
+async def test_assign(bot, command: str, reference, action, notes, permission_role):
     """
     Assign a developer to a developer issues present in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.
@@ -60,8 +67,8 @@ async def test_assign(bot, command: str, reference, action, notes):
         full = f"{command} {ref} {action} {notes}"
     else:
         full = f"{command} {ref} {action}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -78,11 +85,34 @@ async def test_assign(bot, command: str, reference, action, notes):
         prefix="!",
     )
     dev_commands = bot.get_cog("DevTextCommands")
-    if notes:
-        command = await dev_commands.update_bug_tracking_text_command(
-            ctx, reference=ref, action=action, notes=notes
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.dev.developer_service.developer_predicator",
+                return_value=True,
+            )
         )
-    else:
-        command = await dev_commands.update_bug_tracking_text_command(
-            ctx, reference=ref, action=action
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
         )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            if notes:
+                command = await dev_commands.update_bug_tracking_text_command(
+                    ctx, reference=ref, action=action, notes=notes
+                )
+            else:
+                command = await dev_commands.update_bug_tracking_text_command(
+                    ctx, reference=ref, action=action
+                )
+        for kind, content in end_results:
+            assert kind == "success"

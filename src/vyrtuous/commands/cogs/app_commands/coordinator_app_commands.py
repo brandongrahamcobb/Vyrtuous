@@ -68,7 +68,7 @@ class CoordinatorAppCommands(commands.Cog):
         updated_kwargs.update(channel_dict.get("columns", None))
         await PermissionService.has_equal_or_lower_role(
             member_snowflake=int(member_dict.get("id", None)),
-            updated_kwargs=updated_kwargs
+            updated_kwargs=updated_kwargs,
         )
         msg = await ModeratorService.toggle_moderator(
             channel_dict=channel_dict,

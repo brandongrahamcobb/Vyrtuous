@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Literal, Optional
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -28,6 +30,7 @@ from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorRoleService
+from vyrtuous.db.roles.dev.developer_service import DeveloperService
 from vyrtuous.db.roles.owner.guild_owner import GuildOwner
 from vyrtuous.db.roles.owner.guild_owner_service import guild_owner_predicator
 
@@ -61,6 +64,19 @@ class GuildOwnerAppCommands(commands.Cog):
             title="Administrator Role", pages=pages, state=state
         )
 
+    @app_commands.command(name="devs", description="List devs.")
+    @app_commands.describe(target="Specify one of: 'all', or server ID.")
+    @guild_owner_predicator()
+    async def list_developers_app_command(
+        self, interaction: discord.Interaction, target: str
+    ):
+        state = StateService(interaction=interaction)
+        do = DiscordObject(interaction=interaction)
+        target = target or "all"
+        object_dict = await do.determine_from_target(target=target)
+        pages = await DeveloperService.build_pages(object_dict=object_dict)
+        await StateService.send_pages(title="Developer", pages=pages, state=state)
+
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")
     @app_commands.describe(member="Tag a member or include their ID")
     @guild_owner_predicator()
@@ -84,6 +100,46 @@ class GuildOwnerAppCommands(commands.Cog):
             PermissionService.remove_invincible_member(**where_kwargs)
             msg = f"Invincibility has been disabled for {member_dict.get("mention", None)}"
         return await state.end(success=msg)
+
+    @app_commands.command(name="sync", description="Sync app commands.")
+    @guild_owner_predicator()
+    async def sync_app_command(
+        self,
+        interaction: discord.Interaction,
+        spec: Optional[Literal["~", "*", "^"]] = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
+        state = StateService(interaction=interaction)
+        guilds = interaction.client.guilds
+        synced = []
+        if not guilds:
+            if spec == "~":
+                synced = await interaction.client.tree.sync(guild=interaction.guild)
+            elif spec == "*":
+                interaction.client.tree.copy_global_to(guild=interaction.guild)
+                synced = await interaction.client.tree.sync(guild=interaction.guild)
+            elif spec == "^":
+                interaction.client.tree.clear_commands(guild=interaction.guild)
+                await interaction.client.tree.sync(guild=interaction.guild)
+            else:
+                synced = await interaction.client.tree.sync()
+            try:
+                if spec is None:
+                    msg = f"Synced {len(synced)} " f"commands globally."
+                else:
+                    msg = f"Synced {len(synced)} " f"commands to the current server."
+                return await state.end(success=msg)
+            except Exception as e:
+                return await state.end(warning=str(e).capitalize())
+        ret = 0
+        for guild in guilds:
+            try:
+                await interaction.client.tree.sync(guild=guild)
+            except discord.HTTPException:
+                pass
+            else:
+                ret += 1
+        return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
 
 async def setup(bot: DiscordBot):

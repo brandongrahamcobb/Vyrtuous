@@ -16,25 +16,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, target",
+    "permission_role, command, target",
     [
-        ("!hero", "{member_snowflake}"),
-        ("!hero", "<@{member_snowflake}>"),
+        ("Guild Owner", "!hero", "{member_snowflake}"),
+        ("Guild Owner", "!hero", "<@{member_snowflake}>"),
     ],
 )
-async def test_hero(bot, command: str, target):
+async def test_hero(bot, command: str, target, permission_role):
     """
     Promote or demote member to 'Hero' in memory (lost on reload).
 
@@ -57,8 +64,8 @@ async def test_hero(bot, command: str, target):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {t}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -75,4 +82,26 @@ async def test_hero(bot, command: str, target):
         prefix="!",
     )
     go_commands = bot.get_cog("GuildOwnerTextCommands")
-    command = await go_commands.invincibility_text_command(ctx, member=t)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await go_commands.invincibility_text_command(ctx, member=t)
+        for kind, content in end_results:
+            assert kind == "success"

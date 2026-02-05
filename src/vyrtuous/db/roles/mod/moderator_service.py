@@ -85,6 +85,7 @@ async def is_moderator_at_all(
         raise NotModerator
     return True
 
+
 def moderator_predicator():
     async def predicate(
         source: Union[commands.Context, discord.Interaction, discord.Message],

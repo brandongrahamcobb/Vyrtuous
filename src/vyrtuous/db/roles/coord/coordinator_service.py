@@ -74,6 +74,7 @@ async def is_coordinator_at_all_wrapper(
     member_snowflake = member.id
     await is_coordinator_at_all(member_snowflake=member_snowflake)
 
+
 async def is_coordinator_at_all(
     member_snowflake: int,
 ):
@@ -83,6 +84,7 @@ async def is_coordinator_at_all(
     if not coordinator:
         raise NotCoordinator
     return True
+
 
 def coordinator_predicator():
     async def predicate(

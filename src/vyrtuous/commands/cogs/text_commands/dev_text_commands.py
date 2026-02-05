@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Literal, Optional
 from uuid import UUID
 
 import discord
@@ -224,46 +223,6 @@ class DevTextCommands(commands.Cog):
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
         return await state.end(success=f"Successfully reloaded {module}.")
-
-    @commands.command(name="sync", help="Sync app commands.")
-    @developer_predicator()
-    async def sync_text_command(
-        self,
-        ctx: commands.Context,
-        spec: Optional[Literal["~", "*", "^"]] = None,
-        *,
-        guilds: commands.Greedy[discord.Object] = None,
-    ):
-        state = StateService(ctx=ctx)
-        synced = []
-        if not guilds:
-            if spec == "~":
-                synced = await ctx.bot.tree.sync(guild=ctx.guild)
-            elif spec == "*":
-                ctx.bot.tree.copy_global_to(guild=ctx.guild)
-                synced = await ctx.bot.tree.sync(guild=ctx.guild)
-            elif spec == "^":
-                ctx.bot.tree.clear_commands(guild=ctx.guild)
-                await ctx.bot.tree.sync(guild=ctx.guild)
-            else:
-                synced = await ctx.bot.tree.sync()
-            try:
-                if spec is None:
-                    msg = f"Synced {len(synced)} commands globally."
-                else:
-                    msg = f"Synced {len(synced)} commands to the " f"current server."
-                return await state.end(success=msg)
-            except Exception as e:
-                return await state.end(warning=str(e).capitalize())
-        ret = 0
-        for guild in guilds:
-            try:
-                await ctx.bot.tree.sync(guild=guild)
-            except discord.HTTPException:
-                pass
-            else:
-                ret += 1
-        return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
     @commands.command(
         name="unload", help="Unloads a cog by name 'vyrtuous.cog.<cog_name>'."

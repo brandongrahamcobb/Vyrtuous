@@ -162,24 +162,6 @@ class ModeratorTextCommands(commands.Cog):
             return await state.end(error=str(e).capitalize())
         return await state.end(success=f"Message `{message}` deleted successfully.")
 
-    @commands.command(name="devs", help="List devs.")
-    @moderator_predicator()
-    @skip_help_discovery()
-    async def list_developers_text_command(
-        self,
-        ctx: commands.Context,
-        *,
-        target: str | None = commands.parameter(
-            default=None, description="'all', a specific server or user mention/ID"
-        ),
-    ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or "all"
-        object_dict = await do.determine_from_target(target=target)
-        pages = await DeveloperService.build_pages(object_dict=object_dict)
-        await StateService.send_pages(title="Developers", pages=pages, state=state)
-
     @commands.command(name="flags", help="List flags.")
     @moderator_predicator()
     async def list_flags_text_command(
@@ -323,19 +305,6 @@ class ModeratorTextCommands(commands.Cog):
             member_dict=member_dict,
         )
         await state.end(success=msg)
-
-    @commands.command(name="roleid", help="Get role by name.")
-    @moderator_predicator()
-    @skip_help_discovery()
-    async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
-        state = StateService(ctx=ctx)
-        role = discord.utils.get(ctx.guild.roles, name=role_name)
-        if role:
-            return await state.end(success=f"Role `{role.name}` has ID `{role.id}`.")
-        else:
-            return await state.end(
-                warning=f"No role named `{role_name}` found in this server."
-            )
 
     @commands.command(name="summary", help="List user moderation.")
     @moderator_predicator()

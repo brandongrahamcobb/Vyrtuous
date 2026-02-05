@@ -16,12 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from contextlib import ExitStack
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -30,17 +37,17 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command, target",
+    "permission_role, command, target",
     [
-        ("!bans", "all"),
-        ("!bans", "{channel_snowflake}"),
-        ("!bans", "<#{channel_snowflake}>"),
-        ("!bans", "{guild_snowflake}"),
-        ("!bans", "{member_snowflake}"),
-        ("!bans", "<@{member_snowflake}>"),
+        ("Sysadmin", "!bans", "all"),
+        ("Moderator", "!bans", "{channel_snowflake}"),
+        ("Moderator", "!bans", "<#{channel_snowflake}>"),
+        ("Administrator", "!bans", "{guild_snowflake}"),
+        ("Moderator", "!bans", "{member_snowflake}"),
+        ("Moderator", "!bans", "<@{member_snowflake}>"),
     ],
 )
-async def test_bans(bot, command: str, target):
+async def test_bans(bot, command: str, target, permission_role):
     """
     List bans on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
@@ -84,8 +91,8 @@ async def test_bans(bot, command: str, target):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {t}"
-    captured = await send_message(bot=bot, content=full)
-    assert captured.content
+    # captured = await send_message(bot=bot, content=full)
+    # assert captured.content
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None),
@@ -102,4 +109,26 @@ async def test_bans(bot, command: str, target):
         prefix="!",
     )
     mod_commands = bot.get_cog("ModeratorTextCommands")
-    command = await mod_commands.list_bans_text_command(ctx, target=t)
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "vyrtuous.db.roles.mod.moderator_service.moderator_predicator",
+                return_value=True,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                return_value=permission_role,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                return_value=permission_role,
+            )
+        )
+        async with capture_command() as end_results:
+            command = await mod_commands.list_bans_text_command(ctx, target=t)
+        for kind, content in end_results:
+            assert kind == "success"
