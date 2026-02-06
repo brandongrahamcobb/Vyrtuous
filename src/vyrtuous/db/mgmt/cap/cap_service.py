@@ -1,4 +1,5 @@
-"""cap.py The purpose of this program is to provide the Cap utility class.
+"""!/bin/python3
+cap_service.py The purpose of this program is to extend Service to service the cap command class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -122,7 +123,7 @@ class CapService(Service):
                     )
             CapService.pages.append(embed)
         if CapService.pages:
-            CapService.pages[0].description = f'**({cap_n})**'
+            CapService.pages[0].description = f"**({cap_n})**"
         return CapService.pages
 
     @classmethod

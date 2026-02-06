@@ -1,4 +1,5 @@
-"""test_pgsql_column_type_resolution.py The purpose of this program is to test a quick DB scoping script.
+"""!/bin/python3
+test_pgsql_column_type_resolution.py The purpose of this program is to test a quick DB scoping script.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

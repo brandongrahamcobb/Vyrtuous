@@ -1,4 +1,6 @@
-"""database.py The purpose of this program is to provide the database utility module.
+"""!/bin/python3
+
+database.py The purpose of this program is to provide the database utility module.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

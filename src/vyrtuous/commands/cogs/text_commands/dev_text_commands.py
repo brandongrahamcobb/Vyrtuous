@@ -1,5 +1,4 @@
 """!/bin/python3
-
 dev_text_commands.py A discord.py cog containing developer commands for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git

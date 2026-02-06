@@ -1,4 +1,5 @@
-"""event_listeners.py A discord.py cog containing event listeners for the Vyrtuous bot.
+"""!/bin/python3
+generic_event_listeners.py A discord.py cog containing generic event listeners for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

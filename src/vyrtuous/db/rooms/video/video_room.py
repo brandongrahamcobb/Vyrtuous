@@ -1,4 +1,5 @@
-"""video_rooms.py A utility module for managing video rooms in the Vyrtuous Discord bot.
+"""!/bin/python3
+video_rooms.py The purpose of this program is to extend DatabaseFactory to provide the video room class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

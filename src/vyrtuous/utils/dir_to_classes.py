@@ -1,4 +1,6 @@
-"""dir_to_classes.py The purpose of this program is to provide the dir_to_classes utility module.
+"""!/bin/python3
+
+dir_to_classes.py The purpose of this program is to provide the dir_to_classes utility module.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -18,10 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import importlib.util
 import inspect
-import sys
-from pathlib import Path
-
-from vyrtuous.utils.logger import logger
 
 
 def dir_to_classes(dir_paths, parent):

@@ -1,4 +1,7 @@
-"""emojis.py A utility class for managing emojis used by the Vyrtuous bot.
+"""!/bin/python3
+
+emojis.py A utility class for managing emojis used by the Vyrtuous bot.
+
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify

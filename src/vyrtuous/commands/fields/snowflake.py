@@ -1,4 +1,5 @@
-"""snowflake.py The purpose of this program is to provide the Snowflake properties class.
+"""!/bin/python3
+snowflake.py The purpose of this program is to provide the Snowflake properties class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

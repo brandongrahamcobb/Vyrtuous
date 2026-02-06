@@ -1,4 +1,5 @@
-"""help_command.py A discord.py cog containing a custom help command for the Vyrtuous bot.
+"""!/bin/python3
+help_command.py A discord.py cog containing a custom help command for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

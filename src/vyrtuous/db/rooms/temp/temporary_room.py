@@ -1,4 +1,5 @@
-"""temporary_rooms.py A utility module for managing temporary rooms in the Vyrtuous Discord bot.
+"""!/bin/python3
+temporary_rooms.py The purpose of this program is to extend DatabaseFactory to provide the temporary room class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

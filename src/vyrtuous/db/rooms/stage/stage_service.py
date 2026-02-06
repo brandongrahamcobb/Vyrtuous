@@ -1,4 +1,5 @@
-"""stage.py The purpose of this program is to provide the Stage utility class.
+"""!/bin/python3
+stage_service.py The purpose of this program is to extend Service to service the stage class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -153,7 +154,7 @@ class StageService(Service):
                     )
             StageService.pages.append(embed)
         if StageService.pages:
-            StageService.pages[0].description = f'**({stage_n})**'
+            StageService.pages[0].description = f"**({stage_n})**"
         return StageService.pages
 
     @classmethod

@@ -1,4 +1,5 @@
-"""category.py The purpose of this program is to provide the Category properties class.
+"""!/bin/python3
+category.py The purpose of this program is to provide the Category properties class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

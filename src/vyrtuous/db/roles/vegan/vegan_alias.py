@@ -1,4 +1,5 @@
-"""vegan.py The purpose of this program is to inherit from the DatabaseFactory to provide the vegan role.
+"""!/bin/python3
+vegan_alias.py The purpose of this program is to extend Alias to provide the vegan alias.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

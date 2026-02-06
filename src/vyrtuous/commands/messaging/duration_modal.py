@@ -1,4 +1,5 @@
-"""duration_modal.py The purpose of this program is to provide the duration utility modal.
+"""!/bin/python3
+duration_modal.py The purpose of this program is to provide the duration utility modal.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

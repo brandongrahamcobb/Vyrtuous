@@ -1,4 +1,5 @@
-"""guild_owner_commands.py A discord.py cog containing guild owner commands for the Vyrtuous bot.
+"""!/bin/python3
+guild_owner_text_commands.py A discord.py cog containing guild owner commands for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

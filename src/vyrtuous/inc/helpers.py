@@ -1,4 +1,5 @@
-"""helpers.py The purpose of this program is to provide generic parameters.
+"""!/bin/python3
+helpers.py The purpose of this program is to provide generic parameters.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

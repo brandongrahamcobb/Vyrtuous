@@ -1,4 +1,5 @@
-"""action.py The purpose of this program is to be a child of DatabaseFactory and the parent to all moderation actions.
+"""!/bin/python3
+alias.py The purpose of this program is to extend DatabaseFactory for text-based specific aliases.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

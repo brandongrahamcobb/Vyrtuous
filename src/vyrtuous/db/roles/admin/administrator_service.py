@@ -1,4 +1,5 @@
-"""administrator.py The purpose of this program is to inherit from the DatabaseFactory to provide the administrator role.
+"""!/bin/python3
+administrator_service.py The purpose of this program is to extend Service to service the administrator and administrator role classes.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -21,6 +22,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.service import Service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotAdministrator
@@ -96,7 +98,7 @@ def administrator_predicator():
     return commands.check(predicate)
 
 
-class AdministratorService:
+class AdministratorService(Service):
 
     lines, pages = [], []
 
@@ -203,7 +205,7 @@ class AdministratorService:
                 )
             AdministratorService.pages.append(embed)
         if AdministratorService.pages:
-            AdministratorService.pages[0].description = f'**({admin_n})**'
+            AdministratorService.pages[0].description = f"**({admin_n})**"
         return AdministratorService.pages
 
 
@@ -355,7 +357,7 @@ class AdministratorRoleService:
                 admin_role_n += 1
             AdministratorRoleService.pages.append(embed)
         if AdministratorRoleService.pages:
-            AdministratorRoleService.pages[0].description = f'**({admin_role_n})**'
+            AdministratorRoleService.pages[0].description = f"**({admin_role_n})**"
         return AdministratorRoleService.pages
 
     @classmethod

@@ -1,4 +1,5 @@
-"""ban.py The purpose of this program is to inherit from DatabaseFactory to provide the ban moderation.
+"""!/bin/python3
+ban_service.py The purpose of this program is to extend AliasService to service ban infractions.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -150,7 +151,7 @@ class BanService(AliasService):
                 )
             BanService.pages.append(embed)
         if BanService.pages:
-            BanService.pages[0].description = f'**({ban_n})**'
+            BanService.pages[0].description = f"**({ban_n})**"
         return BanService.pages
 
     @classmethod

@@ -1,4 +1,5 @@
-"""video_rooms.py A utility module for managing video rooms in the Vyrtuous Discord bot.
+"""!/bin/python3
+video_rooms_service.py The purpose of this program is to extend Service to service the video room class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -239,7 +240,7 @@ class VideoRoomService(Service):
                 )
             VideoRoomService.pages.append(embed)
         if VideoRoomService.pages:
-            VideoRoomService.pages[0].description = f'**({vr_n})**'
+            VideoRoomService.pages[0].description = f"**({vr_n})**"
         return VideoRoomService.pages
 
     @classmethod

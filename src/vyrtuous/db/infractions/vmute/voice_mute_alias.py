@@ -1,4 +1,5 @@
-"""voice_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the voice mute moderation.
+"""!/bin/python3
+voice_mute_alias.py The purpose of this program is to extend Alias to provide the voice mute infraction alias.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

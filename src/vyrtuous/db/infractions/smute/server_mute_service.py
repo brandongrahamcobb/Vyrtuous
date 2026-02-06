@@ -1,4 +1,5 @@
-"""server_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the server mute moderation.
+"""!/bin/python3
+server_mute_service.py The purpose of this program is to extend AliasService to service the server mute infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -128,7 +129,7 @@ class ServerMuteService(Service):
                 )
             ServerMuteService.pages.append(embed)
         if ServerMuteService.pages:
-            ServerMuteService.pages[0].description = f'**({smute_n})**'
+            ServerMuteService.pages[0].description = f"**({smute_n})**"
         return ServerMuteService.pages
 
     @classmethod

@@ -1,4 +1,5 @@
-"""author.py The purpose of this program is to provide the resolve_author utility module.
+"""!/bin/python3
+author.py The purpose of this program is to provide the resolve_author utility module.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

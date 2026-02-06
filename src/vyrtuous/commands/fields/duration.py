@@ -1,4 +1,5 @@
-"""duration.py The purpose of this program is to provide the Duration properties class.
+"""!/bin/python3
+duration.py The purpose of this program is to provide the Duration properties class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -149,7 +150,6 @@ class DurationObject:
         else:
             number, suffix = total_seconds, "s"
         return cls(f"{prefix}{number}{suffix}")
-
 
     @classmethod
     def from_expires_in(cls, expires_in: datetime) -> "DurationObject":

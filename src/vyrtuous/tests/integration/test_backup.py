@@ -1,4 +1,5 @@
-"""test_backup.py The purpose of this program is to be the integration test for the backup command for Vyrtuous.
+"""!/bin/python3
+test_backup.py The purpose of this program is to be the integration test for the backup command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

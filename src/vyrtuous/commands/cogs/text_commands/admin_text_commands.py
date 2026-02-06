@@ -1,5 +1,4 @@
 """!/bin/python3
-
 admin_text_commands.py A discord.py cog containing administrative commands for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git

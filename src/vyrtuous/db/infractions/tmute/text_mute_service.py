@@ -1,4 +1,5 @@
-"""text_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the text mute moderation.
+"""!/bin/python3
+text_mute_service.py The purpose of this program is to extend AliasService to service the text mute infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -159,7 +160,7 @@ class TextMuteService(AliasService):
                 )
             TextMuteService.pages.append(embed)
         if TextMuteService.pages:
-            TextMuteService.pages[0].description = f'**({tmute_n})**'
+            TextMuteService.pages[0].description = f"**({tmute_n})**"
         return TextMuteService.pages
 
     @classmethod

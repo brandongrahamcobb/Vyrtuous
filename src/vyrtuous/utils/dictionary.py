@@ -1,4 +1,6 @@
-"""dictionary.py The purpose of this program is to manage list command logic.
+"""!/bin/python3
+
+dictionary.py The purpose of this program is to manage list command logic.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

@@ -1,4 +1,5 @@
-"""action.py The purpose of this program is to be a child of DatabaseFactory and the parent to all moderation actions.
+"""!/bin/python3
+alias_service.py The purpose of this program is to extend Service to service aliases.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -176,7 +177,7 @@ class AliasService(Service):
                 )
             AliasService.pages.append(embed)
         if AliasService.pages:
-            AliasService.pages[0].description = f'**({alias_n})**'
+            AliasService.pages[0].description = f"**({alias_n})**"
         return AliasService.pages
 
     @classmethod

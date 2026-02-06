@@ -1,4 +1,5 @@
-"""administrator.py The purpose of this program is to inherit from the DatabaseFactory to provide the administrator role.
+"""!/bin/python3
+administrator.py The purpose of this program is to extend DatabaseFactory provide the administrator and administrator role classes.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

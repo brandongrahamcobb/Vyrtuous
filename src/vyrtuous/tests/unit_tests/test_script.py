@@ -1,3 +1,4 @@
+#!/bin/python3
 def test_read():
     read_the_docs()
 

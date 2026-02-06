@@ -1,4 +1,5 @@
-"""discord_message_service.py  The purpose of this program is to handle messages in Discord.
+"""!/bin/python3
+message_service.py  The purpose of this program is to handle messages in Discord.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

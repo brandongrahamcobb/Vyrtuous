@@ -1,4 +1,5 @@
-"""reason_modal.py The purpose of this program is to provide the reason utility modal.
+"""!/bin/python3
+reason_modal.py The purpose of this program is to provide the reason utility modal.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

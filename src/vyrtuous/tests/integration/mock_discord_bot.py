@@ -1,4 +1,5 @@
-"""mock_discord_bot.py The purpose of this program is to support integration testing for Vyrtuous.
+"""!/bin/python3
+mock_discord_bot.py The purpose of this program is to support integration testing for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

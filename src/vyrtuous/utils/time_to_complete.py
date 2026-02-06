@@ -1,4 +1,6 @@
-"""time_to_complete.py The purpose of this program is to provide the TimeToComplete utility module.
+"""!/bin/python3
+
+time_to_complete.py The purpose of this program is to provide the TimeToComplete utility module.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

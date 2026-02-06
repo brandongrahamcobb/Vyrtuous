@@ -1,4 +1,5 @@
-"""developer.py The purpose of this program is to inherit from the user class as a developer.
+"""!/bin/python3
+bug_service.py The purpose of this program is to extend Service to service the bug command class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -168,7 +169,7 @@ class BugService(Service):
                 )
             BugService.pages.append(embed)
         if BugService.pages:
-            BugService.pages[0].description = f'**({bug_n})**'
+            BugService.pages[0].description = f"**({bug_n})**"
         return BugService.pages
 
     @classmethod

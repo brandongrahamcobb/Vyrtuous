@@ -1,4 +1,5 @@
-"""conftest.py The purpose of this program is to support glass box, integration and unit testing for Vyrtuous.
+"""!/bin/python3
+conftest.py The purpose of this program is to support glass box, integration and unit testing for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

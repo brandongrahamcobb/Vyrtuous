@@ -1,4 +1,5 @@
-"""heartbeat.py A discord.py cog containing a heartbeat mechanism for the Vyrtuous bot.
+"""!/bin/python3
+heartbeat.py A discord.py cog containing a heartbeat mechanism for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

@@ -1,4 +1,5 @@
-"""discord_object_service.py The purpose of this program is to provide the DiscordObject module.
+"""!/bin/python3
+discord_object_service.py The purpose of this program is to provide the DiscordObject module.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

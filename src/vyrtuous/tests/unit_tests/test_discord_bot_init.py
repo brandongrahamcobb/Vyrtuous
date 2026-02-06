@@ -1,3 +1,4 @@
+#!/bin/python3
 import pytest
 
 from vyrtuous.bot.discord_bot import DiscordBot

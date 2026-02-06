@@ -1,4 +1,5 @@
-"""temporary_rooms.py A utility module for managing temporary rooms in the Vyrtuous Discord bot.
+"""!/bin/python3
+temporary_rooms_service.py The purpose of this program is to extend Service to service the temporary room class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -157,7 +158,7 @@ class TemporaryRoomService(Service):
                 )
             TemporaryRoomService.pages.append(embed)
         if TemporaryRoomService.pages:
-            TemporaryRoomService.pages[0].description = f'**({temp_n})**'
+            TemporaryRoomService.pages[0].description = f"**({temp_n})**"
         return TemporaryRoomService.pages
 
     @classmethod

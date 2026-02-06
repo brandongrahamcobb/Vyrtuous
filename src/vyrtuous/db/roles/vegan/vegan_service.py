@@ -1,4 +1,5 @@
-"""vegan.py The purpose of this program is to inherit from the DatabaseFactory to provide the vegan role.
+"""!/bin/python3
+vegan_service.py The purpose of this program is to extend Service to service the vegan class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -128,7 +129,7 @@ class VeganService(AliasService):
                 )
             VeganService.pages.append(embed)
         if VeganService.pages:
-            VeganService.pages[0].description = f'**({vegan_n})**'
+            VeganService.pages[0].description = f"**({vegan_n})**"
         return VeganService.pages
 
     @classmethod

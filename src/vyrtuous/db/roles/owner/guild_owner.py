@@ -1,4 +1,5 @@
-"""guild_owner.py The purpose of this program is to inherit from the DatabaseFactory to provide the guild owner role.
+"""!/bin/python3
+guild_owner.py The purpose of this program is to extend DatabaseFactory to provide the guild owner class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

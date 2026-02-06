@@ -1,4 +1,5 @@
-"""voice_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the voice mute moderation.
+"""!/bin/python3
+voice_mute_service.py The purpose of this program is to extend AliasService to service the voice mute infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -138,7 +139,7 @@ class VoiceMuteService(AliasService):
                         VoiceMuteService.lines.append(
                             f"**Reason:** {channel_dictionary['reason']}"
                         )
-                    vmute += 1
+                    vmute_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -159,7 +160,7 @@ class VoiceMuteService(AliasService):
                 )
             VoiceMuteService.pages.append(embed)
         if VoiceMuteService.pages:
-            VoiceMuteService.pages[0].description = f'**({vmute_n})**'
+            VoiceMuteService.pages[0].description = f"**({vmute_n})**"
         return VoiceMuteService.pages
 
     @classmethod

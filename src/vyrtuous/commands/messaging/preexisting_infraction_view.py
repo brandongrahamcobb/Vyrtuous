@@ -1,4 +1,5 @@
-"""moderation_view.py The purpose of this program is to provide the moderation view utility class.
+"""!/bin/python3
+preexisting_infraction_view.py The purpose of this program is to provide the view for modify existing infractions.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -15,8 +16,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-from pathlib import Path
 
 import discord
 
@@ -100,6 +99,7 @@ class PreexistingInfractionView(discord.ui.View):
             guild_snowflake=interaction.guild.id,
             member_snowflake=interaction.user.id,
         )
+        self.information["executor_role"] = executor_role
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -123,7 +123,6 @@ class PreexistingInfractionView(discord.ui.View):
             member_snowflake=self.member_snowflake,
             singular=True,
         )
-        self.information["executor_role"] = executor_role
         self.information["member_snowflake"] = self.member_snowflake
         self.information["existing"] = existing
         if hasattr(existing, "expires_in"):

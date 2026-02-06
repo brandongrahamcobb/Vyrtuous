@@ -1,4 +1,5 @@
-"""scheduled_tasks.py A discord.py cog containing scheduled tasks for the Vyrtuous bot.
+"""!/bin/python3
+scheduled_tasks.py A discord.py cog containing scheduled tasks for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

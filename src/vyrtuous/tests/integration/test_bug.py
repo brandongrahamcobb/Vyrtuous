@@ -1,4 +1,5 @@
-"""test_assign.py The purpose of this program is to be the integration test for the assign command for Vyrtuous.
+"""!/bin/python3
+test_assign.py The purpose of this program is to be the integration test for the assign command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

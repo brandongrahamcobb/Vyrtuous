@@ -1,4 +1,5 @@
-"""streaming.py A utility module for managing and streaming of messages in the Vyrtuous Discord bot.
+"""!/bin/python3
+streaming_service.py The purpose of this program is to extend Service service the stream command class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -328,7 +329,7 @@ class StreamService(Service):
                 )
             StreamService.pages.append(embed)
         if StreamService.pages:
-           StreamService.pages[0].description = f'**({stream_n})**'
+            StreamService.pages[0].description = f"**({stream_n})**"
         return StreamService.pages
 
     @classmethod

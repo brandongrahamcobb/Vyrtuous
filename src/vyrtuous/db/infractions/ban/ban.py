@@ -1,4 +1,5 @@
-"""ban.py The purpose of this program is to inherit from DatabaseFactory to provide the ban moderation.
+"""!/bin/python3
+ban.py The purpose of this program is to extend Infraction to provide the ban infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

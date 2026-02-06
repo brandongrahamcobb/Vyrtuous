@@ -1,4 +1,5 @@
-"""moderation_view.py The purpose of this program is to provide the moderation view utility class.
+"""!/bin/python3
+new_infraction_view.py The purpose of this program is to provide the view for creating an infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -16,30 +17,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pathlib import Path
-
 import discord
 
-from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.commands.permissions.permission_service import PermissionService
-from vyrtuous.db.infractions.ban.ban import Ban
-from vyrtuous.db.infractions.flag.flag import Flag
-from vyrtuous.db.infractions.tmute.text_mute import TextMute
-from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.roles.admin.administrator import Administrator
 from vyrtuous.db.roles.coord.coordinator import Coordinator
 from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.mod.moderator import Moderator
 from vyrtuous.db.roles.owner.guild_owner_service import (
-    GuildOwnerService,
     NotGuildOwner,
     is_guild_owner_wrapper,
 )
-from vyrtuous.db.roles.sysadmin.sysadmin_service import (
-    NotSysadmin,
-    SysadminService,
-    is_sysadmin_wrapper,
-)
+from vyrtuous.db.roles.sysadmin.sysadmin_service import NotSysadmin, is_sysadmin_wrapper
 
 
 class NewInfractionView(discord.ui.View):

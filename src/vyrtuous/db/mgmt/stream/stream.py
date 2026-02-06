@@ -1,4 +1,5 @@
-"""streaming.py A utility module for managing and streaming of messages in the Vyrtuous Discord bot.
+"""!/bin/python3
+stream.py The purpose of this program is to extend DatabaseFactory to provide the streaming command class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

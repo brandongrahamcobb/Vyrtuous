@@ -1,4 +1,5 @@
-"""moderator.py The purpose of this program is to inherit from the DatabaseFactory to provide the moderator role.
+"""!/bin/python3
+moderator_service.py The purpose of this program is to extend Service to service the moderator class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -80,7 +81,7 @@ async def is_moderator_at_all_wrapper(
 async def is_moderator_at_all(
     member_snowflake: int,
 ) -> bool:
-    
+
     moderator = await Moderator.select(member_snowflake=int(member_snowflake))
     if not moderator:
         raise NotModerator
@@ -222,7 +223,7 @@ class ModeratorService(Service):
                 )
             ModeratorService.pages.append(embed)
         if ModeratorService.pages:
-            ModeratorService.pages[0].description = f'**({mod_n})**'
+            ModeratorService.pages[0].description = f"**({mod_n})**"
         return ModeratorService.pages
 
     @classmethod

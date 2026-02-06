@@ -1,4 +1,5 @@
-"""cap.py The purpose of this program is to provide the Cap utility class.
+"""!/bin/python3
+cap.py The purpose of this program is extend DatabaseFactory to provide the cap utility class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

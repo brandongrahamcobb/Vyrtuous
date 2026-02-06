@@ -1,4 +1,5 @@
-"""flag.py The purpose of this program is to inherit from DatabaseFactory to provide the flag moderation.
+"""!/bin/python3
+role_service.py The purpose of this program is to extend AliasService to service the role class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -248,7 +249,7 @@ class RoleService(AliasService):
                 )
             RoleService.pages.append(embed)
         if RoleService.pages:
-            RoleService.pages[0].description = f'**({role_n})**'
+            RoleService.pages[0].description = f"**({role_n})**"
         return RoleService.pages
 
     @classmethod

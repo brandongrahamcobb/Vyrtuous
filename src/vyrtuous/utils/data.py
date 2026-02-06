@@ -1,4 +1,6 @@
-"""data.py The purpose of this program is to manage statistics of Vyrtuous.
+"""!/bin/python3
+
+data.py The purpose of this program is to manage statistics of Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

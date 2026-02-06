@@ -1,4 +1,5 @@
-"""test_cap.py The purpose of this program is to be the integration test for the cap command for Vyrtuous.
+"""!/bin/python3
+test_cap.py The purpose of this program is to be the integration test for the cap command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

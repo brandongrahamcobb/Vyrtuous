@@ -1,4 +1,5 @@
-"""discord_oauth.py The purpose of this program is to host the Quart app for Discord OAuth 2.0.
+"""!/bin/python3
+discord_oauth.py The purpose of this program is to host the Quart app for Discord OAuth 2.0.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

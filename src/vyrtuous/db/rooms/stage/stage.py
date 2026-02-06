@@ -1,4 +1,5 @@
-"""stage.py The purpose of this program is to provide the Stage utility class.
+"""!/bin/python3
+stage.py The purpose of this program is to extend DatabaseFactory to provide the stage class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

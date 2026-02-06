@@ -1,4 +1,5 @@
-"""config.py  The purpose of this program is to provide the primary configuaration script.
+"""!/bin/python3
+config.py  The purpose of this program is to provide the primary configuaration script.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

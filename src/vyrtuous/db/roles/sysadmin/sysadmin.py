@@ -1,4 +1,5 @@
-"""sysadmin.py The purpose of this program is to inherit from the DatabaseFactory to provide the sysadmin role.
+"""!/bin/python3
+sysadmin.py The purpose of this program is to extend DatabaseFactory to provide the sysadmin class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

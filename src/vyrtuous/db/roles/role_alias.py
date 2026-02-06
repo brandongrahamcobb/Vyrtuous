@@ -1,4 +1,5 @@
-"""flag.py The purpose of this program is to inherit from DatabaseFactory to provide the flag moderation.
+"""!/bin/python3
+role_alias.py The purpose of this program is to extend Alias to provide the role alias.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

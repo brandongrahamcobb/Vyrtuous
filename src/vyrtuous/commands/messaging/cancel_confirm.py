@@ -1,4 +1,5 @@
-"""cancel_confirm.py The purpose of this program is to provide an embed utility with cancellation and confirmation buttons.
+"""!/bin/python3
+cancel_confirm.py The purpose of this program is to provide an embed utility with cancellation and confirmation buttons.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

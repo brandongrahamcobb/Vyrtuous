@@ -1,4 +1,6 @@
-"""coordinator.py The purpose of this program is to inherit from the DatabaseFactory to provide the coordinator role.
+"""!/bin/python3
+coordinator_service.py The purpose of this program is to extend Service to service the coordinator class.
+
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
@@ -222,7 +224,7 @@ class CoordinatorService(Service):
                 )
             CoordinatorService.pages.append(embed)
         if CoordinatorService.pages:
-            CoordinatorService.pages[0].description = f'**({coord_n})**'
+            CoordinatorService.pages[0].description = f"**({coord_n})**"
         return CoordinatorService.pages
 
     @classmethod

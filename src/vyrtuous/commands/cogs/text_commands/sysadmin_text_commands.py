@@ -1,4 +1,5 @@
-"""sysadmin_commands.py A discord.py cog containing sysadmin commands for the Vyrtuous bot.
+"""!/bin/python3
+sysadmin_text_commands.py A discord.py cog containing sysadmin commands for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

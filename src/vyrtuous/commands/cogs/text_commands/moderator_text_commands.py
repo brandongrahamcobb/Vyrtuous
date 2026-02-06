@@ -1,4 +1,5 @@
-"""moderator_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
+"""!/bin/python3
+moderator_text_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -39,7 +40,6 @@ from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorService
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
-from vyrtuous.db.roles.dev.developer_service import DeveloperService
 from vyrtuous.db.roles.mod.moderator import Moderator
 from vyrtuous.db.roles.mod.moderator_service import (
     ModeratorService,

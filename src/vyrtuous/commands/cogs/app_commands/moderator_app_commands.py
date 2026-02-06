@@ -1,4 +1,5 @@
-"""moderator_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
+"""!/bin/python3
+moderator_app_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -180,10 +181,7 @@ class ModeratorAppCommands(commands.Cog):
 
     @app_commands.command(name="data", description="Create a chart.")
     @moderator_predicator()
-    async def create_data_app_command(
-        self, interaction: discord.Interaction
-    ):
-        do = DiscordObject(interaction=interaction)
+    async def create_data_app_command(self, interaction: discord.Interaction):
         default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
@@ -192,7 +190,9 @@ class ModeratorAppCommands(commands.Cog):
         view = DataView(interaction=interaction)
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel, duration and infraction", view=view, ephemeral=True
+            content="Select a channel, duration and infraction",
+            view=view,
+            ephemeral=True,
         )
 
     @app_commands.command(name="del", description="Delete message.")

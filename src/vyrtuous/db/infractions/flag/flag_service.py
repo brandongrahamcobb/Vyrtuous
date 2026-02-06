@@ -1,4 +1,5 @@
-"""flag.py The purpose of this program is to inherit from DatabaseFactory to provide the flag moderation.
+"""!/bin/python3
+flag_service.py The purpose of this program is to extend AliasService to service flag infractions.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -143,7 +144,7 @@ class FlagService(AliasService):
                 )
             FlagService.pages.append(embed)
         if FlagService.pages:
-            FlagService.pages[0].description = f'**({flag_n})**'
+            FlagService.pages[0].description = f"**({flag_n})**"
         return FlagService.pages
 
     @classmethod

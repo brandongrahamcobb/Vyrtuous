@@ -1,4 +1,5 @@
-"""state.py A utility module for managing the failure, warning and success messages along with statistics about the bot's responses.
+"""!/bin/python3
+state_service.py The purpose of this program is to extend Service to service the success, failure and warning messages.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

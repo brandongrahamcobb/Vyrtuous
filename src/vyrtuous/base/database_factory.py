@@ -1,4 +1,6 @@
-"""stage.py The purpose of this program is to the parent class to all database operation classes.
+"""!/bin/python3
+
+database_factory.py The purpose of this program is to the parent class to all database operation classes.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

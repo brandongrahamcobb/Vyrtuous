@@ -1,4 +1,5 @@
-"""developer.py The purpose of this program is to inherit from the user class as a developer.
+"""!/bin/python3
+bug.py The purpose of this program is to extend DatabaseFactory to provide the bug utility class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

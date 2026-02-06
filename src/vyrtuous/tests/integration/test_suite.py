@@ -1,4 +1,5 @@
-"""test_suite.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
+"""!/bin/python3
+test_suite.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

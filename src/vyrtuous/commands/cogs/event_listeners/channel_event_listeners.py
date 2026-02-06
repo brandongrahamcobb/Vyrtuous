@@ -1,5 +1,4 @@
 """!/bin/python3
-
 channel_event_listeners.py A discord.py cog containing channel event listeners for the Vyrtuous bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git

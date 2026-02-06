@@ -1,4 +1,5 @@
-"""text_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the text mute moderation.
+"""!/bin/python3
+text_mute_alias.py The purpose of this program is to extend Alias to provide the text mute infraction alias.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

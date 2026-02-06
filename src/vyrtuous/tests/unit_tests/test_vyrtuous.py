@@ -1,3 +1,4 @@
+#!/bin/python3
 class Vyrtuous(object):
 
     def __init__(self):

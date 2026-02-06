@@ -1,4 +1,5 @@
-"""developer.py The purpose of this program is to inherit from the DatabaseFactory to provide the developer role.
+"""!/bin/python3
+developer_service.py The purpose of this program is to extend Service to service the developer class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -139,12 +140,11 @@ class DeveloperService(Service):
                 )
             DeveloperService.pages.append(embed)
         if DeveloperService.pages:
-            DeveloperService.pages[0].description = f'All guilds **({dev_n})**'
+            DeveloperService.pages[0].description = f"All guilds **({dev_n})**"
         return DeveloperService.pages
 
     @classmethod
     async def toggle_developer(cls, member_dict):
-        bot = DiscordBot.get_instance()
         where_kwargs = member_dict.get("columns", None)
         del where_kwargs["guild_snowflake"]
         developer = await Developer.select(singular=True, **where_kwargs)
