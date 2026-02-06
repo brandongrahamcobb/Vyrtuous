@@ -87,6 +87,7 @@ class CapService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            cap_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -94,12 +95,15 @@ class CapService(Service):
             )
             for channel_snowflake, cap_dictionary in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    continue
                 for moderation_type, duration_seconds in cap_dictionary.get(
                     "caps", {}
                 ).items():
                     CapService.lines.append(
                         f"  ↳ {moderation_type} ({DurationObject.from_seconds(duration_seconds)})"
                     )
+                    cap_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -117,6 +121,7 @@ class CapService(Service):
                         inline=False,
                     )
             CapService.pages.append(embed)
+            CapService.pages[0].description = f'{guild.name} **({cap_n})**'
         return CapService.pages
 
     @classmethod

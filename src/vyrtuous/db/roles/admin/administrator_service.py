@@ -151,6 +151,7 @@ class AdministratorService:
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            admin_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -161,6 +162,8 @@ class AdministratorService:
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 primary_dictionary = administrators_dictionary.get("administrators", {})
                 role_mentions = [
                     guild.get_role(role_snowflake).mention
@@ -175,9 +178,10 @@ class AdministratorService:
                     )
                     thumbnail = True
                 else:
-                    member_line = f"**User:** {member.display_name} {member.mention} "
+                    member_line = f"**User:** {member.display_name} {member.mention}"
                     if role_mentions:
                         member_line += "\n**Roles:** " + "\n".join(role_mentions)
+                admin_n += 1
                 AdministratorService.lines.append(member_line)
                 field_count += 1
                 if field_count >= CHUNK_SIZE:
@@ -198,6 +202,7 @@ class AdministratorService:
                     inline=False,
                 )
             AdministratorService.pages.append(embed)
+            AdministratorService.pages[0].description = f'{guild.name} **({admin_n})**'
         return AdministratorService.pages
 
 
@@ -330,6 +335,7 @@ class AdministratorRoleService:
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            admin_role_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -337,13 +343,17 @@ class AdministratorRoleService:
             )
             for role_snowflake, entry in guild_data.get("roles", {}).items():
                 role = guild.get_role(role_snowflake)
+                if not role:
+                    continue
                 if field_count >= CHUNK_SIZE:
                     embed = flush_page(
                         embed, AdministratorRoleService.pages, title, guild.name
                     )
                 embed.add_field(name=role.name, value=role.mention, inline=False)
                 field_count += 1
+                admin_role_n += 1
             AdministratorRoleService.pages.append(embed)
+            AdministratorRoleService.pages[0].description = f'{guild.name} **({admin_role_n})**'
         return AdministratorRoleService.pages
 
     @classmethod

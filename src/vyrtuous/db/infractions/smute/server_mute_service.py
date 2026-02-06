@@ -84,6 +84,7 @@ class ServerMuteService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            smute_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -94,6 +95,8 @@ class ServerMuteService(Service):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     ServerMuteService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -104,6 +107,7 @@ class ServerMuteService(Service):
                         url=object_dict.get("object", None).display_avatar.url
                     )
                     thumbnail = True
+                smute_n += 1
                 field_count += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
@@ -123,6 +127,7 @@ class ServerMuteService(Service):
                     inline=False,
                 )
             ServerMuteService.pages.append(embed)
+            ServerMuteService.pages[0].description = f'{guild.name} **({smute_n})**'
         return ServerMuteService.pages
 
     @classmethod

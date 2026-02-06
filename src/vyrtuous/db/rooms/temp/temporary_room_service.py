@@ -106,6 +106,7 @@ class TemporaryRoomService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            temp_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -115,10 +116,13 @@ class TemporaryRoomService(Service):
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    continue
                 TemporaryRoomService.lines.append(f"Channel: {channel.mention}")
                 field_count += 1
                 for category, alias_names in channel_data.items():
                     TemporaryRoomService.lines.append(f"{category}")
+                    temp_n += 1
                     field_count += 1
                     for name in alias_names:
                         TemporaryRoomService.lines.append(f"  ↳ {name}")
@@ -152,6 +156,7 @@ class TemporaryRoomService(Service):
                     inline=False,
                 )
             TemporaryRoomService.pages.append(embed)
+            TemporaryRoomService.pages[0].description = f'{guild.name} **({temp_n})**'
         return TemporaryRoomService.pages
 
     @classmethod

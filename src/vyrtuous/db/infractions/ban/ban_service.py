@@ -99,6 +99,7 @@ class BanService(AliasService):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            ban_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -106,6 +107,8 @@ class BanService(AliasService):
             )
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     BanService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -130,6 +133,7 @@ class BanService(AliasService):
                         BanService.lines.append(
                             f"**Reason:** {channel_dictionary['reason']}"
                         )
+                    ban_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -145,6 +149,7 @@ class BanService(AliasService):
                     name="Information", value="\n".join(BanService.lines), inline=False
                 )
             BanService.pages.append(embed)
+            BanService.pages[0].description = f'{guild.name} **({ban_n})**'
         return BanService.pages
 
     @classmethod

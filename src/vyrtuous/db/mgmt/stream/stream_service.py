@@ -291,6 +291,7 @@ class StreamService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            stream_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -298,6 +299,8 @@ class StreamService(Service):
             )
             for channel_snowflake, entry in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    continue
                 status = "\u2705" if entry["enabled"] else "\u26d4"
                 StreamService.lines.append(
                     f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
@@ -307,6 +310,7 @@ class StreamService(Service):
                 ):
                     StreamService.lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                 field_count += 1
+                stream_n += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
@@ -323,6 +327,7 @@ class StreamService(Service):
                     inline=False,
                 )
             StreamService.pages.append(embed)
+            StreamService.pages[0].description = f'{guild.name} **({stream_n})**'
         return StreamService.pages
 
     @classmethod

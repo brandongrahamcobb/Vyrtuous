@@ -97,10 +97,13 @@ class DeveloperService(Service):
             title=title, description="All guilds", color=discord.Color.blue()
         )
         for key, values in dictionary.items():
+            dev_n = 0
             field_count = 0
             thumbnail = False
             for member_snowflake, member_data in values.items():
                 user = bot.get_user(member_snowflake)
+                if not user:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     DeveloperService.lines.append(
                         f"**User:** {user.display_name} {user.mention}"
@@ -111,6 +114,7 @@ class DeveloperService(Service):
                         url=object_dict.get("object", None).display_avatar.url
                     )
                     thumbnail = True
+                dev_n += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
@@ -134,6 +138,7 @@ class DeveloperService(Service):
                     inline=False,
                 )
             DeveloperService.pages.append(embed)
+            DeveloperService.pages[0].description = f'All guilds **({dev_n})**'
         return DeveloperService.pages
 
     @classmethod

@@ -88,6 +88,7 @@ class VeganService(AliasService):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            vegan_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -96,6 +97,8 @@ class VeganService(AliasService):
             )
             for member_snowflake, vegan_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     VeganService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -106,6 +109,7 @@ class VeganService(AliasService):
                             url=object_dict.get("object", None).display_avatar.url
                         )
                         thumbnail = True
+                vegan_n += 1
                 field_count += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
@@ -123,6 +127,7 @@ class VeganService(AliasService):
                     inline=False,
                 )
             VeganService.pages.append(embed)
+            VeganService.pages[0].description = f'{guild.name} **({vegan_n})**'
         return VeganService.pages
 
     @classmethod

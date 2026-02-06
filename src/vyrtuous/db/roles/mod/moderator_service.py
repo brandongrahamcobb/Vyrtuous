@@ -168,6 +168,7 @@ class ModeratorService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            mod_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -178,6 +179,8 @@ class ModeratorService(Service):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     ModeratorService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -196,6 +199,7 @@ class ModeratorService(Service):
                     ):
                         channel = guild.get_channel(channel_snowflake)
                         ModeratorService.lines.append(f"**Channel:** {channel.mention}")
+                    mod_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -215,6 +219,7 @@ class ModeratorService(Service):
                     inline=False,
                 )
             ModeratorService.pages.append(embed)
+            ModeratorService.pages[0].description = f'{guild.name} **({mod_n})**'
         return ModeratorService.pages
 
     @classmethod

@@ -119,6 +119,7 @@ class StageService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            stage_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -128,9 +129,12 @@ class StageService(Service):
                 "channels"
             ).items():
                 channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    continue
                 StageService.lines.append(
                     f"**Expires in:** {stage_dictionary.get("stages", {}).get("expires_in", None)}"
                 )
+                stage_n += 1
                 field_count += 1
                 if field_count == CHUNK_SIZE:
                     embed.add_field(
@@ -148,6 +152,7 @@ class StageService(Service):
                         inline=False,
                     )
             StageService.pages.append(embed)
+            StageService.pages[0].description = f'{guild.name} **({stage_n})**'
         return StageService.pages
 
     @classmethod

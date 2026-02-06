@@ -166,6 +166,7 @@ class CoordinatorService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            coord_n += 1
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -176,6 +177,8 @@ class CoordinatorService(Service):
                 "members"
             ).items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     CoordinatorService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -196,6 +199,7 @@ class CoordinatorService(Service):
                         CoordinatorService.lines.append(
                             f"**Channel:** {channel.mention}"
                         )
+                    coord_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -215,6 +219,7 @@ class CoordinatorService(Service):
                     inline=False,
                 )
             CoordinatorService.pages.append(embed)
+            CoordinatorService.pages[0].description = f'{guild.name} **({coord_n})**'
         return CoordinatorService.pages
 
     @classmethod

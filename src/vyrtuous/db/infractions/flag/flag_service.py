@@ -95,6 +95,7 @@ class FlagService(AliasService):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            flag_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -103,6 +104,8 @@ class FlagService(AliasService):
             )
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     FlagService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -124,6 +127,7 @@ class FlagService(AliasService):
                         FlagService.lines.append(
                             f"**Reason:** {channel_dictionary['reason']}"
                         )
+                    flag_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -138,6 +142,7 @@ class FlagService(AliasService):
                     name="Information", value="\n".join(FlagService.lines), inline=False
                 )
             FlagService.pages.append(embed)
+            FlagService.pages[0].description = f'{guild.name} **({flag_n})**'
         return FlagService.pages
 
     @classmethod

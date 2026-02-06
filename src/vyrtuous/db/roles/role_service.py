@@ -201,6 +201,7 @@ class RoleService(AliasService):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            role_n += 1
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -209,6 +210,8 @@ class RoleService(AliasService):
             )
             for member_snowflake, role_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     RoleService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -228,6 +231,7 @@ class RoleService(AliasService):
                     ):
                         RoleService.lines.append(f"**Channel:** {channel.mention}")
                     RoleService.lines.append(f"**Role:** {role.mention}")
+                    role_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -243,6 +247,7 @@ class RoleService(AliasService):
                     name="Information", value="\n".join(RoleService.lines), inline=False
                 )
             RoleService.pages.append(embed)
+            RoleService.pages[0].description = f'{guild.name} **({role_n})**'
         return RoleService.pages
 
     @classmethod

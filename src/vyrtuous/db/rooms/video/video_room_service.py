@@ -190,6 +190,7 @@ class VideoRoomService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            vr_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -199,11 +200,14 @@ class VideoRoomService(Service):
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    continue
                 VideoRoomService.lines.append(f"Channel: {channel.mention}")
                 field_count += 1
                 for category, alias_names in channel_data.items():
                     VideoRoomService.lines.append(f"{category}")
                     field_count += 1
+                    vr_n += 1
                     for name in alias_names:
                         VideoRoomService.lines.append(f"  ↳ {name}")
                         field_count += 1
@@ -234,6 +238,7 @@ class VideoRoomService(Service):
                     inline=False,
                 )
             VideoRoomService.pages.append(embed)
+            VideoRoomService.pages[0].description = f'{guild.name} **({vr_n})**'
         return VideoRoomService.pages
 
     @classmethod

@@ -138,6 +138,7 @@ class AliasService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            alias_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -147,6 +148,8 @@ class AliasService(Service):
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    continue
                 for category, alias_data in channel_dictionary["aliases"].items():
                     AliasService.lines.append(f"{category}")
                     for name, role_mention in alias_data.items():
@@ -154,6 +157,7 @@ class AliasService(Service):
                             AliasService.lines.append(f"  ↳ `{name}` -> {role_mention}")
                         else:
                             AliasService.lines.append(f"  ↳ `{name}`")
+                        alias_n += 1
                     field_count += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
@@ -171,6 +175,7 @@ class AliasService(Service):
                     inline=False,
                 )
             AliasService.pages.append(embed)
+            AliasService.pages[0].description = f'{guild.name} **({alias_n})**'
         return AliasService.pages
 
     @classmethod
@@ -187,10 +192,11 @@ class AliasService(Service):
         guild = bot.get_guild(guild_snowflake)
         channel = guild.get_channel(alias.channel_snowflake)
         if getattr(alias, "role_snowflake"):
+            role = guild.get_role(alias.role_snowflake)
             msg = (
                 f"Alias `{alias.alias_name}` of type "
                 f"`{alias.category}` for channel {channel.mention} "
-                f" and role {alias.role_mention} deleted successfully."
+                f" and role {role.mention} deleted successfully."
             )
         else:
             msg = (

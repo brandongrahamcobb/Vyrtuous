@@ -100,6 +100,7 @@ class VoiceMuteService(AliasService):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            vmute_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -110,6 +111,8 @@ class VoiceMuteService(AliasService):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     VoiceMuteService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -135,6 +138,7 @@ class VoiceMuteService(AliasService):
                         VoiceMuteService.lines.append(
                             f"**Reason:** {channel_dictionary['reason']}"
                         )
+                    vmute += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -154,6 +158,7 @@ class VoiceMuteService(AliasService):
                     inline=False,
                 )
             VoiceMuteService.pages.append(embed)
+            VoiceMuteService.pages[0].description = f'{guild.name} **({vmute_n})**'
         return VoiceMuteService.pages
 
     @classmethod

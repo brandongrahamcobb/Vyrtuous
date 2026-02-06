@@ -122,6 +122,7 @@ class BugService(Service):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            bug_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -149,6 +150,7 @@ class BugService(Service):
                     )
                 else:
                     BugService.lines.append(f'**Reference:** {entry["id"]}')
+                bug_n += 1
                 field_count += 1
                 if field_count >= CHUNK_SIZE:
                     embed.add_field(
@@ -165,6 +167,7 @@ class BugService(Service):
                     inline=False,
                 )
             BugService.pages.append(embed)
+            BugService.pages[0].description = f'{guild.name} **({bug_n})**'
         return BugService.pages
 
     @classmethod

@@ -100,6 +100,7 @@ class TextMuteService(AliasService):
         )
 
         for guild_snowflake, guild_data in dictionary.items():
+            tmute_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -110,6 +111,8 @@ class TextMuteService(AliasService):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
+                if not member:
+                    continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     TextMuteService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -135,6 +138,7 @@ class TextMuteService(AliasService):
                         TextMuteService.lines.append(
                             f"**Reason:** {channel_dictionary['reason']}"
                         )
+                    tmute_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
@@ -154,6 +158,7 @@ class TextMuteService(AliasService):
                     inline=False,
                 )
             TextMuteService.pages.append(embed)
+            TextMuteService.pages[0].description = f'{guild.name} **({tmute_n})**'
         return TextMuteService.pages
 
     @classmethod
