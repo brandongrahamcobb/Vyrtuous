@@ -181,6 +181,7 @@ class ModeratorService(Service):
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
+                mod_n += 1
                 if not isinstance(object_dict.get("object", None), discord.Member):
                     ModeratorService.lines.append(
                         f"**User:** {member.display_name} {member.mention}"
@@ -201,7 +202,6 @@ class ModeratorService(Service):
                         if not channel:
                             continue
                         ModeratorService.lines.append(f"**Channel:** {channel.mention}")
-                    mod_n += 1
                     field_count += 1
                     if field_count >= CHUNK_SIZE:
                         embed.add_field(
