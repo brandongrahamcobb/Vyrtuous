@@ -99,8 +99,8 @@ class TextMuteService(AliasService):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        tmute_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            tmute_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -158,7 +158,7 @@ class TextMuteService(AliasService):
                     inline=False,
                 )
             TextMuteService.pages.append(embed)
-            TextMuteService.pages[0].description = f'{guild.name} **({tmute_n})**'
+        TextMuteService.pages[0].description = f'**({tmute_n})**'
         return TextMuteService.pages
 
     @classmethod

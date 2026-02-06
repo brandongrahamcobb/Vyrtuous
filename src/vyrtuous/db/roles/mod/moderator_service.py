@@ -167,8 +167,8 @@ class ModeratorService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        mod_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            mod_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -221,7 +221,7 @@ class ModeratorService(Service):
                     inline=False,
                 )
             ModeratorService.pages.append(embed)
-            ModeratorService.pages[0].description = f'{guild.name} **({mod_n})**'
+        ModeratorService.pages[0].description = f'**({mod_n})**'
         return ModeratorService.pages
 
     @classmethod

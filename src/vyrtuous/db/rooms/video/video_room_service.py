@@ -189,8 +189,8 @@ class VideoRoomService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        vr_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            vr_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -238,7 +238,7 @@ class VideoRoomService(Service):
                     inline=False,
                 )
             VideoRoomService.pages.append(embed)
-            VideoRoomService.pages[0].description = f'{guild.name} **({vr_n})**'
+        VideoRoomService.pages[0].description = f'**({vr_n})**'
         return VideoRoomService.pages
 
     @classmethod

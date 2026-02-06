@@ -86,8 +86,8 @@ class CapService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        cap_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            cap_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -121,7 +121,7 @@ class CapService(Service):
                         inline=False,
                     )
             CapService.pages.append(embed)
-            CapService.pages[0].description = f'{guild.name} **({cap_n})**'
+        CapService.pages[0].description = f'**({cap_n})**'
         return CapService.pages
 
     @classmethod

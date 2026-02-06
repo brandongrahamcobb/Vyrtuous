@@ -96,8 +96,8 @@ class DeveloperService(Service):
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
         )
+        dev_n = 0
         for key, values in dictionary.items():
-            dev_n = 0
             field_count = 0
             thumbnail = False
             for member_snowflake, member_data in values.items():

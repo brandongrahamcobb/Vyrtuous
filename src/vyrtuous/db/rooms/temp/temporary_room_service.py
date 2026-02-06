@@ -105,8 +105,8 @@ class TemporaryRoomService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        temp_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            temp_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -156,7 +156,7 @@ class TemporaryRoomService(Service):
                     inline=False,
                 )
             TemporaryRoomService.pages.append(embed)
-            TemporaryRoomService.pages[0].description = f'{guild.name} **({temp_n})**'
+        TemporaryRoomService.pages[0].description = f'**({temp_n})**'
         return TemporaryRoomService.pages
 
     @classmethod

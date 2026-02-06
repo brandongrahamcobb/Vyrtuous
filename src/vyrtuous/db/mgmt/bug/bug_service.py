@@ -121,8 +121,8 @@ class BugService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        bug_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            bug_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -167,7 +167,7 @@ class BugService(Service):
                     inline=False,
                 )
             BugService.pages.append(embed)
-            BugService.pages[0].description = f'{guild.name} **({bug_n})**'
+        BugService.pages[0].description = f'**({bug_n})**'
         return BugService.pages
 
     @classmethod

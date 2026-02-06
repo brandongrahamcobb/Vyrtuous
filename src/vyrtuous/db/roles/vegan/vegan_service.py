@@ -87,8 +87,8 @@ class VeganService(AliasService):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        vegan_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            vegan_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -127,7 +127,7 @@ class VeganService(AliasService):
                     inline=False,
                 )
             VeganService.pages.append(embed)
-            VeganService.pages[0].description = f'{guild.name} **({vegan_n})**'
+        VeganService.pages[0].description = f'**({vegan_n})**'
         return VeganService.pages
 
     @classmethod

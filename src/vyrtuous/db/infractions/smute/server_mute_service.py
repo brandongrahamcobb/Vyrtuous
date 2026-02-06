@@ -83,8 +83,8 @@ class ServerMuteService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        smute_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            smute_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -127,7 +127,7 @@ class ServerMuteService(Service):
                     inline=False,
                 )
             ServerMuteService.pages.append(embed)
-            ServerMuteService.pages[0].description = f'{guild.name} **({smute_n})**'
+        ServerMuteService.pages[0].description = f'**({smute_n})**'
         return ServerMuteService.pages
 
     @classmethod

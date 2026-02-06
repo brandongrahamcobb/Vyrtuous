@@ -94,8 +94,8 @@ class FlagService(AliasService):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        flag_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            flag_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -142,7 +142,7 @@ class FlagService(AliasService):
                     name="Information", value="\n".join(FlagService.lines), inline=False
                 )
             FlagService.pages.append(embed)
-            FlagService.pages[0].description = f'{guild.name} **({flag_n})**'
+        FlagService.pages[0].description = f'**({flag_n})**'
         return FlagService.pages
 
     @classmethod

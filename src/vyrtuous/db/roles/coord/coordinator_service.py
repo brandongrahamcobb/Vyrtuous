@@ -165,8 +165,8 @@ class CoordinatorService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        coord_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            coord_n += 1
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -221,7 +221,7 @@ class CoordinatorService(Service):
                     inline=False,
                 )
             CoordinatorService.pages.append(embed)
-            CoordinatorService.pages[0].description = f'{guild.name} **({coord_n})**'
+        CoordinatorService.pages[0].description = f'**({coord_n})**'
         return CoordinatorService.pages
 
     @classmethod

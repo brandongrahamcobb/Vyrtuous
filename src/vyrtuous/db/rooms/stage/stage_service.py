@@ -152,7 +152,7 @@ class StageService(Service):
                         inline=False,
                     )
             StageService.pages.append(embed)
-            StageService.pages[0].description = f'{guild.name} **({stage_n})**'
+        StageService.pages[0].description = f'**({stage_n})**'
         return StageService.pages
 
     @classmethod

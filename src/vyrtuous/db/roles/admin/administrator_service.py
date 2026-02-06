@@ -150,8 +150,8 @@ class AdministratorService:
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        admin_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            admin_n = 0
             field_count = 0
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
@@ -202,7 +202,7 @@ class AdministratorService:
                     inline=False,
                 )
             AdministratorService.pages.append(embed)
-            AdministratorService.pages[0].description = f'{guild.name} **({admin_n})**'
+        AdministratorService.pages[0].description = f'**({admin_n})**'
         return AdministratorService.pages
 
 

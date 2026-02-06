@@ -137,8 +137,8 @@ class AliasService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        alias_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            alias_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -175,7 +175,7 @@ class AliasService(Service):
                     inline=False,
                 )
             AliasService.pages.append(embed)
-            AliasService.pages[0].description = f'{guild.name} **({alias_n})**'
+        AliasService.pages[0].description = f'**({alias_n})**'
         return AliasService.pages
 
     @classmethod

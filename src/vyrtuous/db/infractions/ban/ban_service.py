@@ -98,8 +98,8 @@ class BanService(AliasService):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        ban_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            ban_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -149,7 +149,7 @@ class BanService(AliasService):
                     name="Information", value="\n".join(BanService.lines), inline=False
                 )
             BanService.pages.append(embed)
-            BanService.pages[0].description = f'{guild.name} **({ban_n})**'
+        BanService.pages[0].description = f'**({ban_n})**'
         return BanService.pages
 
     @classmethod
