@@ -30,6 +30,7 @@ from vyrtuous.commands.fields.snowflake import (
     AppMessageSnowflake,
 )
 from vyrtuous.commands.home import at_home
+from vyrtuous.commands.messaging.data_view import DataView
 from vyrtuous.commands.messaging.duration_modal import DurationModal
 from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.new_infraction_view import NewInfractionView
@@ -176,6 +177,23 @@ class ModeratorAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(title="Coordinators", pages=pages, state=state)
+
+    @app_commands.command(name="data", description="Create a chart.")
+    @moderator_predicator()
+    async def create_data_app_command(
+        self, interaction: discord.Interaction
+    ):
+        do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        view = DataView(interaction=interaction)
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel, duration and infraction", view=view, ephemeral=True
+        )
 
     @app_commands.command(name="del", description="Delete message.")
     @app_commands.describe(message="Message ID")

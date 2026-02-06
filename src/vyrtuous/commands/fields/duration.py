@@ -32,6 +32,10 @@ class DurationError(commands.CheckFailure):
 
 class DurationObject:
 
+    DAYS_PER_WEEK = 7
+    DAYS_PER_YEAR = 365
+    YEAR_UNITS = {"y", "year", "years"}
+    WEEK_UNITS = {"w", "week", "weeks"}
     DAY_UNITS = {"d", "day", "days"}
     HOUR_UNITS = {"h", "hr", "hrs", "hour", "hours"}
     MINUTE_UNITS = {"m", "min", "mins", "minute", "minutes"}
@@ -39,6 +43,8 @@ class DurationObject:
     PREFIXES = {"+", "-", "="}
 
     UNIT_MAP = {
+        **dict.fromkeys(YEAR_UNITS, "y"),
+        **dict.fromkeys(WEEK_UNITS, "w"),
         **dict.fromkeys(DAY_UNITS, "d"),
         **dict.fromkeys(HOUR_UNITS, "h"),
         **dict.fromkeys(MINUTE_UNITS, "m"),
@@ -128,7 +134,13 @@ class DurationObject:
     @classmethod
     def from_timedelta(cls, td: timedelta, prefix: str = "+") -> "DurationObject":
         total_seconds = int(td.total_seconds())
-        if total_seconds % 86400 == 0:
+        year_seconds = cls.DAYS_PER_YEAR * 86400
+        week_seconds = cls.DAYS_PER_WEEK * 86400
+        if total_seconds % year_seconds == 0:
+            number, suffix = total_seconds // year_seconds, "y"
+        elif total_seconds % week_seconds == 0:
+            number, suffix = total_seconds // week_seconds, "w"
+        elif total_seconds % 86400 == 0:
             number, suffix = total_seconds // 86400, "d"
         elif total_seconds % 3600 == 0:
             number, suffix = total_seconds // 3600, "h"
@@ -136,8 +148,8 @@ class DurationObject:
             number, suffix = total_seconds // 60, "m"
         else:
             number, suffix = total_seconds, "s"
-        obj = cls(f"{prefix}{number}{suffix}")
-        return obj
+        return cls(f"{prefix}{number}{suffix}")
+
 
     @classmethod
     def from_expires_in(cls, expires_in: datetime) -> "DurationObject":
@@ -148,7 +160,13 @@ class DurationObject:
         total_seconds = int(remaining.total_seconds())
         if total_seconds < 0:
             total_seconds = 0
-        if total_seconds % 86400 == 0:
+        year_seconds = cls.DAYS_PER_YEAR * 86400
+        week_seconds = cls.DAYS_PER_WEEK * 86400
+        if total_seconds % year_seconds == 0:
+            number, unit = total_seconds // year_seconds, "y"
+        elif total_seconds % week_seconds == 0:
+            number, unit = total_seconds // week_seconds, "w"
+        elif total_seconds % 86400 == 0:
             number, unit = total_seconds // 86400, "d"
         elif total_seconds % 3600 == 0:
             number, unit = total_seconds // 3600, "h"
@@ -184,6 +202,10 @@ class DurationObject:
 
     def to_timedelta(self) -> timedelta:
         match self.unit:
+            case "y":
+                return timedelta(days=self.number * self.DAYS_PER_YEAR * self.sign)
+            case "w":
+                return timedelta(days=self.number * self.DAYS_PER_WEEK * self.sign)
             case "d":
                 return timedelta(days=self.number * self.sign)
             case "h":
