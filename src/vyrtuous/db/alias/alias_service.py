@@ -175,7 +175,8 @@ class AliasService(Service):
                     inline=False,
                 )
             AliasService.pages.append(embed)
-        AliasService.pages[0].description = f'**({alias_n})**'
+        if AliasService.pages:
+            AliasService.pages[0].description = f'**({alias_n})**'
         return AliasService.pages
 
     @classmethod

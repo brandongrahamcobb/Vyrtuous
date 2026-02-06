@@ -127,7 +127,8 @@ class VeganService(AliasService):
                     inline=False,
                 )
             VeganService.pages.append(embed)
-        VeganService.pages[0].description = f'**({vegan_n})**'
+        if VeganService.pages:
+            VeganService.pages[0].description = f'**({vegan_n})**'
         return VeganService.pages
 
     @classmethod

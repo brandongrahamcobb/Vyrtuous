@@ -167,7 +167,8 @@ class BugService(Service):
                     inline=False,
                 )
             BugService.pages.append(embed)
-        BugService.pages[0].description = f'**({bug_n})**'
+        if BugService.pages:
+            BugService.pages[0].description = f'**({bug_n})**'
         return BugService.pages
 
     @classmethod

@@ -238,7 +238,8 @@ class VideoRoomService(Service):
                     inline=False,
                 )
             VideoRoomService.pages.append(embed)
-        VideoRoomService.pages[0].description = f'**({vr_n})**'
+        if VideoRoomService.pages:
+            VideoRoomService.pages[0].description = f'**({vr_n})**'
         return VideoRoomService.pages
 
     @classmethod

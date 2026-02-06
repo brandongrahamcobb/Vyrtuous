@@ -202,7 +202,8 @@ class AdministratorService:
                     inline=False,
                 )
             AdministratorService.pages.append(embed)
-        AdministratorService.pages[0].description = f'**({admin_n})**'
+        if AdministratorService.pages:
+            AdministratorService.pages[0].description = f'**({admin_n})**'
         return AdministratorService.pages
 
 
@@ -334,8 +335,8 @@ class AdministratorRoleService:
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        admin_role_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            admin_role_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -353,7 +354,8 @@ class AdministratorRoleService:
                 field_count += 1
                 admin_role_n += 1
             AdministratorRoleService.pages.append(embed)
-            AdministratorRoleService.pages[0].description = f'{guild.name} **({admin_role_n})**'
+        if AdministratorRoleService.pages:
+            AdministratorRoleService.pages[0].description = f'**({admin_role_n})**'
         return AdministratorRoleService.pages
 
     @classmethod

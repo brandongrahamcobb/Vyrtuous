@@ -158,7 +158,8 @@ class TextMuteService(AliasService):
                     inline=False,
                 )
             TextMuteService.pages.append(embed)
-        TextMuteService.pages[0].description = f'**({tmute_n})**'
+        if TextMuteService.pages:
+            TextMuteService.pages[0].description = f'**({tmute_n})**'
         return TextMuteService.pages
 
     @classmethod

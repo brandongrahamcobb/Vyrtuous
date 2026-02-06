@@ -149,7 +149,8 @@ class BanService(AliasService):
                     name="Information", value="\n".join(BanService.lines), inline=False
                 )
             BanService.pages.append(embed)
-        BanService.pages[0].description = f'**({ban_n})**'
+        if BanService.pages:
+            BanService.pages[0].description = f'**({ban_n})**'
         return BanService.pages
 
     @classmethod

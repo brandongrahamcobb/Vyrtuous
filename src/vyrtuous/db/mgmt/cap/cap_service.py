@@ -121,7 +121,8 @@ class CapService(Service):
                         inline=False,
                     )
             CapService.pages.append(embed)
-        CapService.pages[0].description = f'**({cap_n})**'
+        if CapService.pages:
+            CapService.pages[0].description = f'**({cap_n})**'
         return CapService.pages
 
     @classmethod

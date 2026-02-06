@@ -221,7 +221,8 @@ class ModeratorService(Service):
                     inline=False,
                 )
             ModeratorService.pages.append(embed)
-        ModeratorService.pages[0].description = f'**({mod_n})**'
+        if ModeratorService.pages:
+            ModeratorService.pages[0].description = f'**({mod_n})**'
         return ModeratorService.pages
 
     @classmethod

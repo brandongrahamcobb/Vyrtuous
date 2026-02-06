@@ -327,7 +327,8 @@ class StreamService(Service):
                     inline=False,
                 )
             StreamService.pages.append(embed)
-        StreamService.pages[0].description = f'**({stream_n})**'
+        if StreamService.pages:
+           StreamService.pages[0].description = f'**({stream_n})**'
         return StreamService.pages
 
     @classmethod

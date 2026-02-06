@@ -221,7 +221,8 @@ class CoordinatorService(Service):
                     inline=False,
                 )
             CoordinatorService.pages.append(embed)
-        CoordinatorService.pages[0].description = f'**({coord_n})**'
+        if CoordinatorService.pages:
+            CoordinatorService.pages[0].description = f'**({coord_n})**'
         return CoordinatorService.pages
 
     @classmethod

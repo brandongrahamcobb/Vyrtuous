@@ -247,7 +247,8 @@ class RoleService(AliasService):
                     name="Information", value="\n".join(RoleService.lines), inline=False
                 )
             RoleService.pages.append(embed)
-        RoleService.pages[0].description = f'**({role_n})**'
+        if RoleService.pages:
+            RoleService.pages[0].description = f'**({role_n})**'
         return RoleService.pages
 
     @classmethod

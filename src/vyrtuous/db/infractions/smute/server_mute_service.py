@@ -127,7 +127,8 @@ class ServerMuteService(Service):
                     inline=False,
                 )
             ServerMuteService.pages.append(embed)
-        ServerMuteService.pages[0].description = f'**({smute_n})**'
+        if ServerMuteService.pages:
+            ServerMuteService.pages[0].description = f'**({smute_n})**'
         return ServerMuteService.pages
 
     @classmethod

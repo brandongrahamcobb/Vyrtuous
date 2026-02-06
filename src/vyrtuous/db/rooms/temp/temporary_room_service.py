@@ -156,7 +156,8 @@ class TemporaryRoomService(Service):
                     inline=False,
                 )
             TemporaryRoomService.pages.append(embed)
-        TemporaryRoomService.pages[0].description = f'**({temp_n})**'
+        if TemporaryRoomService.pages:
+            TemporaryRoomService.pages[0].description = f'**({temp_n})**'
         return TemporaryRoomService.pages
 
     @classmethod

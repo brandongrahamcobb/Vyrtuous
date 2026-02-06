@@ -118,8 +118,8 @@ class StageService(Service):
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
+        stage_n = 0
         for guild_snowflake, guild_data in dictionary.items():
-            stage_n = 0
             field_count = 0
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -152,7 +152,8 @@ class StageService(Service):
                         inline=False,
                     )
             StageService.pages.append(embed)
-        StageService.pages[0].description = f'**({stage_n})**'
+        if StageService.pages:
+            StageService.pages[0].description = f'**({stage_n})**'
         return StageService.pages
 
     @classmethod

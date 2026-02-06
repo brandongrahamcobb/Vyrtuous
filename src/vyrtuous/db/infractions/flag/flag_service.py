@@ -142,7 +142,8 @@ class FlagService(AliasService):
                     name="Information", value="\n".join(FlagService.lines), inline=False
                 )
             FlagService.pages.append(embed)
-        FlagService.pages[0].description = f'**({flag_n})**'
+        if FlagService.pages:
+            FlagService.pages[0].description = f'**({flag_n})**'
         return FlagService.pages
 
     @classmethod

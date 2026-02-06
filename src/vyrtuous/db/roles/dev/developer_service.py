@@ -138,6 +138,7 @@ class DeveloperService(Service):
                     inline=False,
                 )
             DeveloperService.pages.append(embed)
+        if DeveloperService.pages:
             DeveloperService.pages[0].description = f'All guilds **({dev_n})**'
         return DeveloperService.pages
 
