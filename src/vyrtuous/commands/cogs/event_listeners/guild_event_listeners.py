@@ -60,12 +60,12 @@ class GuildEventListeners(commands.Cog):
         if added_roles:
             for added_role in added_roles:
                 updated_kwargs.update({"role_snowflake": int(added_role)})
-                await AdministratorRoleService.added_role(kwargs=updated_kwargs)
+                await AdministratorRoleService.added_role(updated_kwargs=updated_kwargs)
                 logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             for removed_role in removed_roles:
                 updated_kwargs.update({"role_snowflake": int(removed_role)})
-            await AdministratorRoleService.removed_role(kwargs=updated_kwargs)
+            await AdministratorRoleService.removed_role(updated_kwargs=updated_kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()

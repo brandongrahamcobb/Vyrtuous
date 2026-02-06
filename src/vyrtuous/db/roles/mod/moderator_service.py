@@ -74,12 +74,13 @@ async def is_moderator_at_all_wrapper(
 ) -> bool:
     member = resolve_author(source=source)
     member_snowflake = member.id
-    await is_moderator_at_all(member_snowflake=member_snowflake)
+    return await is_moderator_at_all(member_snowflake=member_snowflake)
 
 
 async def is_moderator_at_all(
     member_snowflake: int,
 ) -> bool:
+    
     moderator = await Moderator.select(member_snowflake=int(member_snowflake))
     if not moderator:
         raise NotModerator

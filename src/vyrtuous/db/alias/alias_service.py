@@ -331,8 +331,8 @@ class AliasService(Service):
                     information["reason"] = "No reason provided."
                 else:
                     information["reason"] = value
-        if getattr(alias, "role_snowflake"):
+        if getattr(alias_entry, "role_snowflake"):
             information["updated_kwargs"].update(
-                {"role_snowflake": int(alias.role_snowflake)}
+                {"role_snowflake": int(alias_entry.role_snowflake)}
             )
         return information

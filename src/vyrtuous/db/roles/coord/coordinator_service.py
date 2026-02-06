@@ -72,7 +72,7 @@ async def is_coordinator_at_all_wrapper(
 ):
     member = resolve_author(source=source)
     member_snowflake = member.id
-    await is_coordinator_at_all(member_snowflake=member_snowflake)
+    return await is_coordinator_at_all(member_snowflake=member_snowflake)
 
 
 async def is_coordinator_at_all(

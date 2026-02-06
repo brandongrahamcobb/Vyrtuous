@@ -263,9 +263,7 @@ class HelpCommand(commands.Cog):
         all = False
         if command_name and command_name == "all":
             all = True
-        user_highest = await PermissionService.resolve_highest_role(
-            channel_snowflake=interaction.channel.id,
-            guild_snowflake=interaction.guild.id,
+        user_highest = await PermissionService.resolve_highest_role_at_all(
             member_snowflake=interaction.user.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(
@@ -426,9 +424,7 @@ class HelpCommand(commands.Cog):
         all = False
         if command_name and command_name == "all":
             all = True
-        user_highest = await PermissionService.resolve_highest_role(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
+        user_highest = await PermissionService.resolve_highest_role_at_all(
             member_snowflake=ctx.author.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(
