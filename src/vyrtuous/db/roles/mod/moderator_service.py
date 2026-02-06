@@ -198,6 +198,8 @@ class ModeratorService(Service):
                         object_dict.get("object", None), discord.abc.GuildChannel
                     ):
                         channel = guild.get_channel(channel_snowflake)
+                        if not channel:
+                            continue
                         ModeratorService.lines.append(f"**Channel:** {channel.mention}")
                     mod_n += 1
                     field_count += 1
