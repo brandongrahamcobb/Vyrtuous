@@ -22,7 +22,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotDeveloper
@@ -65,8 +66,7 @@ async def is_developer(member_snowflake: int) -> bool:
     return True
 
 
-class DeveloperService(Service):
-
+class DeveloperService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -87,7 +87,7 @@ class DeveloperService(Service):
     @classmethod
     async def build_pages(cls, object_dict, **kwargs):
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), (discord.Guild, discord.Member)) else ''}"
+        title = f"{get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), (discord.Guild, discord.Member)) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await DeveloperService.build_clean_dictionary(
@@ -155,4 +155,4 @@ class DeveloperService(Service):
             developer = Developer(**where_kwargs)
             await developer.create()
             action = "granted"
-        return f"Developer access for {member_dict.get("mention", None)} has been {action} globally."
+        return f"Developer access for {member_dict.get('mention', None)} has been {action} globally."

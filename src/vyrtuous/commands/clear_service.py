@@ -22,15 +22,14 @@ from pathlib import Path
 import discord
 
 from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.base.service import Service
+
 from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.admin.administrator import AdministratorRole
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
-class ClearService(Service):
-
+class ClearService:
     @classmethod
     async def clear(
         cls,
@@ -48,8 +47,8 @@ class ClearService(Service):
         updated_kwargs.update(object_dict.get("columns", None))
         if isinstance(object_dict.get("object", None), discord.Member):
             await PermissionService.has_equal_or_lower_role(
-                updated_kwargs=default_kwargs,
-                member_snowflake=object_dict.get("id", None),
+                **default_kwargs,
+                target_member_snowflake=object_dict.get("id", None),
             )
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
@@ -61,9 +60,7 @@ class ClearService(Service):
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
-            await PermissionService.check(
-                updated_kwargs=updated_kwargs, lowest_role="Guild Owner"
-            )
+            await PermissionService.check(**updated_kwargs, lowest_role="Guild Owner")
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
                     if "channel_snowflake" in getattr(obj, "__annotations__", {}):
@@ -74,9 +71,7 @@ class ClearService(Service):
                             await obj.delete(**where_kwargs)
                             msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
-            await PermissionService.check(
-                updated_kwargs=updated_kwargs, lowest_role="Developer"
-            )
+            await PermissionService.check(**updated_kwargs, lowest_role="Developer")
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
                     if any(

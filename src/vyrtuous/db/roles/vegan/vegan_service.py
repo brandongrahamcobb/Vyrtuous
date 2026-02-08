@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.db.roles.vegan.vegan import Vegan
@@ -35,8 +36,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class VeganService(AliasService):
-
+class VeganService(RecordService):
     lines, pages = [], []
     model = Vegan
 
@@ -81,7 +81,7 @@ class VeganService(AliasService):
         cls.lines = []
         cls.pages = []
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Vegans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Vegans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await VeganService.build_clean_dictionary(
@@ -133,49 +133,49 @@ class VeganService(AliasService):
         return VeganService.pages
 
     @classmethod
-    async def enforce(cls, information, message, state):
+    async def enforce(cls, ctx, source, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         vegan = Vegan(
-            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
-            member_snowflake=information["updated_kwargs"]["member_snowflake"],
+            guild_snowflake=ctx.source_guild_snowflake,
+            member_snowflake=ctx.target_member_snowflake,
         )
         await vegan.create()
         await StreamService.send_entry(
-            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            channel_snowflake=ctx.target_channel_snowflake,
             identifier="vegan",
             member=member,
-            message=message,
+            source=source,
         )
-        embed = await VeganService.act_embed(information=information)
+        embed = await VeganService.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     @classmethod
-    async def undo(cls, information, message, state):
+    async def undo(cls, ctx, source, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         await Vegan.delete(
-            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
-            guild_snowflake=information["updated_kwargs"]["guild_snowflake"],
-            member_snowflake=information["updated_kwargs"]["member_snowflake"],
+            channel_snowflake=ctx.target_channel_snowflake,
+            guild_snowflake=ctx.source_guild_snowflake,
+            member_snowflake=ctx.target_member_snowflake,
         )
         await StreamService.send_entry(
-            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            channel_snowflake=ctx.target_channel_snowflake,
             identifier="carnist",
             is_modification=True,
             member=member,
-            message=message,
+            source=source,
         )
-        embed = await VeganService.undo_embed(information=information)
+        embed = await VeganService.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
     @classmethod
-    async def act_embed(cls, information):
+    async def act_embed(cls, ctx):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
@@ -186,10 +186,10 @@ class VeganService(AliasService):
         return embed
 
     @classmethod
-    async def undo_embed(cls, information):
+    async def undo_embed(cls, ctx):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
             f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",

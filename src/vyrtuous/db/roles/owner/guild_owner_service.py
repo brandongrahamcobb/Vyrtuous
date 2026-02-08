@@ -22,7 +22,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotGuildOwner
@@ -78,6 +79,5 @@ async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     raise NotGuildOwner
 
 
-class GuildOwnerService(Service):
-
+class GuildOwnerService(RecordService):
     pass

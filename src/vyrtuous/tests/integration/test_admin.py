@@ -22,7 +22,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.conftest import context
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,

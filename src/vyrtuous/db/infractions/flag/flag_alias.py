@@ -17,13 +17,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
+from typing import Dict
+
 from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.infractions.flag.flag_service import FlagService
+from vyrtuous.db.infractions.flag.flag import Flag
 
 
+@dataclass(frozen=True)
 class FlagAlias(Alias):
-
     category = "flag"
+    record = Flag
     service = FlagService
-
-    ARGS_MAP = {"alias_name": 1, "member": 2, "reason": 3}
+    ARGS_MAP: Dict[str, int] = field(
+        default_factory=lambda: {"alias_name": 1, "member": 2, "reason": 3}
+    )

@@ -23,7 +23,7 @@ from typing import Dict, Tuple
 
 import discord
 
-from vyrtuous.base.service import Service
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.discord_object_service import DiscordObject
 from vyrtuous.commands.fields.duration import DurationError, DurationObject
@@ -43,43 +43,9 @@ from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class AliasService(Service):
+class AliasService:
     lines, pages = [], []
-    model = None
-    ALIAS_MAP = {}
-
-    @classmethod
-    async def execute(cls, information: dict, message, state):
-        kwargs = information["updated_kwargs"]
-        obj = await cls.model.select(**kwargs, singular=True)
-        if obj:
-            if hasattr(kwargs, "role_snowflake"):
-                del kwargs["role_snowflake"]
-            executor_role = await PermissionService.resolve_highest_role(**kwargs)
-            cap = await Cap.select(
-                **kwargs, category=cls.model.identifier, singular=True
-            )
-            duration_seconds = DurationObject.from_expires_in(
-                obj.expires_in
-            ).to_seconds()
-            passed = True
-            if cap:
-                if (
-                    duration_seconds > cap.duration_seconds
-                    and executor_role == "Moderator"
-                ):
-                    passed = False
-            else:
-                if (
-                    duration_seconds > DurationObject("8h").to_seconds()
-                    and executor_role == "Moderator"
-                ):
-                    passed = False
-            if not passed:
-                raise DurationError(cap_duration=cap.duration_seconds)
-            await cls.undo(information=information, message=message, state=state)
-        else:
-            await cls.enforce(information=information, message=message, state=state)
+    model = Alias
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
@@ -233,113 +199,16 @@ class AliasService(Service):
         return msg
 
     @classmethod
-    def fill_map(cls, alias, args) -> Dict[str, Tuple[int, str]]:
-        map = alias.ARGS_MAP
-        sorted_args = sorted(map.items(), key=lambda x: x[1])
-        kwargs = {}
-        for i, (key, pos) in enumerate(sorted_args):
-            if i == len(sorted_args) - 1:
-                value = (
-                    " ".join(str(a) for a in args[pos - 1 :])
-                    if len(args) >= pos
-                    else ""
-                )
-            else:
-                value = str(args[pos - 1]) if len(args) >= pos else ""
-            kwargs[key] = (pos, value)
-        return kwargs
-
-    @classmethod
-    async def build(cls, message):
-        information = {}
-        bot = DiscordBot.get_instance()
-        do = DiscordObject(message=message)
-        args = (
-            message.content[len(bot.config["discord_command_prefix"]) :].strip().split()
-        )
-        alias_name = args[0]
-        alias_entry = await Alias.select(
-            alias_name=alias_name,
-            guild_snowflake=message.guild.id,
-            singular=True,
-        )
-        if not alias_entry:
-            return
-        alias_category = str(alias_entry.category)
-        channel_snowflake = int(alias_entry.channel_snowflake)
-        guild_snowflake = int(alias_entry.guild_snowflake)
-        member_snowflake = int(message.author.id)
-        default_kwargs = {
-            "channel_snowflake": channel_snowflake,
-            "guild_snowflake": guild_snowflake,
-            "member_snowflake": member_snowflake,
-        }
-        information["updated_kwargs"] = default_kwargs.copy()
+    def alias_category_to_alias(cls, alias_category):
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous/db"))
         typed_aliases = dir_to_classes(dir_paths=dir_paths, parent=Alias)
-        for alias in typed_aliases:
-            if alias.category == alias_category:
-                information["alias"] = alias
-                break
-        else:
-            return
-        kwargs = information["alias"].service.fill_map(
-            alias=information["alias"], args=args
-        )
-        information["executor_role"] = await PermissionService.resolve_highest_role(
-            **information["updated_kwargs"]
-        )
-        for field, tuple in kwargs.items():
-            value = tuple[1]
-            if field == "duration":
-                if not value:
-                    duration = DurationObject("8h")
-                else:
-                    duration = DurationObject(value)
-                information["duration"] = duration
-                cap = await Cap.select(
-                    category=information["alias"].category,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    singular=True,
-                )
-                if not hasattr(cap, "duration_seconds"):
-                    information["cap_duration"] = DurationObject("8h").to_seconds()
-                else:
-                    information["cap_duration"] = cap.duration_seconds
-                if (
-                    int(duration.to_timedelta().total_seconds())
-                    > information["cap_duration"]
-                    or duration.number == 0
-                ):
-                    if information["executor_role"] == "Moderator":
-                        raise DurationError(
-                            cap_duration=DurationObject.from_seconds(
-                                information["cap_duration"]
-                            ).duration
-                        )
-                information["expires_in"] = (
-                    None
-                    if duration.number == 0
-                    else datetime.now(timezone.utc) + duration.to_timedelta()
-                )
-            elif field == "member":
-                member_dict = await do.determine_from_target(target=value)
-                await PermissionService.has_equal_or_lower_role(
-                    updated_kwargs=default_kwargs,
-                    member_snowflake=member_dict.get("id", None),
-                )
-                information["updated_kwargs"].update(
-                    {"member_snowflake": member_dict.get("id", None)}
-                )
-            elif field == "reason":
-                if not value:
-                    information["reason"] = "No reason provided."
-                else:
-                    information["reason"] = value
-        if getattr(alias_entry, "role_snowflake"):
-            information["updated_kwargs"].update(
-                {"role_snowflake": int(alias_entry.role_snowflake)}
-            )
-        return information
+        for a in typed_aliases:
+            if a.category == alias_category:
+                return a()
+        raise NotAlias()
+
+    # await PermissionService.has_equal_or_lower_role(
+    #     updated_kwargs=default_kwargs,
+    #     member_snowflake=member_dict.get("id", None),
+    # )

@@ -19,7 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.infractions.ban.ban import Ban
@@ -44,8 +45,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class TemporaryRoomService(Service):
-
+class TemporaryRoomService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -197,7 +197,7 @@ class TemporaryRoomService(Service):
         await TextMute.update(**kwargs)
         await VoiceMute.update(**kwargs)
         await Vegan.update(**kwargs)
-        return f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
+        return f"Temporary room `{old_name}` migrated to {channel_dict.get('mention', None)}."
 
     @classmethod
     async def toggle_temporary_room(cls, channel_dict):
@@ -214,4 +214,4 @@ class TemporaryRoomService(Service):
             )
             await temporary_room.create()
             action = "created"
-        return f"Temporary room {action} in {channel_dict.get("mention", None)}."
+        return f"Temporary room {action} in {channel_dict.get('mention', None)}."

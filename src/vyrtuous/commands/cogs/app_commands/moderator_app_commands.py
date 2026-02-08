@@ -34,9 +34,9 @@ from vyrtuous.commands.home import at_home
 from vyrtuous.commands.messaging.data_view import DataView
 from vyrtuous.commands.messaging.duration_modal import DurationModal
 from vyrtuous.commands.messaging.message_service import MessageService
-from vyrtuous.commands.messaging.new_infraction_view import NewInfractionView
-from vyrtuous.commands.messaging.preexisting_infraction_view import (
-    PreexistingInfractionView,
+from vyrtuous.commands.messaging.infraction_view import InfractionView
+from vyrtuous.commands.messaging.modify_infraction_view import (
+    ModifyInfractionView,
 )
 from vyrtuous.commands.messaging.reason_modal import ReasonModal
 from vyrtuous.commands.messaging.state_service import StateService
@@ -48,8 +48,10 @@ from vyrtuous.db.alias.alias_service import AliasService
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.flag.flag_service import FlagService
+from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
+from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.roles.admin.administrator_service import AdministratorService
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
 from vyrtuous.db.roles.mod.moderator import Moderator
@@ -64,7 +66,6 @@ from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
 class ModeratorAppCommands(commands.Cog):
-
     ROLE = Moderator
 
     def __init__(self, bot: DiscordBot):
@@ -75,7 +76,7 @@ class ModeratorAppCommands(commands.Cog):
 
     @app_commands.command(name="admins", description="Lists admins.")
     @app_commands.describe(
-        target="Specify one of: `all`, channel ID/mention, " "or server ID."
+        target="Specify one of: `all`, channel ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_administrators_app_command(
@@ -90,40 +91,6 @@ class ModeratorAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(title="Administrators", pages=pages, state=state)
-
-    @app_commands.command(name="ban", description="Create a ban.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    @moderator_predicator()
-    async def create_ban_app_command(
-        self, interaction: discord.Interaction, member: AppMemberSnowflake
-    ):
-        do = DiscordObject(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
-        member_dict = await do.determine_from_target(target=member)
-        try:
-            updated_kwargs = default_kwargs.copy()
-            updated_kwargs.update(member_dict.get("columns", None))
-            await PermissionService.has_equal_or_lower_role(
-                member_snowflake=int(member_dict.get("id", None)),
-                updated_kwargs=updated_kwargs,
-            )
-        except HasEqualOrLowerRole as e:
-            state = StateService(interaction=interaction)
-            return await state.end(warning=str(e).capitalize())
-        view = NewInfractionView(
-            infraction=Ban,
-            interaction=interaction,
-            member_snowflake=member_dict.get("id", None),
-            modal=ReasonModal,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
-        )
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -182,12 +149,13 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="data", description="Create a chart.")
     @moderator_predicator()
     async def create_data_app_command(self, interaction: discord.Interaction):
+        state = StateService(interaction=interaction)
         default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
         }
-        view = DataView(interaction=interaction)
+        view = DataView(interaction=interaction, state=state)
         await view.setup()
         await interaction.response.send_message(
             content="Select a channel, duration and infraction",
@@ -218,6 +186,7 @@ class ModeratorAppCommands(commands.Cog):
     async def change_moderation_duration_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
@@ -229,16 +198,17 @@ class ModeratorAppCommands(commands.Cog):
             updated_kwargs = default_kwargs.copy()
             updated_kwargs.update(member_dict.get("columns", None))
             await PermissionService.has_equal_or_lower_role(
-                member_snowflake=int(member_dict.get("id", None)),
-                updated_kwargs=updated_kwargs,
+                target_member_snowflake=int(member_dict.get("id", None)),
+                **updated_kwargs,
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
             return await state.end(warning=str(e).capitalize())
-        view = PreexistingInfractionView(
+        view = ModifyInfractionView(
             interaction=interaction,
             member_snowflake=member_dict.get("id", None),
             modal=DurationModal,
+            state=state,
         )
         await view.setup()
         await interaction.response.send_message(
@@ -305,7 +275,7 @@ class ModeratorAppCommands(commands.Cog):
             old_name=old_name,
         )
         return await state.end(
-            success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
+            success=f"Temporary room `{old_name}` migrated to {channel_dict.get('mention', None)}."
         )
 
     @app_commands.command(name="mods", description="Lists mods.")
@@ -373,28 +343,29 @@ class ModeratorAppCommands(commands.Cog):
     async def change_moderation_reason_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
+        state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
         default_kwargs = {
             "channel_snowflake": int(interaction.channel.id),
             "guild_snowflake": int(interaction.guild.id),
             "member_snowflake": int(interaction.user.id),
         }
-
         member_dict = await do.determine_from_target(target=member)
         try:
             updated_kwargs = default_kwargs.copy()
             updated_kwargs.update(member_dict.get("columns", None))
             await PermissionService.has_equal_or_lower_role(
-                member_snowflake=int(member_dict.get("id", None)),
-                updated_kwargs=updated_kwargs,
+                target_member_snowflake=int(member_dict.get("id", None)),
+                **updated_kwargs,
             )
         except HasEqualOrLowerRole as e:
             state = StateService(interaction=interaction)
             return await state.end(warning=str(e).capitalize())
-        view = PreexistingInfractionView(
+        view = ModifyInfractionView(
             interaction=interaction,
             member_snowflake=member_dict.get("id", None),
             modal=ReasonModal,
+            state=state,
         )
         await view.setup()
         await interaction.response.send_message(
@@ -458,6 +429,105 @@ class ModeratorAppCommands(commands.Cog):
             object_dict=object_dict, is_at_home=is_at_home
         )
         await StateService.send_pages(title="Text Mutes", pages=pages, state=state)
+
+    @app_commands.command(name="vban", description="Create a ban.")
+    @app_commands.describe(member="The ID or mention of the member.")
+    @moderator_predicator()
+    async def create_ban_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        state = StateService(interaction=interaction)
+        do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        member_dict = await do.determine_from_target(target=member)
+        try:
+            await PermissionService.has_equal_or_lower_role(
+                target_member_snowflake=int(member_dict.get("id", None)),
+                **default_kwargs,
+            )
+        except HasEqualOrLowerRole as e:
+            return await state.end(warning=str(e).capitalize())
+        view = InfractionView(
+            infraction=Ban,
+            interaction=interaction,
+            member_snowflake=member_dict.get("id", None),
+            modal=ReasonModal,
+            state=state,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel and a duration", view=view, ephemeral=True
+        )
+
+    @app_commands.command(name="vmute", description="Create a mute.")
+    @app_commands.describe(member="The ID or mention of the member.")
+    @moderator_predicator()
+    async def create_voice_mute_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        state = StateService(interaction=interaction)
+        do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        member_dict = await do.determine_from_target(target=member)
+        try:
+            await PermissionService.has_equal_or_lower_role(
+                target_member_snowflake=int(member_dict.get("id", None)),
+                **default_kwargs,
+            )
+        except HasEqualOrLowerRole as e:
+            return await state.end(warning=str(e).capitalize())
+        view = InfractionView(
+            infraction=VoiceMute,
+            interaction=interaction,
+            member_snowflake=member_dict.get("id", None),
+            modal=ReasonModal,
+            state=state,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel and a duration", view=view, ephemeral=True
+        )
+
+    @app_commands.command(name="vtmute", description="Create a text-mute.")
+    @app_commands.describe(member="The ID or mention of the member.")
+    @moderator_predicator()
+    async def create_text_mute_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        state = StateService(interaction=interaction)
+        do = DiscordObject(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        member_dict = await do.determine_from_target(target=member)
+        try:
+            await PermissionService.has_equal_or_lower_role(
+                target_member_snowflake=int(member_dict.get("id", None)),
+                **default_kwargs,
+            )
+        except HasEqualOrLowerRole as e:
+            return await state.end(warning=str(e).capitalize())
+        view = InfractionView(
+            infraction=TextMute,
+            interaction=interaction,
+            member_snowflake=member_dict.get("id", None),
+            modal=ReasonModal,
+            state=state,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel and a duration", view=view, ephemeral=True
+        )
 
 
 async def setup(bot: DiscordBot):

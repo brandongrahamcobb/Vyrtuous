@@ -25,13 +25,12 @@ from vyrtuous.base.database_factory import DatabaseFactory
 
 @dataclass(frozen=True)
 class Alias(DatabaseFactory):
-
     __tablename__ = "command_aliases"
     identifier = "alias"
-    alias_name: str
-    category: str
-    channel_snowflake: int
-    guild_snowflake: int
+    alias_name: str | None = None
+    category: str | None = None
+    channel_snowflake: int | None = None
+    guild_snowflake: int | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     role_snowflake: int | None = None
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

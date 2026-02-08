@@ -219,7 +219,9 @@ class PermissionService:
     @classmethod
     async def check(
         cls,
-        updated_kwargs,
+        channel_snowflake,
+        guild_snowflake,
+        member_snowflake,
         lowest_role: str,
     ) -> str:
         verifications = (
@@ -230,9 +232,6 @@ class PermissionService:
             ("Coordinator", is_coordinator),
             ("Moderator", is_moderator),
         )
-        channel_snowflake = updated_kwargs.get("channel_snowflake", None)
-        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
-        member_snowflake = updated_kwargs.get("member_snowflake", None)
         passed_lowest = False
         for role_name, verify in verifications:
             try:
@@ -262,18 +261,36 @@ class PermissionService:
     @classmethod
     async def has_equal_or_lower_role(
         cls,
-        updated_kwargs,
+        channel_snowflake: int,
+        guild_snowflake: int,
         member_snowflake: int,
+        target_member_snowflake: int,
     ) -> bool:
-        sender_name = await PermissionService.resolve_highest_role(**updated_kwargs)
+        sender_name = await PermissionService.resolve_highest_role(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         sender_rank = PERMISSION_TYPES.index(sender_name)
-        new_kwargs = updated_kwargs.copy()
-        new_kwargs.update({"member_snowflake": member_snowflake})
-        target_name = await PermissionService.resolve_highest_role(**new_kwargs)
+        target_name = await PermissionService.resolve_highest_role(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=target_member_snowflake,
+        )
         target_rank = PERMISSION_TYPES.index(target_name)
-        if sender_rank <= target_rank:
-            raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
+        PermissionService.compare_ranks(
+            sender_rank=sender_rank, target_rank=target_rank
+        )
         return sender_name
+
+    @classmethod
+    def compare_ranks(cls, sender_rank, target_rank):
+        try:
+            if sender_rank <= target_rank:
+                raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
+        except HasEqualOrLowerRole as e:
+            logger.warning(e)
+        return True
 
     @classmethod
     async def resolve_highest_role(

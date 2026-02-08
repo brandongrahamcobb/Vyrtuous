@@ -214,7 +214,6 @@ class DataView(discord.ui.View):
                 datetime.now(timezone.utc)
                 - DurationObject(self.information["duration"]).to_timedelta()
             )
-
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         async with self.bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -250,9 +249,8 @@ class DataView(discord.ui.View):
         plt.savefig(buffer, format="png")
         plt.close()
         buffer.seek(0)
-
         file = discord.File(fp=buffer, filename="infractions_over_time.png")
-        await interaction.response.send_message(file=file)
+        await interaction.response.send_message(ephemeral=True, file=file)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

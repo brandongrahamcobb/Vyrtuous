@@ -22,7 +22,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotAdministrator
@@ -98,8 +99,7 @@ def administrator_predicator():
     return commands.check(predicate)
 
 
-class AdministratorService(Service):
-
+class AdministratorService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -145,7 +145,7 @@ class AdministratorService(Service):
         cls.lines = []
         cls.pages = []
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Administrators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Administrators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await AdministratorService.build_clean_dictionary(
@@ -209,8 +209,7 @@ class AdministratorService(Service):
         return AdministratorService.pages
 
 
-class AdministratorRoleService:
-
+class AdministratorRoleService(RecordService):
     lines, pages = [], []
 
     @classmethod

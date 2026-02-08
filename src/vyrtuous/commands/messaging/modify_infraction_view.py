@@ -27,9 +27,10 @@ from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 
 
-class PreexistingInfractionView(discord.ui.View):
-
-    def __init__(self, interaction: discord.Interaction, member_snowflake: int, modal):
+class ModifyInfractionView(discord.ui.View):
+    def __init__(
+        self, interaction: discord.Interaction, member_snowflake: int, modal, state
+    ):
         super().__init__(timeout=120)
         self.information = {}
         self.author_snowflake = interaction.user.id
@@ -37,11 +38,13 @@ class PreexistingInfractionView(discord.ui.View):
         self.interaction = interaction
         self.member_snowflake = member_snowflake
         self.modal = modal
+        self.state = state
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.author_snowflake
 
     async def setup(self):
+        self.information.setdefault("updated_kwargs", {})
         channel_options = await self._build_channel_options()
         identifier_options = await self._build_identifier_options()
         if not identifier_options:
@@ -92,7 +95,7 @@ class PreexistingInfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.information["channel_snowflake"] = channel.id
+        self.information["updated_kwargs"]["channel_snowflake"] = channel.id
         self.channel_select.placeholder = channel.name
         executor_role = await PermissionService.resolve_highest_role(
             channel_snowflake=channel.id,
@@ -117,26 +120,26 @@ class PreexistingInfractionView(discord.ui.View):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-
+        self.state.interaction = interaction
         existing = await self.information.get("infraction", None).select(
-            channel_snowflake=self.information.get("channel_snowflake", None),
+            channel_snowflake=self.information.get("updated_kwargs", None).get(
+                "channel_snowflake", None
+            ),
             member_snowflake=self.member_snowflake,
             singular=True,
         )
-        self.information["member_snowflake"] = self.member_snowflake
+        self.information["updated_kwargs"]["member_snowflake"] = self.member_snowflake
         self.information["existing"] = existing
         if hasattr(existing, "expires_in"):
             if DurationObject.from_expires_in_to_str(existing.expires_in) == 0:
-                await interaction.response.send_message(
-                    content="This moderation is permanent and can only be undone, not modified.",
-                    ephemeral=True,
+                await self.state.end(
+                    warning="This moderation is permanent and can only be undone, not modified."
                 )
-                await interaction.message.delete()
                 self.stop()
-        modal = self.modal(information=self.information)
+        modal = self.modal(information=self.information, state=self.state)
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
-        await interaction.message.delete()
+        await self.state.end(success=f"Cancelled modification.")
         self.stop()

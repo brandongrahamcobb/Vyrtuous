@@ -23,7 +23,7 @@ from typing import Any, Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.errors import (
     DiscordObjectNotFound,
@@ -37,8 +37,7 @@ from vyrtuous.commands.errors import (
 from vyrtuous.utils.logger import logger
 
 
-class DiscordObject(Service):
-
+class DiscordObject:
     def __init__(
         self,
         *,

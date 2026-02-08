@@ -22,7 +22,8 @@ import time
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.commands.permissions.permission_service import PermissionService
@@ -47,8 +48,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-class StageService(Service):
-
+class StageService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -133,7 +133,7 @@ class StageService(Service):
                 if not channel:
                     continue
                 StageService.lines.append(
-                    f"**Expires in:** {stage_dictionary.get("stages", {}).get("expires_in", None)}"
+                    f"**Expires in:** {stage_dictionary.get('stages', {}).get('expires_in', None)}"
                 )
                 stage_n += 1
                 field_count += 1
@@ -168,7 +168,7 @@ class StageService(Service):
         del stage_kwargs["member_snowflake"]
         stage = await Stage.select(**stage_kwargs, singular=True)
         if stage:
-            title = f"{get_random_emoji()} Stage Ended in {channel_dict.get("mention", None)}"
+            title = f"{get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
             await Stage.delete(**updated_kwargs)
             for member in channel_dict.get("object", None).members:
                 await VoiceMute.delete(
@@ -199,7 +199,7 @@ class StageService(Service):
                         )
                         failed.append(member)
             description_lines = [
-                f"**Channel:** {channel_dict.get("mention", None)}",
+                f"**Channel:** {channel_dict.get('mention', None)}",
                 f"**Unmuted:** {len(succeeded)} users",
             ]
             if failed:
@@ -218,7 +218,7 @@ class StageService(Service):
             await stage.create()
             for member in channel_dict.get("object", None).members:
                 if await PermissionService.check(
-                    updated_kwargs=updated_kwargs,
+                    **updated_kwargs,
                     lowest_role="Coordinator",
                 ) or member.id == updated_kwargs.get("member_snowflake", None):
                     skipped.append(member)
@@ -247,7 +247,7 @@ class StageService(Service):
                     )
                     failed.append(member)
             description_lines = [
-                f"**Channel:** {channel_dict.get("mention", None)}",
+                f"**Channel:** {channel_dict.get('mention', None)}",
                 f"**Expires:** {duration}",
                 f"**Muted:** {len(succeeded)} users",
                 f"**Skipped:** {len(skipped)}",
@@ -361,8 +361,8 @@ class StageService(Service):
     @classmethod
     async def toggle_stage_mute(cls, channel_dict, default_kwargs, member_dict):
         await PermissionService.has_equal_or_lower_role(
-            updated_kwargs=default_kwargs,
-            member_snowflake=member_dict.get("id", None),
+            **default_kwargs,
+            target_member_snowflake=member_dict.get("id", None),
         )
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
@@ -371,4 +371,4 @@ class StageService(Service):
             await member_dict.get("object", None).edit(
                 mute=not member_dict.get("object", None).voice.mute
             )
-            return f"Successfully toggled the mute for {member_dict.get("mention", None)} in {channel_dict.get("mention", None)}."
+            return f"Successfully toggled the mute for {member_dict.get('mention', None)} in {channel_dict.get('mention', None)}."

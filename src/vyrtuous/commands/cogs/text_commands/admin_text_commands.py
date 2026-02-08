@@ -55,7 +55,6 @@ from vyrtuous.utils.logger import logger
 
 
 class AdminTextCommands(commands.Cog):
-
     ROLE = Administrator
 
     def __init__(self, bot: DiscordBot):
@@ -105,7 +104,7 @@ class AdminTextCommands(commands.Cog):
         *,
         target: str | None = commands.parameter(
             default=None,
-            description="Specify one of: 'all', " "channel ID/mention, or server ID.",
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -231,8 +230,8 @@ class AdminTextCommands(commands.Cog):
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         await PermissionService.has_equal_or_lower_role(
-            member_snowflake=int(member_dict.get("id", None)),
-            updated_kwargs=updated_kwargs,
+            target_member_snowflake=int(member_dict.get("id", None)),
+            **updated_kwargs,
         )
         msg = await CoordinatorService.toggle_coordinator(
             channel_dict=channel_dict,
@@ -273,7 +272,7 @@ class AdminTextCommands(commands.Cog):
         ctx: commands.Context,
         target: str | None = commands.parameter(
             default=None,
-            description="Specify one of: `all`, channel " "ID/mention or server ID.",
+            description="Specify one of: `all`, channel ID/mention or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -289,9 +288,7 @@ class AdminTextCommands(commands.Cog):
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(object_dict.get("columns", None))
         if target and str(target).lower() == "all":
-            await PermissionService.check(
-                updated_kwargs=updated_kwargs, lowest_role="Guild Owner"
-            )
+            await PermissionService.check(**updated_kwargs, lowest_role="Guild Owner")
             channel_objs = [
                 channel_obj
                 for guild in self.bot.guilds
@@ -375,8 +372,8 @@ class AdminTextCommands(commands.Cog):
                 )
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
-            f"Moved {source_channel_dict.get("mention", None)} to "
-            f"{target_channel_dict.get("mention", None)}",
+            f"Moved {source_channel_dict.get('mention', None)} to "
+            f"{target_channel_dict.get('mention', None)}",
             color=discord.Color.green(),
         )
         if moved:
@@ -394,8 +391,8 @@ class AdminTextCommands(commands.Cog):
                 inline=False,
             )
         embed.set_footer(
-            text=f"Moved from {source_channel_dict.get("name", None)} "
-            f"to {target_channel_dict.get("name", None)}"
+            text=f"Moved from {source_channel_dict.get('name', None)} "
+            f"to {target_channel_dict.get('name', None)}"
         )
         return await state.end(success=embed)
 
@@ -511,7 +508,7 @@ class AdminTextCommands(commands.Cog):
         ctx: commands.Context,
         target: str | None = commands.parameter(
             default=None,
-            description="Specify one of: `all`, channel ID/mention, " "or server ID.",
+            description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
         state = StateService(ctx=ctx)

@@ -19,8 +19,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.service import Service
+
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.smute.server_mute import ServerMute
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -35,8 +36,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class ServerMuteService(Service):
-
+class ServerMuteService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -77,7 +77,7 @@ class ServerMuteService(Service):
         cls.lines = []
         cls.pages = []
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Server Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Server Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await ServerMuteService.build_clean_dictionary(
@@ -139,8 +139,8 @@ class ServerMuteService(Service):
         guild_snowflake = default_kwargs.get("guild_snowflake", None)
         guild = bot.get_guild(guild_snowflake)
         await PermissionService.has_equal_or_lower_role(
-            updated_kwargs=default_kwargs,
-            member_snowflake=member_dict.get("id", None),
+            **default_kwargs,
+            target_member_snowflake=member_dict.get("id", None),
         )
         updated_kwargs.update(member_dict.get("columns", None))
         del updated_kwargs["channel_snowflake"]
@@ -163,4 +163,4 @@ class ServerMuteService(Service):
             and member_dict.get("object", None).voice.channel
         ):
             await member_dict.get("object", None).edit(mute=should_be_muted)
-        return f"Successfully server {action} {member_dict.get("mention", None)} in {guild.name}."
+        return f"Successfully server {action} {member_dict.get('mention', None)} in {guild.name}."

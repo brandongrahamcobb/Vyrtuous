@@ -22,8 +22,9 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from vyrtuous.base.service import Service
+
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.rooms.video.video_room import VideoRoom
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -39,8 +40,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
 
-class VideoRoomService(Service):
-
+class VideoRoomService(RecordService):
     COOLDOWN = timedelta(minutes=30)
     cooldowns = {}
     lines, pages = [], []
@@ -260,4 +260,4 @@ class VideoRoomService(Service):
             await video_room.create()
             VideoRoomService.video_rooms.append(video_room)
             action = "created"
-        return f"Video-only room {action} in {channel_dict.get("mention", None)}."
+        return f"Video-only room {action} in {channel_dict.get('mention', None)}."

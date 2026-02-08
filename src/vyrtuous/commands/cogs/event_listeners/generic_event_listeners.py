@@ -21,17 +21,19 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.db.alias.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.discord_object_service import DiscordObject
 from vyrtuous.commands.discord_object_service import DiscordObjectNotFound
-from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.db.alias.alias_service import AliasService
+from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.utils.logger import logger
 
 
 class GenericEventListeners(commands.Cog):
-
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.config = bot.config
@@ -66,16 +68,21 @@ class GenericEventListeners(commands.Cog):
             if not message.content.startswith(self.config["discord_command_prefix"]):
                 return
             state = StateService(message=message)
-            information = await AliasService.build(message=message)
-            if information:
-                await information["alias"].service.execute(
-                    information=information, message=message, state=state
-                )
-        except Exception as e:
+            ctx = AliasContext(message=message)
+            await ctx.setup()
+            await PermissionService.has_equal_or_lower_role(
+                channel_snowflake=ctx.target_channel_snowflake,
+                guild_snowflake=ctx.source_guild_snowflake,
+                member_snowflake=ctx.source_member_snowflake,
+                target_member_snowflake=ctx.target_member_snowflake,
+            )
+            await ctx.alias.service.enforce_or_undo(
+                ctx=ctx, source=message, state=state
+            )
+        except:
             import traceback
 
             traceback.print_exc()
-            return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

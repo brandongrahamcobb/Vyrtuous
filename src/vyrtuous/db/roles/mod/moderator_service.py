@@ -22,7 +22,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotModerator
@@ -111,8 +112,7 @@ def moderator_predicator():
     return commands.check(predicate)
 
 
-class ModeratorService(Service):
-
+class ModeratorService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -161,7 +161,7 @@ class ModeratorService(Service):
         cls.lines = []
         cls.pages = []
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Moderator {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Moderator {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await ModeratorService.build_clean_dictionary(
@@ -240,6 +240,6 @@ class ModeratorService(Service):
             await moderator.create()
             action = "granted"
         return (
-            f"Moderator access for {member_dict.get("mention", None)} has been "
-            f"{action} in {channel_dict.get("mention", None)}."
+            f"Moderator access for {member_dict.get('mention', None)} has been "
+            f"{action} in {channel_dict.get('mention', None)}."
         )

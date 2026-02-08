@@ -22,7 +22,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.service import Service
+
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotCoordinator
@@ -110,8 +111,7 @@ def coordinator_predicator():
     return commands.check(predicate)
 
 
-class CoordinatorService(Service):
-
+class CoordinatorService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -160,7 +160,7 @@ class CoordinatorService(Service):
         cls.lines = []
         cls.pages = []
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await CoordinatorService.build_clean_dictionary(
@@ -241,6 +241,6 @@ class CoordinatorService(Service):
             await coordinator.create()
             action = "granted"
         return (
-            f"Coordinator access has been {action} for {member_dict.get("mention", None)} "
-            f"in {channel_dict.get("mention", None)}."
+            f"Coordinator access has been {action} for {member_dict.get('mention', None)} "
+            f"in {channel_dict.get('mention', None)}."
         )

@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.service import Service
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.roles.dev.developer import Developer
@@ -35,9 +35,10 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
+from vyrtuous.base.record_service import RecordService
 
-class BugService(Service):
 
+class BugService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -139,18 +140,18 @@ class BugService(Service):
                     continue
                 msg = await channel.fetch_message(message_snowflake)
                 BugService.lines.append(
-                    f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
+                    f"**Resolved:** {'\u2705' if entry.get('resolved') else '\u274c'}"
                 )
                 BugService.lines.append(f"**Message:** {msg.jump_url}")
                 if where_kwargs.get("id", None) == str(entry["id"]):
                     BugService.lines.append(
-                        f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
+                        f"**Notes:** {entry['notes'] if entry.get('notes') is not None else None}"
                     )
                     BugService.lines.append(
-                        f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
+                        f"**Assigned to:** {', '.join(str(d) for d in entry['developer_snowflakes']) if entry.get('developer_snowflakes') else None}"
                     )
                 else:
-                    BugService.lines.append(f'**Reference:** {entry["id"]}')
+                    BugService.lines.append(f"**Reference:** {entry['id']}")
                 bug_n += 1
                 field_count += 1
                 if field_count >= CHUNK_SIZE:
@@ -179,7 +180,7 @@ class BugService(Service):
         developer = await Developer.select(singular=True, **where_kwargs)
         if not developer:
             return (
-                f"Developer not found for target ({member_dict.get("mention", None)})."
+                f"Developer not found for target ({member_dict.get('mention', None)})."
             )
 
         bug = await Bug.select(id=reference, resolved=False, singular=True)

@@ -17,13 +17,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
+from typing import Dict
+
 from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
+from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 
 
+@dataclass(frozen=True)
 class VoiceMuteAlias(Alias):
-
     category = "vmute"
+    record = VoiceMute
     service = VoiceMuteService
-
-    ARGS_MAP = {"alias_name": 1, "member": 2, "duration": 3, "reason": 4}
+    ARGS_MAP: Dict[str, int] = field(
+        default_factory=lambda: {
+            "alias_name": 1,
+            "member": 2,
+            "duration": 3,
+            "reason": 4,
+        }
+    )

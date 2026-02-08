@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.service import Service
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.db.mgmt.cap.cap import Cap
@@ -35,8 +35,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class CapService(Service):
-
+class CapService(RecordService):
     lines, pages = [], []
 
     @classmethod
@@ -136,12 +135,12 @@ class CapService(Service):
             await Cap.update(
                 set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs
             )
-            return f"Cap `{category}` modified for {channel_dict.get("mention", None)}."
+            return f"Cap `{category}` modified for {channel_dict.get('mention', None)}."
         elif cap:
             await Cap.delete(**where_kwargs)
             return (
                 f"Cap of type {category} "
-                f"and channel {channel_dict.get("mention", None)} deleted successfully."
+                f"and channel {channel_dict.get('mention', None)} deleted successfully."
             )
         else:
             where_kwargs.update({"duration_seconds": seconds})
@@ -149,5 +148,23 @@ class CapService(Service):
             await cap.create()
             return (
                 f"Cap `{category}` created for "
-                f"{channel_dict.get("mention", None)} successfully."
+                f"{channel_dict.get('mention', None)} successfully."
             )
+
+    @classmethod
+    async def assert_duration_exceeds_cap(cls, category, duration, source_kwargs):
+        exceeds_cap = False
+        # if hasattr(kwargs, "role_snowflake"):dd
+        # del kwargs["role_snowflake"]
+        # executor_role = await PermissionService.resolve_highest_role(**kwargs)
+        cap = await Cap.select(**source_kwargs, category=category, singular=True)
+        duration_seconds = DurationObject.from_expires_in(
+            duration.expires_in
+        ).to_seconds()
+        if cap:
+            if duration_seconds > cap.duration_seconds:
+                exceeds_cap = True
+        else:
+            if duration_seconds > DurationObject("8h").to_seconds():
+                exceeds_cap = True
+        return exceeds_cap

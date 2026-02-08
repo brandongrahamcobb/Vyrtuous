@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.alias.alias_service import AliasService
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -35,8 +35,7 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class FlagService(AliasService):
-
+class FlagService(RecordService):
     lines, pages = [], []
     model = Flag
 
@@ -88,7 +87,7 @@ class FlagService(AliasService):
         cls.lines = []
         cls.pages = []
         bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Flags {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        title = f"{get_random_emoji()} Flags {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await FlagService.build_clean_dictionary(
@@ -148,65 +147,71 @@ class FlagService(AliasService):
         return FlagService.pages
 
     @classmethod
-    async def enforce(cls, information, message, state):
+    async def enforce(cls, ctx, source, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         flag = Flag(
-            **information["updated_kwargs"],
-            reason=information["reason"],
+            channel_snowflake=ctx.target_channel_snowflake,
+            guild_snowflake=ctx.source_guild_snowflake,
+            member_snowflake=ctx.target_member_snowflake,
+            reason=ctx.reason,
         )
         await flag.create()
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("ChannelEventListeners")
         cog.flags.append(flag)
         await StreamService.send_entry(
-            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            channel_snowflake=ctx.target_channel_snowflake,
             identifier="flag",
             member=member,
-            message=message,
-            reason=information["reason"],
+            source=source,
+            reason=ctx.reason,
         )
-        embed = await FlagService.act_embed(information=information)
+        embed = await FlagService.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     @classmethod
-    async def undo(cls, information, message, state):
+    async def undo(cls, ctx, source, state):
         bot = DiscordBot.get_instance()
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
-        await Flag.delete(**information["updated_kwargs"])
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
+        await Flag.delete(
+            channel_snowflake=ctx.target_channel_snowflake,
+            guild_snowflake=ctx.source_guild_snowflake,
+            member_snowflake=ctx.target_member_snowflake
+        )
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("ChannelEventListeners")
         for flag in cog.flags:
             if (
                 flag.channel_snowflake
-                == information["updated_kwargs"]["channel_snowflake"]
+                == ctx.target_channel_snowflake
             ):
                 cog.flags.remove(flag)
                 break
         await StreamService.send_entry(
-            channel_snowflake=information["updated_kwargs"]["channel_snowflake"],
+            channel_snowflake=ctx.target_channel_snowflake,
             identifier="unflag",
             is_modification=True,
             member=member,
-            message=message,
+            source=source,
         )
-        embed = await FlagService.undo_embed(information=information)
+        embed = await FlagService.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
     @classmethod
-    async def act_embed(cls, information):
+    async def act_embed(cls, ctx):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(ctx.target_channel_snowflake)
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been flagged",
+            title=f"{get_random_emoji()} {member.display_name} has been flagged",
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Reason:** {information['reason']}"
+                f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
         )
@@ -214,16 +219,14 @@ class FlagService(AliasService):
         return embed
 
     @classmethod
-    async def undo_embed(cls, information):
+    async def undo_embed(cls, ctx):
         bot = DiscordBot.get_instance()
-        channel = bot.get_channel(information["updated_kwargs"]["channel_snowflake"])
-        guild = bot.get_guild(information["updated_kwargs"]["guild_snowflake"])
-        member = guild.get_member(information["updated_kwargs"]["member_snowflake"])
+        channel = bot.get_channel(ctx.target_channel_snowflake)
+        guild = bot.get_guild(ctx.source_guild_snowflake)
+        member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been unflagged",
-            description=(
-                f"**User:** {member.mention}\n" f"**Channel:** {channel.mention}"
-            ),
+            title=f"{get_random_emoji()} {member.display_name} has been unflagged",
+            description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)

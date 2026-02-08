@@ -26,10 +26,9 @@ from vyrtuous.db.mgmt.cap.cap import Cap
 
 
 class DurationModal(discord.ui.Modal):
-
-    def __init__(self, information):
+    def __init__(self, information, state):
         super().__init__(
-            title=f'{information.get("infraction", None).identifier.capitalize()} Duration'
+            title=f"{information.get('infraction', None).identifier.capitalize()} Duration"
         )
         self.information = information
         self.duration = discord.ui.TextInput(
@@ -41,16 +40,20 @@ class DurationModal(discord.ui.Modal):
             )
             or "",
         )
+        self.state = state
         self.add_item(self.duration)
 
     async def on_submit(self, interaction):
+        self.state.interaction = interaction
         channel = interaction.guild.get_channel(
-            self.information.get("channel_snowflake", None)
+            self.information.get("updated_kwargs").get("channel_snowflake", None)
         )
         duration_obj = DurationObject(self.duration.value)
         cap = await Cap.select(
             category=self.information.get("infraction", None).identifier,
-            channel_snowflake=self.information.get("channel_snowflake", None),
+            channel_snowflake=self.information.get("updated_kwargs").get(
+                "channel_snowflake", None
+            ),
             guild_snowflake=interaction.guild.id,
             singular=True,
         )
@@ -68,12 +71,16 @@ class DurationModal(discord.ui.Modal):
                 duration_str = DurationObject.from_seconds(channel_cap)
                 await interaction.response.send_message(
                     content=f"Cannot set the "
-                    f"{self.information.get("infraction", None).identifier.capitalize()} beyond {duration_str} as a "
-                    f"{self.information.get("executor_role", None)} in {channel.mention}."
+                    f"{self.information.get('infraction', None).identifier.capitalize()} beyond {duration_str} as a "
+                    f"{self.information.get('executor_role', None)} in {channel.mention}."
                 )
         where_kwargs = {
-            "channel_snowflake": self.information.get("channel_snowflake", None),
-            "member_snowflake": self.information.get("member_snowflake", None),
+            "channel_snowflake": self.information.get("updated_kwargs", None).get(
+                "channel_snowflake", None
+            ),
+            "member_snowflake": self.information.get("updated_kwargs", None).get(
+                "member_snowflake", None
+            ),
         }
         set_kwargs = {
             "expires_in": (
@@ -86,7 +93,6 @@ class DurationModal(discord.ui.Modal):
         await self.information.get("infraction", None).update(
             where_kwargs=where_kwargs, set_kwargs=set_kwargs
         )
-        await interaction.response.send_message(
-            content=f"Duration has been updated to {DurationObject(self.duration.value)}.",
-            ephemeral=True,
+        await self.state.end(
+            success=f"Duration has been updated to {DurationObject(self.duration.value)}."
         )

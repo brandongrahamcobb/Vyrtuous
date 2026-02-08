@@ -18,6 +18,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Union
 
-class Service:
-    pass
+from discord.ext import commands
+import discord
+
+from vyrtuous.commands.messaging.state_service import StateService
+
+
+class RecordService:
+    @classmethod
+    async def enforce_or_undo(
+        cls,
+        ctx,
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+        state: StateService,
+    ):
+        obj = await ctx.record.select(**ctx.source_kwargs, singular=True)
+        if obj:
+            await cls.undo(ctx=ctx, source=source, state=state)
+        else:
+            await cls.enforce(ctx=ctx, source=source, state=state)

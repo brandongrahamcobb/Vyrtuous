@@ -23,16 +23,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-
-class DurationError(commands.CheckFailure):
-    def __init__(self, cap_duration):
-        super().__init__(
-            message=(f"Cannot set the duration beyond the cap {cap_duration}."),
-        )
+from vyrtuous.commands.errors import DurationError
 
 
 class DurationObject:
-
     DAYS_PER_WEEK = 7
     DAYS_PER_YEAR = 365
     YEAR_UNITS = {"y", "year", "years"}
@@ -273,7 +267,6 @@ class DurationObject:
 
 
 class Converter(commands.Converter):
-
     def __init__(self, duration_cls=DurationObject):
         self.duration_cls = duration_cls
 
@@ -282,7 +275,6 @@ class Converter(commands.Converter):
 
 
 class Transformer(app_commands.Transformer):
-
     def __init__(self, duration_cls=DurationObject):
         self.duration_cls = duration_cls
 

@@ -21,6 +21,13 @@ import discord
 from discord.ext import commands
 
 
+class DurationError(commands.CheckFailure):
+    def __init__(self, cap_duration):
+        super().__init__(
+            message=(f"Cannot set the duration beyond the cap {cap_duration}."),
+        )
+
+
 class InsufficientPermissions(commands.CheckFailure):
     def __init__(self, message="Member has insufficient permissions."):
         super().__init__(message)
@@ -86,7 +93,6 @@ class DiscordObjectNotFound(commands.CheckFailure):
 
 
 class GuildChannelNotFound(DiscordObjectNotFound):
-
     def __init__(self, target: str):
         super().__init__(
             message=f"Unable to resolve a valid Discord guild channel with the provided context and target (`{target}`).",
@@ -95,7 +101,6 @@ class GuildChannelNotFound(DiscordObjectNotFound):
 
 
 class GuildNotFound(DiscordObjectNotFound):
-
     def __init__(self, target: str):
         super().__init__(
             message=f"Unable to resolve a valid Discord guild with the provided context and target (`{target}`).",
@@ -104,7 +109,6 @@ class GuildNotFound(DiscordObjectNotFound):
 
 
 class GuildMemberNotFound(DiscordObjectNotFound):
-
     def __init__(self, target: str):
         super().__init__(
             message=f"Unable to resolve a valid Discord guild member with the provided context and target (`{target}`).",
@@ -113,7 +117,6 @@ class GuildMemberNotFound(DiscordObjectNotFound):
 
 
 class GuildRoleNotFound(DiscordObjectNotFound):
-
     def __init__(self, target: str):
         super().__init__(
             message=f"Unable to resolve a valid Discord guild role with the provided context and target (`{target}`).",
@@ -143,7 +146,6 @@ class NotAtHome(commands.CheckFailure):
 
 
 class DiscordSourceNotFound(commands.CheckFailure):
-
     def __init__(self):
         super().__init__(
             message="Unable to resolve a valid Discord object due to missing ctx (commands.Context), interaction (discord.Interaction) or message (discord.Message)."
