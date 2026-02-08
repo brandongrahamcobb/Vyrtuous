@@ -35,16 +35,6 @@ from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
-from vyrtuous.db.roles.admin.administrator import Administrator
-from vyrtuous.db.roles.coord.coordinator import Coordinator
-from vyrtuous.db.roles.mod.moderator import Moderator
-from vyrtuous.db.roles.dev.developer_service import NotDeveloper, is_developer_wrapper
-from vyrtuous.db.roles.dev.developer import Developer
-from vyrtuous.db.roles.owner.guild_owner_service import (
-    NotGuildOwner,
-    is_guild_owner_wrapper,
-)
-from vyrtuous.db.roles.sysadmin.sysadmin_service import NotSysadmin, is_sysadmin_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
@@ -122,6 +112,19 @@ class DataView(discord.ui.View):
             "All" if value == "all" else interaction.guild.name
         )
         await interaction.response.defer()
+        channel_options, _ = await self._build_discord_options()
+        if value != "all":
+            guild_id = int(value)
+            channel_options = [
+                discord.SelectOption(label=c.name, value=str(c.id))
+                for c in (await interaction.client.fetch_guild(guild_id)).channels
+                if isinstance(c, discord.abc.GuildChannel)
+            ]
+        for item in self.children:
+            if isinstance(
+                item, discord.ui.Select
+            ) and item.placeholder.lower().startswith("select channel"):
+                item.options = channel_options
         await interaction.edit_original_response(view=self)
 
     @discord.ui.select(placeholder="Select channel", options=[])

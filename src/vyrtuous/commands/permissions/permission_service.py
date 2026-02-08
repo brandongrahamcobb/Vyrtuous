@@ -393,19 +393,16 @@ class PermissionService:
         for role_scope, verify in verifications:
             if role_scope == "all":
                 try:
-                    from vyrtuous.utils.logger import logger
-
-                    logger.info("TEST")
                     if await verify(member_snowflake=int(member_snowflake)):
-                        logger.info("TEST2")
                         available_guilds["all"] = bot.guilds
                         available_channels["all"] = []
                         for guild in bot.guilds:
                             available_guilds[guild.id] = guild
                             available_channels.setdefault(guild.id, [])
                             for channel in guild.channels:
-                                available_channels[guild.id].append(channel)
-                                available_channels["all"].append(channel)
+                                if isinstance(channel, discord.VoiceChannel):
+                                    available_channels[guild.id].append(channel)
+                                    available_channels["all"].append(channel)
                 except commands.CheckFailure:
                     pass
             elif role_scope == "guild":
@@ -418,7 +415,8 @@ class PermissionService:
                             available_guilds[guild.id] = guild
                             available_channels.setdefault(guild.id, [])
                             for channel in guild.channels:
-                                available_channels[guild.id].append(channel)
+                                if isinstance(channel, discord.VoiceChannel):
+                                    available_channels[guild.id].append(channel)
                 except commands.CheckFailure:
                     pass
             elif role_scope == "channel":
@@ -432,7 +430,8 @@ class PermissionService:
                             ):
                                 available_guilds[guild.id] = guild
                                 available_channels.setdefault(guild.id, [])
-                                available_channels[guild.id].append(channel)
+                                if isinstance(channel, discord.VoiceChannel):
+                                    available_channels[guild.id].append(channel)
                 except commands.CheckFailure:
                     pass
         for gid in list(available_channels):
