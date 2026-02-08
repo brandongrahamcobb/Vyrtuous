@@ -17,12 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import HasEqualOrLowerRole
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.flag.flag import Flag
@@ -64,7 +65,6 @@ from vyrtuous.utils.logger import logger
 
 
 class PermissionService:
-
     invincible_members: Dict[Tuple[int, int], bool] = {}
     lines, pages = [], []
     state: bool = False
@@ -373,3 +373,70 @@ class PermissionService:
         except NotModerator as e:
             logger.warning(str(e).capitalize())
         return "Everyone"
+
+    @classmethod
+    async def can_list(
+        cls, source=Union[commands.Context, discord.Interaction, discord.Message]
+    ):
+        bot = DiscordBot.get_instance()
+        available_channels = {}
+        available_guilds = {}
+        member_snowflake = resolve_author(source=source).id
+        verifications = (
+            ("all", is_sysadmin),
+            ("all", is_developer),
+            ("guild", is_guild_owner),
+            ("guild", is_administrator),
+            ("channel", is_coordinator),
+            ("channel", is_moderator),
+        )
+        for role_scope, verify in verifications:
+            if role_scope == "all":
+                try:
+                    from vyrtuous.utils.logger import logger
+
+                    logger.info("TEST")
+                    if await verify(member_snowflake=int(member_snowflake)):
+                        logger.info("TEST2")
+                        available_guilds["all"] = bot.guilds
+                        available_channels["all"] = []
+                        for guild in bot.guilds:
+                            available_guilds[guild.id] = guild
+                            available_channels.setdefault(guild.id, [])
+                            for channel in guild.channels:
+                                available_channels[guild.id].append(channel)
+                                available_channels["all"].append(channel)
+                except commands.CheckFailure:
+                    pass
+            elif role_scope == "guild":
+                try:
+                    for guild in bot.guilds:
+                        if await verify(
+                            guild_snowflake=int(guild.id),
+                            member_snowflake=int(member_snowflake),
+                        ):
+                            available_guilds[guild.id] = guild
+                            available_channels.setdefault(guild.id, [])
+                            for channel in guild.channels:
+                                available_channels[guild.id].append(channel)
+                except commands.CheckFailure:
+                    pass
+            elif role_scope == "channel":
+                try:
+                    for guild in bot.guilds:
+                        for channel in guild.channels:
+                            if await verify(
+                                channel_snowflake=int(channel.id),
+                                guild_snowflake=int(guild.id),
+                                member_snowflake=int(member_snowflake),
+                            ):
+                                available_guilds[guild.id] = guild
+                                available_channels.setdefault(guild.id, [])
+                                available_channels[guild.id].append(channel)
+                except commands.CheckFailure:
+                    pass
+        for gid in list(available_channels):
+            available_channels[gid] = list(
+                {c.id: c for c in available_channels[gid]}.values()
+            )
+        return available_channels, available_guilds

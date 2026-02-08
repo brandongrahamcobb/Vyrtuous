@@ -31,13 +31,15 @@ import seaborn as sns
 from vyrtuous.base.infraction import Infraction
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.roles.admin.administrator import Administrator
 from vyrtuous.db.roles.coord.coordinator import Coordinator
-from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.mod.moderator import Moderator
+from vyrtuous.db.roles.dev.developer_service import NotDeveloper, is_developer_wrapper
+from vyrtuous.db.roles.dev.developer import Developer
 from vyrtuous.db.roles.owner.guild_owner_service import (
     NotGuildOwner,
     is_guild_owner_wrapper,
@@ -47,7 +49,6 @@ from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
 class DataView(discord.ui.View):
-
     def __init__(self, interaction: discord.Interaction):
         super().__init__(timeout=120)
         self.bot = DiscordBot.get_instance()
@@ -59,8 +60,7 @@ class DataView(discord.ui.View):
         return interaction.user.id == self.author_snowflake
 
     async def setup(self):
-        guild_options = await self._build_guild_options()
-        channel_options = await self._build_channel_options()
+        channel_options, guild_options = await self._build_discord_options()
         duration_options = self._build_duration_options()
         infraction_options = self._build_infraction_options()
         self.guild_select.options = guild_options
@@ -68,66 +68,37 @@ class DataView(discord.ui.View):
         self.duration_select.options = duration_options
         self.infraction_select.options = infraction_options
 
-    async def _build_guild_options(self):
-        options = []
-        default_kwargs = {"member_snowflake": self.author_snowflake}
-        developer = await Developer.select(**default_kwargs)
-        sysadmin = None
-        try:
-            sysadmin = await is_sysadmin_wrapper(source=self.interaction)
-        except NotSysadmin:
-            pass
-        can_all_guilds = bool(developer) or bool(sysadmin)
-        if can_all_guilds:
-            options.append(discord.SelectOption(label="All", value="all"))
-        for g in self.bot.guilds:
-            options.append(discord.SelectOption(label=g.name, value=str(g.id)))
-        return options
-
-    async def _build_channel_options(self):
-        available_channel_snowflakes = set()
-        default_kwargs = {
-            "guild_snowflake": int(self.interaction.guild.id),
-            "member_snowflake": self.author_snowflake,
-        }
-        moderators = await Moderator.select(**default_kwargs)
-        if moderators:
-            available_channel_snowflakes.update(
-                int(m.channel_snowflake) for m in moderators
-            )
-        coordinators = await Coordinator.select(**default_kwargs)
-        if coordinators:
-            available_channel_snowflakes.update(
-                int(c.channel_snowflake) for c in coordinators
-            )
-        administrator = await Administrator.select(**default_kwargs)
-        is_admin = bool(administrator)
-        guild_owner = None
-        try:
-            guild_owner = await is_guild_owner_wrapper(source=self.interaction)
-        except NotGuildOwner:
-            pass
-        del default_kwargs["guild_snowflake"]
-        developer = await Developer.select(**default_kwargs)
-        sysadmin = None
-        try:
-            sysadmin = await is_sysadmin_wrapper(source=self.interaction)
-        except NotSysadmin:
-            pass
-        can_all_channels = is_admin or guild_owner or sysadmin or developer
-        options = []
-        if can_all_channels:
-            options.append(discord.SelectOption(label="All", value="all"))
-        guild = self.interaction.guild
-        for ch in guild.channels:
-            if isinstance(ch, discord.VoiceChannel) and (
-                ch.id in available_channel_snowflakes or can_all_channels
-            ):
-                options.append(discord.SelectOption(label=ch.name, value=str(ch.id)))
-        return options
+    async def _build_discord_options(self):
+        channel_options = []
+        guild_options = []
+        available_channels, available_guilds = await PermissionService.can_list(
+            source=self.interaction
+        )
+        if "all" in available_channels:
+            channel_list = available_channels["all"]
+            channel_options.append(discord.SelectOption(label="All", value="all"))
+        else:
+            channel_list = [
+                c
+                for ch_list in available_channels.values()
+                for c in ch_list
+                if c != "all"
+            ]
+        if "all" in available_guilds:
+            guild_list = available_guilds["all"]
+            guild_options.append(discord.SelectOption(label="All", value="all"))
+        else:
+            guild_list = [g for g in available_guilds.values() if g != "all"]
+        channel_options.extend(
+            discord.SelectOption(label=c.name, value=str(c.id)) for c in channel_list
+        )
+        guild_options.extend(
+            discord.SelectOption(label=g.name, value=str(g.id)) for g in guild_list
+        )
+        return channel_options, guild_options
 
     def _build_duration_options(self):
-        durations = ["1d", "1w", "1m", "1y"]
+        durations = ["1d", "1w", "1m", "1y", "5y"]
         return [
             discord.SelectOption(label=duration, value=duration)
             for duration in durations
@@ -150,7 +121,6 @@ class DataView(discord.ui.View):
         self.guild_select.placeholder = (
             "All" if value == "all" else interaction.guild.name
         )
-        self.channel_select.options = await self._build_channel_options()
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -196,16 +166,16 @@ class DataView(discord.ui.View):
         conditions = []
         values = []
         if self.information.get("channel_snowflake"):
-            conditions.append(f"channel_snowflake=${len(values)+1}")
+            conditions.append(f"channel_snowflake=${len(values) + 1}")
             values.append(self.information["channel_snowflake"])
         if self.information.get("guild_snowflake"):
-            conditions.append(f"guild_snowflake=${len(values)+1}")
+            conditions.append(f"guild_snowflake=${len(values) + 1}")
             values.append(self.information["guild_snowflake"])
         if "infraction" in self.information:
-            conditions.append(f"infraction_type=${len(values)+1}")
+            conditions.append(f"infraction_type=${len(values) + 1}")
             values.append(self.information["infraction"].identifier)
         if "duration" in self.information:
-            conditions.append(f"created_at >= ${len(values)+1}")
+            conditions.append(f"created_at >= ${len(values) + 1}")
             values.append(
                 datetime.now(timezone.utc)
                 - DurationObject(self.information["duration"]).to_timedelta()
@@ -232,9 +202,9 @@ class DataView(discord.ui.View):
         plt.figure(figsize=(12, 6))
         sns.lineplot(data=df, x="created_at", y="cumulative")
         plt.plot(df["created_at"], y_pred)
-        plt.title(f'Cumulative {self.information["title"]}s Over Time (R² = {r2:.3f})')
+        plt.title(f"Cumulative {self.information['title']}s Over Time (R² = {r2:.3f})")
         plt.xlabel("Time")
-        plt.ylabel(f'Total {self.information["title"]}s')
+        plt.ylabel(f"Total {self.information['title']}s")
         ax = plt.gca()
         ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=6))
         ax.xaxis.set_major_formatter(
