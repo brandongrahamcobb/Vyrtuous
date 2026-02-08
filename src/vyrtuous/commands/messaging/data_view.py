@@ -43,6 +43,7 @@ class DataView(discord.ui.View):
         super().__init__(timeout=120)
         self.bot = DiscordBot.get_instance()
         self.information = {}
+        self.available_channels = {}
         self.author_snowflake = int(interaction.user.id)
         self.interaction = interaction
 
@@ -50,42 +51,21 @@ class DataView(discord.ui.View):
         return interaction.user.id == self.author_snowflake
 
     async def setup(self):
-        channel_options, guild_options = await self._build_discord_options()
+        self.channel_select.options = [
+            discord.SelectOption(
+                label="Select a guild first",
+                value="none",
+                default=True,
+                description="Please select a guild to see channels",
+                emoji=None,
+            )
+        ]
         duration_options = self._build_duration_options()
+        guild_options = await self._build_guild_options()
         infraction_options = self._build_infraction_options()
         self.guild_select.options = guild_options
-        self.channel_select.options = channel_options
         self.duration_select.options = duration_options
         self.infraction_select.options = infraction_options
-
-    async def _build_discord_options(self):
-        channel_options = []
-        guild_options = []
-        available_channels, available_guilds = await PermissionService.can_list(
-            source=self.interaction
-        )
-        if "all" in available_channels:
-            channel_list = available_channels["all"]
-            channel_options.append(discord.SelectOption(label="All", value="all"))
-        else:
-            channel_list = [
-                c
-                for ch_list in available_channels.values()
-                for c in ch_list
-                if c != "all"
-            ]
-        if "all" in available_guilds:
-            guild_list = available_guilds["all"]
-            guild_options.append(discord.SelectOption(label="All", value="all"))
-        else:
-            guild_list = [g for g in available_guilds.values() if g != "all"]
-        channel_options.extend(
-            discord.SelectOption(label=c.name, value=str(c.id)) for c in channel_list
-        )
-        guild_options.extend(
-            discord.SelectOption(label=g.name, value=str(g.id)) for g in guild_list
-        )
-        return channel_options, guild_options
 
     def _build_duration_options(self):
         durations = ["1d", "1w", "1m", "1y", "5y"]
@@ -93,6 +73,22 @@ class DataView(discord.ui.View):
             discord.SelectOption(label=duration, value=duration)
             for duration in durations
         ]
+
+    async def _build_guild_options(self):
+        guild_options = []
+        available_channels, available_guilds = await PermissionService.can_list(
+            source=self.interaction
+        )
+        self.available_channels = available_channels
+        if "all" in available_guilds:
+            guild_list = available_guilds["all"]
+            guild_options.append(discord.SelectOption(label="All", value="all"))
+        else:
+            guild_list = [g for g in available_guilds.values() if g != "all"]
+        guild_options.extend(
+            discord.SelectOption(label=g.name, value=str(g.id)) for g in guild_list
+        )
+        return guild_options
 
     def _build_infraction_options(self):
         infractions = [Ban, TextMute, VoiceMute]
@@ -112,18 +108,53 @@ class DataView(discord.ui.View):
             "All" if value == "all" else interaction.guild.name
         )
         await interaction.response.defer()
-        channel_options, _ = await self._build_discord_options()
-        if value != "all":
-            guild_id = int(value)
+        channel_options = []
+        if value == "all":
+            top_channels = []
+            for guild_id, ch_list in self.available_channels.items():
+                if guild_id == "all":
+                    continue
+                guild = interaction.client.get_guild(int(guild_id))
+                if guild:
+                    channels = [
+                        c for c in guild.channels if isinstance(c, discord.VoiceChannel)
+                    ]
+                    channels.sort(
+                        key=lambda c: getattr(c, "member_count", 0), reverse=True
+                    )
+                    top_channels.extend(channels[:25])
+            top_channels = list({c.id: c for c in top_channels}.values())
             channel_options = [
                 discord.SelectOption(label=c.name, value=str(c.id))
-                for c in (await interaction.client.fetch_guild(guild_id)).channels
-                if isinstance(c, discord.abc.GuildChannel)
+                for c in top_channels
             ]
+            channel_options.insert(0, discord.SelectOption(label="All", value="all"))
+        if value != "all":
+            guild_obj = interaction.client.get_guild(int(value))
+            channels = [
+                c for c in guild_obj.channels if isinstance(c, discord.VoiceChannel)
+            ]
+            channels.sort(key=lambda c: getattr(c, "member_count", 0), reverse=True)
+            top_channels = channels[:25]
+            top_ids = {c.id for c in top_channels}
+            filtered_channels = []
+            seen = set()
+            for ch_list in self.available_channels.values():
+                for ch in ch_list:
+                    if ch != "all" and ch.id in top_ids and ch.id not in seen:
+                        seen.add(ch.id)
+                        filtered_channels.append(ch)
+            channel_options = [
+                discord.SelectOption(label=c.name, value=str(c.id))
+                for c in filtered_channels
+            ]
+            channel_options.insert(0, discord.SelectOption(label="All", value="all"))
         for item in self.children:
-            if isinstance(
-                item, discord.ui.Select
-            ) and item.placeholder.lower().startswith("select channel"):
+            if (
+                isinstance(item, discord.ui.Select)
+                and item.placeholder
+                and item.placeholder.lower().startswith("select channel")
+            ):
                 item.options = channel_options
         await interaction.edit_original_response(view=self)
 
@@ -193,6 +224,7 @@ class DataView(discord.ui.View):
         df = pd.DataFrame(rows, columns=column_names)
         df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
         df = df.sort_values("created_at")
+        df = df.groupby("created_at", as_index=False).size()
         df["cumulative"] = range(1, len(df) + 1)
         x = mdates.date2num(df["created_at"])
         y = df["cumulative"].values
