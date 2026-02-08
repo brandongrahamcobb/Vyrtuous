@@ -44,7 +44,6 @@ from vyrtuous.utils.emojis import get_random_emoji
 
 
 class AliasService(Service):
-
     lines, pages = [], []
     model = None
     ALIAS_MAP = {}
@@ -72,12 +71,12 @@ class AliasService(Service):
                     passed = False
             else:
                 if (
-                    duration_seconds > DurationObject("8h").to_seconds
+                    duration_seconds > DurationObject("8h").to_seconds()
                     and executor_role == "Moderator"
                 ):
                     passed = False
             if not passed:
-                raise DurationError()
+                raise DurationError(cap_duration=cap.duration_seconds)
             await cls.undo(information=information, message=message, state=state)
         else:
             await cls.enforce(information=information, message=message, state=state)
@@ -215,19 +214,19 @@ class AliasService(Service):
         where_kwargs.update(channel_dict.get("columns", None))
         msg = (
             f"Alias `{alias_name}` of type `{category}` "
-            f"created successfully for channel {channel_dict.get("mention", None)}."
+            f"created successfully for channel {channel_dict.get('mention', None)}."
         )
         alias = await Alias.select(category=category, **where_kwargs, singular=True)
         if alias and alias.category != "role":
             return (
                 f"Alias of type `{category}` "
-                f"already exists for this channel {channel_dict.get("mention", None)}."
+                f"already exists for this channel {channel_dict.get('mention', None)}."
             )
         if role_dict:
             where_kwargs.update(role_dict.get("columns", None))
             msg = (
                 f"Alias `{alias_name}` of type `{category}` "
-                f"created successfully for channel {channel_dict.get("mention", None)} with role {role_dict.get("mention", None)}."
+                f"created successfully for channel {channel_dict.get('mention', None)} with role {role_dict.get('mention', None)}."
             )
         alias = Alias(alias_name=alias_name, category=str(category), **where_kwargs)
         await alias.create()
