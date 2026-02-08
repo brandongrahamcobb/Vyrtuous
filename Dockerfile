@@ -1,6 +1,11 @@
 FROM python:3.12-alpine
 
-RUN apk add --no-cache postgresql-client
+RUN apk add --no-cache postgresql-client \
+    build-base \
+    freetype-dev \
+    libpng-dev \
+    pkgconf \
+    python3-dev
 
 ENV POETRY_VIRTUALENVS_CREATE=false
 
