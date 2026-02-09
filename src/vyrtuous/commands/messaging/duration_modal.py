@@ -21,78 +21,63 @@ from datetime import datetime, timezone
 
 import discord
 
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.commands.fields.duration import DurationObject
-from vyrtuous.db.mgmt.cap.cap import Cap
+from vyrtuous.db.mgmt.cap.cap_service import CapService
 
 
 class DurationModal(discord.ui.Modal):
-    def __init__(self, information, state):
-        super().__init__(
-            title=f"{information.get('infraction', None).identifier.capitalize()} Duration"
-        )
-        self.information = information
-        self.duration = discord.ui.TextInput(
+    def __init__(self, ctx, state):
+        super().__init__(title="Duration")
+        self.ctx = ctx
+        self.channel_snowflake = ctx.target_channel_snowflake
+        self.guild_snowflake = ctx.source_channel_snowflake
+        self.member_snowflake = ctx.target_member_snowflake
+        self.record_snowflakes = {
+            "channel_snowflake": self.channel_snowflake,
+            "guild_snowflake": self.guild_snowflake,
+            "member_snowflake": self.member_snowflake,
+        }
+        self.state = state
+
+    async def setup(self):
+        self.duration_selection = discord.ui.TextInput(
             label="Type the duration",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=DurationObject.from_expires_in_to_str(
-                self.information.get("existing", None).expires_in
-            )
+            default=DurationObject.from_expires_in_to_str(self.ctx.record.expires_in)
             or "",
         )
-        self.state = state
-        self.add_item(self.duration)
+        self.add_item(self.duration_selection)
 
     async def on_submit(self, interaction):
+        await interaction.response.defer()
         self.state.interaction = interaction
-        channel = interaction.guild.get_channel(
-            self.information.get("updated_kwargs").get("channel_snowflake", None)
+        self.duration = DurationObject(self.duration_selection.value)
+        self.ctx.expires_in = (
+            datetime.now(timezone.utc) + self.duration.to_timedelta()
+            if self.duration.number != 0
+            else None
         )
-        duration_obj = DurationObject(self.duration.value)
-        cap = await Cap.select(
-            category=self.information.get("infraction", None).identifier,
-            channel_snowflake=self.information.get("updated_kwargs").get(
-                "channel_snowflake", None
-            ),
-            guild_snowflake=interaction.guild.id,
-            singular=True,
-        )
-        if cap:
-            channel_cap = cap.duration_seconds
-        else:
-            channel_cap = DurationObject("8h").to_seconds()
-        expires_in_timedelta = DurationObject(self.duration.value).to_timedelta()
-        if (
-            self.information["existing"]
-            and expires_in_timedelta.total_seconds() > channel_cap
-            or duration_obj.number == 0
+        if await CapService.assert_duration_exceeds_cap(
+            category=self.ctx.record.identifier,
+            duration=self.duration,
+            source_kwargs=self.ctx.source_kwargs,
         ):
-            if self.information.get("executor_role", None) == "Moderator":
-                duration_str = DurationObject.from_seconds(channel_cap)
-                await interaction.response.send_message(
-                    content=f"Cannot set the "
-                    f"{self.information.get('infraction', None).identifier.capitalize()} beyond {duration_str} as a "
-                    f"{self.information.get('executor_role', None)} in {channel.mention}."
-                )
-        where_kwargs = {
-            "channel_snowflake": self.information.get("updated_kwargs", None).get(
-                "channel_snowflake", None
-            ),
-            "member_snowflake": self.information.get("updated_kwargs", None).get(
-                "member_snowflake", None
-            ),
-        }
-        set_kwargs = {
-            "expires_in": (
-                datetime.now(timezone.utc)
-                + DurationObject(self.duration.value).to_timedelta()
-                if duration_obj.number != 0
-                else None
+            return await interaction.response.send_message(
+                content="Duration exceeds the channel cap.", ephemeral=True
             )
-        }
-        await self.information.get("infraction", None).update(
-            where_kwargs=where_kwargs, set_kwargs=set_kwargs
-        )
-        await self.state.end(
-            success=f"Duration has been updated to {DurationObject(self.duration.value)}."
-        )
+        if self.ctx.record:
+            set_kwargs = {"expires_in": self.ctx.expires_in}
+            await self.ctx.record.__class__.update(
+                where_kwargs=self.record_snowflakes, set_kwargs=set_kwargs
+            )
+            await self.state.end(
+                success=f"Duration has been updated to {self.duration}."
+            )
+        else:
+            for service in RecordService.__subclasses__():
+                if isinstance(self.ctx.record, service.model):
+                    await service.enforce(
+                        ctx=self.ctx, source=interaction, state=self.state
+                    )

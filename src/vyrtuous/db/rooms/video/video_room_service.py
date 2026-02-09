@@ -22,9 +22,8 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.base.record_service import RecordService
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias.alias import Alias
 from vyrtuous.db.rooms.video.video_room import VideoRoom
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -44,6 +43,7 @@ class VideoRoomService(RecordService):
     COOLDOWN = timedelta(minutes=30)
     cooldowns = {}
     lines, pages = [], []
+    model = VideoRoom
     video_rooms = []
     video_tasks = {}
 

@@ -22,7 +22,6 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-
 from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
@@ -68,6 +67,7 @@ async def is_developer(member_snowflake: int) -> bool:
 
 class DeveloperService(RecordService):
     lines, pages = [], []
+    model = Developer
 
     @classmethod
     async def build_clean_dictionary(cls, where_kwargs):

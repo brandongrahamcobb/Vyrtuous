@@ -22,12 +22,12 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-
 from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotGuildOwner
 from vyrtuous.db.roles.dev.developer_service import is_developer_wrapper
+from vyrtuous.db.roles.owner.guild_owner import GuildOwner
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin_wrapper
 
 
@@ -80,4 +80,4 @@ async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
 
 
 class GuildOwnerService(RecordService):
-    pass
+    model = GuildOwner

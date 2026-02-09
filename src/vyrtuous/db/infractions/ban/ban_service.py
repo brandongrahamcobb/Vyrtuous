@@ -21,9 +21,9 @@ from datetime import datetime, timezone
 
 import discord
 
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
-from vyrtuous.base.record_service import RecordService
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -222,7 +222,7 @@ class BanService(RecordService):
                     where_kwargs = {
                         "channel_snowflake": ctx.target_channel_snowflake,
                         "guild_snowflake": ctx.source_guild_snowflake,
-                        "member_snowflake": ctx.target_member_snowflake
+                        "member_snowflake": ctx.target_member_snowflake,
                     }
                     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)

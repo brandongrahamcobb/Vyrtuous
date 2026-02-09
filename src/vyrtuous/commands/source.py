@@ -1,7 +1,7 @@
 from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
 from vyrtuous.commands.author import resolve_author
 

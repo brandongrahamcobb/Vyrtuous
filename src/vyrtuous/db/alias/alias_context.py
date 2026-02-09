@@ -1,21 +1,20 @@
 from datetime import datetime, timezone
-
-from vyrtuous.commands.permissions.permission_service import PermissionService
-from vyrtuous.db.mgmt.cap.cap_service import CapService
-from vyrtuous.commands.fields.duration import DurationObject
-from vyrtuous.commands.discord_object_service import DiscordObject
 from typing import Dict, Tuple
-from vyrtuous.db.alias.alias_service import AliasService
+
+from vyrtuous.base.context import Context
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.discord_object_service import DiscordObject
+from vyrtuous.commands.fields.duration import DurationObject
+from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.alias.alias import Alias
+from vyrtuous.db.alias.alias_service import AliasService
+from vyrtuous.db.mgmt.cap.cap_service import CapService
 
 
-class AliasContext:
+class AliasContext(Context):
     def __init__(self, message):
+        super().__init__(message=message)
         self.alias = None
-        self.source_channel_snowflake = message.channel.id
-        self.source_guild_snowflake = message.guild.id
-        self.source_member_snowflake = message.author.id
         self.alias_name = None
         self.args = []
         self.do = DiscordObject(message=message)
@@ -78,13 +77,6 @@ class AliasContext:
         )
         self.alias = alias
         self.record = alias.record
-
-    def build_source_kwargs(self):
-        self.source_kwargs = {
-            "channel_snowflake": self.source_channel_snowflake,
-            "guild_snowflake": self.source_guild_snowflake,
-            "member_snowflake": self.source_member_snowflake,
-        }
 
     async def convert_args_to_values(self):
         for field, tuple in self.kwargs.items():

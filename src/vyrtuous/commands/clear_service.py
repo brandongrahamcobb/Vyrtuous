@@ -22,7 +22,6 @@ from pathlib import Path
 import discord
 
 from vyrtuous.base.database_factory import DatabaseFactory
-
 from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.roles.admin.administrator import AdministratorRole
 from vyrtuous.db.roles.sysadmin.sysadmin_service import is_sysadmin

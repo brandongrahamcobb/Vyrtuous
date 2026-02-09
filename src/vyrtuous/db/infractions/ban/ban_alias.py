@@ -21,8 +21,8 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 from vyrtuous.db.alias.alias import Alias
-from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.ban.ban import Ban
+from vyrtuous.db.infractions.ban.ban_service import BanService
 
 
 @dataclass(frozen=True)

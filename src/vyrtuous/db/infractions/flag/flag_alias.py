@@ -21,8 +21,8 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 from vyrtuous.db.alias.alias import Alias
-from vyrtuous.db.infractions.flag.flag_service import FlagService
 from vyrtuous.db.infractions.flag.flag import Flag
+from vyrtuous.db.infractions.flag.flag_service import FlagService
 
 
 @dataclass(frozen=True)

@@ -19,40 +19,46 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
+from vyrtuous.base.record_service import RecordService
+
 
 class ReasonModal(discord.ui.Modal):
-    def __init__(self, infraction, infraction_service, selections, state):
+    def __init__(self, ctx, state):
         super().__init__(title="Reason")
-        self.channel_snowflake = selections["channel_snowflake"]
-        self.guild_snowflake = selections["guild_snowflake"]
-        self.member_snowflake = selections["member_snowflake"]
+        self.ctx = ctx
+        self.channel_snowflake = ctx.target_channel_snowflake
+        self.guild_snowflake = ctx.source_channel_snowflake
+        self.member_snowflake = ctx.target_member_snowflake
         self.record_snowflakes = {
             "channel_snowflake": self.channel_snowflake,
             "guild_snowflake": self.guild_snowflake,
             "member_snowflake": self.member_snowflake,
         }
-        self.infraction = infraction
-        self.infraction_service = infraction_service
-        self.selections = selections
         self.state = state
 
     async def setup(self):
-        self.record = await self.infraction.select(**self.record_snowflakes)
-        self.reason = discord.ui.TextInput(
+        self.reason_selection = discord.ui.TextInput(
             label="Type the reason",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=(self.record.reason if self.record else ""),
+            default=(self.ctx.record.reason if self.ctx.record else ""),
         )
-        self.add_item(self.reason)
+        self.add_item(self.reason_selection)
 
     async def on_submit(self, interaction):
+        await interaction.response.defer()
         self.state.interaction = interaction
-        if self.record:
-            set_kwargs = {"reason": self.reason.value}
-            await self.infraction.update(
+        if self.ctx.record:
+            set_kwargs = {"reason": self.reason_selection.value}
+            await self.ctx.record.__class__.update(
                 where_kwargs=self.record_snowflakes, set_kwargs=set_kwargs
             )
-            await self.state.end(success="Existing infraction reason has been updated")
+            await self.state.end(
+                success=f"Existing infraction reason has been updated to {self.reason_selection.value}."
+            )
         else:
-            await self.infraction_service.enforce(state=self.state)
+            for service in RecordService.__subclasses__():
+                if isinstance(self.ctx.record, service.model):
+                    await service.enforce(
+                        ctx=self.ctx, source=interaction, state=self.state
+                    )

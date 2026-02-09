@@ -22,12 +22,11 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.errors import NotSysadmin
-
-from vyrtuous.base.record_service import RecordService
+from vyrtuous.db.roles.sysadmin.sysadmin import Sysadmin
 
 
 async def is_sysadmin_wrapper(
@@ -58,4 +57,4 @@ async def is_sysadmin(member_snowflake: int) -> bool:
 
 
 class SysadminService(RecordService):
-    pass
+    model = Sysadmin

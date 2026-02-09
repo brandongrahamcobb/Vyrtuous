@@ -33,13 +33,12 @@ from vyrtuous.commands.fields.snowflake import (
 from vyrtuous.commands.home import at_home
 from vyrtuous.commands.messaging.data_view import DataView
 from vyrtuous.commands.messaging.duration_modal import DurationModal
-from vyrtuous.commands.messaging.message_service import MessageService
 from vyrtuous.commands.messaging.infraction_view import InfractionView
-from vyrtuous.commands.messaging.modify_infraction_view import (
-    ModifyInfractionView,
-)
+from vyrtuous.commands.messaging.message_service import MessageService
+from vyrtuous.commands.messaging.modify_infraction_view import ModifyInfractionView
 from vyrtuous.commands.messaging.reason_modal import ReasonModal
 from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.commands.messaging.view_context import ViewContext
 from vyrtuous.commands.permissions.permission_service import (
     HasEqualOrLowerRole,
     PermissionService,
@@ -50,8 +49,8 @@ from vyrtuous.db.infractions.ban.ban_service import BanService
 from vyrtuous.db.infractions.flag.flag_service import FlagService
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
 from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
-from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
+from vyrtuous.db.infractions.vmute.voice_mute_service import VoiceMuteService
 from vyrtuous.db.roles.admin.administrator_service import AdministratorService
 from vyrtuous.db.roles.coord.coordinator_service import CoordinatorService
 from vyrtuous.db.roles.mod.moderator import Moderator
@@ -188,31 +187,17 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
         member_dict = await do.determine_from_target(target=member)
-        try:
-            updated_kwargs = default_kwargs.copy()
-            updated_kwargs.update(member_dict.get("columns", None))
-            await PermissionService.has_equal_or_lower_role(
-                target_member_snowflake=int(member_dict.get("id", None)),
-                **updated_kwargs,
-            )
-        except HasEqualOrLowerRole as e:
-            state = StateService(interaction=interaction)
-            return await state.end(warning=str(e).capitalize())
+        ctx = ViewContext(interaction=interaction)
+        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
         view = ModifyInfractionView(
-            interaction=interaction,
-            member_snowflake=member_dict.get("id", None),
+            ctx=ctx,
             modal=DurationModal,
             state=state,
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel and a category", view=view, ephemeral=True
+            content="Select a channel and an infraction", view=view, ephemeral=True
         )
 
     @app_commands.command(name="flags", description="List flags.")
@@ -351,25 +336,16 @@ class ModeratorAppCommands(commands.Cog):
             "member_snowflake": int(interaction.user.id),
         }
         member_dict = await do.determine_from_target(target=member)
-        try:
-            updated_kwargs = default_kwargs.copy()
-            updated_kwargs.update(member_dict.get("columns", None))
-            await PermissionService.has_equal_or_lower_role(
-                target_member_snowflake=int(member_dict.get("id", None)),
-                **updated_kwargs,
-            )
-        except HasEqualOrLowerRole as e:
-            state = StateService(interaction=interaction)
-            return await state.end(warning=str(e).capitalize())
+        ctx = ViewContext(interaction=interaction)
+        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
         view = ModifyInfractionView(
-            interaction=interaction,
-            member_snowflake=member_dict.get("id", None),
+            ctx=ctx,
             modal=ReasonModal,
             state=state,
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel and a category", view=view, ephemeral=True
+            content="Select a channel and an infraction", view=view, ephemeral=True
         )
 
     @app_commands.command(name="summary", description="Moderation summary.")
@@ -438,24 +414,12 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
         member_dict = await do.determine_from_target(target=member)
-        try:
-            await PermissionService.has_equal_or_lower_role(
-                target_member_snowflake=int(member_dict.get("id", None)),
-                **default_kwargs,
-            )
-        except HasEqualOrLowerRole as e:
-            return await state.end(warning=str(e).capitalize())
+        ctx = ViewContext(interaction=interaction)
+        ctx.record = Ban
+        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
         view = InfractionView(
-            infraction=Ban,
-            interaction=interaction,
-            member_snowflake=member_dict.get("id", None),
-            modal=ReasonModal,
+            ctx=ctx,
             state=state,
         )
         await view.setup()
@@ -471,24 +435,12 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
         member_dict = await do.determine_from_target(target=member)
-        try:
-            await PermissionService.has_equal_or_lower_role(
-                target_member_snowflake=int(member_dict.get("id", None)),
-                **default_kwargs,
-            )
-        except HasEqualOrLowerRole as e:
-            return await state.end(warning=str(e).capitalize())
+        ctx = ViewContext(interaction=interaction)
+        ctx.record = VoiceMute
+        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
         view = InfractionView(
-            infraction=VoiceMute,
-            interaction=interaction,
-            member_snowflake=member_dict.get("id", None),
-            modal=ReasonModal,
+            ctx=ctx,
             state=state,
         )
         await view.setup()
@@ -504,24 +456,12 @@ class ModeratorAppCommands(commands.Cog):
     ):
         state = StateService(interaction=interaction)
         do = DiscordObject(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
         member_dict = await do.determine_from_target(target=member)
-        try:
-            await PermissionService.has_equal_or_lower_role(
-                target_member_snowflake=int(member_dict.get("id", None)),
-                **default_kwargs,
-            )
-        except HasEqualOrLowerRole as e:
-            return await state.end(warning=str(e).capitalize())
+        ctx = ViewContext(interaction=interaction)
+        ctx.record = TextMute
+        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
         view = InfractionView(
-            infraction=TextMute,
-            interaction=interaction,
-            member_snowflake=member_dict.get("id", None),
-            modal=ReasonModal,
+            ctx=ctx,
             state=state,
         )
         await view.setup()

@@ -1,10 +1,7 @@
 import pytest
 
 from vyrtuous.db.alias.alias_context import AliasContext
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import build_message, setup
 
 
 def test_setup(bot):

@@ -1,5 +1,5 @@
-"""!/bin/python3
-preexisting_infraction_view.py The purpose of this program is to provide the view for modify existing infractions.
+""" "!/bin/python3
+new_infraction_view.py The purpose of this program is to provide the view for creating an infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -19,8 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.commands.fields.duration import DurationObject
-from vyrtuous.commands.permissions.permission_service import PermissionService
+from vyrtuous.commands.messaging.view_context import ViewContext
 from vyrtuous.db.infractions.ban.ban import Ban
 from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
@@ -29,64 +28,49 @@ from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 
 class ModifyInfractionView(discord.ui.View):
     def __init__(
-        self, interaction: discord.Interaction, member_snowflake: int, modal, state
+        self,
+        ctx,
+        modal,
+        state,
     ):
         super().__init__(timeout=120)
-        self.information = {}
-        self.author_snowflake = interaction.user.id
+        self.ctx = ctx
         self.infractions = [Ban, Flag, TextMute, VoiceMute]
-        self.interaction = interaction
-        self.member_snowflake = member_snowflake
         self.modal = modal
+        self._record_map = {}
         self.state = state
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.author_snowflake
+        return interaction.user.id == self.ctx.source_member_snowflake
 
     async def setup(self):
-        self.information.setdefault("updated_kwargs", {})
         channel_options = await self._build_channel_options()
-        identifier_options = await self._build_identifier_options()
-        if not identifier_options:
-            await self.interaction.response.send_message(
-                content="No moderation actions exist for this member.", ephemeral=True
-            )
-            self.stop()
-            return
         self.channel_select.options = channel_options
-        self.category_select.options = identifier_options
 
     async def _build_channel_options(self):
-        channels = []
-        for infraction in self.infractions:
-            action = await infraction.select(
-                guild_snowflake=self.interaction.guild.id,
-                member_snowflake=self.member_snowflake,
-                singular=True,
-            )
-            if action:
-                channel = self.interaction.guild.get_channel(action.channel_snowflake)
-                channels.append(channel)
-        return [
-            discord.SelectOption(label=ch.name, value=str(ch.id))
-            for ch in channels
-            if isinstance(ch, discord.VoiceChannel)
+        channel_options = [
+            discord.SelectOption(label=c.name, value=str(c.id))
+            for c in self.ctx.available_channels
+            if c != "all"
         ]
+        if "all" in self.ctx.available_channels:
+            channel_options.append(discord.SelectOption(label="All", value="all"))
+        return channel_options
 
-    async def _build_identifier_options(self):
-        actions = []
+    async def _build_infraction_options(self):
         for infraction in self.infractions:
-            action = await infraction.select(
-                guild_snowflake=self.interaction.guild.id,
-                member_snowflake=self.member_snowflake,
+            record = await infraction.select(
+                channel_snowflake=self.ctx.target_channel_snowflake,
+                guild_snowflake=self.ctx.source_guild_snowflake,
+                member_snowflake=self.ctx.target_member_snowflake,
                 singular=True,
             )
-            if action:
-                actions.append(infraction)
+            if record:
+                key = str(record.identifier)
+                self._record_map[key] = record
         return [
-            discord.SelectOption(label=infraction.identifier, value=infraction.__name__)
-            for infraction in actions
-            if infraction.identifier != "smute"
+            discord.SelectOption(label=r.identifier, value=k)
+            for k, r in self._record_map.items()
         ]
 
     @discord.ui.select(
@@ -95,51 +79,42 @@ class ModifyInfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.information["updated_kwargs"]["channel_snowflake"] = channel.id
+        self.ctx.target_channel_snowflake = channel.id
         self.channel_select.placeholder = channel.name
-        executor_role = await PermissionService.resolve_highest_role(
-            channel_snowflake=channel.id,
-            guild_snowflake=interaction.guild.id,
-            member_snowflake=interaction.user.id,
-        )
-        self.information["executor_role"] = executor_role
+        infraction_options = await self._build_infraction_options()
+        self.infraction_select.options = infraction_options
+        self.infraction_select.disabled = False
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.select(
-        placeholder="Select category",
-        options=[],
+        placeholder="Select an infraction",
+        options=[discord.SelectOption(label="Select channel first", value="noop")],
+        disabled=True,
     )
-    async def category_select(self, interaction, select):
-        category_name = select.values[0]
-        infraction = next(c for c in self.infractions if c.__name__ == category_name)
-        self.category_select.placeholder = infraction.identifier
-        self.information["infraction"] = infraction
+    async def infraction_select(self, interaction, select):
+        key = select.values[0]
+        self.ctx.record = self._record_map[key]
+        self.infraction_select.placeholder = self.ctx.record.identifier
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        self.state.interaction = interaction
-        existing = await self.information.get("infraction", None).select(
-            channel_snowflake=self.information.get("updated_kwargs", None).get(
-                "channel_snowflake", None
-            ),
-            member_snowflake=self.member_snowflake,
-            singular=True,
-        )
-        self.information["updated_kwargs"]["member_snowflake"] = self.member_snowflake
-        self.information["existing"] = existing
-        if hasattr(existing, "expires_in"):
-            if DurationObject.from_expires_in_to_str(existing.expires_in) == 0:
-                await self.state.end(
-                    warning="This moderation is permanent and can only be undone, not modified."
-                )
-                self.stop()
-        modal = self.modal(information=self.information, state=self.state)
+        if not self.has_the_user_selected_all_fields():
+            return await interaction.response.send_message(
+                content="Please select all fields.", ephemeral=True
+            )
+        modal = self.modal(ctx=self.ctx, state=self.state)
+        await modal.setup()
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
-        await self.state.end(success=f"Cancelled modification.")
         self.stop()
+        return await self.state.end(success="Cancelled action.")
+
+    def has_the_user_selected_all_fields(self):
+        if not self.ctx.target_channel_snowflake or not self.ctx.record:
+            return False
+        return True

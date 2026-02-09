@@ -23,7 +23,6 @@ from typing import Any, Union
 import discord
 from discord.ext import commands
 
-
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.errors import (
     DiscordObjectNotFound,

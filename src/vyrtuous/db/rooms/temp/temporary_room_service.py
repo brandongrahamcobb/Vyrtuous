@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-
 from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias.alias import Alias
@@ -47,6 +46,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 
 class TemporaryRoomService(RecordService):
     lines, pages = [], []
+    model = TemporaryRoom
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):

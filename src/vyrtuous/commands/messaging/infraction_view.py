@@ -17,49 +17,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pathlib import Path
+from datetime import datetime, timezone
 
 import discord
 
-from vyrtuous.utils.view_utilities import limit_available_to_top_25_by_member_count
-from vyrtuous.db.mgmt.cap.cap_service import CapService
+from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.commands.messaging.reason_modal import ReasonModal
-from vyrtuous.utils.dir_to_classes import dir_to_classes
-from vyrtuous.commands.permissions.permission_service import PermissionService
-from vyrtuous.base.record_service import RecordService
+from vyrtuous.db.mgmt.cap.cap_service import CapService
 
 
 class InfractionView(discord.ui.View):
     def __init__(
         self,
-        interaction: discord.Interaction,
-        infraction,
-        infraction_service,
-        member_snowflake: int,
+        ctx,
         state,
     ):
         super().__init__(timeout=120)
-        self.information = {}
-        self.author_snowflake = int(interaction.user.id)
-        self.infraction = infraction
-        self.interaction = interaction
+        self.ctx = ctx
+        self.duration: DurationObject | None = None
         self.selected_duration = None
-        self.selected_snowflakes = {"member_snowflake": int(member_snowflake)}
-        self.selections = {}
+        self.selected_channel_snowflake: int | None = None
         self.state = state
-        self.top_25_available_channels = []
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.author_snowflake
+        return interaction.user.id == self.ctx.source_member_snowflake
 
     async def setup(self):
-        self.selected_snowflakes["guild_snowflake"] = int(self.interaction.guild.id)
-        available_channels, available_guilds = await PermissionService.can_list(
-            source=self.interaction
-        )
-        self.top_25_available_channels = limit_available_to_top_25_by_member_count(
-            available=available_channels
-        )
         channel_options = await self._build_channel_options()
         duration_options = self._build_duration_options()
         self.channel_select.options = channel_options
@@ -68,8 +51,11 @@ class InfractionView(discord.ui.View):
     async def _build_channel_options(self):
         channel_options = [
             discord.SelectOption(label=c.name, value=str(c.id))
-            for c in self.top_25_available_channels
+            for c in self.ctx.available_channels
+            if c != "all"
         ]
+        if "all" in self.ctx.available_channels:
+            channel_options.append(discord.SelectOption(label="All", value="all"))
         return channel_options
 
     def _build_duration_options(self):
@@ -87,7 +73,7 @@ class InfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.selected_snowflakes["channel_snowflake"] = channel.id
+        self.ctx.target_channel_snowflake = channel.id
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -98,42 +84,43 @@ class InfractionView(discord.ui.View):
     )
     async def duration_select(self, interaction, select):
         duration_name = select.values[0]
-        self.duration_select.placeholder = self.selected_duration = duration_name
+        self.duration_select.placeholder = duration_name
+        self.duration = DurationObject(duration_name)
+        self.ctx.expires_in = (
+            datetime.now(timezone.utc) + self.duration.to_timedelta()
+            if self.duration.number != 0
+            else None
+        )
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        self.selections = {
-            "selected_duration": self.selected_duration,
-            "selected_snowflakes": self.selected_snowflakes,
-        }
-        if not self.has_the_user_selected_all_fields(**self.selections):
-            return await self.interaction.response.send_message(
+        if not self.has_the_user_selected_all_fields():
+            return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
-        if not await CapService.verify_if_selections_exceed_a_cap_for_an_infraction_type(
-            infraction=self.infraction, selections=self.selections
+        if await CapService.assert_duration_exceeds_cap(
+            category=self.ctx.record.identifier,
+            duration=self.duration,
+            source_kwargs=self.ctx.source_kwargs,
         ):
-            return await self.interaction.response.send_message(
+            return await interaction.response.send_message(
                 content="Duration exceeds the channel cap.", ephemeral=True
             )
         modal = ReasonModal(
-            infraction=self.infraction,
-            infraction_service=self.infraction_service,
-            selections=self.selections,
+            ctx=self.ctx,
             state=self.state,
         )
+        await modal.setup()
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
         return await self.state.end(success="Cancelled action.")
 
-    def has_the_user_selected_all_fields(self, selected_duration, selected_snowflakes):
-        if not selected_duration or not selected_snowflakes.get(
-            "channel_snowflake", None
-        ):
+    def has_the_user_selected_all_fields(self):
+        if not self.ctx.expires_in or not self.ctx.target_channel_snowflake:
             return False
         return True
 

@@ -21,8 +21,8 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 from vyrtuous.db.alias.alias import Alias
-from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 from vyrtuous.db.infractions.tmute.text_mute import TextMute
+from vyrtuous.db.infractions.tmute.text_mute_service import TextMuteService
 
 
 @dataclass(frozen=True)

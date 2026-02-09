@@ -19,9 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.base.record_service import RecordService
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.permissions.permission_service import PermissionService
 from vyrtuous.db.infractions.smute.server_mute import ServerMute
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -38,6 +37,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 
 class ServerMuteService(RecordService):
     lines, pages = [], []
+    model = ServerMute
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):

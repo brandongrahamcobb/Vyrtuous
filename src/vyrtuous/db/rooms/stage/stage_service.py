@@ -22,7 +22,6 @@ import time
 import discord
 from discord.ext import commands
 
-
 from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
@@ -50,6 +49,7 @@ from vyrtuous.utils.logger import logger
 
 class StageService(RecordService):
     lines, pages = [], []
+    model = Stage
 
     @classmethod
     async def send_stage_ask_to_speak_message(

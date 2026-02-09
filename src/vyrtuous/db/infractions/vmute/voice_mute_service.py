@@ -21,8 +21,8 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.base.record_service import RecordService
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.db.infractions.vmute.voice_mute import VoiceMute
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
@@ -283,10 +283,7 @@ class VoiceMuteService(RecordService):
         await voice_mute.create()
         is_channel_scope = False
         if member.voice and member.voice.channel:
-            if (
-                member.voice.channel.id
-                == ctx.target_channel_snowflake
-            ):
+            if member.voice.channel.id == ctx.target_channel_snowflake:
                 is_channel_scope = True
                 try:
                     await member.edit(mute=True, reason=ctx.reason)

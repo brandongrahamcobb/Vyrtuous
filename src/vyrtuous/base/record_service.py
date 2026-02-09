@@ -20,8 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
 from vyrtuous.commands.messaging.state_service import StateService
 
@@ -34,7 +34,12 @@ class RecordService:
         source: Union[commands.Context, discord.Interaction, discord.Message],
         state: StateService,
     ):
-        obj = await ctx.record.select(**ctx.source_kwargs, singular=True)
+        obj = await ctx.record.select(
+            channel_snowflake=ctx.target_channel_snowflake,
+            guild_snowflake=ctx.source_guild_snowflake,
+            member_snowflake=ctx.target_member_snowflake,
+            singular=True,
+        )
         if obj:
             await cls.undo(ctx=ctx, source=source, state=state)
         else:

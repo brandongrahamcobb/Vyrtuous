@@ -19,8 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.base.record_service import RecordService
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.infractions.flag.flag import Flag
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.inc.helpers import CHUNK_SIZE
@@ -179,15 +179,12 @@ class FlagService(RecordService):
         await Flag.delete(
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake
+            member_snowflake=ctx.target_member_snowflake,
         )
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("ChannelEventListeners")
         for flag in cog.flags:
-            if (
-                flag.channel_snowflake
-                == ctx.target_channel_snowflake
-            ):
+            if flag.channel_snowflake == ctx.target_channel_snowflake:
                 cog.flags.remove(flag)
                 break
         await StreamService.send_entry(

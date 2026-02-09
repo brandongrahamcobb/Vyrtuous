@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-
+from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.bug.bug import Bug
 from vyrtuous.db.roles.dev.developer import Developer
@@ -35,11 +35,10 @@ from vyrtuous.utils.dictionary import (
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 
-from vyrtuous.base.record_service import RecordService
-
 
 class BugService(RecordService):
     lines, pages = [], []
+    model = Bug
 
     @classmethod
     async def create_embed(cls, action, bug, member_snowflake):

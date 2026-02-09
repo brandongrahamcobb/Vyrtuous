@@ -19,8 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.base.record_service import RecordService
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.stream.stream_service import StreamService
 from vyrtuous.db.roles.role import Role
 from vyrtuous.inc.helpers import CHUNK_SIZE

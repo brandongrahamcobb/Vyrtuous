@@ -22,7 +22,6 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-
 from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.commands.author import resolve_author
@@ -101,6 +100,7 @@ def administrator_predicator():
 
 class AdministratorService(RecordService):
     lines, pages = [], []
+    model = Administrator
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
@@ -211,6 +211,7 @@ class AdministratorService(RecordService):
 
 class AdministratorRoleService(RecordService):
     lines, pages = [], []
+    model = AdministratorRole
 
     @classmethod
     async def added_role(cls, updated_kwargs):

@@ -20,12 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime, timezone
 from typing import Union
 
-from discord.ext import commands
 import discord
-
+from discord.ext import commands
 
 from vyrtuous.base.record_service import RecordService
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.commands.author import resolve_author
 from vyrtuous.commands.fields.duration import DurationObject
 from vyrtuous.commands.messaging.message_service import PaginatorService
 from vyrtuous.commands.permissions.permission_service import PermissionService
@@ -41,11 +41,11 @@ from vyrtuous.utils.dictionary import (
     generate_skipped_set_pages,
 )
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.commands.author import resolve_author
 
 
 class StreamService(RecordService):
     lines, pages = [], []
+    model = Stream
 
     @classmethod
     async def send_entry(
@@ -53,8 +53,9 @@ class StreamService(RecordService):
         channel_snowflake: int,
         identifier: str,
         member: discord.Member,
-        source: Union[commands.Context, discord.Interaction, discord.Message]
-        | None = None,
+        source: (
+            Union[commands.Context, discord.Interaction, discord.Message] | None
+        ) = None,
         is_channel_scope: bool = False,
         is_modification: bool = False,
         reason: str = "No reason provided",
@@ -146,8 +147,9 @@ class StreamService(RecordService):
         is_channel_scope: bool = False,
         is_modification: bool = False,
         reason: str = "No reason provided",
-        source: Union[commands.Context, discord.Interaction, discord.Message]
-        | None = None,
+        source: (
+            Union[commands.Context, discord.Interaction, discord.Message] | None
+        ) = None,
     ):
         message = None
         if isinstance(source, commands.Context):

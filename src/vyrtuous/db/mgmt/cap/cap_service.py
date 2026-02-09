@@ -37,6 +37,7 @@ from vyrtuous.utils.emojis import get_random_emoji
 
 class CapService(RecordService):
     lines, pages = [], []
+    model = Cap
 
     @classmethod
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):

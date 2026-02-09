@@ -21,8 +21,8 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 from vyrtuous.db.alias.alias import Alias
-from vyrtuous.db.roles.role_service import RoleService
 from vyrtuous.db.roles.role import Role
+from vyrtuous.db.roles.role_service import RoleService
 
 
 @dataclass(frozen=True)
