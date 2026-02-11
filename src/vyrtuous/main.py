@@ -25,7 +25,7 @@ import debugpy
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
-from vyrtuous.db.database import Database
+from vyrtuous.database import Database
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.utils.logger import logger, setup_logging
 

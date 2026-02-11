@@ -1,2 +1,0 @@
-class InfractionService:
-    pass

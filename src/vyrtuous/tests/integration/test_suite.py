@@ -22,13 +22,13 @@ import threading
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
-from vyrtuous.commands.messaging.state_service import StateService
 from vyrtuous.tests.integration.mock_discord_channel import MockChannel
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
 from vyrtuous.tests.integration.mock_discord_role import MockRole
 from vyrtuous.tests.integration.mock_discord_state import MockState
+from vyrtuous.utils.state_service import StateService
 
 PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
 PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"

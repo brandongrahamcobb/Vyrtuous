@@ -3,7 +3,7 @@ import pytest
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
-from vyrtuous.db.database import Database
+from vyrtuous.database import Database
 
 
 @pytest.mark.asyncio

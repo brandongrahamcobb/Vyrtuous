@@ -23,7 +23,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.commands.messaging.state_service import StateService
+from vyrtuous.utils.state_service import StateService
 
 
 class RecordService:

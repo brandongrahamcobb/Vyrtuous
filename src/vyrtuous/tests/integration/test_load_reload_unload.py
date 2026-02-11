@@ -48,21 +48,21 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
     Parameters
     ----------
     cog
-        The cog file path starting with vyrtuous.cogs.*
+        The cog file path starting with vyrtuous.cog.*
 
     Examples
     --------
-    >>> !load vyrtuous.commands.cogs.scheduled_tasks
+    >>> !load vyrtuous.cog.scheduled_tasks
     [{emoji} Loaded ScheduledTasks]
 
-    >>> !reload vyrtuous.commands.cogs.scheduled_tasks
+    >>> !reload vyrtuous.cog.scheduled_tasks
     [{emoji} Reloaded ScheduledTasks]
 
-    >>> !unload vyrtuous.commands.cogs.scheduled_tasks
+    >>> !unload vyrtuous.cog.scheduled_tasks
     [{emoji} Unloaded ScheduledTasks]
 
     """
-    c = cog.format(cog="vyrtuous.commands.cogs.scheduled_tasks")
+    c = cog.format(cog="vyrtuous.cog.scheduled_tasks")
     full = f"{command} {c}"
     captured = await send_message(bot=bot, content=full)
     assert captured
@@ -85,19 +85,19 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
     with ExitStack() as stack:
         stack.enter_context(
             patch(
-                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                "vyrtuous.owner.guild_owner_service.guild_owner_predicator",
                 return_value=True,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
                 return_value=permission_role,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
                 return_value=permission_role,
             )
         )

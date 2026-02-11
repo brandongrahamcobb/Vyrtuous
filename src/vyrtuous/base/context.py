@@ -3,7 +3,7 @@ from typing import Dict
 import discord
 from discord.ext import commands
 
-from vyrtuous.commands.author import resolve_author
+from vyrtuous.utils.author import resolve_author
 
 
 class Context:

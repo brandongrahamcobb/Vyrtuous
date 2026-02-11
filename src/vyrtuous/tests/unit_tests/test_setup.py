@@ -1,6 +1,6 @@
 import pytest
 
-from vyrtuous.db.alias.alias_context import AliasContext
+from vyrtuous.alias.alias_context import AliasContext
 from vyrtuous.tests.integration.test_suite import build_message, setup
 
 
@@ -14,4 +14,4 @@ def test_setup(bot):
         state=objects.get("state", None),
     )
     ctx = AliasContext(message=msg)
-    ctx.setup()
+    await ctx.setup()

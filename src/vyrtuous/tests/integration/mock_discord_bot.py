@@ -52,7 +52,7 @@ class MockBot(commands.Bot):
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:
-            if cog != "vyrtuous.commands.cogs.scheduled_tasks":
+            if cog != "vyrtuous.cog.scheduled_tasks":
                 await self.load_extension(cog)
 
     @property

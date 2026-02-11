@@ -100,19 +100,19 @@ async def test_caps(bot, command: str, target, permission_role):
     with ExitStack() as stack:
         stack.enter_context(
             patch(
-                "vyrtuous.db.roles.admin.administrator_service.administrator_predicator",
+                "vyrtuous.administrator.administrator_service.administrator_predicator",
                 return_value=True,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
                 return_value=permission_role,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
                 return_value=permission_role,
             )
         )

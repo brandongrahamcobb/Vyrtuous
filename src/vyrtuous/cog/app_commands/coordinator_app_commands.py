@@ -1,0 +1,112 @@
+"""!/bin/python3
+
+coordinator_app_commands.py A discord.py cog containing coordinator commands for the Vyrtuous bot.
+
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.coordinator.coordinator import Coordinator
+from vyrtuous.coordinator.coordinator_service import coordinator_predicator
+from vyrtuous.field.duration import AppDuration
+from vyrtuous.field.snowflake import AppChannelSnowflake, AppMemberSnowflake
+from vyrtuous.moderator.moderator_service import ModeratorService
+from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.utils.discord_object_service import DiscordObject
+from vyrtuous.utils.message_service import MessageService
+from vyrtuous.utils.permission_service import PermissionService
+from vyrtuous.utils.state_service import StateService
+
+
+class CoordinatorAppCommands(commands.Cog):
+
+    ROLE = Coordinator
+
+    def __init__(self, bot: DiscordBot):
+        self.bot = bot
+        self.message_service = MessageService(self.bot)
+
+    @app_commands.command(name="mod", description="Grant/revoke mods.")
+    @app_commands.describe(
+        member="Tag a member or include their ID",
+        channel="Tag a channel or include its ID.",
+    )
+    @coordinator_predicator()
+    async def toggle_moderator_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: AppMemberSnowflake,
+        channel: AppChannelSnowflake,
+    ):
+        state = StateService(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        do = DiscordObject(interaction=interaction)
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
+        await PermissionService.has_equal_or_lower_role(
+            target_member_snowflake=int(member_dict.get("id", None)),
+            **updated_kwargs,
+        )
+        msg = await ModeratorService.toggle_moderator(
+            channel_dict=channel_dict,
+            default_kwargs=default_kwargs,
+            member_dict=member_dict,
+        )
+        return await state.end(success=msg)
+
+    @app_commands.command(name="stage", description="Start/stop stage.")
+    @app_commands.describe(
+        channel="Tag a voice/stage channel",
+        duration="Duration of the stage (e.g., 1h, 30m)",
+    )
+    @coordinator_predicator()
+    async def toggle_stage_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: AppChannelSnowflake,
+        duration: AppDuration,
+    ):
+        state = StateService(interaction=interaction)
+        default_kwargs = {
+            "channel_snowflake": int(interaction.channel.id),
+            "guild_snowflake": int(interaction.guild.id),
+            "member_snowflake": int(interaction.user.id),
+        }
+        do = DiscordObject(interaction=interaction)
+        channel = channel or int(interaction.channel.id)
+        channel_dict = await do.determine_from_target(target=channel)
+        updated_kwargs = default_kwargs.copy()
+        updated_kwargs.update(channel_dict.get("columns", None))
+        pages = await StageService.toggle_stage(
+            channel_dict=channel_dict,
+            duration=duration,
+            updated_kwargs=updated_kwargs,
+        )
+        await StateService.send_pages(title="Stages", pages=pages, state=state)
+
+
+async def setup(bot: DiscordBot):
+    await bot.add_cog(CoordinatorAppCommands(bot))

@@ -86,19 +86,19 @@ async def test_assign(bot, command: str, reference, member, permission_role):
     with ExitStack() as stack:
         stack.enter_context(
             patch(
-                "vyrtuous.db.roles.sysadmin.sysadmin_service.sysadmin_predicator",
+                "vyrtuous.sysadmin.sysadmin_service.sysadmin_predicator",
                 return_value=True,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
                 return_value=permission_role,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
                 return_value=permission_role,
             )
         )

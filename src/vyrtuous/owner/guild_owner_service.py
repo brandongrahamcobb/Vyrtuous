@@ -1,0 +1,83 @@
+"""!/bin/python3
+guild_owner_service.py The purpose of this program is to extend Service to service the guild owner class.
+
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+from typing import Union
+
+import discord
+from discord.ext import commands
+
+from vyrtuous.base.record_service import RecordService
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.developer.developer_service import is_developer_wrapper
+from vyrtuous.owner.guild_owner import GuildOwner
+from vyrtuous.sysadmin.sysadmin_service import is_sysadmin_wrapper
+from vyrtuous.utils.author import resolve_author
+from vyrtuous.utils.errors import NotGuildOwner
+
+
+async def is_guild_owner_wrapper(
+    source: Union[commands.Context, discord.Interaction, discord.Message],
+):
+    member = resolve_author(source=source)
+    member_snowflake = member.id
+    return await is_guild_owner(
+        guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
+    )
+
+
+async def is_guild_owner_at_all(
+    member_snowflake: int,
+):
+    bot = DiscordBot.get_instance()
+    for guild in bot.guilds:
+        if guild and guild.owner_id == member_snowflake:
+            return True
+    raise NotGuildOwner
+
+
+def guild_owner_predicator():
+    async def predicate(
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+    ):
+        for verify in (
+            is_sysadmin_wrapper,
+            is_developer_wrapper,
+            is_guild_owner_wrapper,
+        ):
+            try:
+                if await verify(source):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotGuildOwner
+
+    predicate._permission_level = "Guild Owner"
+    return commands.check(predicate)
+
+
+async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
+    bot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild and guild.owner_id == member_snowflake:
+        return True
+    raise NotGuildOwner
+
+
+class GuildOwnerService(RecordService):
+    model = GuildOwner

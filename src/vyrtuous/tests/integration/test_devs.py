@@ -99,19 +99,19 @@ async def test_devs(bot, command: str, target, permission_role):
     with ExitStack() as stack:
         stack.enter_context(
             patch(
-                "vyrtuous.db.roles.owner.guild_owner_service.guild_owner_predicator",
+                "vyrtuous.owner.guild_owner_service.guild_owner_predicator",
                 return_value=True,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.has_equal_or_lower_role",
+                "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
                 return_value=permission_role,
             )
         )
         stack.enter_context(
             patch(
-                "vyrtuous.commands.permissions.permission_service.PermissionService.resolve_highest_role",
+                "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
                 return_value=permission_role,
             )
         )

@@ -27,7 +27,7 @@ from uuid import UUID
 import asyncpg
 import pytest
 
-from vyrtuous.db.database import Database
+from vyrtuous.database import Database
 
 
 class NoDataFoundError(asyncpg.NoDataFoundError):
