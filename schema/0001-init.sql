@@ -322,7 +322,6 @@ CREATE TABLE public.streaming (
     enabled boolean DEFAULT false,
     entry_type text NOT NULL,
     guild_snowflake bigint NOT NULL,
-    id bigint NOT NULL,
     snowflakes bigint[],
     updated_at timestamp with time zone DEFAULT now()
 );

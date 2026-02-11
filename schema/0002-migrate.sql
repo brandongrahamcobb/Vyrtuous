@@ -15,3 +15,4 @@ DROP TRIGGER IF EXISTS set_expired_active_bans ON public.active_bans;
 DROP TRIGGER IF EXISTS set_expired_active_stages ON public.active_stages;
 DROP TRIGGER IF EXISTS set_expired_active_text_mutes ON public.active_text_mutes;
 DROP TRIGGER IF EXISTS set_expired_active_voice_mutes ON public.active_voice_mutes;
+ALTER TABLE streaming DROP COLUMN id;

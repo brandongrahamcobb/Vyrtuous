@@ -28,6 +28,13 @@ class DurationError(commands.CheckFailure):
         )
 
 
+class NotAlias(commands.CheckFailure):
+    def __init__(self):
+        super().__init__(
+            message=("Invalid alias."),
+        )
+
+
 class InsufficientPermissions(commands.CheckFailure):
     def __init__(self, message="Member has insufficient permissions."):
         super().__init__(message)
