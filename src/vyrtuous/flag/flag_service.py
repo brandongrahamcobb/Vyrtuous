@@ -19,30 +19,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.flag.flag import Flag
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
 
 
-class FlagService(RecordService):
-    lines, pages = [], []
+class FlagService:
+    CHUNK_SIZE = 7
     model = Flag
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    def __init__(
+        self, *, bot, database_factory, dictionary_service, emoji, stream_service
+    ):
+        self.bot = bot
+        self.database_factory = database_factory
+        self.dictionary_service = dictionary_service
+        self.emoji = emoji
+        self.flags = []
+        self.stream_service = stream_service
+
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
-        flags = await Flag.select(singular=False, **where_kwargs)
+        pages = []
+        flags = await self.database_factory.select(
+            child=Flag, singular=False, **where_kwargs
+        )
         for flag in flags:
             dictionary.setdefault(flag.guild_snowflake, {"members": {}})
             dictionary[flag.guild_snowflake]["members"].setdefault(
@@ -58,39 +57,38 @@ class FlagService(RecordService):
                     "reason": flag.reason,
                 }
             )
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
         if is_at_home:
             if skipped_guilds:
-                FlagService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                FlagService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Flags {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+    async def build_pages(self, object_dict, is_at_home):
+        lines = []
+        pages = []
+        bot = self.bot
+        title = f"{self.emoji.get_random_emoji()} Flags {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await FlagService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
@@ -107,9 +105,7 @@ class FlagService(RecordService):
                 if not member:
                     continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    FlagService.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -122,34 +118,32 @@ class FlagService(RecordService):
                     if not isinstance(
                         object_dict.get("object"), discord.abc.GuildChannel
                     ):
-                        FlagService.lines.append(f"**Channel:** {channel.mention}")
+                        lines.append(f"**Channel:** {channel.mention}")
                     if isinstance(object_dict.get("object"), discord.Member):
-                        FlagService.lines.append(
-                            f"**Reason:** {channel_dictionary['reason']}"
-                        )
+                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     flag_n += 1
                     field_count += 1
-                    if field_count >= CHUNK_SIZE:
+                    if field_count >= self.CHUNK_SIZE:
                         embed.add_field(
                             name="Information",
-                            value="\n".join(FlagService.lines),
+                            value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(embed, FlagService.pages, title, guild.name)
-                        FlagService.lines = []
-            if FlagService.lines:
+                        embed = self.dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
+                        lines = []
+            if lines:
                 embed.add_field(
-                    name="Information", value="\n".join(FlagService.lines), inline=False
+                    name="Information", value="\n".join(lines), inline=False
                 )
-            FlagService.pages.append(embed)
-        if FlagService.pages:
-            FlagService.pages[0].description = f"**({flag_n})**"
-        return FlagService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({flag_n})**"
+        return pages
 
-    @classmethod
-    async def enforce(cls, ctx, source, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def enforce(self, ctx, source, state):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         flag = Flag(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -158,53 +152,46 @@ class FlagService(RecordService):
             reason=ctx.reason,
         )
         await flag.create()
-        bot = DiscordBot.get_instance()
-        cog = bot.get_cog("ChannelEventListeners")
-        cog.flags.append(flag)
-        await StreamService.send_entry(
+        self.flags.append(flag)
+        await self.stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
             identifier="flag",
             member=member,
             source=source,
             reason=ctx.reason,
         )
-        embed = await FlagService.act_embed(ctx=ctx)
+        embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    @classmethod
-    async def undo(cls, ctx, source, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def undo(self, ctx, source, state):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
-        await Flag.delete(
+        await self.database_factory.delete(
+            child=Flag,
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
         )
-        bot = DiscordBot.get_instance()
-        cog = bot.get_cog("ChannelEventListeners")
-        for flag in cog.flags:
+        for flag in self.flags:
             if flag.channel_snowflake == ctx.target_channel_snowflake:
-                cog.flags.remove(flag)
+                self.flags.remove(flag)
                 break
-        await StreamService.send_entry(
+        await self.stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
             identifier="unflag",
             is_modification=True,
             member=member,
             source=source,
         )
-        embed = await FlagService.undo_embed(ctx=ctx)
+        embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    @classmethod
-    async def act_embed(cls, ctx):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(ctx.target_channel_snowflake)
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def act_embed(self, ctx):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name} has been flagged",
+            title=f"{self.emoji.get_random_emoji()} {member.display_name} has been flagged",
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
@@ -215,14 +202,12 @@ class FlagService(RecordService):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    @classmethod
-    async def undo_embed(cls, ctx):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(ctx.target_channel_snowflake)
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def undo_embed(self, ctx):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name} has been unflagged",
+            title=f"{self.emoji.get_random_emoji()} {member.display_name} has been unflagged",
             description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),
             color=discord.Color.yellow(),
         )
