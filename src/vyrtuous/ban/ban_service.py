@@ -22,31 +22,34 @@ from datetime import datetime, timezone
 import discord
 
 from vyrtuous.ban.ban import Ban
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
 
 
-class BanService(RecordService):
-    lines, pages = [], []
-    model = Ban
+class BanService:
+    __CHUNK_SIZE = 7
+    MODEL = Ban
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    def __init__(
+        self,
+        *,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        duration=None,
+        emoji=None,
+        stream_service=None,
+    ):
+        self.bot = bot
+        self.database_factory = database_factory
+        self.database_factory.model = Ban
+        self.dictionary_service = dictionary_service
+        self.duration = duration
+        self.emoji = emoji
+        self.stream_service = stream_service
+
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
-        bans = await Ban.select(singular=False, **where_kwargs)
+        bans = await self.database_factory.select(singular=False, **where_kwargs)
         for ban in bans:
             dictionary.setdefault(ban.guild_snowflake, {"members": {}})
             dictionary[ban.guild_snowflake]["members"].setdefault(
@@ -59,49 +62,46 @@ class BanService(RecordService):
                 ban.channel_snowflake
             ] = {
                 "reason": ban.reason,
-                "expires_in": DurationObject.from_expires_in(ban.expires_in),
+                "expires_in": self.duration.from_expires_in(ban.expires_in),
             }
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
         if is_at_home:
             if skipped_guilds:
-                BanService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                BanService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = [], []
         thumbnail = False
         where_kwargs = object_dict.get("columns", None)
-        title = f"{get_random_emoji()} Bans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+        title = f"{self.emoji.get_random_emoji()} Bans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
-        dictionary = await BanService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
         ban_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -110,9 +110,7 @@ class BanService(RecordService):
                 if not member:
                     continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    BanService.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -125,43 +123,44 @@ class BanService(RecordService):
                     if not isinstance(
                         object_dict.get("object"), discord.abc.GuildChannel
                     ):
-                        BanService.lines.append(f"**Channel:** {channel.mention}")
+                        lines.append(f"**Channel:** {channel.mention}")
                     if isinstance(object_dict.get("object"), discord.Member):
-                        BanService.lines.append(
+                        lines.append(
                             f"**Expires in:** {channel_dictionary['expires_in']}"
                         )
-                        BanService.lines.append(
-                            f"**Reason:** {channel_dictionary['reason']}"
-                        )
+                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     ban_n += 1
                     field_count += 1
-                    if field_count >= CHUNK_SIZE:
+                    if field_count >= self.__CHUNK_SIZE:
                         embed.add_field(
                             name="Information",
-                            value="\n".join(BanService.lines),
+                            value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(embed, BanService.pages, title, guild.name)
-                        BanService.lines = []
+                        embed = self.dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
+                        lines = []
                         field_count = 0
-            if BanService.lines:
+            if lines:
                 embed.add_field(
-                    name="Information", value="\n".join(BanService.lines), inline=False
+                    name="Information", value="\n".join(lines), inline=False
                 )
-            BanService.pages.append(embed)
-        if BanService.pages:
-            BanService.pages[0].description = f"**({ban_n})**"
-        return BanService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({ban_n})**"
+        return pages
 
-    @classmethod
-    async def ban_overwrite(cls, channel, member):
+    async def ban_overwrite(self, channel, member):
         if channel:
             kwargs = {
                 "channel_snowflake": channel.id,
                 "guild_snowflake": channel.guild.id,
                 "member_snowflake": member.id,
             }
-            ban = await Ban.select(**kwargs, singular=True)
+            ban = await self.database_factory.select(
+                **kwargs, model=self.MODEL, singular=True
+            )
             if ban:
                 targets = []
                 for target, overwrite in channel.overwrites.items():
@@ -174,7 +173,7 @@ class BanService(RecordService):
                             member, view_channel=False, reason="Reinstating active ban."
                         )
                     except discord.Forbidden as e:
-                        logger.warning(e)
+                        self.bot.logger.warning(e)
                     if (
                         member.voice
                         and member.voice.channel
@@ -186,23 +185,25 @@ class BanService(RecordService):
                                 "last_kicked": datetime.now(timezone.utc),
                                 "reset": False,
                             }
-                            await Ban.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
+                            await self.database_factory.update(
+                                model=self.MODEL,
+                                set_kwargs=set_kwargs,
+                                where_kwargs=kwargs,
+                            )
                         except discord.Forbidden as e:
-                            logger.warning(e)
+                            self.bot.logger.warning(e)
 
-    @classmethod
-    async def enforce(cls, ctx, source, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def enforce(self, ctx, source, state):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
-        ban = Ban(
+        ban = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
             expires_in=ctx.expires_in,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
             reason=ctx.reason,
         )
-        await ban.create()
+        await self.database_factory.create(ban)
         is_channel_scope = False
         channel = guild.get_channel(ctx.target_channel_snowflake)
         if channel:
@@ -225,29 +226,29 @@ class BanService(RecordService):
                         "member_snowflake": ctx.target_member_snowflake,
                     }
                     set_kwargs = {"last_kicked": datetime.now(timezone.utc)}
-                    await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                    await self.database_factory.update(
+                        set_kwargs=set_kwargs,
+                        where_kwargs=where_kwargs,
+                    )
             except discord.Forbidden as e:
-                logger.error(str(e).capitalize())
-
+                self.bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await StreamService.send_entry(
+        await self.stream_service.send_entry(
             channel_snowflake=ctx.channel_snowflake,
-            duration=DurationObject.from_expires_in(ctx.expires_in),
+            duration=self.duration.from_expires_in(ctx.expires_in),
             identifier="ban",
             is_channel_scope=is_channel_scope,
             member=member,
             source=source,
             reason=ctx.reason,
         )
-        embed = await BanService.act_embed(ctx=ctx)
+        embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    @classmethod
-    async def undo(cls, ctx, source, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def undo(self, ctx, source, state):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
-        await Ban.delete(
+        await self.database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
@@ -257,30 +258,28 @@ class BanService(RecordService):
             try:
                 await channel.set_permissions(member, view_channel=None)
             except discord.Forbidden as e:
-                logger.error(str(e).capitalize())
+                self.bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await StreamService.send_entry(
+        await self.stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
             identifier="unban",
             is_modification=True,
             member=member,
             source=source,
         )
-        embed = await BanService.undo_embed(ctx=ctx)
+        embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    @classmethod
-    async def act_embed(cls, ctx):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(ctx.target_channel_snowflake)
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def act_embed(self, ctx):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name} has been banned",
+            title=f"{self.emoji.get_random_emoji()} {member.display_name} has been banned",
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {DurationObject.from_expires_in(ctx.expires_in)}\n"
+                f"**Expires:** {self.duration.from_expires_in(ctx.expires_in)}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
@@ -288,14 +287,12 @@ class BanService(RecordService):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    @classmethod
-    async def undo_embed(cls, ctx):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(ctx.target_channel_snowflake)
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def undo_embed(self, ctx):
+        guild = self.bot.get_guild(ctx.source_guild_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name} has been unbanned",
+            title=f"{self.emoji.get_random_emoji()} {member.display_name} has been unbanned",
             description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),
             color=discord.Color.yellow(),
         )

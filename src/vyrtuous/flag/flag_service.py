@@ -23,14 +23,21 @@ from vyrtuous.flag.flag import Flag
 
 
 class FlagService:
-    CHUNK_SIZE = 7
-    model = Flag
+    __CHUNK_SIZE = 7
+    MODEL = Flag
 
     def __init__(
-        self, *, bot, database_factory, dictionary_service, emoji, stream_service
+        self,
+        *,
+        bot,
+        database_factory=None,
+        dictionary_service=None,
+        emoji=None,
+        stream_service=None,
     ):
         self.bot = bot
         self.database_factory = database_factory
+        self.database_factory.model = self.MODEL
         self.dictionary_service = dictionary_service
         self.emoji = emoji
         self.flags = []
@@ -39,9 +46,7 @@ class FlagService:
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
         pages = []
-        flags = await self.database_factory.select(
-            child=Flag, singular=False, **where_kwargs
-        )
+        flags = await self.database_factory.select(singular=False, **where_kwargs)
         for flag in flags:
             dictionary.setdefault(flag.guild_snowflake, {"members": {}})
             dictionary[flag.guild_snowflake]["members"].setdefault(
@@ -123,7 +128,7 @@ class FlagService:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     flag_n += 1
                     field_count += 1
-                    if field_count >= self.CHUNK_SIZE:
+                    if field_count >= self.__CHUNK_SIZE:
                         embed.add_field(
                             name="Information",
                             value="\n".join(lines),
@@ -145,13 +150,13 @@ class FlagService:
     async def enforce(self, ctx, source, state):
         guild = self.bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
-        flag = Flag(
+        flag = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
             reason=ctx.reason,
         )
-        await flag.create()
+        await self.database_factory.create(flag)
         self.flags.append(flag)
         await self.stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -167,7 +172,6 @@ class FlagService:
         guild = self.bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.database_factory.delete(
-            child=Flag,
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,

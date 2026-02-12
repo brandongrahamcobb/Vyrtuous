@@ -20,13 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from typing import Dict
 
-from vyrtuous.alias.alias import Alias
 from vyrtuous.ban.ban import Ban
 from vyrtuous.ban.ban_service import BanService
 
 
 @dataclass(frozen=True)
-class BanAlias(Alias):
+class BanAlias:
     category: str = "ban"
     record = Ban
     service = BanService

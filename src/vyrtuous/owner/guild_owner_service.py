@@ -22,62 +22,71 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.developer.developer_service import is_developer_wrapper
 from vyrtuous.owner.guild_owner import GuildOwner
-from vyrtuous.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.errors import NotGuildOwner
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-async def is_guild_owner_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_guild_owner(
-        guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
-    )
+class NotGuildOwner(commands.CommandError):
+    def __init__(
+        self,
+        message="Member is not a guild owner in this server.",
+    ):
+        super().__init__(message)
 
 
-async def is_guild_owner_at_all(
-    member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
-    for guild in bot.guilds:
-        if guild and guild.owner_id == member_snowflake:
-            return True
-    raise NotGuildOwner
+class GuildOwnerService:
+    MODEL = GuildOwner
 
+    def __init__(self, *, author_service=None, bot=None, database_factory=None):
+        self.__author_service = author_service
+        self.__bot = bot
+        self.__sysadmin_service = SysadminService(author_service=author_service)
+        self.__developer_service = DeveloperService(
+            author_service=author_service, database_factory=database_factory
+        )
 
-def guild_owner_predicator():
-    async def predicate(
+    async def is_guild_owner_wrapper(
+        self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        for verify in (
-            is_sysadmin_wrapper,
-            is_developer_wrapper,
-            is_guild_owner_wrapper,
-        ):
-            try:
-                if await verify(source):
-                    return True
-            except commands.CheckFailure:
-                continue
+        member = self.__author_service.resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_guild_owner(
+            guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
+        )
+
+    async def is_guild_owner_at_all(
+        self,
+        member_snowflake: int,
+    ):
+        for guild in self.__bot.guilds:
+            if guild and guild.owner_id == member_snowflake:
+                return True
         raise NotGuildOwner
 
-    predicate._permission_level = "Guild Owner"
-    return commands.check(predicate)
+    def guild_owner_predicator(self):
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.is_guild_owner_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotGuildOwner
 
+        predicate._permission_level = "Guild Owner"
+        return commands.check(predicate)
 
-async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
-    guild = bot.get_guild(guild_snowflake)
-    if guild and guild.owner_id == member_snowflake:
-        return True
-    raise NotGuildOwner
-
-
-class GuildOwnerService(RecordService):
-    model = GuildOwner
+    async def is_guild_owner(self, guild_snowflake: int, member_snowflake: int) -> bool:
+        guild = self.__bot.get_guild(guild_snowflake)
+        if guild and guild.owner_id == member_snowflake:
+            return True
+        raise NotGuildOwner

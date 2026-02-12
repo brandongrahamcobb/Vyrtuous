@@ -20,13 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from typing import Dict
 
-from vyrtuous.alias.alias import Alias
 from vyrtuous.flag.flag import Flag
 from vyrtuous.flag.flag_service import FlagService
 
 
 @dataclass(frozen=True)
-class FlagAlias(Alias):
+class FlagAlias:
     category = "flag"
     record = Flag
     service = FlagService

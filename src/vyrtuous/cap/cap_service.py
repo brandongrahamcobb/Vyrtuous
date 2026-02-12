@@ -19,30 +19,32 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cap.cap import Cap
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_channels,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
 
 
-class CapService(RecordService):
-    lines, pages = [], []
-    model = Cap
+class CapService:
+    __CHUNK_SIZE = 7
+    MODEL = Cap
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    def __init__(
+        self,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        duration=None,
+        emoji=None,
+    ):
+        self.bot = bot
+        self.database_factory = database_factory
+        self.database_factory.model = self.MODEL
+        self.dictionary_service = dictionary_service
+        self.duration = duration
+        self.emoji = emoji
+
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
-        caps = await Cap.select(singular=False, **where_kwargs)
+        pages = []
+        caps = await self.database_factory.select(singular=False, **where_kwargs)
         for cap in caps:
             dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
             dictionary[cap.guild_snowflake]["channels"].setdefault(
@@ -51,46 +53,43 @@ class CapService(RecordService):
             dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
                 cap.category
             ] = cap.duration_seconds
-        skipped_channels = generate_skipped_channels(dictionary)
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_channels = self.dictionary_service.generate_skipped_channels(dictionary)
+        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
+        cleaned_dictionary = self.dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
         if is_at_home:
             if skipped_channels:
-                CapService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_channels,
                         title="Skipped Channels in Server",
                     )
                 )
             if skipped_guilds:
-                CapService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Caps"
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = [], []
+        title = f"{self.emoji.get_random_emoji()} Caps"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await CapService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
         cap_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -101,71 +100,71 @@ class CapService(RecordService):
                 for moderation_type, duration_seconds in cap_dictionary.get(
                     "caps", {}
                 ).items():
-                    CapService.lines.append(
-                        f"  ↳ {moderation_type} ({DurationObject.from_seconds(duration_seconds)})"
+                    lines.append(
+                        f"  ↳ {moderation_type} ({self.duration.from_seconds(duration_seconds)})"
                     )
                     cap_n += 1
                     field_count += 1
-                    if field_count >= CHUNK_SIZE:
+                    if field_count >= self.__CHUNK_SIZE:
                         embed.add_field(
                             name=f"Channel: {channel.mention}",
-                            value="\n".join(CapService.lines),
+                            value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(embed, CapService.pages, title, guild.name)
-                        CapService.lines = []
+                        embed = self.dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
+                        lines = []
                         field_count = 0
-                if CapService.lines:
+                if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(CapService.lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-            CapService.pages.append(embed)
-        if CapService.pages:
-            CapService.pages[0].description = f"**({cap_n})**"
-        return CapService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({cap_n})**"
+        return pages
 
-    @classmethod
-    async def toggle_cap(cls, category, channel_dict, hours):
+    async def toggle_cap(self, category, channel_dict, hours):
         seconds = int(hours) * 3600
         where_kwargs = channel_dict.get("columns", None)
         where_kwargs.update({"category": category})
-        cap = await Cap.select(singular=True, **where_kwargs)
+        cap = await self.database_factory.select(singular=True, **where_kwargs)
         if cap and seconds:
-            await Cap.update(
+            await self.database_factory.update(
                 set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs
             )
             return f"Cap `{category}` modified for {channel_dict.get('mention', None)}."
         elif cap:
-            await Cap.delete(**where_kwargs)
+            await self.database_factory.delete(**where_kwargs)
             return (
                 f"Cap of type {category} "
                 f"and channel {channel_dict.get('mention', None)} deleted successfully."
             )
         else:
             where_kwargs.update({"duration_seconds": seconds})
-            cap = Cap(**where_kwargs)
-            await cap.create()
+            cap = self.MODEL(**where_kwargs)
+            await self.database_factory.create(cap)
             return (
                 f"Cap `{category}` created for "
                 f"{channel_dict.get('mention', None)} successfully."
             )
 
-    @classmethod
-    async def assert_duration_exceeds_cap(cls, category, duration, source_kwargs):
+    async def assert_duration_exceeds_cap(self, category, duration, source_kwargs):
         exceeds_cap = False
-        # if hasattr(kwargs, "role_snowflake"):dd
-        # del kwargs["role_snowflake"]
-        # executor_role = await PermissionService.resolve_highest_role(**kwargs)
-        cap = await Cap.select(**source_kwargs, category=category, singular=True)
-        duration_seconds = DurationObject.from_expires_in(
+        cap = await self.database_factory.select(
+            **source_kwargs, category=category, singular=True
+        )
+        duration_seconds = self.duration.from_expires_in(
             duration.expires_in
         ).to_seconds()
         if cap:
             if duration_seconds > cap.duration_seconds:
                 exceeds_cap = True
         else:
-            if duration_seconds > DurationObject("8h").to_seconds():
+            self.duration.duration = "8h"
+            if duration_seconds > self.duration.to_seconds():
                 exceeds_cap = True
         return exceeds_cap

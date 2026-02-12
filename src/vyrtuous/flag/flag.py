@@ -20,12 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from vyrtuous.base.infraction import Infraction
-
 
 @dataclass(frozen=True)
-class Flag(Infraction):
-
+class Flag:
     __tablename__ = "active_flags"
     identifier = "flag"
     channel_snowflake: int

@@ -19,42 +19,36 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug import Bug
-from vyrtuous.developer.developer import Developer
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_messages,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
 
 
-class BugService(RecordService):
-    lines, pages = [], []
-    model = Bug
+class BugService:
+    __CHUNK_SIZE = 7
+    MODEL = Bug
 
-    @classmethod
-    async def create_embed(cls, action, bug, member_snowflake):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(bug.channel_snowflake)
-        guild = bot.get_guild(bug.guild_snowflake)
+    def __init__(
+        self, bot=None, database_factory=None, dictionary_service=None, emoji=None
+    ):
+        self.bot = bot
+        self.dictionary_service = dictionary_service
+        self.emoji = emoji
+        self.database_factory = database_factory
+
+    async def create_embed(self, action, bug, member_snowflake):
+        guild = self.bot.get_guild(bug.guild_snowflake)
+        channel = guild.get_channel(bug.channel_snowflake)
         try:
             msg = await channel.fetch_message(bug.message_snowflake)
         except discord.NotFound:
-            logger.warning(f"Message reference not found ({bug.message_snowflake}).")
-        member = bot.get_user(member_snowflake)
+            self.bot.logger.warning(
+                f"Message reference not found ({bug.message_snowflake})."
+            )
+        member = guild.get_member(member_snowflake)
         user_mentions = []
         for member_snowflake in bug.member_snowflakes:
-            user_mentions.append(bot.get_user(member_snowflake).mention)
+            user_mentions.append(member.mention)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name} has been {action}",
+            title=f"{self.emoji.get_random_emoji()} {member.display_name} has been {action}",
             description=(
                 f"**Guild:** {guild.name}\n"
                 f"**Channel:** {channel.mention}\n"
@@ -66,8 +60,8 @@ class BugService(RecordService):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
         bugs = await Bug.select(singular=False, **where_kwargs)
         for bug in bugs:
@@ -87,50 +81,49 @@ class BugService(RecordService):
                 bug.member_snowflakes
             )
             messages[bug.message_snowflake]["notes"].append(bug.notes)
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_messages = await generate_skipped_messages(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_messages = await self.dictionary_service.generate_skipped_messages(
+            dictionary
+        )
+        cleaned_dictionary = self.dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_messages=skipped_messages,
         )
         if is_at_home:
             if skipped_guilds:
-                BugService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_messages:
-                BugService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_messages,
                         title="Skipped Messages in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, filter, where_kwargs, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Developer Logs"
+    async def build_pages(self, filter, where_kwargs, is_at_home):
+        lines, pages = [], []
+        title = f"{self.emoji.get_random_emoji()} Developer Logs"
 
-        dictionary = await BugService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
         bug_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for message_snowflake, entry in guild_data.get("messages", {}).items():
-                channel = bot.get_channel(entry["channel_snowflake"])
+                channel = guild.get_channel(entry["channel_snowflake"])
                 if not channel:
                     continue
                 if filter == "resolved" and not entry.get("resolved"):
@@ -138,51 +131,55 @@ class BugService(RecordService):
                 if filter == "unresolved" and entry.get("resolved"):
                     continue
                 msg = await channel.fetch_message(message_snowflake)
-                BugService.lines.append(
+                lines.append(
                     f"**Resolved:** {'\u2705' if entry.get('resolved') else '\u274c'}"
                 )
-                BugService.lines.append(f"**Message:** {msg.jump_url}")
+                lines.append(f"**Message:** {msg.jump_url}")
                 if where_kwargs.get("id", None) == str(entry["id"]):
-                    BugService.lines.append(
+                    lines.append(
                         f"**Notes:** {entry['notes'] if entry.get('notes') is not None else None}"
                     )
-                    BugService.lines.append(
+                    lines.append(
                         f"**Assigned to:** {', '.join(str(d) for d in entry['developer_snowflakes']) if entry.get('developer_snowflakes') else None}"
                     )
                 else:
-                    BugService.lines.append(f"**Reference:** {entry['id']}")
+                    lines.append(f"**Reference:** {entry['id']}")
                 bug_n += 1
                 field_count += 1
-                if field_count >= CHUNK_SIZE:
+                if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(
                         name=f"**Channel:** {channel.mention}",
-                        value="\n".join(BugService.lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, BugService.pages, title, guild.name)
-                    BugService.lines = []
-            if BugService.lines:
+                    embed = self.dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
+                    lines = []
+            if lines:
                 embed.add_field(
                     name=f"**Channel:** {channel.mention}",
-                    value="\n".join(BugService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            BugService.pages.append(embed)
-        if BugService.pages:
-            BugService.pages[0].description = f"**({bug_n})**"
-        return BugService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({bug_n})**"
+        return pages
 
-    @classmethod
-    async def assign_bug_to_developer(cls, reference, member_dict):
+    async def assign_bug_to_developer(self, reference, member_dict):
         where_kwargs = member_dict.get("columns", None)
 
-        developer = await Developer.select(singular=True, **where_kwargs)
+        self.database_factory.model = Developer
+        developer = await self.database_factory.select(singular=True, **where_kwargs)
         if not developer:
             return (
                 f"Developer not found for target ({member_dict.get('mention', None)})."
             )
-
-        bug = await Bug.select(id=reference, resolved=False, singular=True)
+        self.database_factory.model = self.MODEL
+        bug = await self.database_factory.select(
+            id=reference, resolved=False, singular=True
+        )
         if not bug:
             return f"Unresolved issue not found for reference: {reference}."
         member_snowflakes = bug.member_snowflakes

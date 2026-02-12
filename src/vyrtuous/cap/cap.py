@@ -20,12 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from vyrtuous.base.database_factory import DatabaseFactory
-
 
 @dataclass(frozen=True)
-class Cap(DatabaseFactory):
-
+class Cap:
     __tablename__ = "active_caps"
     identifier = "cap"
     category: str

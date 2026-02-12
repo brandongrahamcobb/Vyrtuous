@@ -22,102 +22,124 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import is_administrator_wrapper
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.coordinator.coordinator import Coordinator
-from vyrtuous.developer.developer_service import is_developer_wrapper
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.owner.guild_owner_service import is_guild_owner_wrapper
-from vyrtuous.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.errors import NotCoordinator
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-async def is_coordinator_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_coordinator(
-        channel_snowflake=source.channel.id,
-        guild_snowflake=source.guild.id,
-        member_snowflake=int(member_snowflake),
-    )
+class NotCoordinator(commands.CommandError):
+    def __init__(
+        self,
+        message="Member is not a coordinator in this channel.",
+    ):
+        super().__init__(message)
 
 
-async def is_coordinator(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
-) -> bool:
-    coordinator = await Coordinator.select(
-        channel_snowflake=int(channel_snowflake),
-        guild_snowflake=int(guild_snowflake),
-        member_snowflake=int(member_snowflake),
-        singular=True,
-    )
-    if not coordinator:
-        raise NotCoordinator
-    return True
+class CoordinatorService:
+    __CHUNK_SIZE = 7
+    MODEL = Coordinator
 
+    def __init__(
+        self,
+        *,
+        author_service=None,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        emoji,
+    ):
+        self.author_service = author_service
+        self.bot = bot
+        self.database_factory = database_factory
+        self.dictionary_service = dictionary_service
+        self.dictionary_service.model = self.MODEL
+        self.emoji = emoji
+        self.__sysadmin_service = SysadminService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
+        self.__developer_service = DeveloperService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
+        self.__administrator_service = AdministratorService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
 
-async def is_coordinator_at_all_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_coordinator_at_all(member_snowflake=member_snowflake)
+    async def is_coordinator(
+        self, channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    ) -> bool:
+        coordinator = await self.database_factory.select(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            singular=True,
+        )
+        if not coordinator:
+            raise NotCoordinator
+        return True
 
+    def coordinator_predicator(self):
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+                self.__administrator_service.is_administrator_wrapper,
+                self.is_coordinator_at_all_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotCoordinator
 
-async def is_coordinator_at_all(
-    member_snowflake: int,
-):
-    coordinator = await Coordinator.select(
-        member_snowflake=int(member_snowflake),
-    )
-    if not coordinator:
-        raise NotCoordinator
-    return True
+        predicate._permission_level = "Coordinator"
+        return commands.check(predicate)
 
+    async def is_coordinator_at_all(
+        self,
+        member_snowflake: int,
+    ):
+        coordinator = await self.database_factory.select(
+            member_snowflake=int(member_snowflake),
+        )
+        if not coordinator:
+            raise NotCoordinator
+        return True
 
-def coordinator_predicator():
-    async def predicate(
+    async def is_coordinator_at_all_wrapper(
+        self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        for verify in (
-            is_sysadmin_wrapper,
-            is_developer_wrapper,
-            is_guild_owner_wrapper,
-            is_administrator_wrapper,
-            is_coordinator_at_all_wrapper,
-        ):
-            try:
-                if await verify(source):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotCoordinator
+        member = self.author_service.resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_coordinator_at_all(member_snowflake=member_snowflake)
 
-    predicate._permission_level = "Coordinator"
-    return commands.check(predicate)
+    async def is_coordinator_wrapper(
+        self,
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+    ):
+        member = self.author_service.resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_coordinator(
+            channel_snowflake=source.channel.id,
+            guild_snowflake=source.guild.id,
+            member_snowflake=int(member_snowflake),
+        )
 
-
-class CoordinatorService(RecordService):
-    lines, pages = [], []
-    model = Coordinator
-
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
-        coordinators = await Coordinator.select(singular=False, **where_kwargs)
+        coordinators = await self.database_factory.select(
+            singular=False, **where_kwargs
+        )
         for coordinator in coordinators:
             dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
             dictionary[coordinator.guild_snowflake]["members"].setdefault(
@@ -131,39 +153,36 @@ class CoordinatorService(RecordService):
             ]["coordinators"][coordinator.channel_snowflake].update(
                 {"placeholder": "placeholder"}
             )
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
         if is_at_home:
             if skipped_guilds:
-                CoordinatorService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                CoordinatorService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = [], []
+        title = f"{self.emoji.get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await CoordinatorService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
@@ -171,7 +190,7 @@ class CoordinatorService(RecordService):
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -183,9 +202,7 @@ class CoordinatorService(RecordService):
                     continue
                 coord_n += 1
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    CoordinatorService.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -201,44 +218,41 @@ class CoordinatorService(RecordService):
                         channel = guild.get_channel(channel_snowflake)
                         if not channel:
                             continue
-                        CoordinatorService.lines.append(
-                            f"**Channel:** {channel.mention}"
-                        )
+                        lines.append(f"**Channel:** {channel.mention}")
                     field_count += 1
-                    if field_count >= CHUNK_SIZE:
+                    if field_count >= self.__CHUNK_SIZE:
                         embed.add_field(
                             name="Information",
-                            value="\n".join(CoordinatorService.lines),
+                            value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(
-                            embed, CoordinatorService.pages, title, guild.name
-                        )
-                        CoordinatorService.lines = []
+                        embed = flush_page(embed, pages, title, guild.name)
+                        lines = []
                         field_count = 0
-            if CoordinatorService.lines:
+            if lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(CoordinatorService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            CoordinatorService.pages.append(embed)
-        if CoordinatorService.pages:
-            CoordinatorService.pages[0].description = f"**({coord_n})**"
-        return CoordinatorService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({coord_n})**"
+        return pages
 
-    @classmethod
-    async def toggle_coordinator(cls, channel_dict, default_kwargs, member_dict):
+    async def toggle_coordinator(self, channel_dict, default_kwargs, member_dict):
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         updated_kwargs.update(member_dict.get("columns", None))
-        coordinator = await Coordinator.select(singular=True, **updated_kwargs)
+        coordinator = await self.database_factory.select(
+            singular=True, **updated_kwargs
+        )
         if coordinator:
-            await Coordinator.delete(**updated_kwargs)
+            await self.database_factory.delete(**updated_kwargs)
             action = "revoked"
         else:
-            coordinator = Coordinator(**updated_kwargs)
-            await coordinator.create()
+            coordinator = self.MODEL(**updated_kwargs)
+            await self.database_factory.create(coordinator)
             action = "granted"
         return (
             f"Coordinator access has been {action} for {member_dict.get('mention', None)} "

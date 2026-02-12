@@ -22,57 +22,71 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.developer.developer import Developer
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.errors import NotDeveloper
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-async def is_developer_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_developer(member_snowflake)
+class NotDeveloper(commands.CommandError):
+    def __init__(self, message="Member is not a developer."):
+        super().__init__(message)
 
 
-def developer_predicator():
-    async def predicate(
-        source: Union[commands.Context, discord.Interaction, discord.Message],
+class DeveloperService:
+    __CHUNK_SIZE = 7
+    MODEL = Developer
+
+    def __init__(
+        self, *, author_service=None, bot=None, database_factory=None, emoji=None
     ):
-        for verify in (is_sysadmin_wrapper, is_developer_wrapper):
-            try:
-                if await verify(source):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotDeveloper
+        self.__author_service = author_service
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__database_factory = self.MODEL
+        self.__emoji = emoji
+        self.__sysadmin_service = SysadminService(
+            author_service=author_service, bot=bot
+        )
 
-    predicate._permission_level = "Developer"
-    return commands.check(predicate)
+    def developer_predicator(
+        self,
+    ):
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.is_developer_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotDeveloper
 
+        predicate._permission_level = "Developer"
+        return commands.check(predicate)
 
-async def is_developer(member_snowflake: int) -> bool:
-    developer = await Developer.select(
-        member_snowflake=int(member_snowflake), singular=True
-    )
-    if not developer:
-        raise NotDeveloper
-    return True
+    async def is_developer(self, member_snowflake: int) -> bool:
+        developer = await self.__database_factory.select(
+            member_snowflake=int(member_snowflake), singular=True
+        )
+        if not developer:
+            raise NotDeveloper
+        return True
 
+    async def is_developer_wrapper(
+        self, source: Union[commands.Context, discord.Interaction, discord.Message]
+    ):
+        member = self.__author_service.resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_developer(member_snowflake)
 
-class DeveloperService(RecordService):
-    lines, pages = [], []
-    model = Developer
-
-    @classmethod
-    async def build_clean_dictionary(cls, where_kwargs):
+    async def build_clean_dictionary(self, where_kwargs):
         dictionary = {}
-        developers = await Developer.select(singular=False, **where_kwargs)
+        developers = await self.__database_factory.select(
+            singular=False, **where_kwargs
+        )
         for developer in developers:
             dictionary.setdefault("members", {})
             dictionary["members"].setdefault(
@@ -84,15 +98,13 @@ class DeveloperService(RecordService):
         cleaned_dictionary = dictionary
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, **kwargs):
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), (discord.Guild, discord.Member)) else ''}"
+    async def build_pages(self, object_dict, **kwargs):
+        lines = []
+        pages = []
+        title = f"{self.__emoji.get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), (discord.Guild, discord.Member)) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await DeveloperService.build_clean_dictionary(
-            where_kwargs=where_kwargs
-        )
+        dictionary = await self.build_clean_dictionary(where_kwargs=where_kwargs)
 
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
@@ -102,13 +114,11 @@ class DeveloperService(RecordService):
             field_count = 0
             thumbnail = False
             for member_snowflake, member_data in values.items():
-                user = bot.get_user(member_snowflake)
+                user = self.__bot.get_user(member_snowflake)
                 if not user:
                     continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    DeveloperService.lines.append(
-                        f"**User:** {user.display_name} {user.mention}"
-                    )
+                    lines.append(f"**User:** {user.display_name} {user.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -116,13 +126,13 @@ class DeveloperService(RecordService):
                     )
                     thumbnail = True
                 dev_n += 1
-                if field_count >= CHUNK_SIZE:
+                if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(DeveloperService.lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    DeveloperService.pages.append(embed)
+                    pages.append(embed)
                     embed = (
                         discord.Embed(
                             title=title,
@@ -131,28 +141,27 @@ class DeveloperService(RecordService):
                         ),
                     )
                     field_count = 0
-                    DeveloperService.lines = []
-            if DeveloperService.lines:
+                    lines = []
+            if lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(DeveloperService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            DeveloperService.pages.append(embed)
-        if DeveloperService.pages:
-            DeveloperService.pages[0].description = f"All guilds **({dev_n})**"
-        return DeveloperService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"All guilds **({dev_n})**"
+        return pages
 
-    @classmethod
-    async def toggle_developer(cls, member_dict):
+    async def toggle_developer(self, member_dict):
         where_kwargs = member_dict.get("columns", None)
         del where_kwargs["guild_snowflake"]
-        developer = await Developer.select(singular=True, **where_kwargs)
+        developer = await self.__database_factory.select(singular=True, **where_kwargs)
         if developer:
-            await Developer.delete(**where_kwargs)
+            await self.__database_factory.delete(**where_kwargs)
             action = "revoked"
         else:
-            developer = Developer(**where_kwargs)
-            await developer.create()
+            developer = self.MODEL(**where_kwargs)
+            await self.__database_factory.create(developer)
             action = "granted"
         return f"Developer access for {member_dict.get('mention', None)} has been {action} globally."

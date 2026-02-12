@@ -46,7 +46,6 @@ from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
 class ChannelEventListeners(commands.Cog):
-
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.flags = []
@@ -119,6 +118,8 @@ class ChannelEventListeners(commands.Cog):
             if before.mute == after.mute:
                 if before.self_mute == after.self_mute:
                     return
+                return
+            return
         await VideoRoomService.reinforce_video_room(
             member=member, before=before, after=after
         )
@@ -265,7 +266,7 @@ class ChannelEventListeners(commands.Cog):
                 if flag.channel_snowflake == after_channel.id:
                     if flag.member_snowflake == member.id:
                         embed = discord.Embed(
-                            title=f"\u26a0\ufe0f {member.display_name} " f"is flagged",
+                            title=f"\u26a0\ufe0f {member.display_name} is flagged",
                             color=discord.Color.red(),
                         )
                         embed.set_thumbnail(url=member.display_avatar.url)

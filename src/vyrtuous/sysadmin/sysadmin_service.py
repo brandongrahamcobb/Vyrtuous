@@ -22,39 +22,41 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.sysadmin.sysadmin import Sysadmin
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.errors import NotSysadmin
 
 
-async def is_sysadmin_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_sysadmin(member_snowflake)
+class NotSysadmin(commands.CommandError):
+    def __init__(self, message="Member is not a sysadmin."):
+        super().__init__(message)
 
 
-def sysadmin_predicator():
-    async def predicate(
+class SysadminService:
+    MODEL = Sysadmin
+
+    def __init__(self, *, author_service=None, bot=None):
+        self.__author_service = author_service
+        self.__bot = bot
+
+    async def is_sysadmin_wrapper(
+        self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        if await is_sysadmin_wrapper(source):
+        member = resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_sysadmin(member_snowflake)
+
+    def sysadmin_predicator(self):
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            if await self.is_sysadmin_wrapper(source):
+                return True
+            raise NotSysadmin
+
+        predicate._permission_level = "Sysadmin"
+        return commands.check(predicate)
+
+    async def is_sysadmin(self, member_snowflake: int) -> bool:
+        if int(self.__bot.config["discord_owner_id"]) == member_snowflake:
             return True
         raise NotSysadmin
-
-    predicate._permission_level = "Sysadmin"
-    return commands.check(predicate)
-
-
-async def is_sysadmin(member_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
-    if int(bot.config["discord_owner_id"]) == member_snowflake:
-        return True
-    raise NotSysadmin
-
-
-class SysadminService(RecordService):
-    model = Sysadmin

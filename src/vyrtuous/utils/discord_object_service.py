@@ -35,6 +35,9 @@ from vyrtuous.utils.errors import (
 )
 from vyrtuous.utils.logger import logger
 
+class DiscordObjectConverter(commands.Converter):
+    async def convert(self, ctx: commands.Context, argument: str):
+
 
 class DiscordObject:
     def __init__(

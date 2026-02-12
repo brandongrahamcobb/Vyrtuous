@@ -22,103 +22,129 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import is_administrator_wrapper
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.coordinator.coordinator_service import is_coordinator_at_all_wrapper
-from vyrtuous.developer.developer_service import is_developer_wrapper
-from vyrtuous.inc.helpers import CHUNK_SIZE
+from vyrtuous.administrator.administrator_service import AdministratorService
+from vyrtuous.coordinator.coordinator_service import CoordinatorService
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.owner.guild_owner_service import is_guild_owner_wrapper
-from vyrtuous.sysadmin.sysadmin_service import is_sysadmin_wrapper
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.errors import NotModerator
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-async def is_moderator_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-):
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_moderator(
-        channel_snowflake=source.channel.id,
-        guild_snowflake=source.guild.id,
-        member_snowflake=int(member_snowflake),
-    )
+class NotModerator(commands.CommandError):
+    def __init__(
+        self,
+        message="Member is not a moderator in this channel.",
+    ):
+        super().__init__(message)
 
 
-async def is_moderator(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
-) -> bool:
-    moderator = await Moderator.select(
-        channel_snowflake=int(channel_snowflake),
-        guild_snowflake=int(guild_snowflake),
-        member_snowflake=int(member_snowflake),
-        singular=True,
-    )
-    if not moderator:
-        raise NotModerator
-    return True
+class ModeratorService:
+    __CHUNK_SIZE = 7
+    MODEL = Moderator
 
+    def __init__(
+        self,
+        *,
+        author_service=None,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        emoji=None,
+    ):
+        self.__author_service = author_service
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__dictionary_service = dictionary_service
+        self.__dictionary_service.model = self.MODEL
+        self.__emoji = emoji
+        self.__sysadmin_service = SysadminService(
+            author_service=author_service, bot=bot
+        )
+        self.__developer_service = DeveloperService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
+        self.__administrator_service = AdministratorService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=author_service, bot=bot, database_factory=database_factory
+        )
 
-async def is_moderator_at_all_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-) -> bool:
-    member = resolve_author(source=source)
-    member_snowflake = member.id
-    return await is_moderator_at_all(member_snowflake=member_snowflake)
-
-
-async def is_moderator_at_all(
-    member_snowflake: int,
-) -> bool:
-
-    moderator = await Moderator.select(member_snowflake=int(member_snowflake))
-    if not moderator:
-        raise NotModerator
-    return True
-
-
-def moderator_predicator():
-    async def predicate(
+    async def is_moderator_wrapper(
+        self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        for verify in (
-            is_sysadmin_wrapper,
-            is_developer_wrapper,
-            is_guild_owner_wrapper,
-            is_administrator_wrapper,
-            is_coordinator_at_all_wrapper,
-            is_moderator_at_all_wrapper,
+        member = self.__author_service.resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_moderator(
+            channel_snowflake=source.channel.id,
+            guild_snowflake=source.guild.id,
+            member_snowflake=int(member_snowflake),
+        )
+
+    async def is_moderator(
+        self, channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    ) -> bool:
+        moderator = await self.__database_factory.select(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            singular=True,
+        )
+        if not moderator:
+            raise NotModerator
+        return True
+
+    async def is_moderator_at_all_wrapper(
+        self,
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+    ) -> bool:
+        member = self.__author_service.resolve_author(source=source)
+        member_snowflake = member.id
+        return await self.is_moderator_at_all(member_snowflake=member_snowflake)
+
+    async def is_moderator_at_all(
+        self,
+        member_snowflake: int,
+    ) -> bool:
+        moderator = await self.__database_factory.select(
+            member_snowflake=int(member_snowflake)
+        )
+        if not moderator:
+            raise NotModerator
+        return True
+
+    def moderator_predicator(self):
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
         ):
-            try:
-                if await verify(source):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotModerator
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+                self.__administrator_service.is_administrator_wrapper,
+                self.__coordinator_service.is_coordinator_at_all_wrapper,
+                self.is_moderator_at_all_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotModerator
 
-    predicate._permission_level = "Moderator"
-    return commands.check(predicate)
+        predicate._permission_level = "Moderator"
+        return commands.check(predicate)
 
-
-class ModeratorService(RecordService):
-    lines, pages = [], []
-    model = Moderator
-
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
-        moderators = await Moderator.select(singular=False, **where_kwargs)
+        moderators = await self.__database_factory.select(
+            singular=False, **where_kwargs
+        )
         for moderator in moderators:
             dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
             dictionary[moderator.guild_snowflake]["members"].setdefault(
@@ -132,39 +158,36 @@ class ModeratorService(RecordService):
             ]["moderators"][moderator.channel_snowflake].update(
                 {"placeholder": "placeholder"}
             )
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.__dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
         if is_at_home:
             if skipped_guilds:
-                ModeratorService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                ModeratorService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Moderator {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = []
+        title = f"{self.__emoji.get_random_emoji()} Moderator {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await ModeratorService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
@@ -172,7 +195,7 @@ class ModeratorService(RecordService):
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -184,9 +207,7 @@ class ModeratorService(RecordService):
                     continue
                 mod_n += 1
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    ModeratorService.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -202,42 +223,43 @@ class ModeratorService(RecordService):
                         channel = guild.get_channel(channel_snowflake)
                         if not channel:
                             continue
-                        ModeratorService.lines.append(f"**Channel:** {channel.mention}")
+                        lines.append(f"**Channel:** {channel.mention}")
                     field_count += 1
-                    if field_count >= CHUNK_SIZE:
+                    if field_count >= self.__CHUNK_SIZE:
                         embed.add_field(
                             name="Information",
-                            value="\n".join(ModeratorService.lines),
+                            value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(
-                            embed, ModeratorService.pages, title, guild.name
+                        embed = self.__dictionary_service.flush_page(
+                            embed, pages, title, guild.name
                         )
-                        ModeratorService.lines = []
+                        lines = []
                         field_count = 0
-            if ModeratorService.lines:
+            if lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(ModeratorService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            ModeratorService.pages.append(embed)
-        if ModeratorService.pages:
-            ModeratorService.pages[0].description = f"**({mod_n})**"
-        return ModeratorService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({mod_n})**"
+        return pages
 
-    @classmethod
-    async def toggle_moderator(cls, channel_dict, default_kwargs, member_dict):
+    async def toggle_moderator(self, channel_dict, default_kwargs, member_dict):
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         updated_kwargs.update(member_dict.get("columns", None))
-        moderator = await Moderator.select(singular=True, **updated_kwargs)
+        moderator = await self.__database_factory.select(
+            singular=True, **updated_kwargs
+        )
         if moderator:
-            await Moderator.delete(**updated_kwargs)
+            await self.__database_factory.delete(**updated_kwargs)
             action = "revoked"
         else:
-            moderator = Moderator(**updated_kwargs)
-            await moderator.create()
+            moderator = self.MODEL(**updated_kwargs)
+            await self.__database_factory.create(moderator)
             action = "granted"
         return (
             f"Moderator access for {member_dict.get('mention', None)} has been "
