@@ -70,7 +70,10 @@ class ModeratorService:
             author_service=author_service, bot=bot, database_factory=database_factory
         )
         self.__coordinator_service = CoordinatorService(
-            author_service=author_service, bot=bot, database_factory=database_factory
+            author_service=author_service,
+            bot=bot,
+            database_factory=database_factory,
+            emoji=emoji,
         )
 
     async def is_moderator_wrapper(
@@ -245,6 +248,105 @@ class ModeratorService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({mod_n})**"
+        return pages
+
+    async def survey(self, channel_dict, guild_snowflake):
+
+        chunk_size, pages = 7, []
+        (
+            sysadmins,
+            developers,
+            guild_owners,
+            administrators,
+            coordinators,
+            moderators,
+        ) = ([], [], [], [], [], [])
+
+        for member in channel_dict.get("object", None).members:
+            try:
+                if await self.__sysadmin_service.is_sysadmin(member.id):
+                    sysadmins.append(member)
+            except commands.CheckFailure as e:
+                self.__bot.logger.warning(str(e).capitalize())
+            try:
+                if await self.__developer_service.is_developer(member.id):
+                    developers.append(member)
+            except commands.CheckFailure as e:
+                self.__bot.logger.warning(str(e).capitalize())
+            try:
+                if await self.__guild_owner_service.is_guild_owner(
+                    guild_snowflake, member.id
+                ):
+                    guild_owners.append(member)
+            except commands.CheckFailure as e:
+                self.__bot.logger.warning(str(e).capitalize())
+            try:
+                if await self.__administrator_service.is_administrator(
+                    guild_snowflake, member.id
+                ):
+                    administrators.append(member)
+            except commands.CheckFailure as e:
+                self.__bot.logger.warning(str(e).capitalize())
+            try:
+                if await self.__coordinator_service.is_coordinator(
+                    channel_dict.get("id", None), guild_snowflake, member.id
+                ):
+                    coordinators.append(member)
+            except commands.CheckFailure as e:
+                self.__bot.logger.warning(str(e).capitalize())
+            try:
+                if await self.is_moderator(
+                    channel_dict.get("id", None), guild_snowflake, member.id
+                ):
+                    moderators.append(member)
+            except commands.CheckFailure as e:
+                self.__bot.logger.warning(str(e).capitalize())
+        sysadmins_chunks = [
+            sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
+        ]
+        guild_owners_chunks = [
+            guild_owners[i : i + chunk_size]
+            for i in range(0, len(guild_owners), chunk_size)
+        ]
+        developers_chunks = [
+            developers[i : i + chunk_size]
+            for i in range(0, len(developers), chunk_size)
+        ]
+        administrators_chunks = [
+            administrators[i : i + chunk_size]
+            for i in range(0, len(administrators), chunk_size)
+        ]
+        coordinators_chunks = [
+            coordinators[i : i + chunk_size]
+            for i in range(0, len(coordinators), chunk_size)
+        ]
+        moderators_chunks = [
+            moderators[i : i + chunk_size]
+            for i in range(0, len(moderators), chunk_size)
+        ]
+        roles_chunks = [
+            ("Sysadmins", sysadmins, sysadmins_chunks),
+            ("Developers", developers, developers_chunks),
+            ("Guild Owners", guild_owners, guild_owners_chunks),
+            ("Administrators", administrators, administrators_chunks),
+            ("Coordinators", coordinators, coordinators_chunks),
+            ("Moderators", moderators, moderators_chunks),
+        ]
+        max_pages = max(len(c[2]) for c in roles_chunks)
+        for page in range(max_pages):
+            embed = discord.Embed(
+                title=f"{self.__emoji.get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
+                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
+                color=discord.Color.blurple(),
+            )
+            for role_name, role_list, chunks in roles_chunks:
+                chunk = chunks[page] if page < len(chunks) else []
+                embed.add_field(
+                    name=f"{role_name} ({len(chunk)}/{len(role_list)})",
+                    value=", ".join(u.mention for u in chunk) if chunk else "*None*",
+                    inline=False,
+                )
+            pages.append(embed)
         return pages
 
     async def toggle_moderator(self, channel_dict, default_kwargs, member_dict):

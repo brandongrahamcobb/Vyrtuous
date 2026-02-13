@@ -19,68 +19,62 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.server_mute.server_mute import ServerMute
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.permission_service import PermissionService
 
 
-class ServerMuteService(RecordService):
-    lines, pages = [], []
-    model = ServerMute
+class ServerMuteService:
+    __CHUNK_SIZE = 7
+    MODEL = ServerMute
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    def __init__(
+        self, *, bot=None, database_factory=None, dictionary_service=None, emoji=None
+    ):
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__dictionary_service = dictionary_service
+        self.__emoji = emoji
+
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
-        server_mutes = await ServerMute.select(singular=False, **where_kwargs)
+        server_mutes = await self.__database_factory.select(
+            singular=False, **where_kwargs
+        )
         for server_mute in server_mutes:
             dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
             dictionary[server_mute.guild_snowflake]["members"].setdefault(
                 server_mute.member_snowflake, {"server_mutes": {}}
             )
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.__dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
         if is_at_home:
             if skipped_guilds:
-                ServerMuteService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                ServerMuteService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Server Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = [], []
+        title = f"{self.__emoji.get_random_emoji()} Server Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await ServerMuteService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
@@ -88,7 +82,7 @@ class ServerMuteService(RecordService):
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -99,9 +93,7 @@ class ServerMuteService(RecordService):
                 if not member:
                     continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    ServerMuteService.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -110,51 +102,51 @@ class ServerMuteService(RecordService):
                     thumbnail = True
                 smute_n += 1
                 field_count += 1
-                if field_count >= CHUNK_SIZE:
+                if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(ServerMuteService.lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    embed = flush_page(
-                        embed, ServerMuteService.pages, title, guild.name
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
                     )
-                    ServerMuteService.lines = []
+                    lines = []
                     field_count = 0
-            if ServerMuteService.lines:
+            if lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(ServerMuteService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            ServerMuteService.pages.append(embed)
-        if ServerMuteService.pages:
-            ServerMuteService.pages[0].description = f"**({smute_n})**"
-        return ServerMuteService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({smute_n})**"
+        return pages
 
-    @classmethod
-    async def toggle_server_mute(cls, default_kwargs, member_dict, reason):
-        bot = DiscordBot.get_instance()
+    async def toggle_server_mute(self, default_kwargs, member_dict, reason):
         updated_kwargs = default_kwargs.copy()
         guild_snowflake = default_kwargs.get("guild_snowflake", None)
-        guild = bot.get_guild(guild_snowflake)
-        await PermissionService.has_equal_or_lower_role(
-            **default_kwargs,
-            target_member_snowflake=member_dict.get("id", None),
-        )
+        guild = self.__bot.get_guild(guild_snowflake)
+        # await PermissionService.has_equal_or_lower_role(
+        #     **default_kwargs,
+        #     target_member_snowflake=member_dict.get("id", None),
+        # )
         updated_kwargs.update(member_dict.get("columns", None))
         del updated_kwargs["channel_snowflake"]
-        server_mute = await ServerMute.select(singular=True, **updated_kwargs)
+        server_mute = await self.__database_factory.select(
+            singular=True, **updated_kwargs
+        )
         if not server_mute:
-            server_mute = ServerMute(
+            server_mute = self.MODEL(
                 **updated_kwargs,
                 reason=reason,
             )
-            await server_mute.create()
+            await self.__database_factory.create(server_mute)
             action = "muted"
             should_be_muted = True
         else:
-            await ServerMute.delete(**updated_kwargs)
+            await self.__database_factory.delete(**updated_kwargs)
             action = "unmuted"
             should_be_muted = False
 

@@ -20,13 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from typing import Dict
 
-from vyrtuous.alias.alias import Alias
 from vyrtuous.voice_mute.voice_mute import VoiceMute
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
 @dataclass(frozen=True)
-class VoiceMuteAlias(Alias):
+class VoiceMuteAlias:
     category = "vmute"
     record = VoiceMute
     service = VoiceMuteService

@@ -19,30 +19,33 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.vegan.vegan import Vegan
 
 
-class VeganService(RecordService):
-    lines, pages = [], []
-    model = Vegan
+class VeganService:
+    __CHUNK_SIZE = 7
+    MODEL = Vegan
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    def __init__(
+        self,
+        *,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        emoji=None,
+        stream_service=None,
+    ):
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__database_factory.model = self.MODEL
+        self.__dictionary_service = dictionary_service
+        self.__emoji = emoji
+        self.__stream_service = stream_service
+
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
-        vegans = await Vegan.select(singular=False, **where_kwargs)
+        vegans = await self.__database_factory.select(singular=False, **where_kwargs)
         for vegan in vegans:
             dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
             dictionary[vegan.guild_snowflake]["members"].setdefault(
@@ -51,39 +54,36 @@ class VeganService(RecordService):
             dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
             ].setdefault("placeholder", {})
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        skipped_members = generate_skipped_members(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.__dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
         if is_at_home:
             if skipped_guilds:
-                VeganService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_members:
-                VeganService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
-        title = f"{get_random_emoji()} Vegans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = [], []
+        title = f"{self.__emoji.get_random_emoji()} Vegans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await VeganService.build_clean_dictionary(
+        dictionary = await self.__dictionary_service.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
@@ -91,7 +91,7 @@ class VeganService(RecordService):
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -100,9 +100,7 @@ class VeganService(RecordService):
                 if not member:
                     continue
                 if not isinstance(object_dict.get("object", None), discord.Member):
-                    VeganService.lines.append(
-                        f"**User:** {member.display_name} {member.mention}"
-                    )
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 else:
                     if not thumbnail:
                         embed.set_thumbnail(
@@ -111,69 +109,65 @@ class VeganService(RecordService):
                         thumbnail = True
                 vegan_n += 1
                 field_count += 1
-                if field_count >= CHUNK_SIZE:
+                if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(VeganService.lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, VeganService.pages, title, guild.name)
-                    VeganService.lines = []
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
+                    lines = []
                     field_count = 0
-            if VeganService.lines:
+            if lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(VeganService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            VeganService.pages.append(embed)
-        if VeganService.pages:
-            VeganService.pages[0].description = f"**({vegan_n})**"
-        return VeganService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({vegan_n})**"
+        return pages
 
-    @classmethod
-    async def enforce(cls, ctx, source, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def enforce(self, ctx, source, state):
+        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
-        vegan = Vegan(
+        vegan = self.MODEL(
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
         )
-        await vegan.create()
-        await StreamService.send_entry(
+        await self.__database_factory.create(vegan)
+        await self.__stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
             identifier="vegan",
             member=member,
             source=source,
         )
-        embed = await VeganService.act_embed(ctx=ctx)
+        embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    @classmethod
-    async def undo(cls, ctx, source, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def undo(self, ctx, source, state):
+        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
-        await Vegan.delete(
+        await self.__database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
         )
-        await StreamService.send_entry(
+        await self.__stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
             identifier="carnist",
             is_modification=True,
             member=member,
             source=source,
         )
-        embed = await VeganService.undo_embed(ctx=ctx)
+        embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    @classmethod
-    async def act_embed(cls, ctx):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def act_embed(self, ctx):
+        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
@@ -184,10 +178,8 @@ class VeganService(RecordService):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    @classmethod
-    async def undo_embed(cls, ctx):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(ctx.source_guild_snowflake)
+    async def undo_embed(self, ctx):
+        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "

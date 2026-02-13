@@ -20,12 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from vyrtuous.base.database_factory import DatabaseFactory
-
 
 @dataclass(frozen=True)
-class TemporaryRoom(DatabaseFactory):
-
+class TemporaryRoom:
     __tablename__ = "temporary_rooms"
     identifier = "troom"
     channel_snowflake: int

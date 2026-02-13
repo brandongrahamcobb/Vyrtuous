@@ -45,10 +45,24 @@ from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
 class TemporaryRoomService(RecordService):
-    lines, pages = [], []
-    model = TemporaryRoom
+    MODEL = TemporaryRoom
 
-    @classmethod
+    def __init__(
+        self,
+        *,
+        alias_service=None,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        emoji=None,
+    ):
+        self.__alias_service = alias_service
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__dictionary_service = dictionary_service
+        self.__dictionary_service.model = self.MODEL
+        self.__emoji = emoji
+
     async def build_clean_dictionary(cls, is_at_home, where_kwargs):
         dictionary = {}
         aliases = await Alias.select(singular=False, **where_kwargs)

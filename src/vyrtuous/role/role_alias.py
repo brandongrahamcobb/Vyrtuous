@@ -20,13 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from typing import Dict
 
-from vyrtuous.alias.alias import Alias
 from vyrtuous.role.role import Role
 from vyrtuous.role.role_service import RoleService
 
 
 @dataclass(frozen=True)
-class RoleAlias(Alias):
+class RoleAlias:
     category = "role"
     record = Role
     service = RoleService

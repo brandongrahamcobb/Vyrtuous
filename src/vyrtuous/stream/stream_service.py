@@ -43,13 +43,25 @@ from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.permission_service import PermissionService
 
 
-class StreamService(RecordService):
-    lines, pages = [], []
-    model = Stream
+class StreamService:
+    MODEL = Stream
 
-    @classmethod
+    def __init__(
+        self,
+        *,
+        author_service=None,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+    ):
+        self.__author_service = author_service
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__dictionary_service = dictionary_service
+        self.__dictionary_service.model = self.MODEL
+
     async def send_entry(
-        cls,
+        self,
         channel_snowflake: int,
         identifier: str,
         member: discord.Member,
@@ -61,13 +73,12 @@ class StreamService(RecordService):
         reason: str = "No reason provided",
         duration: str | None = None,
     ):
-        bot = DiscordBot.get_instance()
-        channel = bot.get_channel(channel_snowflake)
+        channel = self.__bot.get_channel(channel_snowflake)
         expires_at = None
         streaming = await Stream.select(singular=False)
         author = None
         if source:
-            author = resolve_author(source=source)
+            author = self.__author_service.resolve_author(source=source)
             executor_highest_role = await PermissionService.resolve_highest_role_at_all(
                 member_snowflake=int(author.id),
             )
@@ -77,11 +88,11 @@ class StreamService(RecordService):
             member_snowflake=int(member.id),
         )
         for stream in streaming:
-            channel_obj = bot.get_channel(stream.channel_snowflake)
+            channel_obj = self.__bot.get_channel(stream.channel_snowflake)
             if channel_obj:
                 perms = channel_obj.permissions_for(channel_obj.guild.me)
                 if perms.send_messages and not channel_obj.guild.me.is_timed_out():
-                    pages = cls.build_streaming_embeds(
+                    pages = self.build_streaming_embeds(
                         author=author,
                         channel=channel,
                         duration=duration,
@@ -117,26 +128,25 @@ class StreamService(RecordService):
             len([member for member in channel.members if not member.bot])
             for channel in channel.guild.voice_channels
         )
-        await Data.save(
-            channel_members_voice_count=channel_members_voice_count,
-            channel_snowflake=int(channel.id),
-            executor_member_snowflake=int(author.id) if author else None,
-            expires_at=expires_at,
-            guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count,
-            guild_members_online_count=guild_members_online_count,
-            guild_members_voice_count=guild_members_voice_count,
-            guild_snowflake=int(channel.guild.id),
-            executor_highest_role=executor_highest_role,
-            identifier=identifier,
-            is_modification=is_modification,
-            target_member_snowflake=int(member.id),
-            target_highest_role=target_highest_role,
-            reason=reason,
-        )
+        # await Data.save(
+        #     channel_members_voice_count=channel_members_voice_count,
+        #     channel_snowflake=int(channel.id),
+        #     executor_member_snowflake=int(author.id) if author else None,
+        #     expires_at=expires_at,
+        #     guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count,
+        #     guild_members_online_count=guild_members_online_count,
+        #     guild_members_voice_count=guild_members_voice_count,
+        #     guild_snowflake=int(channel.guild.id),
+        #     executor_highest_role=executor_highest_role,
+        #     identifier=identifier,
+        #     is_modification=is_modification,
+        #     target_member_snowflake=int(member.id),
+        #     target_highest_role=target_highest_role,
+        #     reason=reason,
+        # )
 
-    @classmethod
     def build_streaming_embeds(
-        cls,
+        self,
         author,
         channel: discord.abc.GuildChannel,
         executor_highest_role: str,
@@ -260,10 +270,10 @@ class StreamService(RecordService):
                     embeds.append(reason_embed)
         return embeds
 
-    @classmethod
-    async def build_clean_dictionary(cls, is_at_home, where_kwargs):
+    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+        pages = []
         dictionary = {}
-        streaming = await Stream.select(singular=False, **where_kwargs)
+        streaming = await self.__database_factory.select(singular=False, **where_kwargs)
         for stream in streaming:
             dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
             dictionary[stream.guild_snowflake]["channels"][stream.channel_snowflake] = {
@@ -271,46 +281,45 @@ class StreamService(RecordService):
                 "entry_type": stream.entry_type,
                 "snowflakes": stream.snowflakes,
             }
-        skipped_channels = generate_skipped_channels(dictionary)
-        skipped_guilds = generate_skipped_guilds(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        skipped_channels = self.__dictionary_service.generate_skipped_channels(
+            dictionary
+        )
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
         if is_at_home:
             if skipped_channels:
-                StreamService.pages.extend(
-                    generate_skipped_dict_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_channels,
                         title="Skipped Channels in Server",
                     )
                 )
             if skipped_guilds:
-                StreamService.pages.extend(
-                    generate_skipped_set_pages(
+                pages.extend(
+                    self.__dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
         return cleaned_dictionary
 
-    @classmethod
-    async def build_pages(cls, object_dict, is_at_home):
-        cls.lines = []
-        cls.pages = []
-        bot = DiscordBot.get_instance()
+    async def build_pages(self, object_dict, is_at_home):
+        lines, pages = []
         title = f"{get_random_emoji()} Streaming Routes"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await StreamService.build_clean_dictionary(
+        dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
 
         stream_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -319,38 +328,37 @@ class StreamService(RecordService):
                 if not channel:
                     continue
                 status = "\u2705" if entry["enabled"] else "\u26d4"
-                StreamService.lines.append(
+                lines.append(
                     f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                 )
                 if isinstance(
                     object_dict.get("object", None), discord.abc.GuildChannel
                 ):
-                    StreamService.lines.append(f"**Snowflakes:** {entry['snowflakes']}")
+                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                 field_count += 1
                 stream_n += 1
-                if field_count >= CHUNK_SIZE:
+                if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
-                        value="\n".join(StreamService.lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, StreamService.pages, title, guild.name)
-                    StreamService.lines = []
+                    embed = flush_page(embed, pages, title, guild.name)
+                    lines = []
                     field_count = 0
-            if StreamService.lines:
+            if lines:
                 embed.add_field(
                     name="Information",
-                    value="\n".join(StreamService.lines),
+                    value="\n".join(lines),
                     inline=False,
                 )
-            StreamService.pages.append(embed)
-        if StreamService.pages:
-            StreamService.pages[0].description = f"**({stream_n})**"
-        return StreamService.pages
+            pages.append(embed)
+        if pages:
+            pages[0].description = f"**({stream_n})**"
+        return pages
 
-    @classmethod
     async def modify_stream(
-        cls,
+        self,
         action,
         channel_dict,
         channel_mentions,
@@ -372,22 +380,24 @@ class StreamService(RecordService):
             enabled = not stream.enabled
             action = "enabled" if enabled else "disabled"
             set_kwargs = {"enabled": enabled}
-            await Stream.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            await self.__database_factory.update(
+                set_kwargs=set_kwargs, where_kwargs=where_kwargs
+            )
         if action and entry_type:
             match action.lower():
                 case "create" | "modify":
                     resolved_channels = []
                     if action.lower() == "create":
-                        stream = Stream(
+                        stream = self.MODEL(
                             **where_kwargs,
                             enabled=True,
                             snowflakes=resolved_channels,
                         )
-                        await stream.create()
+                        await self.__database_factory.create(stream)
                         action = "created"
                     else:
                         set_kwargs = {"snowflakes": resolved_channels}
-                        await Stream.update(
+                        await self.__database_factory.update(
                             set_kwargs=set_kwargs, where_kwargs=where_kwargs
                         )
                         action = "modified"
