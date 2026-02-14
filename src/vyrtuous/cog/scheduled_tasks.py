@@ -518,7 +518,7 @@ class ScheduledTasks(commands.Cog):
         )
         if not sysadmin:
             sysadmin = Sysadmin(member_snowflake=int(member_snowflake))
-            await sysadmin.create()
+            await self.__database_factory.create(sysadmin)
             logger.info(f"Sysadmin ({member_snowflake}) added to the db.")
         else:
             logger.info(f"Sysadmin ({member_snowflake}) already in the db.")
@@ -549,10 +549,10 @@ class ScheduledTasks(commands.Cog):
     async def before_check_expired_text_mutes(self):
         await self.__bot.wait_until_ready()
 
-    @check_expired_stages.before_loop
-    async def before_check_expired_stages(self):
-        await self.__bot.wait_until_ready()
-
+    # @check_expired_stages.before_loop
+    # async def before_check_expired_stages(self):
+    #     await self.__bot.wait_until_ready()
+    #
     @check_guild_owners.before_loop
     async def before_check_guild_owners(self):
         await self.__bot.wait_until_ready()

@@ -28,19 +28,19 @@ T = TypeVar("T", bound="DatabaseFactory")
 
 class DatabaseFactory(object):
     def __init__(self, *, bot=None):
-        self.bot = bot
+        self.__bot = bot
         self.model = None
 
-    async def create(self):
-        table_name = getattr(self.model, "__tablename__")
-        fields = list(self.model.__annotations__.keys())
+    async def create(self, obj):
+        table_name = getattr(obj.__class__, "__tablename__")
+        fields = list(obj.__class__.__annotations__.keys())
         insert_fields = [
-            f for f in fields if hasattr(self, f) and getattr(self, f) is not None
+            f for f in fields if hasattr(obj, f) and getattr(obj, f) is not None
         ]
         if not insert_fields:
             raise ValueError("No fields available to insert")
         placeholders = ", ".join(f"${i + 1}" for i in range(len(insert_fields)))
-        values = [getattr(self.model, f) for f in insert_fields]
+        values = [getattr(obj, f) for f in insert_fields]
         async with self.__bot.db_pool.acquire() as conn:
             await conn.execute(
                 f"""
