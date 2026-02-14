@@ -3,21 +3,25 @@ from typing import Dict, Tuple
 
 from vyrtuous.alias.alias import Alias
 from vyrtuous.alias.alias_service import AliasService
-from vyrtuous.base.context import Context
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cap.cap_service import CapService
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.utils.discord_object_service import DiscordObject
-from vyrtuous.utils.permission_service import PermissionService
+# from vyrtuous.utils.permission_service import PermissionService
 
 
-class AliasContext(Context):
-    def __init__(self, message):
+class AliasContext:
+    MODEL = Alias
+
+    def __init__(
+        self,
+        message,
+        *,
+        bot=None,
+        cap_service=None,
+        database_factory=None,
+        duration=None,
+    ):
         super().__init__(message=message)
         self.alias = None
         self.alias_name = None
         self.args = []
-        self.do = DiscordObject(message=message)
         self.expires_in = None
         self.kwargs: Dict[str, Tuple[int, str]] = {}
         self.source_kwargs: Dict[str, int] = {}
@@ -27,6 +31,11 @@ class AliasContext(Context):
         self.target_member_snowflake = None
         self.target_role_snowflake = None
         self.record = None
+        self.__bot = bot
+        self.__cap_service = cap_service
+        self.__database_factory = database_factory
+        self.__database_factory.model = self.MODEL
+        self.__duration = duration
 
     async def setup(self):
         self.build_source_kwargs()
@@ -37,9 +46,8 @@ class AliasContext(Context):
         await self.convert_args_to_values()
 
     def message_to_args(self) -> None:
-        bot = DiscordBot.get_instance()
         self.args = (
-            self.message.content[len(bot.config["discord_command_prefix"]) :]
+            self.message.content[len(self.__bot.config["discord_command_prefix"]) :]
             .strip()
             .split()
         )
@@ -62,7 +70,7 @@ class AliasContext(Context):
         self.alias_name = self.args[0]
 
     async def populate_alias(self):
-        alias_entry = await Alias.select(
+        alias_entry = await self__database_factory.select(
             alias_name=self.alias_name,
             guild_snowflake=self.source_guild_snowflake,
             singular=True,
@@ -83,20 +91,20 @@ class AliasContext(Context):
             value = tuple[1]
             if field == "duration":
                 if not value:
-                    duration = DurationObject("8h")
+                    duration = self.__duration("8h")
                 else:
-                    duration = DurationObject(value)
-                if await CapService.assert_duration_exceeds_cap(
-                    duration=duration,
-                    source_kwargs=self.source_kwargs,
-                    category=self.alias.category,
-                ):
-                    await PermissionService.check(
-                        channel_snowflake=self.target_channel_snowflake,
-                        guild_snowflake=self.source_guild_snowflake,
-                        member_snowflake=self.target_member_snowflake,
-                        lowest_role="Coordinator",
-                    )
+                    duration = self.__duration(value)
+                # if await self.__cap_service.assert_duration_exceeds_cap(
+                #     duration=duration,
+                #     source_kwargs=self.source_kwargs,
+                #     category=self.alias.category,
+                # ):
+                #     await PermissionService.check(
+                #         channel_snowflake=self.target_channel_snowflake,
+                #         guild_snowflake=self.source_guild_snowflake,
+                #         member_snowflake=self.target_member_snowflake,
+                #         lowest_role="Coordinator",
+                #     )
                 self.expires_in = (
                     None
                     if duration.number == 0

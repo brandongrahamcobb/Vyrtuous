@@ -57,7 +57,7 @@ class CoordinatorService:
         self.dictionary_service.model = self.MODEL
         self.emoji = emoji
         self.__sysadmin_service = SysadminService(
-            author_service=author_service, bot=bot, database_factory=database_factory
+            author_service=author_service, bot=bot
         )
         self.__developer_service = DeveloperService(
             author_service=author_service, bot=bot, database_factory=database_factory
@@ -81,27 +81,6 @@ class CoordinatorService:
         if not coordinator:
             raise NotCoordinator
         return True
-
-    def coordinator_predicator(self):
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-                self.is_coordinator_at_all_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotCoordinator
-
-        predicate._permission_level = "Coordinator"
-        return commands.check(predicate)
 
     async def is_coordinator_at_all(
         self,

@@ -41,7 +41,7 @@ class SysadminService:
         self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        member = resolve_author(source=source)
+        member = self.__author_service.resolve_author(source=source)
         member_snowflake = member.id
         return await self.is_sysadmin(member_snowflake)
 

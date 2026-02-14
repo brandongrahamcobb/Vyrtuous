@@ -19,8 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-
 
 class ReasonModal(discord.ui.Modal):
     def __init__(self, ctx, state):
@@ -56,9 +54,9 @@ class ReasonModal(discord.ui.Modal):
             await self.state.end(
                 success=f"Existing infraction reason has been updated to {self.reason_selection.value}."
             )
-        else:
-            for service in RecordService.__subclasses__():
-                if isinstance(self.ctx.record, service.model):
-                    await service.enforce(
-                        ctx=self.ctx, source=interaction, state=self.state
-                    )
+        # else:
+        #     for service in RecordService.__subclasses__():
+        #         if isinstance(self.ctx.record, service.model):
+        #             await service.enforce(
+        #                 ctx=self.ctx, source=interaction, state=self.state
+        #             )

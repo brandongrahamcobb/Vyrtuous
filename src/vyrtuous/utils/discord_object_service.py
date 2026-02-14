@@ -23,6 +23,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 
+
 class TargetIsBot(commands.CheckFailure):
     def __init__(
         self,
@@ -38,10 +39,9 @@ class TargetIsBot(commands.CheckFailure):
 
 
 class DiscordContextObject(commands.Converter):
-
     def __init__(self):
         self.__bot = DiscordBot.get_instance()
-   
+
     async def convert(self, ctx: commands.Context, argument: str):
         channel = commands.TextChannelConverter()
         guild = commands.GuildConverter()
@@ -67,7 +67,7 @@ class DiscordContextObject(commands.Converter):
             member = await member.convert(ctx, argument)
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
-         else:
+        else:
             if member == self._source.guild.me:
                 raise TargetIsBot()
             return {
@@ -109,7 +109,8 @@ class DiscordContextObject(commands.Converter):
                 "type": type(role),
                 "object": role,
             }
-        raise commands.BadArgument('Argument is not a channel, member, guild, or role.')
+        raise commands.BadArgument("Argument is not a channel, member, guild, or role.")
+
 
 class DiscordInteractionObject(app_commands.Transformer):
     async def transform(self, interaction: discord.Interaction, value: str):
@@ -124,15 +125,15 @@ class DiscordInteractionObject(app_commands.Transformer):
             bot.logger.warning(e)
         else:
             return {
-                'columns': {
-                    'channel_snowflake': channel.id,
-                    'guild_snowflake': channel.guild.id
+                "columns": {
+                    "channel_snowflake": channel.id,
+                    "guild_snowflake": channel.guild.id,
                 },
-                'id': channel.id,
-                'mention': channel.mention,
-                'name': channel.name,
-                'type': type(channel),
-                'object': channel
+                "id": channel.id,
+                "mention": channel.mention,
+                "name": channel.name,
+                "type": type(channel),
+                "object": channel,
             }
         try:
             member = await member.transform(interaction, value)
@@ -142,15 +143,15 @@ class DiscordInteractionObject(app_commands.Transformer):
             if interaction.guild and member == interaction.guild.me:
                 raise TargetIsBot()
             return {
-                'columns': {
-                    'guild_snowflake': member.guild.id,
-                    'member_snowflake': member.id
+                "columns": {
+                    "guild_snowflake": member.guild.id,
+                    "member_snowflake": member.id,
                 },
-                'id': member.id,
-                'mention': member.mention,
-                'name': member.display_name,
-                'type': type(member),
-                'object': member
+                "id": member.id,
+                "mention": member.mention,
+                "name": member.display_name,
+                "type": type(member),
+                "object": member,
             }
         try:
             guild = await guild.transform(interaction, value)
@@ -158,13 +159,11 @@ class DiscordInteractionObject(app_commands.Transformer):
             bot.logger.warning(e)
         else:
             return {
-                'columns': {
-                    'guild_snowflake': guild.id
-                },
-                'id': guild.id,
-                'name': guild.name,
-                'type': type(guild),
-                'object': guild
+                "columns": {"guild_snowflake": guild.id},
+                "id": guild.id,
+                "name": guild.name,
+                "type": type(guild),
+                "object": guild,
             }
         try:
             role = await role.transform(interaction, value)
@@ -172,14 +171,16 @@ class DiscordInteractionObject(app_commands.Transformer):
             bot.logger.warning(e)
         else:
             return {
-                'columns': {
-                    'guild_snowflake': role.guild.id,
-                    'role_snowflake': role.id
+                "columns": {
+                    "guild_snowflake": role.guild.id,
+                    "role_snowflake": role.id,
                 },
-                'id': role.id,
-                'mention': role.mention,
-                'name': role.name,
-                'type': type(role),
-                'object': role
+                "id": role.id,
+                "mention": role.mention,
+                "name": role.name,
+                "type": type(role),
+                "object": role,
             }
-        raise app_commands.AppCommandError('Argument is not a channel, member, guild, or role.')
+        raise app_commands.AppCommandError(
+            "Argument is not a channel, member, guild, or role."
+        )

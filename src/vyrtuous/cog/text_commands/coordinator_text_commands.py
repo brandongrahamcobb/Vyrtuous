@@ -17,91 +17,184 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Any, Coroutine, Union
+
+import discord
 from discord.ext import commands
 
+from vyrtuous.base.database_factory import DatabaseFactory
+from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cog.help_command import skip_help_discovery
+
+# from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator import Coordinator
-from vyrtuous.coordinator.coordinator_service import coordinator_predicator
+from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.field.duration import Duration, DurationObject
-from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake
+
+# from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stage_room.stage_service import StageService
-from vyrtuous.utils.discord_object_service import DiscordObject
+from vyrtuous.utils.discord_object_service import DiscordContextObject
 from vyrtuous.utils.message_service import MessageService
-from vyrtuous.utils.permission_service import PermissionService
+
+# from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.bug.bug_service import BugService
 
 
 class CoordinatorTextCommands(commands.Cog):
-
     ROLE = Coordinator
 
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
-        self.message_service = MessageService(self.bot)
+        self.__author_service = AuthorService()
+        self.__bot = bot
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__emoji = Emojis()
+        self.message_service = MessageService(self.__bot)
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__stage_service = StageService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__administrator_service = AdministratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+        )
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+
+    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+                self.__administrator_service.is_administrator_wrapper,
+                self.__coordinator_service.is_coordinator_at_all_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotCoordinator
+
+        predicate._permission_level = "Coordinator"
+        return await predicate(ctx)
 
     @commands.command(name="mod", help="Grant/revoke mods.")
-    @coordinator_predicator()
     async def toggle_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
+        member: DiscordContextObject = commands.parameter(
             description="Tag a member or include their ID"
         ),
-        channel: ChannelSnowflake = commands.parameter(
+        channel: DiscordContextObject = commands.parameter(
             description="Tag a channel or include its ID."
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        member_dict = await do.determine_from_target(target=member)
         updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
-        await PermissionService.has_equal_or_lower_role(
-            target_member_snowflake=int(member_dict.get("id", None)),
-            **updated_kwargs,
-        )
-        msg = await ModeratorService.toggle_moderator(
-            channel_dict=channel_dict,
+        updated_kwargs.update(channel.get("columns", None))
+        # await PermissionService.has_equal_or_lower_role(
+        #     target_member_snowflake=int(member.get("id", None)),
+        #     **updated_kwargs,
+        # )
+        msg = await self.__moderator_service.toggle_moderator(
+            channel_dict=channel,
             default_kwargs=default_kwargs,
-            member_dict=member_dict,
+            member_dict=member,
         )
         return await state.end(success=msg)
 
     @commands.command(name="stage", help="Start/stop stage")
-    @coordinator_predicator()
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def toggle_stage_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
+        channel: DiscordContextObject = commands.parameter(
             description="Tag a channel or include its ID."
         ),
         *,
         duration: Duration = commands.parameter(
             default=DurationObject("1h"),
-            description="Options: (+|-)duration(m|h|d) "
-            "0 - permanent / 24h - default",
+            description="Options: (+|-)duration(m|h|d) 0 - permanent / 24h - default",
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
         channel = channel or int(ctx.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await StageService.toggle_stage(
-            channel_dict=channel_dict,
+        pages = await self.__stage_service.toggle_stage(
+            channel_dict=channel,
             default_kwargs=default_kwargs,
             duration=duration,
         )

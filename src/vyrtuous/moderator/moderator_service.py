@@ -67,12 +67,16 @@ class ModeratorService:
             author_service=author_service, bot=bot, database_factory=database_factory
         )
         self.__administrator_service = AdministratorService(
-            author_service=author_service, bot=bot, database_factory=database_factory
+            author_service=author_service,
+            bot=bot,
+            database_factory=database_factory,
+            dictionary_service=dictionary_service,
         )
         self.__coordinator_service = CoordinatorService(
             author_service=author_service,
             bot=bot,
             database_factory=database_factory,
+            dictionary_service=self.__dictionary_service,
             emoji=emoji,
         )
 

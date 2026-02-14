@@ -21,13 +21,9 @@ from datetime import datetime, timezone
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.cap.cap_service import CapService
-from vyrtuous.field.duration import DurationObject
-
 
 class DurationModal(discord.ui.Modal):
-    def __init__(self, ctx, state):
+    def __init__(self, ctx, state, *, cap_service=None, duration=None):
         super().__init__(title="Duration")
         self.ctx = ctx
         self.channel_snowflake = ctx.target_channel_snowflake
@@ -39,13 +35,15 @@ class DurationModal(discord.ui.Modal):
             "member_snowflake": self.member_snowflake,
         }
         self.state = state
+        self.__duration = duration
+        self.__cap_service = cap_service
 
     async def setup(self):
         self.duration_selection = discord.ui.TextInput(
             label="Type the duration",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=DurationObject.from_expires_in_to_str(self.ctx.record.expires_in)
+            default=self.__duration.from_expires_in_to_str(self.ctx.record.expires_in)
             or "",
         )
         self.add_item(self.duration_selection)
@@ -53,13 +51,13 @@ class DurationModal(discord.ui.Modal):
     async def on_submit(self, interaction):
         await interaction.response.defer()
         self.state.interaction = interaction
-        self.duration = DurationObject(self.duration_selection.value)
+        self.duration = self.__duration(self.duration_selection.value)
         self.ctx.expires_in = (
             datetime.now(timezone.utc) + self.duration.to_timedelta()
             if self.duration.number != 0
             else None
         )
-        if await CapService.assert_duration_exceeds_cap(
+        if await self.__cap_service.assert_duration_exceeds_cap(
             category=self.ctx.record.identifier,
             duration=self.duration,
             source_kwargs=self.ctx.source_kwargs,
@@ -75,9 +73,9 @@ class DurationModal(discord.ui.Modal):
             await self.state.end(
                 success=f"Duration has been updated to {self.duration}."
             )
-        else:
-            for service in RecordService.__subclasses__():
-                if isinstance(self.ctx.record, service.model):
-                    await service.enforce(
-                        ctx=self.ctx, source=interaction, state=self.state
-                    )
+        # else:
+        #     for service in RecordService.__subclasses__():
+        #         if isinstance(self.ctx.record, service.model):
+        #             await service.enforce(
+        #                 ctx=self.ctx, source=interaction, state=self.state
+        #             )

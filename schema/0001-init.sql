@@ -334,11 +334,9 @@ ALTER TABLE public.streaming OWNER TO vyrtuous;
 --
 
 CREATE TABLE public.sysadmin (
-    id boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     member_snowflake bigint NOT NULL,
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT sysadmin_id_check CHECK (id)
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -520,15 +518,15 @@ ALTER TABLE ONLY public.roles
 --
 
 ALTER TABLE ONLY public.streaming
-    ADD CONSTRAINT streaming_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT streaming_pkey PRIMARY KEY (channel_snowflake, entry_type);
 
 
 --
--- Name: sysadmin sysadmin_pkey; Type: CONSTRAINT; Schema: public; Owner: vyrtuous
+-- Name: sysadmin sysadmin_member_unique; Type: CONSTRAINT; Schema: public; Owner: vyrtuous
 --
 
 ALTER TABLE ONLY public.sysadmin
-    ADD CONSTRAINT sysadmin_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT sysadmin_member_unique UNIQUE (member_snowflake);
 
 
 --

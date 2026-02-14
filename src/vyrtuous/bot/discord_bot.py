@@ -47,12 +47,12 @@ class DiscordBot(commands.Bot):
         )
         self.config = config
         self.db_pool = db_pool
-        self.extensions = extensions
+        self.__extensions = extensions
         self.logger = logger
         self.testing_guild_snowflake = self.config["discord_testing_guild_snowflake"]
 
     async def setup_hook(self):
-        for ext in self.extensions:
+        for ext in self.__extensions:
             await self.load_extension(ext)
 
     @classmethod

@@ -20,32 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import time
 
 import discord
-from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import is_administrator
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.coordinator.coordinator_service import is_coordinator
-from vyrtuous.developer.developer_service import is_developer
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.moderator.moderator_service import is_moderator
-from vyrtuous.owner.guild_owner_service import is_guild_owner
 from vyrtuous.stage_room.stage import Stage
-from vyrtuous.sysadmin.sysadmin_service import is_sysadmin
-from vyrtuous.utils import dictionary
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_channels,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
-from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.voice_mute.voice_mute import VoiceMute
+# from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
 class StageService:
@@ -53,12 +30,19 @@ class StageService:
     MODEL = Stage
 
     def __init__(
-        self, *, bot=None, database_factory=None, dictionary_service=None, emoji=None
+        self,
+        *,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        duration=None,
+        emoji=None,
     ):
         self.__bot = bot
         self.__database_factory = database_factory
         self.__database_factory.model = self.MODEL
-        self.__dictionary_service = dictionary
+        self.__dictionary_service = dictionary_service
+        self.__duration = duration
         self.__emoji = emoji
 
     async def send_stage_ask_to_speak_message(
@@ -90,8 +74,10 @@ class StageService:
             ].setdefault("stages", {})
             dictionary[stage.guild_snowflake]["channels"][stage.channel_snowflake][
                 "stages"
-            ].update({"expires_in": DurationObject.from_expires_in(stage.expires_in)})
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(dictionary)
+            ].update({"expires_in": self.__duration.from_expires_in(stage.expires_in)})
+        skipped_channels = self.__dictionary_service.generate_skipped_channels(
+            dictionary
+        )
         skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
         cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
@@ -174,33 +160,33 @@ class StageService:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
             await self.__database_factory.delete(**updated_kwargs)
             # for member in channel_dict.get("object", None).members:
-                # await VoiceMute.delete(
-                #     **updated_kwargs,
-                #     member_snowflake=member.id,
-                #     target="room",
-                # )
-                # voice_mute = await VoiceMute.select(
-                #     **updated_kwargs,
-                #     member_snowflake=member.id,
-                #     target="user",
-                #     singular=True,
-                # )
-                # if not voice_mute and member.voice and member.voice.mute:
-                #     try:
-                #         await member.edit(
-                #             mute=False,
-                #             reason="Stage ended — no user-specific mute found",
-                #         )
-                #         succeeded.append(member)
-                #     except discord.Forbidden as e:
-                #         logger.warning(
-                #             f"Unable to undo voice-mute "
-                #             f"for member {member.display_name} ({member.id}) in "
-                #             f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
-                #             f"guild {guild.name} ({guild.id}). "
-                #             f"{str(e).capitalize()}"
-                #         )
-                #         failed.append(member)
+            # await VoiceMute.delete(
+            #     **updated_kwargs,
+            #     member_snowflake=member.id,
+            #     target="room",
+            # )
+            # voice_mute = await VoiceMute.select(
+            #     **updated_kwargs,
+            #     member_snowflake=member.id,
+            #     target="user",
+            #     singular=True,
+            # )
+            # if not voice_mute and member.voice and member.voice.mute:
+            #     try:
+            #         await member.edit(
+            #             mute=False,
+            #             reason="Stage ended — no user-specific mute found",
+            #         )
+            #         succeeded.append(member)
+            #     except discord.Forbidden as e:
+            #         logger.warning(
+            #             f"Unable to undo voice-mute "
+            #             f"for member {member.display_name} ({member.id}) in "
+            #             f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
+            #             f"guild {guild.name} ({guild.id}). "
+            #             f"{str(e).capitalize()}"
+            #         )
+            #         failed.append(member)
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
                 f"**Unmuted:** {len(succeeded)} users",
@@ -219,36 +205,36 @@ class StageService:
                 expires_in=duration.expires_in,
             )
             await self.__database_factory.create(stage)
-            for member in channel_dict.get("object", None).members:
-                # if await PermissionService.check(
-                #     **updated_kwargs,
-                #     lowest_role="Coordinator",
-                # ) or member.id == updated_kwargs.get("member_snowflake", None):
-                #     skipped.append(member)
-                #     continue
-                # voice_mute = await VoiceMute(
-                #     **updated_kwargs,
-                #     expires_in=duration.expires_in,
-                #     member_snowflake=member.id,
-                #     target="room",
-                #     reason="Stage mute",
-                # )
-                # await voice_mute.create()
-                # try:
-                #     if member.voice and member.voice.channel.id == channel_dict.get(
-                #         "id", None
-                #     ):
-                #         await member.edit(mute=True)
-                #     succeeded.append(member)
-                # except Exception as e:
-                #     logger.warning(
-                #         f"Unable to voice-mute "
-                #         f"member {member.display_name} ({member.id}) "
-                #         f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
-                #         f"in guild {guild.name} ({guild.id}). "
-                #         f"{str(e).capitalize()}"
-                #     )
-                #     failed.append(member)
+            # for member in channel_dict.get("object", None).members:
+            # if await PermissionService.check(
+            #     **updated_kwargs,
+            #     lowest_role="Coordinator",
+            # ) or member.id == updated_kwargs.get("member_snowflake", None):
+            #     skipped.append(member)
+            #     continue
+            # voice_mute = await VoiceMute(
+            #     **updated_kwargs,
+            #     expires_in=duration.expires_in,
+            #     member_snowflake=member.id,
+            #     target="room",
+            #     reason="Stage mute",
+            # )
+            # await voice_mute.create()
+            # try:
+            #     if member.voice and member.voice.channel.id == channel_dict.get(
+            #         "id", None
+            #     ):
+            #         await member.edit(mute=True)
+            #     succeeded.append(member)
+            # except Exception as e:
+            #     logger.warning(
+            #         f"Unable to voice-mute "
+            #         f"member {member.display_name} ({member.id}) "
+            #         f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
+            #         f"in guild {guild.name} ({guild.id}). "
+            #         f"{str(e).capitalize()}"
+            #     )
+            #     failed.append(member)
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
                 f"**Expires:** {duration}",

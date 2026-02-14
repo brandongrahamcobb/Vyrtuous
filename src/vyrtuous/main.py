@@ -43,7 +43,7 @@ async def main():
     discord_bot = DiscordBot(
         config=config, db_pool=db_pool, extensions=DISCORD_COGS, logger=logger
     )
-    await discord_bot.start(os.environ["DISCORD_API_KEY"])
+    await discord_bot.start(config["vyrtuous_api_key"])
 
 
 if __name__ == "__main__":
