@@ -54,7 +54,7 @@ class AdminTextCommands(commands.Cog):
     ROLE = Administrator
 
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
+        self.__bot = bot
         self.message_service = MessageService(self.bot)
 
     @commands.command(

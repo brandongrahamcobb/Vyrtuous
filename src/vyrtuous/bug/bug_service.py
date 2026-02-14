@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import uuid
+
+
 import discord
 
 from vyrtuous.bug.bug import Bug
@@ -29,18 +32,18 @@ class BugService:
     def __init__(
         self, bot=None, database_factory=None, dictionary_service=None, emoji=None
     ):
-        self.bot = bot
-        self.dictionary_service = dictionary_service
-        self.emoji = emoji
-        self.database_factory = database_factory
+        self.__bot = bot
+        self.__dictionary_service = dictionary_service
+        self.__emoji = emoji
+        self.__database_factory = database_factory
 
     async def create_embed(self, action, bug, member_snowflake):
-        guild = self.bot.get_guild(bug.guild_snowflake)
+        guild = self.__bot.get_guild(bug.guild_snowflake)
         channel = guild.get_channel(bug.channel_snowflake)
         try:
             msg = await channel.fetch_message(bug.message_snowflake)
         except discord.NotFound:
-            self.bot.logger.warning(
+            self.__bot.logger.warning(
                 f"Message reference not found ({bug.message_snowflake})."
             )
         member = guild.get_member(member_snowflake)
@@ -48,7 +51,7 @@ class BugService:
         for member_snowflake in bug.member_snowflakes:
             user_mentions.append(member.mention)
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} {member.display_name} has been {action}",
+            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been {action}",
             description=(
                 f"**Guild:** {guild.name}\n"
                 f"**Channel:** {channel.mention}\n"
@@ -81,11 +84,11 @@ class BugService:
                 bug.member_snowflakes
             )
             messages[bug.message_snowflake]["notes"].append(bug.notes)
-        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
-        skipped_messages = await self.dictionary_service.generate_skipped_messages(
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_messages = await self.__dictionary_service.generate_skipped_messages(
             dictionary
         )
-        cleaned_dictionary = self.dictionary_service.clean_dictionary(
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_messages=skipped_messages,
@@ -93,14 +96,14 @@ class BugService:
         if is_at_home:
             if skipped_guilds:
                 pages.extend(
-                    self.dictionary_service.generate_skipped_set_pages(
+                    self.__dictionary_service.generate_skipped_set_pages(
                         skipped=skipped_guilds,
                         title="Skipped Servers",
                     )
                 )
             if skipped_messages:
                 pages.extend(
-                    self.dictionary_service.generate_skipped_dict_pages(
+                    self.__dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_messages,
                         title="Skipped Messages in Server",
                     )
@@ -109,7 +112,7 @@ class BugService:
 
     async def build_pages(self, filter, where_kwargs, is_at_home):
         lines, pages = [], []
-        title = f"{self.emoji.get_random_emoji()} Developer Logs"
+        title = f"{self.__emoji.get_random_emoji()} Developer Logs"
 
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
@@ -118,7 +121,7 @@ class BugService:
         bug_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -152,7 +155,7 @@ class BugService:
                         value="\n".join(lines),
                         inline=False,
                     )
-                    embed = self.dictionary_service.flush_page(
+                    embed = self.__dictionary_service.flush_page(
                         embed, pages, title, guild.name
                     )
                     lines = []
@@ -167,17 +170,30 @@ class BugService:
             pages[0].description = f"**({bug_n})**"
         return pages
 
+    async def create_bug(self, message, reference):
+        try:
+            bug = Bug(
+                channel_snowflake=message.channel.id,
+                member_snowflakes=[],
+                guild_snowflake=message.guild.id,
+                id=reference,
+                message_snowflake=message.id,
+            )
+            await self.__database_factory.create(bug)
+        except discord.Forbidden as e:
+            self.__bot.logger.info(str(e).capitalize())
+
     async def assign_bug_to_developer(self, reference, member_dict):
         where_kwargs = member_dict.get("columns", None)
 
-        self.database_factory.model = Developer
-        developer = await self.database_factory.select(singular=True, **where_kwargs)
+        self.__database_factory.model = Developer
+        developer = await self.__database_factory.select(singular=True, **where_kwargs)
         if not developer:
             return (
                 f"Developer not found for target ({member_dict.get('mention', None)})."
             )
-        self.database_factory.model = self.MODEL
-        bug = await self.database_factory.select(
+        self.__database_factory.model = self.MODEL
+        bug = await self.__database_factory.select(
             id=reference, resolved=False, singular=True
         )
         if not bug:

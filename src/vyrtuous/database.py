@@ -26,7 +26,6 @@ import asyncpg
 
 
 class Database:
-
     def __init__(self, config, *, directory=None):
         self.database: str = config.get("postgres_database")
         self.directory = directory if directory else config.get("backup_directory")

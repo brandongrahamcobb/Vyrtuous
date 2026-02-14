@@ -21,9 +21,10 @@ import discord
 from discord.ext import commands
 
 
-def resolve_author(source):
-    if isinstance(source, discord.Interaction):
-        member = source.user
-    elif isinstance(source, (commands.Context, discord.Message)):
-        member = source.author
-    return member
+class AuthorService:
+    def resolve_author(self, source):
+        if isinstance(source, discord.Interaction):
+            member = source.user
+        elif isinstance(source, (commands.Context, discord.Message)):
+            member = source.author
+        return member

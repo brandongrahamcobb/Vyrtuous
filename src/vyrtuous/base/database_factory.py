@@ -27,65 +27,61 @@ T = TypeVar("T", bound="DatabaseFactory")
 
 
 class DatabaseFactory(object):
+    def __init__(self, *, bot=None):
+        self.bot = bot
+        self.model = None
 
     async def create(self):
-        bot = DiscordBot.get_instance()
-        table_name = getattr(self, "__tablename__")
-        fields = list(self.__annotations__.keys())
+        table_name = getattr(self.model, "__tablename__")
+        fields = list(self.model.__annotations__.keys())
         insert_fields = [
             f for f in fields if hasattr(self, f) and getattr(self, f) is not None
         ]
         if not insert_fields:
             raise ValueError("No fields available to insert")
-        placeholders = ", ".join(f"${i+1}" for i in range(len(insert_fields)))
-        values = [getattr(self, f) for f in insert_fields]
-        async with bot.db_pool.acquire() as conn:
+        placeholders = ", ".join(f"${i + 1}" for i in range(len(insert_fields)))
+        values = [getattr(self.model, f) for f in insert_fields]
+        async with self.__bot.db_pool.acquire() as conn:
             await conn.execute(
                 f"""
-                INSERT INTO {table_name} ({', '.join(insert_fields)})
+                INSERT INTO {table_name} ({", ".join(insert_fields)})
                 VALUES ({placeholders})
                 ON CONFLICT DO NOTHING
             """,
                 *values,
             )
-        logger.info(f"Created entry in {table_name}.")
+        self.__bot.logger.info(f"Created entry in {table_name}.")
 
-    @classmethod
-    async def delete(cls, **kwargs):
-        bot = DiscordBot.get_instance()
-        fields = list(cls.__annotations__.keys())
-        table_name = getattr(cls, "__tablename__")
+    async def delete(self, **kwargs):
+        fields = list(self.model.__annotations__.keys())
+        table_name = getattr(self.model, "__tablename__")
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         conditions = []
         values = []
         if filtered_kwargs:
             for index, field in enumerate(sorted(filtered_kwargs)):
-                conditions.append(f"{field}=${index+1}")
+                conditions.append(f"{field}=${index + 1}")
                 values.append(filtered_kwargs[field])
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        async with bot.db_pool.acquire() as conn:
+        async with self.__bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
-        logger.info(f"Deleted entry from {table_name}.")
+        self.__bot.logger.info(f"Deleted entry from {table_name}.")
 
-    @classmethod
     @overload
     async def select(
-        cls: Type[T], *, singular: Literal[True], inside_fields=[], **kwargs
+        self: Type[T], *, singular: Literal[True], inside_fields=[], **kwargs
     ) -> T: ...
 
-    @classmethod
     @overload
     async def select(
-        cls: Type[T], *, singular: Literal[False], inside_fields=[], **kwargs
+        self: Type[T], *, singular: Literal[False], inside_fields=[], **kwargs
     ) -> list[T]: ...
 
-    @classmethod
     async def select(
-        cls: Type[T], *, singular=False, inside_fields=[], **kwargs
+        self: Type[T], *, singular=False, inside_fields=[], **kwargs
     ) -> T | list[T]:
-        bot = DiscordBot.get_instance()
-        table_name = getattr(cls, "__tablename__")
-        fields = list(cls.__annotations__.keys())
+        table_name = getattr(self.model, "__tablename__")
+        fields = list(self.model.__annotations__.keys())
         virtual_filters = {"expired"}
         real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
@@ -96,12 +92,12 @@ class DatabaseFactory(object):
             real_kwargs.pop("expired", None)
         for field, value in real_kwargs.items():
             if field in inside_fields:
-                conditions.append(f"${len(values)+1} = ANY({field})")
+                conditions.append(f"${len(values) + 1} = ANY({field})")
             else:
-                conditions.append(f"{field}=${len(values)+1}")
+                conditions.append(f"{field}=${len(values) + 1}")
             values.append(value)
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        async with bot.db_pool.acquire() as conn:
+        async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 f"SELECT * FROM {table_name} {where_clause}", *values
             )
@@ -110,19 +106,17 @@ class DatabaseFactory(object):
                 return []
             row = rows[0]
             row_data = {k: row[k] for k in fields if k in row}
-            return cls(**row_data)
+            return self.model(**row_data)
         children = []
         for row in rows:
             row_data = {k: row[k] for k in fields if k in row}
-            children.append(cls(**row_data))
-        logger.info(f"Selected entry from {table_name}.")
+            children.append(self.model(**row_data))
+        self.__bot.logger.info(f"Selected entry from {table_name}.")
         return children
 
-    @classmethod
-    async def update(cls, *, set_kwargs: dict, where_kwargs: dict):
-        bot = DiscordBot.get_instance()
-        table_name = getattr(cls, "__tablename__")
-        fields = list(cls.__annotations__.keys())
+    async def update(self, *, set_kwargs: dict, where_kwargs: dict):
+        table_name = getattr(self.model, "__tablename__")
+        fields = list(self.model.__annotations__.keys())
         set_filtered_kwargs = {k: v for k, v in set_kwargs.items() if k in fields}
         where_filtered_kwargs = {k: v for k, v in where_kwargs.items() if k in fields}
         set_fields = sorted(set_filtered_kwargs.keys())
@@ -137,21 +131,20 @@ class DatabaseFactory(object):
         values = [set_kwargs[field] for field in set_fields] + [
             where_kwargs[field] for field in where_fields
         ]
-        async with bot.db_pool.acquire() as conn:
+        async with self.__bot.db_pool.acquire() as conn:
             await conn.execute(
                 f"""
                 UPDATE {table_name}
-                SET {', '.join(assignments)}
-                WHERE {' AND '.join(conditions)}
+                SET {", ".join(assignments)}
+                WHERE {" AND ".join(conditions)}
             """,
                 *values,
             )
-        logger.info(f"Updated entry from {table_name}.")
+        self.__bot.logger.info(f"Updated entry from {table_name}.")
 
-    @classmethod
-    async def primary_keys(cls):
+    async def primary_keys(self):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls, "TABLE_NAME")
+        table_name = getattr(self.model, "TABLE_NAME")
         statement = """
             SELECT kcu.column_name
               FROM information_schema.table_constraints tc
@@ -164,7 +157,7 @@ class DatabaseFactory(object):
               ORDER BY kcu.ordinal_position;
         """
         kwargs = []
-        async with bot.db_pool.acquire() as conn:
+        async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(statement, table_name)
         for row in rows:
             kwargs.append(row["column_name"])

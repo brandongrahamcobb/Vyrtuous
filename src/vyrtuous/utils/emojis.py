@@ -107,5 +107,6 @@ EMOJIS = [
 ]
 
 
-def get_random_emoji():
-    return random.choice(EMOJIS)
+class Emojis:
+    def get_random_emoji(self):
+        return random.choice(EMOJIS)

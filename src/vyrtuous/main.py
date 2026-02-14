@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+import os
 import this
 
 import debugpy
@@ -26,7 +27,7 @@ import debugpy
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
 from vyrtuous.database import Database
-from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
 from vyrtuous.utils.logger import logger, setup_logging
 
 
@@ -39,8 +40,10 @@ async def main():
 
     setup_logging(config, PATH_LOG)
     db_pool = await Database(config=config).database_init()
-    discord_bot = DiscordBot(config=config, db_pool=db_pool)
-    await discord_bot.start(config["vyrtuous_api_key"])
+    discord_bot = DiscordBot(
+        config=config, db_pool=db_pool, extensions=DISCORD_COGS, logger=logger
+    )
+    await discord_bot.start(os.environ["DISCORD_API_KEY"])
 
 
 if __name__ == "__main__":

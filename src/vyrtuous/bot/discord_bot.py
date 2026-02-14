@@ -22,15 +22,21 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from vyrtuous.inc.helpers import DISCORD_COGS
-from vyrtuous.utils.logger import logger
+import logging
 
 
 class DiscordBot(commands.Bot):
-
     _instance = None
 
-    def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs):
+    def __init__(
+        self,
+        *,
+        config,
+        db_pool: asyncpg.Pool,
+        extensions: list[str],
+        logger: logging.Logger,
+        **kwargs,
+    ):
         DiscordBot._instance = self
         intents = discord.Intents.all()
         super().__init__(
@@ -41,12 +47,13 @@ class DiscordBot(commands.Bot):
         )
         self.config = config
         self.db_pool = db_pool
+        self.extensions = extensions
         self.logger = logger
         self.testing_guild_snowflake = self.config["discord_testing_guild_snowflake"]
 
     async def setup_hook(self):
-        for cog in DISCORD_COGS:
-            await self.load_extension(cog)
+        for ext in self.extensions:
+            await self.load_extension(ext)
 
     @classmethod
     def get_instance(cls):

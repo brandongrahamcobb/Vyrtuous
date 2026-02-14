@@ -17,29 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import re
-from typing import Any, Union
-
-import discord
+from discord import app_commands
 from discord.ext import commands
+import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.errors import (
-    DiscordObjectNotFound,
-    DiscordSourceNotFound,
-    GuildChannelNotFound,
-    GuildMemberNotFound,
-    GuildNotFound,
-    GuildRoleNotFound,
-    TargetIsBot,
-)
-from vyrtuous.utils.logger import logger
 
-class DiscordObjectConverter(commands.Converter):
-    async def convert(self, ctx: commands.Context, argument: str):
-
-
-class DiscordObject:
+class TargetIsBot(commands.CheckFailure):
     def __init__(
         self,
         *,
@@ -47,29 +31,28 @@ class DiscordObject:
         interaction: discord.Interaction | None = None,
         message: discord.Message | None = None,
     ):
-        if (ctx is None) == (interaction is None) == (message is None):
-            raise DiscordSourceNotFound()
-        self.bot = DiscordBot.get_instance()
         self._source = ctx or interaction or message
+        super().__init__(
+            message=f"You cannot execute actions on {self._source.guild.me.mention}."
+        )
 
-    async def determine_from_target(self, target) -> dict[str, Any]:
-        if target is None:
-            raise TypeError()
-        if isinstance(self._source, (commands.Context, discord.Message)):
-            do = DiscordObject(ctx=self._source)
-            author = self._source.author
-        elif isinstance(self._source, discord.Interaction):
-            do = DiscordObject(interaction=self._source)
-            author = self._source.user
-        if target and str(target).lower() == "all":
-            return {"columns": {}}
+
+class DiscordContextObject(commands.Converter):
+
+    def __init__(self):
+        self.__bot = DiscordBot.get_instance()
+   
+    async def convert(self, ctx: commands.Context, argument: str):
+        channel = commands.TextChannelConverter()
+        guild = commands.GuildConverter()
+        member = commands.MemberConverter()
+        role = commands.RoleConverter()
         try:
-            channel = do.resolve_channel(target)
-        except GuildChannelNotFound as e:
-            logger.warning(e)
+            channel = await channel.convert(ctx, argument)
+        except commands.BadArgument as e:
+            self.__bot.logger.warning(e)
         else:
             return {
-                "author_snowflake": author.id,
                 "columns": {
                     "channel_snowflake": channel.id,
                     "guild_snowflake": channel.guild.id,
@@ -81,14 +64,13 @@ class DiscordObject:
                 "object": channel,
             }
         try:
-            member = do.resolve_member(target)
-        except GuildMemberNotFound as e:
-            logger.warning(e)
-        else:
+            member = await member.convert(ctx, argument)
+        except commands.BadArgument as e:
+            self.__bot.logger.warning(e)
+         else:
             if member == self._source.guild.me:
                 raise TargetIsBot()
             return {
-                "author_snowflake": author.id,
                 "columns": {
                     "member_snowflake": member.id,
                     "guild_snowflake": member.guild.id,
@@ -100,12 +82,11 @@ class DiscordObject:
                 "object": member,
             }
         try:
-            guild = do.resolve_guild(target)
-        except GuildNotFound as e:
-            logger.warning(e)
+            guild = await guild.convert(ctx, argument)
+        except commands.BadArgument as e:
+            self.__bot.logger.warning(e)
         else:
             return {
-                "author_snowflake": author.id,
                 "columns": {"guild_snowflake": guild.id},
                 "id": guild.id,
                 "name": guild.name,
@@ -113,12 +94,11 @@ class DiscordObject:
                 "object": guild,
             }
         try:
-            role = do.resolve_role(target)
-        except GuildRoleNotFound as e:
-            logger.warning(e)
+            role = await role.convert(ctx, argument)
+        except commands.BadArgument as e:
+            self.__bot.logger.warning(e)
         else:
             return {
-                "author_snowflake": author.id,
                 "columns": {
                     "guild_snowflake": role.guild.id,
                     "role_snowflake": role.id,
@@ -129,70 +109,77 @@ class DiscordObject:
                 "type": type(role),
                 "object": role,
             }
-        raise DiscordObjectNotFound(target=target)
+        raise commands.BadArgument('Argument is not a channel, member, guild, or role.')
 
-    def resolve_channel(
-        self,
-        target: Union[int, str],
-    ) -> Union[discord.TextChannel, discord.VoiceChannel]:
-        c_id = None
-        if isinstance(target, int):
-            c_id = target
-        elif isinstance(target, str):
-            if target.isdigit():
-                c_id = int(target)
-            elif re_match := re.match(r"^<#(\d+)>$", target):
-                c_id = int(re_match.group(1))
-        if c_id:
-            c = self._source.guild.get_channel(c_id)
-            if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
-                return c
-        raise GuildChannelNotFound(target=str(target))
-
-    def resolve_guild(
-        self,
-        target: Union[int, str],
-    ) -> discord.Guild:
-        g_id = None
-        if isinstance(target, int):
-            g_id = target
-        elif isinstance(target, str):
-            if target.isdigit():
-                g_id = int(target)
-            elif re_match := re.match(r"^<#(\d+)>$", target):
-                g_id = int(re_match.group(1))
-        if g_id:
-            g = self.bot.get_guild(g_id)
-            if isinstance(g, (discord.Guild)):
-                return g
-        raise GuildNotFound(target=str(target))
-
-    def resolve_member(self, target) -> discord.Member:
-        m_id = None
-        if isinstance(target, int):
-            m_id = target
-        elif isinstance(target, str):
-            if target.isdigit():
-                m_id = int(target)
-            elif re_match := re.match(r"^<@(\d+)>$", target):
-                m_id = int(re_match.group(1))
-        if m_id:
-            m = self._source.guild.get_member(m_id)
-            if isinstance(m, discord.Member):
-                return m
-        raise GuildMemberNotFound(target=str(target))
-
-    def resolve_role(self, target) -> discord.Role:
-        r_id = None
-        if isinstance(target, int):
-            r_id = target
-        elif isinstance(target, str):
-            if target.isdigit():
-                r_id = int(target)
-            elif re_match := re.match(r"^<@&(\d+)>$", target):
-                r_id = int(re_match.group(1))
-        if r_id:
-            r = self._source.guild.get_role(r_id)
-            if isinstance(r, discord.Role):
-                return r
-        raise GuildRoleNotFound(target=str(target))
+class DiscordInteractionObject(app_commands.Transformer):
+    async def transform(self, interaction: discord.Interaction, value: str):
+        bot = interaction.client
+        channel = app_commands.Transform[discord.abc.GuildChannel]
+        guild = app_commands.Transform[discord.Guild]
+        member = app_commands.Transform[discord.Member]
+        role = app_commands.Transform[discord.Role]
+        try:
+            channel = await channel.transform(interaction, value)
+        except app_commands.AppCommandError as e:
+            bot.logger.warning(e)
+        else:
+            return {
+                'columns': {
+                    'channel_snowflake': channel.id,
+                    'guild_snowflake': channel.guild.id
+                },
+                'id': channel.id,
+                'mention': channel.mention,
+                'name': channel.name,
+                'type': type(channel),
+                'object': channel
+            }
+        try:
+            member = await member.transform(interaction, value)
+        except app_commands.AppCommandError as e:
+            bot.logger.warning(e)
+        else:
+            if interaction.guild and member == interaction.guild.me:
+                raise TargetIsBot()
+            return {
+                'columns': {
+                    'guild_snowflake': member.guild.id,
+                    'member_snowflake': member.id
+                },
+                'id': member.id,
+                'mention': member.mention,
+                'name': member.display_name,
+                'type': type(member),
+                'object': member
+            }
+        try:
+            guild = await guild.transform(interaction, value)
+        except app_commands.AppCommandError as e:
+            bot.logger.warning(e)
+        else:
+            return {
+                'columns': {
+                    'guild_snowflake': guild.id
+                },
+                'id': guild.id,
+                'name': guild.name,
+                'type': type(guild),
+                'object': guild
+            }
+        try:
+            role = await role.transform(interaction, value)
+        except app_commands.AppCommandError as e:
+            bot.logger.warning(e)
+        else:
+            return {
+                'columns': {
+                    'guild_snowflake': role.guild.id,
+                    'role_snowflake': role.id
+                },
+                'id': role.id,
+                'mention': role.mention,
+                'name': role.name,
+                'type': type(role),
+                'object': role
+            }
+        raise app_commands.AppCommandError('Argument is not a channel, member, guild, or role.')

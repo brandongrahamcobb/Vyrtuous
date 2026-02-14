@@ -25,17 +25,19 @@ import discord
 from cachetools import TTLCache
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.bug.bug import Bug
-from vyrtuous.developer.developer import Developer
-from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.errors import DiscordSourceNotFound
-from vyrtuous.utils.logger import logger
-from vyrtuous.utils.message_service import MessageService, PaginatorService
-from vyrtuous.utils.time_to_complete import TimeToComplete
+from vyrtuous.utils.message_service import PaginatorService
 
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
+
+
+class TimeToComplete:
+    def is_around_one_second(self, elapsed: float = 1.0):
+        return 0.0 <= elapsed <= 2.0
+
+    def time_elapsed_measurement(self, start: datetime, end: datetime) -> float:
+        if start is None or end is None:
+            return 0.0
+        return (end - start).total_seconds()
 
 
 class StateService:
@@ -51,24 +53,31 @@ class StateService:
     def __init__(
         self,
         *,
+        author_service=None,
+        bot=None,
+        bug_service=None,
+        developer_service=None,
+        emoji=None,
         ctx: commands.Context | None = None,
         interaction: discord.Interaction | None = None,
         message: discord.Message | None = None,
     ):
         if (ctx is None) == (interaction is None) == (message is None):
-            raise DiscordSourceNotFound()
-        self.bot = DiscordBot.get_instance()
-        self.config = self.bot.config
-        self.message_service = MessageService(self.bot)
+            raise commands.CheckFailure("Discord source not defined in StateService.")
+        self.__author_service = author_service
+        self.__bot = bot
+        self.__config = bot.config
+        self.__bug_service = bug_service
+        self.__developer_service = developer_service
+        self.__emoji = emoji
         self.counter = TimeToComplete()
-        self.bot = DiscordBot.get_instance()
         self._source = ctx or interaction or message
         self._reported_users = set()
         self.is_ephemeral = False
         self.start_time = self._get_start_time(self._source)
         self.message = discord.Message | None
-        self.paginator = None
-        self.submitter_id = resolve_author(self._source).id
+        self.__paginator = None
+        self.submitter_id = self.__author_service.resolve_author(self._source).id
 
     def _get_start_time(self, source):
         if isinstance(source, commands.Context):
@@ -95,11 +104,11 @@ class StateService:
         elif warning is not None:
             message_obj = warning
             is_success = False
-            logger.warning(warning)
+            self.__bot.logger.warning(warning)
         elif error is not None:
             message_obj = error
             is_success = False
-            logger.warning(error)
+            self.__bot.logger.warning(error)
         else:
             message_obj = None
             is_success = True
@@ -119,12 +128,12 @@ class StateService:
         if error or warning:
             show_error_emoji = True
         if isinstance(message_obj, list) and message_obj:
-            self.paginator = PaginatorService(
-                bot=self.bot,
+            self.__paginator = PaginatorService(
+                bot=self.__bot,
                 channel_source=self._source,
                 pages=message_obj,
             )
-            self.message = await self.paginator.start()
+            self.message = await self.__paginator.start()
             cache[self.message.id] = {
                 "date": self.start_time,
                 "health_type": health_type,
@@ -136,7 +145,7 @@ class StateService:
         content = embed = file = None
         if isinstance(message_obj, str):
             if success:
-                content = f"{get_random_emoji()} {success}"
+                content = f"{self.__emoji.get_random_emoji()} {success}"
             if warning:
                 content = f"\u26a0\ufe0f {warning}"
             if error:
@@ -201,7 +210,7 @@ class StateService:
         await self.message.add_reaction("\u2139\ufe0f")
         if show_error_emoji:
             await self.message.add_reaction("\U0001f4dd")
-        self.bot.loop.create_task(self._wait_for_reactions())
+        self.__bot.loop.create_task(self._wait_for_reactions())
 
     async def _wait_for_reactions(self):
         def look(reaction, user):
@@ -214,20 +223,20 @@ class StateService:
 
         while True:
             try:
-                reaction, user = await self.bot.wait_for(
+                reaction, user = await self.__bot.wait_for(
                     "reaction_add", timeout=30.0, check=look
                 )
             except asyncio.TimeoutError:
                 try:
                     await self.message.clear_reactions()
                 except Exception as e:
-                    logger.warning(str(e).capitalize())
+                    self.__bot.logger.warning(str(e).capitalize())
                 break
             await self._handle_reaction(reaction, user)
             try:
                 await self.message.remove_reaction(reaction.emoji, user)
             except Exception as e:
-                logger.warning(str(e).capitalize())
+                self.__bot.logger.warning(str(e).capitalize())
 
     async def _handle_reaction(self, reaction, user=None):
         action = self.STATE_EMOJIS[str(reaction.emoji)]
@@ -259,7 +268,7 @@ class StateService:
             try:
                 await user.send(embed=embed)
             except discord.Forbidden as e:
-                logger.info(str(e).capitalize())
+                self.__bot.logger.info(str(e).capitalize())
 
     async def report_issue(self, user):
         reference = None
@@ -267,41 +276,14 @@ class StateService:
             try:
                 await user.send("You already reported this message.")
             except discord.Forbidden as e:
-                logger.info(str(e).capitalize())
+                self.__bot.logger.info(str(e).capitalize())
             return
         self._reported_users.add(user.id)
-        try:
-            reference = str(uuid.uuid4())
-            bug = Bug(
-                channel_snowflake=self.message.channel.id,
-                member_snowflakes=[],
-                guild_snowflake=self.message.guild.id,
-                id=reference,
-                message_snowflake=self.message.id,
-            )
-            await bug.create()
-        except discord.Forbidden as e:
-            logger.info(str(e).capitalize())
-        online_developer_mentions = []
-        member = self.bot.get_user(self.config["discord_owner_id"])
-        online_developer_mentions.append(member.mention)
-        if self._source.guild:
-            developers = await Developer.select(guild_snowflake=self._source.guild.id)
-            message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {reference}"
-            for dev in developers:
-                member = self._source.guild.get_member(dev.member_snowflake)
-                if member and member.status != discord.Status.offline:
-                    online_developer_mentions.append(member.mention)
-                    try:
-                        await member.send(message)
-                    except discord.Forbidden as e:
-                        logger.warning(
-                            f"Unable to send a developer log ID: {id}. {str(e).capitalize()}"
-                        )
-        message = "Your report has been submitted"
-        if online_developer_mentions:
-            message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
-        await user.send(message)
+        reference = str(uuid.uuid4())
+        await self.__bug_service.create_bug(message=self.message, reference=reference)
+        await self.__developer_service.report_issue(
+            message=self.message, reference=reference, source=self._source, user=user
+        )
 
     @classmethod
     async def send_pages(cls, title, pages, state):

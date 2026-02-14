@@ -153,6 +153,30 @@ class DeveloperService:
             pages[0].description = f"All guilds **({dev_n})**"
         return pages
 
+    async def report_issue(self, message, reference, source, user):
+        online_developer_mentions = []
+        member = self.__bot.get_user(self.__config["discord_owner_id"])
+        online_developer_mentions.append(member.mention)
+        if source.guild:
+            developers = await self.__database_factory.select(
+                guild_snowflake=source.guild.id
+            )
+            message = f"Issue reported by {user.name}!\n**Message:** {message.jump_url}\n**Reference:** {reference}"
+            for dev in developers:
+                member = source.guild.get_member(dev.member_snowflake)
+                if member and member.status != discord.Status.offline:
+                    online_developer_mentions.append(member.mention)
+                    try:
+                        await member.send(message)
+                    except discord.Forbidden as e:
+                        self.__bot.logger.warning(
+                            f"Unable to send a developer log ID: {id}. {str(e).capitalize()}"
+                        )
+        message = "Your report has been submitted"
+        if online_developer_mentions:
+            message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
+        await user.send(message)
+
     async def toggle_developer(self, member_dict):
         where_kwargs = member_dict.get("columns", None)
         del where_kwargs["guild_snowflake"]
