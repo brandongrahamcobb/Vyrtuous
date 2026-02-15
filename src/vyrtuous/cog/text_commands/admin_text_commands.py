@@ -158,6 +158,14 @@ class AdminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__voice_mute_service = VoiceMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -883,7 +891,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = target or int(ctx.channel.id)
-        self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__video_room_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
@@ -910,7 +918,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        msg = await AliasService.delete_alias(
+        msg = await self.__alias_service.delete_alias(
             alias_name=alias_name, default_kwargs=default_kwargs
         )
         return await state.end(success=msg)
@@ -932,13 +940,12 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        do = DiscordObject(ctx=ctx)
-        channel = channel or int(ctx.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await VoiceMuteService.room_unmute(
+        obj = channel or int(ctx.channel.id)
+        channel_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__voice_mute_service.room_unmute(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id
         )
-        await StateService.send_pages(title="Room Unmutes", pages=pages, state=state)
+        return state.end(success=pages)
 
 
 async def setup(bot: DiscordBot):
