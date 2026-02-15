@@ -17,20 +17,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Literal, Optional
+from typing import Any, Coroutine, Literal, Optional, Union
 
 import discord
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator_service import AdministratorRoleService
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cog.help_command import skip_help_discovery
+
+# from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.field.snowflake import MemberSnowflake, RoleSnowflake
 from vyrtuous.owner.guild_owner import GuildOwner
-from vyrtuous.owner.guild_owner_service import guild_owner_predicator
-from vyrtuous.utils.discord_object_service import DiscordObject
-from vyrtuous.utils.message_service import MessageService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
+from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 
@@ -39,13 +38,51 @@ class GuildOwnerTextCommands(commands.Cog):
     ROLE = GuildOwner
 
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
-        self.message_service = MessageService(self.bot)
+        self.__bot = bot
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+        )
+        self.__discord_object_service = DiscordObjectService()
+        self.__administrator_role_service = AdministratorRoleService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+
+    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotGuildOwner
+
+        predicate._permission_level = "Guild Owner"
+        return await predicate(ctx)
 
     @commands.command(name="admin", help="Toggle administrator role.")
-    @guild_owner_predicator()
     async def toggle_administrator_by_role_text_command(
-        self, ctx: commands.Context, role: RoleSnowflake
+        self,
+        ctx: commands.Context,
+        role: discord.Role = commands.parameter(
+            converter=commands.RoleConverter, description="Tag a role or its ID"
+        ),
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -60,57 +97,56 @@ class GuildOwnerTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        role_dict = await do.determine_from_target(target=role)
+        role_dict = self.__discord_object_service.translate(obj=role)
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(role_dict.get("columns", None))
-        pages = await AdministratorRoleService.toggle_administrator_role(
+        pages = await self.__administrator_role_service.toggle_administrator_role(
             role_dict=role_dict, updated_kwargs=updated_kwargs
         )
-        await StateService.send_pages(title="Administrators", pages=pages, state=state)
+        return await state.end(success=pages)
 
-    @commands.command(name="hero", help="Grant/revoke invincibility.")
-    @guild_owner_predicator()
-    @skip_help_discovery()
-    async def invincibility_text_command(
-        self,
-        ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a member or include their ID"
-        ),
-    ):
-        state = StateService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            bug_service=self.__bug_service,
-            ctx=ctx,
-            developer_service=self.__developer_service,
-            emoji=self.__emoji,
-        )
-        do = DiscordObject(ctx=ctx)
-        member_dict = await do.determine_from_target(target=member)
-        where_kwargs = member_dict.get("columns", None)
-        enabled = PermissionService.toggle_enabled()
-        if enabled:
-            PermissionService.add_invincible_member(**where_kwargs)
-            await PermissionService.unrestrict(**where_kwargs)
-            msg = (
-                f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member_dict.get('mention', None)}."
-            )
-        else:
-            PermissionService.remove_invincible_member(**where_kwargs)
-            msg = f"Invincibility has been disabled for {member_dict.get('mention', None)}"
-        return await state.end(success=msg)
+    # @commands.command(name="hero", help="Grant/revoke invincibility.")
+    # @skip_help_discovery()
+    # async def invincibility_text_command(
+    #     self,
+    #     ctx: commands.Context,
+    #     member: discord.Member = commands.parameter(
+    #         converter=commands.MemberConverter,
+    #         description="Tag a member or include their ID",
+    #     ),
+    # ):
+    #     state = StateService(
+    #         author_service=self.__author_service,
+    #         bot=self.__bot,
+    #         bug_service=self.__bug_service,
+    #         ctx=ctx,
+    #         developer_service=self.__developer_service,
+    #         emoji=self.__emoji,
+    #     )
+    #     member_dict = self.__discord_object_service.translate(obj=member)
+    #     where_kwargs = member_dict.get("columns", None)
+    #     enabled = PermissionService.toggle_enabled()
+    #     if enabled:
+    #         PermissionService.add_invincible_member(**where_kwargs)
+    #         await PermissionService.unrestrict(**where_kwargs)
+    #         msg = (
+    #             f"All moderation events have been forgiven "
+    #             f"and invincibility has been enabled for {member_dict.get('mention', None)}."
+    #         )
+    #     else:
+    #         PermissionService.remove_invincible_member(**where_kwargs)
+    #         msg = f"Invincibility has been disabled for {member_dict.get('mention', None)}"
+    #     return await state.end(success=msg)
 
     @commands.command(name="devs", help="List devs.")
-    @guild_owner_predicator()
     async def list_developers_text_command(
         self,
         ctx: commands.Context,
         *,
-        target: str | None = commands.parameter(
-            default=None, description="'all', a specific server or user mention/ID"
+        target: Union[str, discord.Member] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="'all', or user mention/ID",
         ),
     ):
         state = StateService(
@@ -121,14 +157,12 @@ class GuildOwnerTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        do = DiscordObject(ctx=ctx)
-        target = target or "all"
-        object_dict = await do.determine_from_target(target=target)
-        pages = await DeveloperService.build_pages(object_dict=object_dict)
-        await StateService.send_pages(title="Developers", pages=pages, state=state)
+        obj = target or "all"
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.developer_service.build_pages(object_dict=object_dict)
+        return await state.end(success=pages)
 
     @commands.command(name="sync", help="Sync app commands.")
-    @guild_owner_predicator()
     async def sync_text_command(
         self,
         ctx: commands.Context,

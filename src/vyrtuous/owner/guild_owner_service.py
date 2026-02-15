@@ -85,25 +85,6 @@ class GuildOwnerService:
                 return True
         raise NotGuildOwner
 
-    def guild_owner_predicator(self):
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.is_guild_owner_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotGuildOwner
-
-        predicate._permission_level = "Guild Owner"
-        return commands.check(predicate)
-
     async def is_guild_owner(self, guild_snowflake: int, member_snowflake: int) -> bool:
         guild = self.__bot.get_guild(guild_snowflake)
         if guild and guild.owner_id == member_snowflake:

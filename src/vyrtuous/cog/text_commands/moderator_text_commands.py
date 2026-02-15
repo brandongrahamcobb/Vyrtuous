@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
+from typing import Any, Coroutine, Union
 
 import discord
 from discord.ext import commands
@@ -34,7 +34,7 @@ from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.moderator.moderator_service import ModeratorService
+from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
@@ -44,10 +44,11 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
-from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -57,13 +58,11 @@ class ModeratorTextCommands(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
-        self.message_service = MessageService(self.bot)
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.message_service = MessageService(self.__bot)
         self.__duration_service = DurationService()
         self.__bug_service = BugService(
             bot=self.__bot,
@@ -103,7 +102,6 @@ class ModeratorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.message_service = MessageService(self.bot)
         self.__discord_object_service = DiscordObjectService()
         self.__temporary_room_service = TemporaryRoomService(
             alias_service=self.__alias_service,
@@ -159,6 +157,33 @@ class ModeratorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+
+    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+                self.__administrator_service.is_administrator_wrapper,
+                self.__coordinator_service.is_coordinator_at_all_wrapper,
+                self.__moderator_service.is_moderator_at_all_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotModerator
+
+        predicate._permission_level = "Moderator"
+        return await predicate(ctx)
 
     @commands.command(name="admins", help="Lists admins.")
     @skip_help_discovery()

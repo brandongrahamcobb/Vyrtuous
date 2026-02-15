@@ -25,9 +25,9 @@ import discord
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.field.snowflake import MemberSnowflake
 from vyrtuous.sysadmin.sysadmin import Sysadmin
-from vyrtuous.sysadmin.sysadmin_service import NotSysadmin
+from vyrtuous.sysadmin.sysadmin_service import SysadminService, NotSysadmin
+from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
@@ -53,12 +53,16 @@ class SysadminTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
             source: Union[commands.Context, discord.Interaction, discord.Message],
         ):
-            if await self.is_sysadmin_wrapper(source):
+            if await self.__sysadmin_service.is_sysadmin_wrapper(source):
                 return True
             raise NotSysadmin
 
