@@ -194,7 +194,7 @@ class DevTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             default=None,
             description="Specify the ID or mention.",
         ),

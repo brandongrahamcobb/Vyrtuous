@@ -28,9 +28,12 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.sysadmin.sysadmin import Sysadmin
 from vyrtuous.sysadmin.sysadmin_service import SysadminService, NotSysadmin
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
-from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
+
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.dictionary_service import DictionaryService
 
 
 class SysadminTextCommands(commands.Cog):
@@ -38,7 +41,10 @@ class SysadminTextCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
-        self.message_service = MessageService(self.__bot)
+        self.__emoji = Emojis()
+        self.__author_service = AuthorService()
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,

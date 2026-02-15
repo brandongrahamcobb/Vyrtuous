@@ -33,7 +33,8 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
-from vyrtuous.cog.help_command import skip_help_discovery
+
+# from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
@@ -46,17 +47,20 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.utils.author_service import AuthorService
-from vyrtuous.utils.clear_service import ClearService
+
+# from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
-from vyrtuous.utils.permission_service import PermissionService
+
+# from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.video_room.video_room_service import VideoRoomService
-from vyrtuous.view.cancel_confirm_view import VerifyView
+
+# from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
@@ -69,7 +73,7 @@ class AdminTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.message_service = MessageService(self.__bot)
+        self.__duration_service = DurationService()
         self.__alias_service = AliasService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -165,7 +169,6 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
-        self.__duration_service = DurationService()
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -224,7 +227,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="aroles", help="Administrator roles.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_administrator_roles_text_command(
         self,
         ctx: commands.Context,
@@ -254,7 +257,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="cap", help="Cap alias duration for mods.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def cap_text_command(
         self,
         ctx: commands.Context,
@@ -283,7 +286,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="caps", help="List caps.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
@@ -582,7 +585,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=embed)
 
     @commands.command(name="roleid", help="Get role by name.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
         state = StateService(
             author_service=self.__author_service,
@@ -662,7 +665,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stages", help="List stages.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
@@ -693,7 +696,7 @@ class AdminTextCommands(commands.Cog):
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
     )
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -720,7 +723,7 @@ class AdminTextCommands(commands.Cog):
         name="temps",
         help="List temporary rooms with matching command aliases.",
     )
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
@@ -749,7 +752,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -799,7 +802,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -829,7 +832,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
@@ -858,7 +861,7 @@ class AdminTextCommands(commands.Cog):
         name="vrs",
         help="List video rooms.",
     )
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_video_rooms_text_command(
         self,
         ctx: commands.Context,
@@ -915,8 +918,10 @@ class AdminTextCommands(commands.Cog):
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID."
+        channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            default=None,
+            description="Tag a channel or include its ID.",
         ),
     ):
         state = StateService(

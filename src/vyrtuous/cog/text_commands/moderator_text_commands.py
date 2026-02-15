@@ -28,7 +28,8 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.cog.help_command import skip_help_discovery
+
+# from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
@@ -186,7 +187,7 @@ class ModeratorTextCommands(commands.Cog):
         return await predicate(ctx)
 
     @commands.command(name="admins", help="Lists admins.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
@@ -300,7 +301,7 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="del", help="Delete message.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
@@ -355,7 +356,7 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="ls", help="List new vegans.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
@@ -388,7 +389,7 @@ class ModeratorTextCommands(commands.Cog):
         name="migrate",
         help="Migrate a temporary room to a new channel by snowflake.",
     )
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -476,7 +477,7 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="mstage", help="Toggle stage mute/unmute.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
@@ -547,7 +548,7 @@ class ModeratorTextCommands(commands.Cog):
     #     await StateService.send_pages(title="Infractions", pages=pages, state=state)
 
     @commands.command(name="survey", help="Survey stage members.")
-    @skip_help_discovery()
+    # @skip_help_discovery()
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,
