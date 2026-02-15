@@ -22,30 +22,30 @@ from typing import Any, Coroutine, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bug.bug_service import BugService
 
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
+from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration import Duration, DurationObject
+from vyrtuous.moderator.moderator_service import ModeratorService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.stage_room.stage_service import StageService
 
 # from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.administrator.administrator_service import AdministratorService
-from vyrtuous.moderator.moderator_service import ModeratorService
-from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.discord_object_service import DiscordObjectService
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import MessageService
 
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.emojis import Emojis
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.bug.bug_service import BugService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
 
 
 class CoordinatorTextCommands(commands.Cog):

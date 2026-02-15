@@ -82,7 +82,7 @@ class VideoRoomService:
 
         asyncio.create_task(reset_cooldown())
 
-    async def reinforce_video_room(, member, before, after):
+    async def reinforce_video_room(self, member, before, after):
         if not after.channel:
             self.cancel_task((member.guild.id, member.id))
             return
@@ -132,7 +132,9 @@ class VideoRoomService:
             dictionary[video_room.guild_snowflake]["channels"].setdefault(
                 video_room.channel_snowflake, {}
             )
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(dictionary)
+        skipped_channels = self.__dictionary_service.generate_skipped_channels(
+            dictionary
+        )
         skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
         cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
@@ -192,9 +194,7 @@ class VideoRoomService:
                                 value="\n".join(lines),
                                 inline=False,
                             )
-                            embed = flush_page(
-                                embed, pages, title, guild.name
-                            )
+                            embed = flush_page(embed, pages, title, guild.name)
                             lines = []
                             field_count = 0
                 if field_count >= self.__CHUNK_SIZE:
@@ -203,7 +203,9 @@ class VideoRoomService:
                         value="\n".join(lines),
                         inline=False,
                     )
-                    embed = self.__dictionary_service.flush_page(embed, pages, title, guild.name)
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
                     field_count = 0
                     lines = []
             if lines:

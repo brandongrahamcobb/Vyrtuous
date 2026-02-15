@@ -23,28 +23,28 @@ import discord
 from discord.ext import commands, tasks
 
 from vyrtuous.ban.ban_service import BanService
-from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.text_mute.text_mute_service import TextMuteService
-from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.database import Database
 from vyrtuous.developer.developer import Developer
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_service import DurationService
 
 # from vyrtuous.video_room.video_room import VideoRoom
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage import Stage
+from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.text_mute.text_mute import TextMute
+from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.voice_mute.voice_mute import VoiceMute
-from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.utils.author_service import AuthorService
-from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.duration.duration_service import DurationService
-from vyrtuous.stream.stream_service import StreamService
+from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
 class ScheduledTasks(commands.Cog):

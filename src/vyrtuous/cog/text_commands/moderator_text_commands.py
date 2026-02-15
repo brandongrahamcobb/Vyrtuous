@@ -25,35 +25,29 @@ from discord.ext import commands
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.ban.ban_service import BanService
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
+from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-
-from vyrtuous.utils.discord_object_service import (
-    DiscordObjectService,
-    MultiConverter,
-)
-from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.utils.emojis import Emojis
-from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.utils.author_service import AuthorService
-from vyrtuous.utils.dictionary_service import DictionaryService
-
-from vyrtuous.bug.bug_service import BugService
-from vyrtuous.flag.flag_service import FlagService
-
 from vyrtuous.vegan.vegan_service import VeganService
-from vyrtuous.text_mute.text_mute_service import TextMuteService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
 class ModeratorTextCommands(commands.Cog):

@@ -25,8 +25,8 @@ from discord.ext import commands
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.moderator.moderator import Moderator
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 

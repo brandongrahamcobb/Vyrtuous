@@ -23,25 +23,22 @@ from uuid import UUID
 import discord
 from discord.ext import commands
 
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.database import Database
 from vyrtuous.developer.developer import Developer
+from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.discord_object_service import DiscordObjectService
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
-from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
-from vyrtuous.utils.emojis import Emojis
-
-from vyrtuous.utils.discord_object_service import (
-    DiscordObjectService,
-)
-from vyrtuous.utils.author_service import AuthorService
 
 
 class DevTextCommands(commands.Cog):

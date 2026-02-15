@@ -1,8 +1,8 @@
 from .administrator import Administrator, AdministratorRole
 from .administrator_service import (
-    NotAdministrator,
-    AdministratorService,
     AdministratorRoleService,
+    AdministratorService,
+    NotAdministrator,
 )
 
 __all__ = [

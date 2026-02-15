@@ -22,8 +22,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
