@@ -38,7 +38,56 @@ class TargetIsBot(commands.CheckFailure):
         )
 
 
-class DiscordContextObject(commands.Converter):
+class DiscordObjectService:
+    def translate(
+        self,
+        obj: Union[
+            str, discord.abc.GuildChannel, discord.Role, discord.Guild, discord.Member
+        ],
+    ):
+        kwargs = {"columns": {}}
+        if argument and str(argument).lower() == "all":
+            return kwargs
+        else:
+            kwargs["id"] = obj.id
+            kwargs["object"] = obj
+            kwargs["type"] = type(obj)
+        if isinstance(obj, discord.abc.GuildChannel):
+            return {
+                "columns": {
+                    "channel_snowflake": obj.id,
+                    "guild_snowflake": obj.guild.id,
+                },
+                "mention": obj.mention,
+                "name": obj.name,
+            }
+        elif isinstance(obj, discord.Member):
+            return {
+                "columns": {
+                    "member_snowflake": obj.id,
+                    "guild_snowflake": obj.guild.id,
+                },
+                "mention": obj.mention,
+                "name": obj.display_name,
+            }
+        elif isinstance(obj, discord.Guild):
+            return {
+                "columns": {"guild_snowflake": obj.id},
+                "id": obj.id,
+                "name": obj.name,
+            }
+        elif isinstance(obj, discord.Role):
+            return {
+                "columns": {
+                    "guild_snowflake": obj.guild.id,
+                    "role_snowflake": obj.id,
+                },
+                "mention": obj.mention,
+                "name": obj.name,
+            }
+
+
+class MultiConverter(commands.Converter):
     def __init__(self):
         self.__bot = DiscordBot.get_instance()
 
@@ -53,64 +102,18 @@ class DiscordContextObject(commands.Converter):
             channel = await channel.convert(ctx, argument)
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
-        else:
-            return {
-                "columns": {
-                    "channel_snowflake": channel.id,
-                    "guild_snowflake": channel.guild.id,
-                },
-                "id": channel.id,
-                "mention": channel.mention,
-                "name": channel.name,
-                "type": type(channel),
-                "object": channel,
-            }
         try:
             member = await member.convert(ctx, argument)
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
-        else:
-            if member == ctx.guild.me:
-                raise TargetIsBot()
-            return {
-                "columns": {
-                    "member_snowflake": member.id,
-                    "guild_snowflake": member.guild.id,
-                },
-                "id": member.id,
-                "mention": member.mention,
-                "name": member.display_name,
-                "type": type(member),
-                "object": member,
-            }
         try:
             guild = await guild.convert(ctx, argument)
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
-        else:
-            return {
-                "columns": {"guild_snowflake": guild.id},
-                "id": guild.id,
-                "name": guild.name,
-                "type": type(guild),
-                "object": guild,
-            }
         try:
             role = await role.convert(ctx, argument)
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
-        else:
-            return {
-                "columns": {
-                    "guild_snowflake": role.guild.id,
-                    "role_snowflake": role.id,
-                },
-                "id": role.id,
-                "mention": role.mention,
-                "name": role.name,
-                "type": type(role),
-                "object": role,
-            }
         raise commands.BadArgument("Argument is not a channel, member, guild, or role.")
 
 

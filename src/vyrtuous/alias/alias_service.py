@@ -168,29 +168,27 @@ class AliasService:
         await self.__database_factory.delete(**where_kwargs)
         return msg
 
-    async def create_alias(self, alias_name, category, channel_dict, role_dict):
-        where_kwargs = channel_dict.get("columns", None).copy()
+    async def create_alias(self, alias_name, category, channel, role):
+        kwargs = {"channel_snowflake": channel.id, "guild_snowflake": channel.guild.id}
         msg = (
             f"Alias `{alias_name}` of type `{category}` "
-            f"created successfully for channel {channel_dict.get('mention', None)}."
+            f"created successfully for channel {channel.mention}."
         )
         alias = await self.__database_factory.select(
-            category=category, **where_kwargs, singular=True
+            category=category, **kwargs, singular=True
         )
         if alias and alias.category != "role":
             return (
                 f"Alias of type `{category}` "
-                f"already exists for this channel {channel_dict.get('mention', None)}."
+                f"already exists for this channel {channel.mention}."
             )
-        if role_dict:
-            where_kwargs.update(role_dict.get("columns", None))
+        if role:
+            kwargs.update({"role_snowflake": role.id})
             msg = (
                 f"Alias `{alias_name}` of type `{category}` "
-                f"created successfully for channel {channel_dict.get('mention', None)} with role {role_dict.get('mention', None)}."
+                f"created successfully for channel {channel.mention} with role {role.mention}."
             )
-        alias = self.MODEL(
-            alias_name=alias_name, category=str(category), **where_kwargs
-        )
+        alias = self.MODEL(alias_name=alias_name, category=str(category), **kwargs)
         await self.__database_factory.create(alias)
         return msg
 

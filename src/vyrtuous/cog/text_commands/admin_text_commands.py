@@ -29,12 +29,17 @@ from vyrtuous.administrator.administrator_service import (
     administrator_predicator,
     NotAdministrator,
 )
+from vyrtuous.base import database_factory
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stage_room.stage_service import StageService
-from vyrtuous.utils.discord_object_service import DiscordContextObject
+from vyrtuous.utils.discord_object_service import (
+    DiscordContextObject,
+    DiscordObjectService,
+    MultiConverter,
+)
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cap.cap_service import CapService
@@ -95,6 +100,13 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
         self.__administrator_service = AdministratorService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -107,6 +119,45 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
         )
         self.message_service = MessageService(self.bot)
+        self.__administrator_role_service = AdministratorRoleService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__cap_service = CapService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+        )
+        self.__discord_object_service = DiscordObjectService()
+        self.__server_mute_service = ServerMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__temporary_room_service = TemporaryRoomService(
+            alias_service=self.__alias_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__stream_service = StreamService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+        )
+        self.__video_room_service = VideoRoomService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -132,7 +183,6 @@ class AdminTextCommands(commands.Cog):
         name="alias",
         help="Alias creation.",
     )
-    @administrator_predicator()
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
@@ -140,59 +190,69 @@ class AdminTextCommands(commands.Cog):
             description="Specify a category for a `ban`, `flag`, `role`, `tmute`, `vegan` or `vmute` action."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
-        channel: DiscordContextObject = commands.parameter(
-            description="Tag a channel or include the ID"
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include the ID",
         ),
         *,
-        role: DiscordContextObject = commands.parameter(
-            default=None, description="Tag a role or include the ID."
+        role: discord.Role = commands.parameter(
+            converter=commands.RoleConverter,
+            default=None,
+            description="Tag a role or include the ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        channel_dict = channel
-        role_dict = None
-        if category == "role":
-            role_dict = role
-        msg = await self.__alias_service.create_alias(
-            alias_name=alias_name,
-            category=category,
-            channel_dict=channel_dict,
-            role_dict=role_dict,
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
         )
+        kwargs = {"alias_name": alias_name, "category": category, "channel": channel}
+        if role:
+            kwargs.update({"role": role})
+        msg = await self.__alias_service.create_alias(**kwargs)
         return await state.end(success=msg)
 
     @commands.command(name="aroles", help="Administrator roles.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def list_administrator_roles_text_command(
         self,
         ctx: commands.Context,
         *,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.guild.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.guild.id)
+        object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await AdministratorRoleService.build_pages(
+        pages = await self.__administrator_role_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            title="Administrator Roles", pages=pages, state=state
-        )
+        return await state.end(success=pages)
 
     @commands.command(name="cap", help="Cap alias duration for mods.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def cap_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
         category: Category = commands.parameter(
             description="One of: `mute`, `ban`, `tmute`"
@@ -200,42 +260,58 @@ class AdminTextCommands(commands.Cog):
         *,
         hours: int = commands.parameter(default=24, description="# of hours"),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        msg = await CapService.toggle_cap(
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        channel_dict = self.__discord_object_service.translate(obj=channel)
+        msg = await self.__cap_service.toggle_cap(
             category=category, channel_dict=channel_dict, hours=hours
         )
         return await state.end(success=msg)
 
     @commands.command(name="caps", help="List caps.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await CapService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__cap_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Caps", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="clear", help="Reset database.")
-    @administrator_predicator()
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
-            description="Specify 'all', tag a channel/guild/member or include its ID"
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            description="Specify 'all', tag a channel/guild/member or include its ID",
         ),
         *,
         category: Category = commands.parameter(
@@ -249,57 +325,70 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        object_dict = await do.determine_from_target(target=target)
+        object_dict = self.__discord_object_service.translate(obj=target)
         where_kwargs = object_dict.get("columns", None)
-        view = VerifyView(
-            category=str(category),
-            mention=object_dict.get("mention", "All"),
-            author_snowflake=ctx.author.id,
-            **where_kwargs,
+        # view = VerifyView(
+        #     category=str(category),
+        #     mention=object_dict.get("mention", "All"),
+        #     author_snowflake=ctx.author.id,
+        #     **where_kwargs,
+        # )
+        # embed = view.build_embed()
+        # await ctx.reply(embed=embed, view=view)
+        # await view.wait()
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
         )
-        embed = view.build_embed()
-        await ctx.reply(embed=embed, view=view)
-        await view.wait()
-        state = StateService(ctx=ctx)
-        msg = await ClearService.clear(
-            category=category,
-            default_kwargs=default_kwargs,
-            object_dict=object_dict,
-            where_kwargs=where_kwargs,
-            target=target,
-            view=view,
-        )
+        # msg = await ClearService.clear(
+        #     category=category,
+        #     default_kwargs=default_kwargs,
+        #     object_dict=object_dict,
+        #     where_kwargs=where_kwargs,
+        #     target=target,
+        #     view=view,
+        # )
         return await state.end(success=msg)
 
     @commands.command(name="coord", help="Grant/revoke coords.")
-    @administrator_predicator()
     async def toggle_coordinator_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a member or include their ID"
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
         ),
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        member_dict = await do.determine_from_target(target=member)
+        channel_dict = self.__discord_object_service.translate(obj=channel)
+        member_dict = self.__discord_object_service.translate(obj=member)
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
-        await PermissionService.has_equal_or_lower_role(
-            target_member_snowflake=int(member_dict.get("id", None)),
-            **updated_kwargs,
-        )
-        msg = await CoordinatorService.toggle_coordinator(
+        # await PermissionService.has_equal_or_lower_role(
+        #     target_member_snowflake=int(member_dict.get("id", None)),
+        #     **updated_kwargs,
+        # )
+        msg = await self.__coordinator_service.toggle_coordinator(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
             member_dict=member_dict,
@@ -307,7 +396,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="debug", help="Shows the last `n` number of logging.")
-    @administrator_predicator()
     async def debug_text_command(
         self,
         ctx,
@@ -316,7 +404,14 @@ class AdminTextCommands(commands.Cog):
             default=3, description="Specify the number of lines"
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         if lines <= 0:
             return await state.end(warning="Lines must be greater than 0")
         try:
@@ -330,98 +425,115 @@ class AdminTextCommands(commands.Cog):
             output = output[-1900:]
         return await state.end(success=f"```log\n{output}\n```")
 
-    @commands.command(name="pc", help="View permissions.")
-    @administrator_predicator()
-    @skip_help_discovery()
-    async def list_permissions_text_command(
-        self,
-        ctx: commands.Context,
-        target: str | None = commands.parameter(
-            default=None,
-            description="Specify one of: `all`, channel ID/mention or server ID.",
-        ),
-    ):
-        state = StateService(ctx=ctx)
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
-        target = target or int(ctx.channel.id)
-        do = DiscordObject(ctx=ctx)
-        is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(object_dict.get("columns", None))
-        if target and str(target).lower() == "all":
-            await PermissionService.check(**updated_kwargs, lowest_role="Guild Owner")
-            channel_objs = [
-                channel_obj
-                for guild in self.bot.guilds
-                for channel_obj in guild.channels
-            ]
-        elif hasattr(object_dict.get("object", None), "channels"):
-            channel_objs = object_dict.get("object", None).channels
-        else:
-            channel_objs = [object_dict.get("object", None)]
-        pages = await PermissionService.build_pages(
-            channel_objs=channel_objs,
-            default_kwargs=default_kwargs,
-            is_at_home=is_at_home,
-        )
-        if pages:
-            return await state.end(warning=pages)
-        else:
-            return await state.end(
-                success=f"{self.bot.user.display_name} has all permissions for `{target}`."
-            )
+    # @commands.command(name="pc", help="View permissions.")
+    # @skip_help_discovery()
+    # async def list_permissions_text_command(
+    #     self,
+    #     ctx: commands.Context,
+    #     target: str | None = commands.parameter(
+    #         default=None,
+    #         description="Specify one of: `all`, channel ID/mention or server ID.",
+    #     ),
+    # ):
+    #     state = StateService(ctx=ctx)
+    #     default_kwargs = {
+    #         "channel_snowflake": int(ctx.channel.id),
+    #         "guild_snowflake": int(ctx.guild.id),
+    #         "member_snowflake": int(ctx.author.id),
+    #     }
+    #     obj = target or int(ctx.channel.id)
+    #     object_dict = self.__discord_object_service.translate(obj=obj)
+    #     is_at_home = at_home(source=ctx)
+    #     updated_kwargs = default_kwargs.copy()
+    #     updated_kwargs.update(object_dict.get("columns", None))
+    #     if target and str(target).lower() == "all":
+    #         # await PermissionService.check(**updated_kwargs, lowest_role="Guild Owner")
+    #         channel_objs = [
+    #             channel_obj
+    #             for guild in self.bot.guilds
+    #             for channel_obj in guild.channels
+    #         ]
+    #     elif hasattr(object_dict.get("object", None), "channels"):
+    #         channel_objs = object_dict.get("object", None).channels
+    #     else:
+    #         channel_objs = [object_dict.get("object", None)]
+    #     pages = await PermissionService.build_pages(
+    #         channel_objs=channel_objs,
+    #         default_kwargs=default_kwargs,
+    #         is_at_home=is_at_home,
+    #     )
+    #     if pages:
+    #         return await state.end(warning=pages)
+    #     else:
+    #         return await state.end(
+    #             success=f"{self.bot.user.display_name} has all permissions for `{target}`."
+    #         )
 
     @commands.command(name="rmute", help="Room mute (except yourself).")
-    @administrator_predicator()
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel | None = commands.parameter(
+            converter=commands.ChannelConverter,
+            default=None,
+            description="Tag a channel or include its ID.",
         ),
         *,
         reason: str = commands.parameter(
             default="No reason provided.", description="Specify a reason."
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        channel = channel or int(ctx.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await VoiceMuteService.room_mute(
+        obj = channel or int(ctx.channel.id)
+        channel_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__voice_mute_service.room_mute(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
             reason=reason,
         )
-        await StateService.send_pages(title="Room Mutes", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="rmv", help="VC move.")
     @administrator_predicator()
     async def room_move_all_text_command(
         self,
         ctx: commands.Context,
-        source_channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        source_channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
-        target_channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        target_channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
     ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         failed, moved = [], []
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        source_channel_dict = await do.determine_from_target(target=source_channel)
-        target_channel_dict = await do.determine_from_target(target=target_channel)
+        source_channel_dict = self.__discord_object_service.translate(
+            obj=source_channel
+        )
+        target_channel_dict = self.__discord_object_service.translate(
+            obj=target_channel
+        )
         for member in source_channel_dict.get("object", None).members:
             try:
                 await member.move_to(target_channel_dict.get("object", None))
@@ -437,7 +549,7 @@ class AdminTextCommands(commands.Cog):
                     f"{str(e).capitalize()}"
                 )
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
+            title=f"{self.__emoji.get_random_emoji()} "
             f"Moved {source_channel_dict.get('mention', None)} to "
             f"{target_channel_dict.get('mention', None)}",
             color=discord.Color.green(),
@@ -466,7 +578,14 @@ class AdminTextCommands(commands.Cog):
     @administrator_predicator()
     @skip_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
             return await state.end(success=f"Role `{role.name}` has ID `{role.id}`.")
@@ -480,8 +599,9 @@ class AdminTextCommands(commands.Cog):
     async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a member or include their ID"
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
         ),
         *,
         reason: str = commands.parameter(
@@ -489,15 +609,21 @@ class AdminTextCommands(commands.Cog):
             description="Optional reason (required for 7 days or more)",
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        member_dict = await do.determine_from_target(target=member)
-        msg = await ServerMuteService.toggle_server_mute(
+        member_dict = self.__discord_object_service.translate(obj=member)
+        msg = await self.__server_mute_service.toggle_server_mute(
             default_kwargs=default_kwargs, member_dict=member_dict, reason=reason
         )
         return await state.end(success=msg)
@@ -507,20 +633,29 @@ class AdminTextCommands(commands.Cog):
     async def list_server_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.guild.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.guild.id)
+        object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await ServerMuteService.build_pages(
+        pages = await self.__server_mute_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Server Mutes", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="stages", help="List stages.")
     @administrator_predicator()
@@ -528,20 +663,29 @@ class AdminTextCommands(commands.Cog):
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
-        target: str = commands.parameter(
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel.id)
+        object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await StageService.build_pages(
+        pages = await self.__stage_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Stages", pages=pages, state=state)
+        return state.end(success=pages)
 
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
@@ -551,14 +695,21 @@ class AdminTextCommands(commands.Cog):
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        msg = await TemporaryRoomService.toggle_temporary_room(
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        channel_dict = self.__discord_object_service.translate(obj=channel)
+        msg = await self.__temporary_room_service.toggle_temporary_room(
             channel_dict=channel_dict
         )
         return await state.end(success=msg)
@@ -572,20 +723,29 @@ class AdminTextCommands(commands.Cog):
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await TemporaryRoomService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__temporary_room_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Temporary Rooms", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")
     @administrator_predicator()
@@ -593,32 +753,41 @@ class AdminTextCommands(commands.Cog):
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
         action: str = commands.parameter(description="create | modify | delete."),
         entry_type: str = commands.parameter(description="all | channel."),
         *snowflakes: int,
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         channel_mentions, failed_snowflakes, resolved_channels = [], [], []
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
+        channel_dict = self.__discord_object_service.translate(obj=channel)
         if snowflakes:
             for snowflake in snowflakes:
                 try:
-                    snowflake_dict = await do.determine_from_target(target=channel)
+                    snowflake_dict = self.__discord_object_service.translate(
+                        obj=snowflake
+                    )
                     resolved_channels.append(snowflake_dict.get("id", None))
                     channel_mentions.append(snowflake_dict.get("mention", None))
                 except Exception:
                     failed_snowflakes.append(snowflake)
                     continue
-        pages = await StreamService.modify_stream(
+        pages = await self.__stream_service.modify_stream(
             action=action,
             channel_dict=channel_dict,
             channel_mentions=channel_mentions,
@@ -627,7 +796,7 @@ class AdminTextCommands(commands.Cog):
             failed_snowflakes=failed_snowflakes,
             resolved_channels=resolved_channels,
         )
-        await StateService.send_pages(title="Stream", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")
     @administrator_predicator()
@@ -636,20 +805,29 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str = commands.parameter(
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await StreamService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__stream_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(
-            title="Streaming Routes", pages=pages, state=state
-        )
+        return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
     @administrator_predicator()
@@ -657,14 +835,25 @@ class AdminTextCommands(commands.Cog):
     async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include the ID"
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.ChannelConverter,
+            default=None,
+            description="Tag a channel or include the ID",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        msg = await VideoRoomService.toggle_video_room(channel_dict=channel_dict)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = channel or int(ctx.channel.id)
+        channel_dict = self.__discord_object_service.translate(obj=obj)
+        msg = await self.__video_room_service.toggle_video_room(
+            channel_dict=channel_dict
+        )
         return await state.end(success=msg)
 
     @commands.command(
@@ -677,19 +866,29 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: str | None = commands.parameter(
-            default=None, description="Include `all`, channel or server ID."
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Include `all`, channel or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel.id)
+        self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await VideoRoomService.build_pages(
+        pages = await self.__video_room_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Video Rooms", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="xalias", help="Delete alias.")
     @administrator_predicator()
@@ -698,7 +897,14 @@ class AdminTextCommands(commands.Cog):
         ctx: commands.Context,
         alias_name: str = commands.parameter(description="Include an alias name"),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
@@ -718,7 +924,14 @@ class AdminTextCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID."
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         do = DiscordObject(ctx=ctx)
         channel = channel or int(ctx.channel.id)
         channel_dict = await do.determine_from_target(target=channel)

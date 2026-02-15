@@ -300,7 +300,12 @@ class AdministratorRoleService:
     MODEL = AdministratorRole
 
     def __init__(
-        self, *, bot=None, database_factory=None, dictionary_service=None, emoji=None
+        self,
+        *,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        emoji=None,
     ):
         self.__administrator_service = AdministratorService(
             bot=bot, database_factory=database_factory
@@ -360,16 +365,12 @@ class AdministratorRoleService:
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines, pages = [], []
-        bot = DiscordBot.get_instance()
-        dictionary = {}
+        pages = []
         title = f"{self.__emoji.get_random_emoji()} Administrator Roles"
         where_kwargs = object_dict.get("columns", None)
-
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
-
         admin_role_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
@@ -382,7 +383,9 @@ class AdministratorRoleService:
                 if not role:
                     continue
                 if field_count >= self.__CHUNK_SIZE:
-                    embed = flush_page(embed, pages, title, guild.name)
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
                 embed.add_field(name=role.name, value=role.mention, inline=False)
                 field_count += 1
                 admin_role_n += 1
