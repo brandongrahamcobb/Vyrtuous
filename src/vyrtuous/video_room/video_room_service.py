@@ -78,7 +78,7 @@ class VideoRoomService:
         async def reset_cooldown():
             await asyncio.sleep(self.__COOLDOWN.total_seconds())
             if self.cooldowns.get(member_snowflake) == now:
-                del self..cooldowns[member_snowflake]
+                del self.cooldowns[member_snowflake]
 
         asyncio.create_task(reset_cooldown())
 

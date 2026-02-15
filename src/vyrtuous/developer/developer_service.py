@@ -47,26 +47,6 @@ class DeveloperService:
             author_service=author_service, bot=bot
         )
 
-    def developer_predicator(
-        self,
-    ):
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.is_developer_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotDeveloper
-
-        predicate._permission_level = "Developer"
-        return commands.check(predicate)
-
     async def is_developer(self, member_snowflake: int) -> bool:
         developer = await self.__database_factory.select(
             member_snowflake=int(member_snowflake), singular=True

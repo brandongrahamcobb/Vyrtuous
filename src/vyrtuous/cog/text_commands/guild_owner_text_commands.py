@@ -36,7 +36,6 @@ from vyrtuous.utils.state_service import StateService
 
 
 class GuildOwnerTextCommands(commands.Cog):
-
     ROLE = GuildOwner
 
     def __init__(self, bot: DiscordBot):
@@ -48,7 +47,14 @@ class GuildOwnerTextCommands(commands.Cog):
     async def toggle_administrator_by_role_text_command(
         self, ctx: commands.Context, role: RoleSnowflake
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
@@ -73,7 +79,14 @@ class GuildOwnerTextCommands(commands.Cog):
             description="Tag a member or include their ID"
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         do = DiscordObject(ctx=ctx)
         member_dict = await do.determine_from_target(target=member)
         where_kwargs = member_dict.get("columns", None)
@@ -83,11 +96,11 @@ class GuildOwnerTextCommands(commands.Cog):
             await PermissionService.unrestrict(**where_kwargs)
             msg = (
                 f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member_dict.get("mention", None)}."
+                f"and invincibility has been enabled for {member_dict.get('mention', None)}."
             )
         else:
             PermissionService.remove_invincible_member(**where_kwargs)
-            msg = f"Invincibility has been disabled for {member_dict.get("mention", None)}"
+            msg = f"Invincibility has been disabled for {member_dict.get('mention', None)}"
         return await state.end(success=msg)
 
     @commands.command(name="devs", help="List devs.")
@@ -100,7 +113,14 @@ class GuildOwnerTextCommands(commands.Cog):
             default=None, description="'all', a specific server or user mention/ID"
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         do = DiscordObject(ctx=ctx)
         target = target or "all"
         object_dict = await do.determine_from_target(target=target)
@@ -116,7 +136,14 @@ class GuildOwnerTextCommands(commands.Cog):
         *,
         guilds: commands.Greedy[discord.Object] = None,
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         synced = []
         if not guilds:
             if spec == "~":
@@ -133,7 +160,7 @@ class GuildOwnerTextCommands(commands.Cog):
                 if spec is None:
                     msg = f"Synced {len(synced)} commands globally."
                 else:
-                    msg = f"Synced {len(synced)} commands to the " f"current server."
+                    msg = f"Synced {len(synced)} commands to the current server."
                 return await state.end(success=msg)
             except Exception as e:
                 return await state.end(warning=str(e).capitalize())

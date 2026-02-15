@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pathlib import Path
+from typing import Union
 
 import discord
 from discord.ext import commands
@@ -28,24 +28,35 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
-from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake, MessageSnowflake
-from vyrtuous.flag.flag_service import FlagService
+from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.moderator.moderator_service import ModeratorService, moderator_predicator
+from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
-from vyrtuous.text_mute.text_mute_service import TextMuteService
-from vyrtuous.utils.dir_to_classes import dir_to_classes
-from vyrtuous.utils.discord_object_service import DiscordObject
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+
+from vyrtuous.utils.discord_object_service import (
+    DiscordObjectService,
+    MultiConverter,
+)
+from vyrtuous.stream.stream_service import StreamService
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.base.database_factory import DatabaseFactory
+from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
+
+from vyrtuous.bug.bug_service import BugService
+from vyrtuous.flag.flag_service import FlagService
+
+from vyrtuous.vegan.vegan_service import VeganService
+from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.duration.duration_service import DurationService
 
 
 class ModeratorTextCommands(commands.Cog):
-
     ROLE = Moderator
 
     def __init__(self, bot: DiscordBot):
@@ -53,98 +64,239 @@ class ModeratorTextCommands(commands.Cog):
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
         self.message_service = MessageService(self.bot)
+        self.__author_service = AuthorService()
+        self.__bot = bot
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__emoji = Emojis()
+        self.message_service = MessageService(self.__bot)
+        self.__duration_service = DurationService()
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__alias_service = AliasService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__stage_service = StageService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__administrator_service = AdministratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.message_service = MessageService(self.bot)
+        self.__discord_object_service = DiscordObjectService()
+        self.__temporary_room_service = TemporaryRoomService(
+            alias_service=self.__alias_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__stream_service = StreamService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+        )
+        self.__voice_mute_service = VoiceMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__ban_service = BanService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__flag_service = FlagService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__vegan_service = VeganService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__text_mute_service = TextMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
 
     @commands.command(name="admins", help="Lists admins.")
-    @moderator_predicator()
     @skip_help_discovery()
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
         *,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
-            description="Specify one of: `all`, " "channel ID/mention or server ID.",
+            description="Specify one of: `all`, channel ID/mention or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.guild.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.guild)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=str(target))
-        pages = await AdministratorService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__administrator_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Administrators", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="bans", help="List bans.")
-    @moderator_predicator()
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await BanService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__ban_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Bans", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="cmds", help="List aliases.")
-    @moderator_predicator()
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await AliasService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__alias_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Aliases", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="coords", help="Lists coords.")
-    @moderator_predicator()
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await CoordinatorService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__coordinator_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Coordinators", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="del", help="Delete message.")
-    @moderator_predicator()
     @skip_help_discovery()
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
-        message: MessageSnowflake = commands.parameter(description="Message snowflake"),
+        message: discord.Message = commands.parameter(
+            converter=commands.MessageConverter, description="Message snowflake"
+        ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         try:
             msg = await ctx.channel.fetch_message(message)
         except discord.NotFound:
@@ -156,70 +308,92 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=f"Message `{message}` deleted successfully.")
 
     @commands.command(name="flags", help="List flags.")
-    @moderator_predicator()
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await FlagService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__flag_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Flags", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="ls", help="List new vegans.")
-    @moderator_predicator()
     @skip_help_discovery()
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
         *,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.guild.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.guild)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await VeganService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__vegan_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Vegans", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(
         name="migrate",
         help="Migrate a temporary room to a new channel by snowflake.",
     )
-    @moderator_predicator()
     @skip_help_discovery()
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
         old_name: str = commands.parameter(description="Provide a channel name"),
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        msg = await TemporaryRoomService.migrate_temporary_room(
+        channel_dict = self.__discord_object_service.translate(obj=channel)
+        msg = await self.__temporary_room_service.migrate_temporary_room(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
             old_name=old_name,
@@ -227,141 +401,185 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="mods", help="Lists mods.")
-    @moderator_predicator()
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await ModeratorService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__moderator_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Moderators", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="mutes", help="List mutes.")
-    @moderator_predicator()
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=commands.VoiceChannelConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await VoiceMuteService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__voice_mute_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Voice Mutes", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="mstage", help="Toggle stage mute/unmute.")
-    @moderator_predicator()
     @skip_help_discovery()
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a member or include their ID"
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
         ),
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        channel = channel or int(ctx.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        member_dict = await do.determine_from_target(target=member)
+        channel = channel or int(ctx.channel)
+        channel_dict = self.__discord_object_service.translate(obj=channel)
+        member_dict = self.__discord_object_service.translate(obj=member)
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         updated_kwargs.update(member_dict.get("columns", None))
-        msg = await StageService.toggle_stage_mute(
+        msg = await self.__stage_service.toggle_stage_mute(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
             member_dict=member_dict,
         )
-        await state.end(success=msg)
+        return await state.end(success=msg)
 
-    @commands.command(name="summary", help="List user moderation.")
-    @moderator_predicator()
-    async def list_moderation_summary_text_command(
-        self,
-        ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
-            description="Specify a member ID/mention."
-        ),
-    ):
-        pages = []
-        dir_paths = []
-        dir_paths.append(Path("/app/vyrtuous/db/infractions"))
-
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        is_at_home = at_home(source=ctx)
-        member_dict = await do.determine_from_target(target=member)
-        for obj in dir_to_classes(dir_paths=dir_paths, parent=AliasService):
-            object_pages = await obj.build_pages(
-                object_dict=member_dict, is_at_home=is_at_home
-            )
-            if object_pages:
-                pages.extend(object_pages)
-        await StateService.send_pages(title="Infractions", pages=pages, state=state)
+    # @commands.command(name="summary", help="List user moderation.")
+    # async def list_moderation_summary_text_command(
+    #     self,
+    #     ctx: commands.Context,
+    #     member: discord.Member = commands.parameter(
+    #         converter=commands.MemberConverter,
+    #         description="Specify a member ID/mention."
+    #     ),
+    # ):
+    #     state = StateService(
+    #         author_service=self.__author_service,
+    #         bot=self.__bot,
+    #         bug_service=self.__bug_service,
+    #         ctx=ctx,
+    #         developer_service=self.__developer_service,
+    #         emoji=self.__emoji,
+    #     )
+    #     pages = []
+    #     dir_paths = []
+    #     dir_paths.append(Path("/app/vyrtuous/db/infractions"))
+    #     obj = member or int(ctx.member)
+    #     is_at_home = at_home(source=ctx)
+    #     member_dict = self.__discord_object_service.translate(obj=obj)
+    #     for obj in dir_to_classes(dir_paths=dir_paths, parent=AliasService):
+    #         object_pages = await obj.build_pages(
+    #             object_dict=member_dict, is_at_home=is_at_home
+    #         )
+    #         if object_pages:
+    #             pages.extend(object_pages)
+    #     await StateService.send_pages(title="Infractions", pages=pages, state=state)
 
     @commands.command(name="survey", help="Survey stage members.")
-    @moderator_predicator()
     @skip_help_discovery()
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            default=None,
+            description="Tag a channel or include its ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        channel = channel or int(ctx.channel.id)
-        channel_dict = await do.determine_from_target(target=channel)
-        pages = await StageService.survey(
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = channel or int(ctx.channel)
+        channel_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__moderator_service.survey(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id
         )
-        await StateService.send_pages(title="Stage Roles", pages=pages, state=state)
+        return await state.end(success=pages)
 
     @commands.command(name="tmutes", help="List text-mutes.")
-    @moderator_predicator()
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        target = target or int(ctx.channel.id)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        obj = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await TextMuteService.build_pages(
+        object_dict = self.__discord_object_service.translate(obj=obj)
+        pages = await self.__text_mute_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(title="Text Mutes", pages=pages, state=state)
+        return await state.end(success=pages)
 
 
 async def setup(bot: DiscordBot):

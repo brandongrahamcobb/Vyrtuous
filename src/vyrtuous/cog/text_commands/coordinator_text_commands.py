@@ -37,7 +37,6 @@ from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stage_room.stage_service import StageService
-from vyrtuous.utils.discord_object_service import DiscordContextObject
 from vyrtuous.utils.message_service import MessageService
 
 # from vyrtuous.utils.permission_service import PermissionService
@@ -46,6 +45,7 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.bug.bug_service import BugService
+from vyrtuous.utils.discord_object_service import DiscordObjectService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -106,6 +106,7 @@ class CoordinatorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__discord_object_service = DiscordObjectService()
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -132,11 +133,13 @@ class CoordinatorTextCommands(commands.Cog):
     async def toggle_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: DiscordContextObject = commands.parameter(
-            description="Tag a member or include their ID"
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
         ),
-        channel: DiscordContextObject = commands.parameter(
-            description="Tag a channel or include its ID."
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
         ),
     ):
         state = StateService(
@@ -153,13 +156,14 @@ class CoordinatorTextCommands(commands.Cog):
             "member_snowflake": int(ctx.author.id),
         }
         updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel.get("columns", None))
+        channel_dict = self.__discord_object_service.translate(obj=channel)
+        updated_kwargs.update(channel_dict.get("columns", None))
         # await PermissionService.has_equal_or_lower_role(
         #     target_member_snowflake=int(member.get("id", None)),
         #     **updated_kwargs,
         # )
         msg = await self.__moderator_service.toggle_moderator(
-            channel_dict=channel,
+            channel_dict=channel_dict,
             default_kwargs=default_kwargs,
             member_dict=member,
         )
@@ -170,8 +174,8 @@ class CoordinatorTextCommands(commands.Cog):
     async def toggle_stage_text_command(
         self,
         ctx: commands.Context,
-        channel: DiscordContextObject = commands.parameter(
-            converter=DiscordContextObject,
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
         *,
@@ -188,19 +192,19 @@ class CoordinatorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        self.__bot.logger.info(channel)
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        channel = channel or int(ctx.channel.id)
+        obj = channel or int(ctx.channel)
+        channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__stage_service.toggle_stage(
-            channel_dict=channel,
+            channel_dict=channel_dict,
             default_kwargs=default_kwargs,
             duration=duration,
         )
-        await StateService.send_pages(title="Stage", pages=pages, state=state)
+        return await state.end(success=pages)
 
 
 async def setup(bot: DiscordBot):

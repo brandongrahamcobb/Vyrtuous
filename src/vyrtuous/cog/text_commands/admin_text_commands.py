@@ -26,17 +26,12 @@ from vyrtuous.administrator.administrator import Administrator
 from vyrtuous.administrator.administrator_service import (
     AdministratorService,
     AdministratorRoleService,
-    administrator_predicator,
     NotAdministrator,
 )
-from vyrtuous.base import database_factory
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.administrator.administrator_service import AdministratorService
-from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.utils.discord_object_service import (
-    DiscordContextObject,
     DiscordObjectService,
     MultiConverter,
 )
@@ -46,10 +41,8 @@ from vyrtuous.cap.cap_service import CapService
 from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.field.category import Category
-from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake, RoleSnowflake
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
-from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.utils.clear_service import ClearService
@@ -65,6 +58,9 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.bug.bug_service import BugService
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_service import DurationService
 
 
 class AdminTextCommands(commands.Cog):
@@ -78,6 +74,12 @@ class AdminTextCommands(commands.Cog):
         self.__emoji = Emojis()
         self.message_service = MessageService(self.__bot)
         self.__alias_service = AliasService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -118,7 +120,7 @@ class AdminTextCommands(commands.Cog):
             author_service=self.__author_service,
             bot=self.__bot,
         )
-        self.message_service = MessageService(self.bot)
+        self.message_service = MessageService(self.__bot)
         self.__administrator_role_service = AdministratorRoleService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -166,6 +168,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
+        self.__duration_service = DurationService()
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -199,7 +202,7 @@ class AdminTextCommands(commands.Cog):
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include the ID",
         ),
         *,
@@ -245,7 +248,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.guild.id)
+        obj = target or int(ctx.guild)
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__administrator_role_service.build_pages(
@@ -259,7 +262,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
         category: Category = commands.parameter(
@@ -303,7 +306,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel.id)
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__cap_service.build_pages(
@@ -316,7 +319,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
+            str, discord.Guild, discord.abc.GuildChannel, discord.Member
         ] = commands.parameter(
             converter=MultiConverter,
             description="Specify 'all', tag a channel/guild/member or include its ID",
@@ -371,7 +374,7 @@ class AdminTextCommands(commands.Cog):
             description="Tag a member or include their ID",
         ),
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
     ):
@@ -482,7 +485,7 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             default=None,
             description="Tag a channel or include its ID.",
         ),
@@ -504,7 +507,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        obj = channel or int(ctx.channel.id)
+        obj = channel or int(ctx.channel)
         channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__voice_mute_service.room_mute(
             channel_dict=channel_dict,
@@ -514,16 +517,15 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="rmv", help="VC move.")
-    @administrator_predicator()
     async def room_move_all_text_command(
         self,
         ctx: commands.Context,
         source_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
         target_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
     ):
@@ -583,7 +585,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=embed)
 
     @commands.command(name="roleid", help="Get role by name.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
         state = StateService(
@@ -603,7 +604,6 @@ class AdminTextCommands(commands.Cog):
             )
 
     @commands.command(name="smute", help="Server mute/server unmute.")
-    @administrator_predicator()
     async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
@@ -637,7 +637,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="smutes", help="List mutes.")
-    @administrator_predicator()
     async def list_server_mutes_text_command(
         self,
         ctx: commands.Context,
@@ -657,7 +656,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.guild.id)
+        obj = target or int(ctx.guild)
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__server_mute_service.build_pages(
@@ -666,7 +665,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stages", help="List stages.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def list_stages_text_command(
         self,
@@ -687,7 +685,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel.id)
+        obj = target or int(ctx.channel)
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__stage_service.build_pages(
@@ -698,13 +696,12 @@ class AdminTextCommands(commands.Cog):
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
     )
-    @administrator_predicator()
     @skip_help_discovery()
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
     ):
@@ -726,7 +723,6 @@ class AdminTextCommands(commands.Cog):
         name="temps",
         help="List temporary rooms with matching command aliases.",
     )
-    @administrator_predicator()
     @skip_help_discovery()
     async def list_temp_rooms_text_command(
         self,
@@ -747,7 +743,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel.id)
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__temporary_room_service.build_pages(
@@ -756,13 +752,12 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
         action: str = commands.parameter(description="create | modify | delete."),
@@ -807,7 +802,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def list_streaming_text_command(
         self,
@@ -829,7 +823,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel.id)
+        obj = target or int(ctx.channel)
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__stream_service.build_pages(
@@ -838,13 +832,12 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
-    @administrator_predicator()
     @skip_help_discovery()
     async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.ChannelConverter,
+            converter=commands.VoiceChannelConverter,
             default=None,
             description="Tag a channel or include the ID",
         ),
@@ -857,7 +850,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = channel or int(ctx.channel.id)
+        obj = channel or int(ctx.channel)
         channel_dict = self.__discord_object_service.translate(obj=obj)
         msg = await self.__video_room_service.toggle_video_room(
             channel_dict=channel_dict
@@ -868,7 +861,6 @@ class AdminTextCommands(commands.Cog):
         name="vrs",
         help="List video rooms.",
     )
-    @administrator_predicator()
     @skip_help_discovery()
     async def list_video_rooms_text_command(
         self,
@@ -890,7 +882,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel.id)
+        obj = target or int(ctx.channel)
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__video_room_service.build_pages(
@@ -899,7 +891,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="xalias", help="Delete alias.")
-    @administrator_predicator()
     async def delete_alias_text_command(
         self,
         ctx: commands.Context,
@@ -924,7 +915,6 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="xrmute", help="Unmute all.")
-    @administrator_predicator()
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
@@ -940,7 +930,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = channel or int(ctx.channel.id)
+        obj = channel or int(ctx.channel)
         channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__voice_mute_service.room_unmute(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id

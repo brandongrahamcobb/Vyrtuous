@@ -38,6 +38,36 @@ class BugService:
         self.__emoji = emoji
         self.__database_factory = database_factory
 
+    async def interact_with_bug(self, action, notes, reference):
+        message = "You successfully "
+        bug = await self.__database_factory.select(
+            id=reference, resolved=False, singular=True
+        )
+        if not bug:
+            return f"Unresolved issue not found for reference ({reference})."
+        if action and action.lower() == "resolve":
+            where_kwargs = {"id": reference}
+            set_kwargs = {"resolved": True}
+            await self.__database_factory.update(
+                where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            )
+            message += "resolved the issue. The record will remain in the database for the next 30 days."
+        elif action and action.lower() == "append":
+            where_kwargs = {"id": reference}
+            set_kwargs = {"notes": bug.notes + notes if bug.notes else notes}
+            await self.__database_factory.update(
+                where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            )
+            message += "appended to the previous notes."
+        elif action and action.lower() == "overwrite":
+            where_kwargs = {"id": reference}
+            set_kwargs = {"notes": notes}
+            await self.__database_factory.update(
+                where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            )
+            message += "overwrote the previous notes."
+        return message
+
     async def clean_expired(self):
         now = datetime.now(timezone.utc)
         bugs = await self.__database_factory.select(resolved=True)
@@ -187,7 +217,7 @@ class BugService:
                 )
         return cleaned_dictionary
 
-    async def build_pages(self, filter, where_kwargs, is_at_home):
+    async def build_pages(self, scope, where_kwargs, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Developer Logs"
 
@@ -206,9 +236,9 @@ class BugService:
                 channel = guild.get_channel(entry["channel_snowflake"])
                 if not channel:
                     continue
-                if filter == "resolved" and not entry.get("resolved"):
+                if scope == "resolved" and not entry.get("resolved"):
                     continue
-                if filter == "unresolved" and entry.get("resolved"):
+                if scope == "unresolved" and entry.get("resolved"):
                     continue
                 msg = await channel.fetch_message(message_snowflake)
                 lines.append(
