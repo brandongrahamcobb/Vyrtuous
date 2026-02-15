@@ -170,7 +170,7 @@ class CoordinatorTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="stage", help="Start/stop stage")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def toggle_stage_text_command(
         self,
         ctx: commands.Context,

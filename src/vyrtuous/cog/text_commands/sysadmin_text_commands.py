@@ -17,54 +17,80 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from discord.ext import commands
+from typing import Any, Coroutine, Union
 
+from discord.ext import commands
+import discord
+
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.field.snowflake import MemberSnowflake
 from vyrtuous.sysadmin.sysadmin import Sysadmin
-from vyrtuous.sysadmin.sysadmin_service import sysadmin_predicator
-from vyrtuous.utils.discord_object_service import DiscordObject
+from vyrtuous.sysadmin.sysadmin_service import NotSysadmin
+from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
 
 
 class SysadminTextCommands(commands.Cog):
-
     ROLE = Sysadmin
 
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
-        self.message_service = MessageService(self.bot)
+        self.__bot = bot
+        self.message_service = MessageService(self.__bot)
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__discord_object_service = DiscordObjectService()
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+
+    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            if await self.is_sysadmin_wrapper(source):
+                return True
+            raise NotSysadmin
+
+        predicate._permission_level = "Sysadmin"
+        return predicate(ctx)
 
     @commands.command(name="assign", help="Assign developer.")
-    @sysadmin_predicator()
     async def assign_bug_to_developer_text_command(
         self,
         ctx: commands.Context,
         reference: str = commands.parameter(
             description="Include an issue reference ID"
         ),
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a member or include their ID"
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
         ),
     ):
         state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        member_dict = await do.determine_from_target(target=member)
-        embed = await BugService.assign_bug_to_developer(
+        member_dict = self.__discord_object_service.translate(obj=member)
+        embed = await self.__bug_service.assign_bug_to_developer(
             reference=reference, member_dict=member_dict
         )
         return await state.end(success=embed)
 
     @commands.command(name="dev", help="Grant/revoke devs.")
-    @sysadmin_predicator()
     async def toggle_developer_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a member or include their ID"
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
         ),
     ):
         state = StateService(ctx=ctx)
@@ -73,9 +99,8 @@ class SysadminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        do = DiscordObject(ctx=ctx)
-        member_dict = await do.determine_from_target(target=member)
-        msg = await DeveloperService.toggle_developer(
+        member_dict = self.__discord_object_service.translate(obj=member)
+        msg = await self.__developer_service.toggle_developer(
             member_dict=member_dict,
         )
         return await state.end(success=msg)

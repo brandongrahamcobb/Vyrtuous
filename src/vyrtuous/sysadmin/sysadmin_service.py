@@ -58,17 +58,6 @@ class SysadminService:
         member_snowflake = member.id
         return await self.is_sysadmin(member_snowflake)
 
-    def sysadmin_predicator(self):
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
-            if await self.is_sysadmin_wrapper(source):
-                return True
-            raise NotSysadmin
-
-        predicate._permission_level = "Sysadmin"
-        return commands.check(predicate)
-
     async def is_sysadmin(self, member_snowflake: int) -> bool:
         if int(self.__bot.config["discord_owner_id"]) == member_snowflake:
             return True

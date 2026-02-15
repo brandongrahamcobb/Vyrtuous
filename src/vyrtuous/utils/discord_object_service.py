@@ -94,7 +94,7 @@ class MultiConverter(commands.Converter):
     async def convert(self, ctx: commands.Context, argument: str):
         if argument and str(argument).lower() == "all":
             return {"columns": {}}
-        channel = commands.TextChannelConverter()
+        channel = commands.VoiceChannelConverter()
         guild = commands.GuildConverter()
         member = commands.MemberConverter()
         role = commands.RoleConverter()
