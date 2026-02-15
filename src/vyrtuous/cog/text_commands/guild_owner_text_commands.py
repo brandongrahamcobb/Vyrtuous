@@ -23,21 +23,20 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator_service import AdministratorRoleService
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
+from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
+from vyrtuous.utils.emojis import Emojis
 
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.utils.author_service import AuthorService
-from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.utils.emojis import Emojis
-
-from vyrtuous.utils.dictionary_service import DictionaryService
 
 
 class GuildOwnerTextCommands(commands.Cog):

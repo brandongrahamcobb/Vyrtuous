@@ -175,7 +175,7 @@ class BugService:
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
         dictionary = {}
-        bugs = await Bug.select(singular=False, **where_kwargs)
+        bugs = await self.__database_factory.select(singular=False, **where_kwargs)
         for bug in bugs:
             dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
             messages = dictionary[bug.guild_snowflake]["messages"]
@@ -202,21 +202,21 @@ class BugService:
             skipped_guilds=skipped_guilds,
             skipped_messages=skipped_messages,
         )
-        if is_at_home:
-            if skipped_guilds:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_messages:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_messages,
-                        title="Skipped Messages in Server",
-                    )
-                )
+        # if is_at_home:
+        #     if skipped_guilds:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_set_pages(
+        #                 skipped=skipped_guilds,
+        #                 title="Skipped Servers",
+        #             )
+        #         )
+        #     if skipped_messages:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_dict_pages(
+        #                 skipped=skipped_messages,
+        #                 title="Skipped Messages in Server",
+        #             )
+        #         )
         return cleaned_dictionary
 
     async def build_pages(self, scope, where_kwargs, is_at_home):

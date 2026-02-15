@@ -19,21 +19,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Any, Coroutine, Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.sysadmin.sysadmin import Sysadmin
-from vyrtuous.sysadmin.sysadmin_service import SysadminService, NotSysadmin
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.sysadmin.sysadmin import Sysadmin
+from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
 from vyrtuous.utils.author_service import AuthorService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
-from vyrtuous.utils.state_service import StateService
-
-from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.discord_object_service import DiscordObjectService
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.state_service import StateService
 
 
 class SysadminTextCommands(commands.Cog):

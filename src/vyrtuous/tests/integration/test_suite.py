@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import asyncio
 import threading
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from vyrtuous.tests.integration.mock_discord_channel import MockChannel
@@ -143,12 +144,13 @@ def setup(bot):
         name=PRIVILEGED_AUTHOR_NAME,
         state=state,
     )
-    voice_channel._members.append(dummy)
+    # voice_channel._members.append(dummy)
     guild._members.update({author.id: author})
     guild._members.update({dummy.id: dummy})
     guild._members.update({bot_member.id: bot_member})
     state.user = bot_member
     bot._connection = state
+    bot._get_websocket = lambda *a, **k: SimpleNamespace(is_ratelimited=lambda: False)
     bot.me = bot_member
     bot._state = state
     objects = {

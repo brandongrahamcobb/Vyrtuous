@@ -249,7 +249,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.guild)
+        obj = target or ctx.guild
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__administrator_role_service.build_pages(
@@ -307,7 +307,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__cap_service.build_pages(
@@ -508,7 +508,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        obj = channel or int(ctx.channel)
+        obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__voice_mute_service.room_mute(
             channel_dict=channel_dict,
@@ -657,7 +657,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.guild)
+        obj = target or ctx.guild
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__server_mute_service.build_pages(
@@ -686,7 +686,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__stage_service.build_pages(
@@ -744,7 +744,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__temporary_room_service.build_pages(
@@ -824,7 +824,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__stream_service.build_pages(
@@ -851,7 +851,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = channel or int(ctx.channel)
+        obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.translate(obj=obj)
         msg = await self.__video_room_service.toggle_video_room(
             channel_dict=channel_dict
@@ -883,7 +883,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         object_dict = self.__discord_object_service.translate(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__video_room_service.build_pages(
@@ -933,7 +933,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = channel or int(ctx.channel)
+        obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__voice_mute_service.room_unmute(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id

@@ -52,17 +52,17 @@ class CoordinatorService:
         dictionary_service=None,
         emoji,
     ):
-        self.author_service = author_service
-        self.bot = bot
-        self.database_factory = database_factory
-        self.dictionary_service = dictionary_service
-        self.dictionary_service.model = self.MODEL
-        self.emoji = emoji
+        self.__author_service = author_service
+        self.__bot = bot
+        self.__database_factory = database_factory
+        self.__dictionary_service = dictionary_service
+        self.__database_factory.model = self.MODEL
+        self.__emoji = emoji
 
     async def is_coordinator(
         self, channel_snowflake: int, guild_snowflake: int, member_snowflake: int
     ) -> bool:
-        coordinator = await self.database_factory.select(
+        coordinator = await self.__database_factory.select(
             channel_snowflake=int(channel_snowflake),
             guild_snowflake=int(guild_snowflake),
             member_snowflake=int(member_snowflake),
@@ -76,7 +76,7 @@ class CoordinatorService:
         self,
         member_snowflake: int,
     ):
-        coordinator = await self.database_factory.select(
+        coordinator = await self.__database_factory.select(
             member_snowflake=int(member_snowflake),
         )
         if not coordinator:
@@ -87,7 +87,7 @@ class CoordinatorService:
         self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        member = self.author_service.resolve_author(source=source)
+        member = self.__author_service.resolve_author(source=source)
         member_snowflake = member.id
         return await self.is_coordinator_at_all(member_snowflake=member_snowflake)
 
@@ -95,7 +95,7 @@ class CoordinatorService:
         self,
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        member = self.author_service.resolve_author(source=source)
+        member = self.__author_service.resolve_author(source=source)
         member_snowflake = member.id
         return await self.is_coordinator(
             channel_snowflake=source.channel.id,
@@ -106,7 +106,7 @@ class CoordinatorService:
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
         dictionary = {}
-        coordinators = await self.database_factory.select(
+        coordinators = await self.__database_factory.select(
             singular=False, **where_kwargs
         )
         for coordinator in coordinators:
@@ -122,33 +122,33 @@ class CoordinatorService:
             ]["coordinators"][coordinator.channel_snowflake].update(
                 {"placeholder": "placeholder"}
             )
-        skipped_guilds = self.dictionary_service.generate_skipped_guilds(dictionary)
-        skipped_members = self.dictionary_service.generate_skipped_members(dictionary)
-        cleaned_dictionary = self.dictionary_service.clean_dictionary(
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        skipped_members = self.__dictionary_service.generate_skipped_members(dictionary)
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
-        if is_at_home:
-            if skipped_guilds:
-                pages.extend(
-                    self.dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_members:
-                pages.extend(
-                    self.dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_members,
-                        title="Skipped Members in Server",
-                    )
-                )
+        # if is_at_home:
+        #     if skipped_guilds:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_set_pages(
+        #                 skipped=skipped_guilds,
+        #                 title="Skipped Servers",
+        #             )
+        #         )
+        #     if skipped_members:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_dict_pages(
+        #                 skipped=skipped_members,
+        #                 title="Skipped Members in Server",
+        #             )
+        #         )
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.emoji.get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+        title = f"{self.__emoji.get_random_emoji()} Coordinators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
@@ -159,7 +159,7 @@ class CoordinatorService:
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             thumbnail = False
-            guild = self.bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -213,15 +213,15 @@ class CoordinatorService:
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         updated_kwargs.update(member_dict.get("columns", None))
-        coordinator = await self.database_factory.select(
+        coordinator = await self.__database_factory.select(
             singular=True, **updated_kwargs
         )
         if coordinator:
-            await self.database_factory.delete(**updated_kwargs)
+            await self.__database_factory.delete(**updated_kwargs)
             action = "revoked"
         else:
             coordinator = self.MODEL(**updated_kwargs)
-            await self.database_factory.create(coordinator)
+            await self.__database_factory.create(coordinator)
             action = "granted"
         return (
             f"Coordinator access has been {action} for {member_dict.get('mention', None)} "

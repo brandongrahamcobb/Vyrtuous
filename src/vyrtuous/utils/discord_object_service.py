@@ -48,7 +48,7 @@ class DiscordObjectService:
         ],
     ):
         kwargs = {"columns": {}}
-        if argument and str(argument).lower() == "all":
+        if obj and str(obj).lower() == "all":
             return kwargs
         else:
             kwargs["id"] = obj.id
@@ -95,25 +95,29 @@ class MultiConverter(commands.Converter):
 
     async def convert(self, ctx: commands.Context, argument: str):
         if argument and str(argument).lower() == "all":
-            return {"columns": {}}
+            return "all"
         channel = commands.VoiceChannelConverter()
         guild = commands.GuildConverter()
         member = commands.MemberConverter()
         role = commands.RoleConverter()
         try:
             channel = await channel.convert(ctx, argument)
+            return channel
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
         try:
             member = await member.convert(ctx, argument)
+            return member
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
         try:
             guild = await guild.convert(ctx, argument)
+            return guild
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
         try:
             role = await role.convert(ctx, argument)
+            return role
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
         raise commands.BadArgument("Argument is not a channel, member, guild, or role.")

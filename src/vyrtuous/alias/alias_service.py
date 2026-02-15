@@ -1,4 +1,5 @@
 from copy import copy
+
 """!/bin/python3
 alias_service.py The purpose of this program is to extend Service to service aliases.
 
@@ -47,7 +48,7 @@ class AliasService:
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
         dictionary = {}
-        aliases = await Alias.select(singular=False, **where_kwargs)
+        aliases = await self.__database_factory.select(singular=False, **where_kwargs)
         for alias in aliases:
             dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
             dictionary[alias.guild_snowflake]["channels"].setdefault(
@@ -72,39 +73,41 @@ class AliasService:
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
-        if is_at_home:
-            if skipped_guilds:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_channels:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_channels,
-                        title="Skipped Channels in Server",
-                    )
-                )
+        # if is_at_home:
+        #     if skipped_guilds:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_set_pages(
+        #                 skipped=skipped_guilds,
+        #                 title="Skipped Servers",
+        #             )
+        #         )
+        #     if skipped_channels:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_dict_pages(
+        #                 skipped=skipped_channels,
+        #                 title="Skipped Channels in Server",
+        #             )
+        #         )
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines, pages = [], []
+        lines = []
         title = f"{self.__emoji.get_random_emoji()} Command Aliases"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
-
+        embed = discord.Embed(
+            title=title, description="Default view", color=discord.Color.blue()
+        )
+        pages = [embed]
         alias_n = 0
         for guild_snowflake, guild_data in dictionary.items():
+            pages = []
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
+            embed.description = guild.name
             for channel_snowflake, channel_dictionary in guild_data.get(
                 "channels", {}
             ).items():
@@ -141,6 +144,7 @@ class AliasService:
         if pages:
             pages[0].description = f"**({alias_n})**"
         return pages
+        return []
 
     async def delete_alias(self, alias_name, default_kwargs):
         guild_snowflake = default_kwargs.get("guild_snowflake", None)

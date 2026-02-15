@@ -18,13 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+from types import SimpleNamespace
 
 from discord.http import HTTPClient
 from discord.state import ConnectionState
 
 
 class MockState(ConnectionState):
-
     def dispatch(event, *args):
         return None
 
@@ -42,3 +42,8 @@ class MockState(ConnectionState):
             http=self.http,
         )
         self.channels = {}
+        self._get_websocket = lambda *a, **k: SimpleNamespace(
+            is_ratelimited=lambda: False,
+            request_chunks=lambda *a, **k: asyncio.sleep(0),
+        )
+        self.loop = asyncio.get_running_loop()

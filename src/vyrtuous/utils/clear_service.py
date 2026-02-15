@@ -29,9 +29,8 @@ from vyrtuous.utils.permission_service import PermissionService
 
 
 class ClearService:
-    @classmethod
     async def clear(
-        cls,
+        self,
         category,
         default_kwargs,
         object_dict,
@@ -41,7 +40,7 @@ class ClearService:
     ):
         guild_snowflake = default_kwargs.get("guild_snowflake", None)
         dir_paths = []
-        dir_paths.append(Path("/app/vyrtuous/db"))
+        dir_paths.append(Path("/app/vyrtuous"))
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(object_dict.get("columns", None))
         if isinstance(object_dict.get("object", None), discord.Member):

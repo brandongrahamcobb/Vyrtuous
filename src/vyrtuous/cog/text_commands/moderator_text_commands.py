@@ -36,8 +36,10 @@ from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
@@ -48,9 +50,6 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -214,7 +213,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.guild)
+        obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__administrator_service.build_pages(
@@ -242,7 +241,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__ban_service.build_pages(
@@ -262,6 +261,7 @@ class ModeratorTextCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
+        print("Test")
         state = StateService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -270,12 +270,15 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
+        print("True")
         object_dict = self.__discord_object_service.translate(obj=obj)
+        print(object_dict)
         pages = await self.__alias_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
+        print(pages)
         return await state.end(success=pages)
 
     @commands.command(name="coords", help="Lists coords.")
@@ -298,7 +301,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__coordinator_service.build_pages(
@@ -353,7 +356,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__flag_service.build_pages(
@@ -383,7 +386,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.guild)
+        obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__vegan_service.build_pages(
@@ -446,7 +449,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__moderator_service.build_pages(
@@ -474,7 +477,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = target or int(ctx.channel)
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__voice_mute_service.build_pages(
@@ -509,7 +512,7 @@ class ModeratorTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        channel = channel or int(ctx.channel)
+        channel = channel or ctx.channel
         channel_dict = self.__discord_object_service.translate(obj=channel)
         member_dict = self.__discord_object_service.translate(obj=member)
         updated_kwargs = default_kwargs.copy()
@@ -572,7 +575,7 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = channel or int(ctx.channel)
+        obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__moderator_service.survey(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id

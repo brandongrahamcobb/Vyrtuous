@@ -71,7 +71,6 @@ GUILD_DATA = {
 
 
 class MockGuild(discord.Guild):
-
     def __init__(
         self, bot: MockBot, channels, members, roles, state: MockState, **overrides
     ):
@@ -113,7 +112,7 @@ class MockGuild(discord.Guild):
 
     @property
     def members(self):
-        return self._members
+        return self._members.values()
 
     @property
     def roles(self):

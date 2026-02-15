@@ -30,7 +30,7 @@ from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-class NotAdministrator(commands.CommandError):
+class NotAdministrator(commands.CheckFailure):
     def __init__(
         self,
         message="Member is not an administrator in this server.",

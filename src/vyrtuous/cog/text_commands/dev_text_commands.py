@@ -163,7 +163,7 @@ class DevTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        obj = target or int(ctx.guild)
+        obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
         try:
             target_uuid = UUID(str(target))
@@ -208,7 +208,7 @@ class DevTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        obj = channel or int(ctx.channel)
+        obj = channel or ctx.channel
         object_dict = await self.__discord_object_service.translate(obj=obj)
         member_count, role_count, total_count = 0, 0, 0
         for target, overwrite in object_dict.get("object", None).overwrites.items():

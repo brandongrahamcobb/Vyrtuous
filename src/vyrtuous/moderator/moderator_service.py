@@ -153,21 +153,21 @@ class ModeratorService:
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
         )
-        if is_at_home:
-            if skipped_guilds:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-            if skipped_members:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_members,
-                        title="Skipped Members in Server",
-                    )
-                )
+        # if is_at_home:
+        #     if skipped_guilds:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_set_pages(
+        #                 skipped=skipped_guilds,
+        #                 title="Skipped Servers",
+        #             )
+        #         )
+        #     if skipped_members:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_dict_pages(
+        #                 skipped=skipped_members,
+        #                 title="Skipped Members in Server",
+        #             )
+        #         )
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):

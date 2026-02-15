@@ -1,4 +1,5 @@
 from copy import copy
+
 """!/bin/python3
 video_rooms_service.py The purpose of this program is to extend Service to service the video room class.
 
@@ -142,20 +143,20 @@ class VideoRoomService:
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
-        if is_at_home:
-            if skipped_channels:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_channels, title="Skipped Channels in Server,"
-                    )
-                )
-            if skipped_guilds:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
+        # if is_at_home:
+        #     if skipped_channels:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_dict_pages(
+        #                 skipped=skipped_channels, title="Skipped Channels in Server,"
+        #             )
+        #         )
+        #     if skipped_guilds:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_set_pages(
+        #                 skipped=skipped_guilds,
+        #                 title="Skipped Servers",
+        #             )
+        #         )
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):

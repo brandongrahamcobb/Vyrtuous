@@ -156,6 +156,7 @@ class CoordinatorTextCommands(commands.Cog):
         }
         updated_kwargs = default_kwargs.copy()
         channel_dict = self.__discord_object_service.translate(obj=channel)
+        member_dict = self.__discord_object_service.translate(obj=member)
         updated_kwargs.update(channel_dict.get("columns", None))
         # await PermissionService.has_equal_or_lower_role(
         #     target_member_snowflake=int(member.get("id", None)),
@@ -164,7 +165,7 @@ class CoordinatorTextCommands(commands.Cog):
         msg = await self.__moderator_service.toggle_moderator(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
-            member_dict=member,
+            member_dict=member_dict,
         )
         return await state.end(success=msg)
 
@@ -196,7 +197,7 @@ class CoordinatorTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        obj = channel or int(ctx.channel)
+        obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.translate(obj=obj)
         pages = await self.__stage_service.toggle_stage(
             channel_dict=channel_dict,
