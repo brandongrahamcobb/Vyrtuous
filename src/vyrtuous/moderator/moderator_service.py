@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
 from typing import Union
 
 import discord
@@ -30,7 +31,7 @@ from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-class NotModerator(commands.CommandError):
+class NotModerator(commands.CheckFailure):
     def __init__(
         self,
         message="Member is not a moderator in this channel.",
@@ -53,12 +54,14 @@ class ModeratorService:
     ):
         self.__author_service = author_service
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
-        self.__dictionary_service.model = self.MODEL
+        self.__database_factory.model = self.MODEL
         self.__emoji = emoji
         self.__sysadmin_service = SysadminService(
-            author_service=author_service, bot=bot
+            author_service=author_service,
+            bot=bot,
+            database_factory=self.__database_factory,
         )
         self.__developer_service = DeveloperService(
             author_service=author_service, bot=bot, database_factory=database_factory

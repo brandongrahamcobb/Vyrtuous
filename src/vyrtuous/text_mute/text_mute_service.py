@@ -1,3 +1,4 @@
+from copy import copy
 """!/bin/python3
 text_mute_service.py The purpose of this program is to extend AliasService to service the text mute infraction.
 
@@ -39,7 +40,7 @@ class TextMuteService:
         stream_service=None,
     ):
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__duration_service = duration_service

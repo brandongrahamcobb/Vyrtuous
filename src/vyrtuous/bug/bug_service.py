@@ -1,3 +1,5 @@
+from copy import copy
+
 """!/bin/python3
 bug_service.py The purpose of this program is to extend Service to service the bug command class.
 
@@ -35,7 +37,8 @@ class BugService:
         self.__bot = bot
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
 
     async def interact_with_bug(self, action, notes, reference):
         message = "You successfully "

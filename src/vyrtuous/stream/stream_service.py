@@ -1,3 +1,4 @@
+from copy import copy
 """!/bin/python3
 streaming_service.py The purpose of this program is to extend Service service the stream command class.
 
@@ -39,7 +40,7 @@ class StreamService:
     ):
         self.__author_service = author_service
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__dictionary_service.model = self.MODEL
 

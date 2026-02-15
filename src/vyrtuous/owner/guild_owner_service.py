@@ -1,3 +1,5 @@
+from copy import copy
+
 """!/bin/python3
 guild_owner_service.py The purpose of this program is to extend Service to service the guild owner class.
 
@@ -16,7 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from copy import copy
 from typing import Union
 
 import discord
@@ -27,7 +29,7 @@ from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-class NotGuildOwner(commands.CommandError):
+class NotGuildOwner(commands.CheckFailure):
     def __init__(
         self,
         message="Member is not a guild owner in this server.",
@@ -41,11 +43,9 @@ class GuildOwnerService:
     def __init__(self, *, author_service=None, bot=None, database_factory=None):
         self.__author_service = author_service
         self.__bot = bot
-        self.__sysadmin_service = SysadminService(author_service=author_service)
-        self.__developer_service = DeveloperService(
-            author_service=author_service, database_factory=database_factory
-        )
-        self.__database_factory = database_factory
+
+        self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
 
     async def update_guild_owners(self):
         for guild in self.__bot.guilds:

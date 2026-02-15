@@ -50,6 +50,7 @@ from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -65,6 +66,11 @@ class ModeratorTextCommands(commands.Cog):
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__duration_service = DurationService()
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,

@@ -58,6 +58,7 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__guild_owner_service = GuildOwnerService(
             author_service=self.__author_service,
             bot=self.__bot,
+            database_factory=self.__database_factory,
         )
         self.__discord_object_service = DiscordObjectService()
         self.__administrator_role_service = AdministratorRoleService(

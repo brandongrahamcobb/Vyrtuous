@@ -1,3 +1,5 @@
+from copy import copy
+
 """!/bin/python3
 administrator_service.py The purpose of this program is to extend Service to service the administrator and administrator role classes.
 
@@ -51,19 +53,10 @@ class AdministratorService:
     ):
         self.__author_service = author_service
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
-        self.__sysadmin_service = SysadminService(
-            author_service=author_service, bot=bot
-        )
-        self.__developer_service = DeveloperService(
-            author_service=author_service, bot=bot, database_factory=database_factory
-        )
-        self.__guild_owner_service = GuildOwnerService(
-            author_service=author_service, bot=bot, database_factory=database_factory
-        )
 
     async def is_administrator_wrapper(
         self,
@@ -311,7 +304,7 @@ class AdministratorRoleService:
             bot=bot, database_factory=database_factory
         )
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji

@@ -1,3 +1,4 @@
+from copy import copy
 from datetime import datetime, timezone
 from typing import Dict, Tuple
 
@@ -34,7 +35,7 @@ class AliasContext:
         self.record = None
         self.__bot = bot
         self.__cap_service = cap_service
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__duration = duration
 

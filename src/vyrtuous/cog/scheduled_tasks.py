@@ -51,7 +51,6 @@ class ScheduledTasks(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
         self.config = bot.config
-        self.__database_factory = DatabaseFactory(bot=bot)
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)

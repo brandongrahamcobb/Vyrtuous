@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
 from typing import Union
 
 import discord
@@ -26,7 +27,7 @@ from vyrtuous.developer.developer import Developer
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-class NotDeveloper(commands.CommandError):
+class NotDeveloper(commands.CheckFailure):
     def __init__(self, message="Member is not a developer."):
         super().__init__(message)
 
@@ -40,12 +41,9 @@ class DeveloperService:
     ):
         self.__author_service = author_service
         self.__bot = bot
-        self.__database_factory = database_factory
-        self.__database_factory = self.MODEL
+        self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
         self.__emoji = emoji
-        self.__sysadmin_service = SysadminService(
-            author_service=author_service, bot=bot
-        )
 
     async def is_developer(self, member_snowflake: int) -> bool:
         developer = await self.__database_factory.select(

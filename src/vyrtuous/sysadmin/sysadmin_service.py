@@ -1,3 +1,5 @@
+from copy import copy
+
 """!/bin/python3
 sysadmin_service.py The purpose of this program is to extend Service to service the sysadmin class.
 
@@ -25,7 +27,7 @@ from discord.ext import commands
 from vyrtuous.sysadmin.sysadmin import Sysadmin
 
 
-class NotSysadmin(commands.CommandError):
+class NotSysadmin(commands.CheckFailure):
     def __init__(self, message="Member is not a sysadmin."):
         super().__init__(message)
 
@@ -36,7 +38,8 @@ class SysadminService:
     def __init__(self, *, author_service=None, bot=None, database_factory=None):
         self.__author_service = author_service
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
 
     async def update_sysadmin(self):
         member_snowflake = self.__bot.config.get("discord_owner_id", None)

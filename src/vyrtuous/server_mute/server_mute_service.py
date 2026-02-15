@@ -1,3 +1,4 @@
+from copy import copy
 """!/bin/python3
 server_mute_service.py The purpose of this program is to extend AliasService to service the server mute infraction.
 
@@ -30,7 +31,7 @@ class ServerMuteService:
         self, *, bot=None, database_factory=None, dictionary_service=None, emoji=None
     ):
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 

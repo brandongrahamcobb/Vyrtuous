@@ -120,6 +120,7 @@ class AdminTextCommands(commands.Cog):
         self.__sysadmin_service = SysadminService(
             author_service=self.__author_service,
             bot=self.__bot,
+            database_factory=self.__database_factory,
         )
         self.message_service = MessageService(self.__bot)
         self.__administrator_role_service = AdministratorRoleService(

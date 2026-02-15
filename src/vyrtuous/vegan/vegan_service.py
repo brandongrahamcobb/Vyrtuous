@@ -1,3 +1,4 @@
+from copy import copy
 """!/bin/python3
 vegan_service.py The purpose of this program is to extend Service to service the vegan class.
 
@@ -36,7 +37,7 @@ class VeganService:
         stream_service=None,
     ):
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji

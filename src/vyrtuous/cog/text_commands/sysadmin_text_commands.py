@@ -52,7 +52,6 @@ class SysadminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
-        self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__developer_service = DeveloperService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -62,6 +61,7 @@ class SysadminTextCommands(commands.Cog):
         self.__sysadmin_service = SysadminService(
             author_service=self.__author_service,
             bot=self.__bot,
+            database_factory=self.__database_factory,
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:

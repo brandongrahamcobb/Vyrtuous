@@ -1,3 +1,5 @@
+from copy import copy
+
 """!/bin/python3
 coordinator_service.py The purpose of this program is to extend Service to service the coordinator class.
 
@@ -29,7 +31,7 @@ from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
-class NotCoordinator(commands.CommandError):
+class NotCoordinator(commands.CheckFailure):
     def __init__(
         self,
         message="Member is not a coordinator in this channel.",
@@ -56,18 +58,6 @@ class CoordinatorService:
         self.dictionary_service = dictionary_service
         self.dictionary_service.model = self.MODEL
         self.emoji = emoji
-        self.__sysadmin_service = SysadminService(
-            author_service=author_service, bot=bot
-        )
-        self.__developer_service = DeveloperService(
-            author_service=author_service, bot=bot, database_factory=database_factory
-        )
-        self.__guild_owner_service = GuildOwnerService(
-            author_service=author_service, bot=bot, database_factory=database_factory
-        )
-        self.__administrator_service = AdministratorService(
-            author_service=author_service, bot=bot, database_factory=database_factory
-        )
 
     async def is_coordinator(
         self, channel_snowflake: int, guild_snowflake: int, member_snowflake: int

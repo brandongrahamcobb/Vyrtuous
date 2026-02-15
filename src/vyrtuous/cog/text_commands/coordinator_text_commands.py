@@ -42,7 +42,6 @@ from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.message_service import MessageService
 
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
@@ -57,7 +56,6 @@ class CoordinatorTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.message_service = MessageService(self.__bot)
         self.__moderator_service = ModeratorService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -99,6 +97,7 @@ class CoordinatorTextCommands(commands.Cog):
         self.__sysadmin_service = SysadminService(
             author_service=self.__author_service,
             bot=self.__bot,
+            database_factory=self.__database_factory,
         )
         self.__bug_service = BugService(
             bot=self.__bot,
