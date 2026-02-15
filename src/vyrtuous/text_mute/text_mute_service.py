@@ -34,7 +34,7 @@ class TextMuteService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
-        duration=None,
+        duration_service=None,
         emoji=None,
         stream_service=None,
     ):
@@ -42,9 +42,97 @@ class TextMuteService:
         self.__database_factory = database_factory
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
-        self.__duration = duration
+        self.__duration_service = duration_service
         self.__emoji = emoji
         self.__stream_service = stream_service
+
+    async def clean_expired(self):
+        expired_text_mutes = await self.__database_factory.select(expired=True)
+        if expired_text_mutes:
+            for expired_text_mute in expired_text_mutes:
+                channel_snowflake = int(expired_text_mute.channel_snowflake)
+                guild_snowflake = int(expired_text_mute.guild_snowflake)
+                member_snowflake = int(expired_text_mute.member_snowflake)
+                kwargs = {
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
+                    "member_snowflake": member_snowflake,
+                }
+                guild = self.__bot.get_guild(guild_snowflake)
+                if guild is None:
+                    await self.__database_factory.delete(**kwargs)
+                    self.__bot.logger.info(
+                        f"Unable to locate guild {guild_snowflake}, cleaning up expired text-mute."
+                    )
+                    continue
+                channel = guild.get_channel(channel_snowflake)
+                if channel is None:
+                    await self.__database_factory.delete(**kwargs)
+                    self.__bot.logger.info(
+                        f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
+                    )
+                    continue
+                member = guild.get_member(member_snowflake)
+                if member is None:
+                    await self.__database_factory.delete(**kwargs)
+                    self.__bot.logger.info(
+                        f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
+                    )
+                    continue
+                await self.__database_factory.delete(**kwargs)
+                try:
+                    await channel.set_permissions(
+                        target=member,
+                        send_messages=None,
+                        add_reactions=None,
+                        reason="Cleaning up expired text-mute",
+                    )
+                except discord.Forbidden as e:
+                    self.__bot.logger.error(str(e).capitalize())
+
+    async def clean_overwrites(self):
+        now = datetime.now(timezone.utc)
+        text_mutes = await self.__database_factory.select()
+        for text_mute in text_mutes:
+            channel_snowflake = int(text_mute.channel_snowflake)
+            guild_snowflake = int(text_mute.guild_snowflake)
+            member_snowflake = int(text_mute.member_snowflake)
+            where_kwargs = {
+                "channel_snowflake": channel_snowflake,
+                "guild_snowflake": guild_snowflake,
+                "member_snowflake": member_snowflake,
+            }
+            set_kwargs = {"reset": True}
+            if not text_mute.reset and text_mute.last_muted < now - timedelta(weeks=1):
+                guild = self.__bot.get_guild(guild_snowflake)
+                if guild is None:
+                    self.__bot.logger.info(
+                        f"Unable to locate guild {guild_snowflake} for removing overwrite."
+                    )
+                    continue
+                channel = guild.get_channel(channel_snowflake)
+                if channel is None:
+                    self.__bot.logger.info(
+                        f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) for removing overwrite."
+                    )
+                    continue
+                member = guild.get_member(member_snowflake)
+                if member is None:
+                    self.__bot.logger.info(
+                        f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) for removing overwrite."
+                    )
+                    continue
+                try:
+                    await channel.set_permissions(
+                        target=member,
+                        overwrite=None,
+                        reason="Resetting text-mute overwrite",
+                    )
+                except discord.Forbidden as e:
+                    self.__bot.logger.error(str(e).capitalize())
+                await self.__database_factory.update(
+                    set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                )
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
@@ -65,7 +153,9 @@ class TextMuteService:
             ]["text_mutes"][text_mute.channel_snowflake].update(
                 {
                     "reason": text_mute.reason,
-                    "expires_in": self.__duration.from_expires_in(text_mute.expires_in),
+                    "expires_in": self.__duration_service.from_expires_in(
+                        text_mute.expires_in
+                    ),
                 }
             )
         skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
@@ -216,7 +306,7 @@ class TextMuteService:
                 return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_entry(
             channel_snowflake=ctx.target_channel_snowflake,
-            duration=self.__duration.from_expires_in(ctx.expires_in),
+            duration=self.__duration_service.from_expires_in(ctx.expires_in),
             identifier="tmute",
             member=member,
             source=source,
@@ -264,7 +354,7 @@ class TextMuteService:
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {self.__duration.from_expires_in(ctx.expires_in)}\n"
+                f"**Expires:** {self.__duration_service.from_expires_in(ctx.expires_in)}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),

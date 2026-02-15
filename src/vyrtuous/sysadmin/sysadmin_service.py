@@ -33,9 +33,22 @@ class NotSysadmin(commands.CommandError):
 class SysadminService:
     MODEL = Sysadmin
 
-    def __init__(self, *, author_service=None, bot=None):
+    def __init__(self, *, author_service=None, bot=None, database_factory=None):
         self.__author_service = author_service
         self.__bot = bot
+        self.__database_factory = database_factory
+
+    async def update_sysadmin(self):
+        member_snowflake = self.__bot.config.get("discord_owner_id", None)
+        sysadmin = await self.__database_factory.select(
+            member_snowflake=int(member_snowflake), singular=True
+        )
+        if not sysadmin:
+            sysadmin = Sysadmin(member_snowflake=int(member_snowflake))
+            await self.__database_factory.create(sysadmin)
+            self.__bot.logger.info(f"Sysadmin ({member_snowflake}) added to the db.")
+        else:
+            self.__bot.logger.info(f"Sysadmin ({member_snowflake}) already in the db.")
 
     async def is_sysadmin_wrapper(
         self,

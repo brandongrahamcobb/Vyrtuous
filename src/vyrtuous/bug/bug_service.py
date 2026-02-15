@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from datetime import datetime, timedelta, timezone
 import uuid
 
 
@@ -36,6 +37,82 @@ class BugService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__database_factory = database_factory
+
+    async def clean_expired(self):
+        now = datetime.now(timezone.utc)
+        bugs = await self.__database_factory.select(resolved=True)
+        if bugs:
+            for bug in bugs:
+                channel_snowflake = int(bug.channel_snowflake)
+                guild_snowflake = int(bug.guild_snowflake)
+                member_snowflakes = int(bug.member_snowflakes)
+                message_snowflake = int(bug.message_snowflake)
+                reference = bug.id
+                if bug.created_at < now - timedelta(weeks=1):
+                    guild = self.__bot.get_guild(bug.guild_snowflake)
+                    if guild is None:
+                        self.__bot.logger.info(
+                            f"Unable to locate guild {guild_snowflake}, not sending developer log."
+                        )
+                        continue
+                    embed = discord.Embed(
+                        title=f"\U000026a0\U0000fe0f An issue is unresolved in {guild.name}",
+                        color=discord.Color.red(),
+                    )
+                    channel = guild.get_channel(channel_snowflake)
+                    if channel is None:
+                        self.__bot.logger.info(
+                            f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, not sending developer log."
+                        )
+                        continue
+                    for member_snowflake in member_snowflakes:
+                        member = channel.get_member(member_snowflake)
+                        if member is None:
+                            self.__bot.logger.info(
+                                f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
+                            )
+                            continue
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        try:
+                            msg = await channel.fetch_message(message_snowflake)
+                        except Exception as e:
+                            self.__bot.logger.warning(
+                                f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), deleting developer log. {str(e).capitalize()}"
+                            )
+                            return await self.__database_factory.delete(id=reference)
+                        # time_since_updated = await self.duration.from_expires_at(
+                        #     bug.updated_at
+                        # )
+                        # assigned_developer_mentions = []
+                        # for developer_snowflake in bug.member_snowflakes:
+                        #     assigned_developer = self.__bot.get_user(
+                        #         developer_snowflake
+                        #     )
+                        #     assigned_developer_mentions.append(
+                        #         assigned_developer.mention
+                        #     )
+                        # embed.add_field(
+                        #     name=f"Updated: {time_since_updated}",
+                        #     value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {bug.notes}",
+                        #     inline=False,
+                        # )
+                        # developers = await self.__database_factory.select()
+                        # for developer in developers:
+                        #     member = guild.get_member(developer.member_snowflake)
+                        #     if member is None:
+                        #         self.__bot.logger.info(
+                        #             f"Unable to locate member {member.id} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
+                        #         )
+                        #         continue
+                        #     try:
+                        #         await member.send(embed=embed)
+                        #         self.__bot.logger.info(
+                        #             f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                        #         )
+                        #     except Exception as e:
+                        #         self.__bot.logger.warning(
+                        #             f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
+                        #         )
 
     async def create_embed(self, action, bug, member_snowflake):
         guild = self.__bot.get_guild(bug.guild_snowflake)

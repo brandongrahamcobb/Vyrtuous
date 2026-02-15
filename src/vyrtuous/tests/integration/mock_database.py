@@ -17,11 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dotenv import load_dotenv
 import os
 
-database = os.getenv("POSTGRES_DB")
-host = os.getenv("POSTGRES_HOST")
-password = os.getenv("POSTGRES_PASSWORD")
-user = os.getenv("POSTGRES_USER")
+load_dotenv()
+database = os.getenv("TEST_POSTGRES_DB")
+host = os.getenv("TEST_POSTGRES_HOST")
+password = os.getenv("TEST_POSTGRES_PASSWORD")
+user = os.getenv("TEST_POSTGRES_USER")
 
 dsn = f"postgres://{user}:{password}@{host}:{5432}/{database}"

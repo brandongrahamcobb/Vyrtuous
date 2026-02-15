@@ -24,13 +24,14 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.config import Config
-from vyrtuous.inc.helpers import DISCORD_COGS
+from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
+from vyrtuous.utils.logger import logger, setup_logging
 
 
 class MockBot(commands.Bot):
-
     def __init__(self, config: Config, db_pool: asyncpg.Pool):
         intents = discord.Intents.all()
+        setup_logging(config, PATH_LOG)
         self.config = config
         self.db_pool = db_pool
         self._guilds = []
@@ -39,6 +40,7 @@ class MockBot(commands.Bot):
         self._tree.add_command = Mock()
         self._tree.remove_command = AsyncMock()
         self._tree.copy_global_to = AsyncMock()
+        self.logger = logger
         super().__init__(command_prefix="!", help_command=None, intents=intents)
 
     @classmethod

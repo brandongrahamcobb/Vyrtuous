@@ -30,6 +30,7 @@ from vyrtuous.tests.integration.test_suite import (
     send_message,
     setup,
 )
+from vyrtuous.cog.text_commands.coordinator_text_commands import CoordinatorTextCommands
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
@@ -83,23 +84,24 @@ async def test_stage(bot, command: str, channel, permission_role):
     coord_commands = bot.get_cog("CoordinatorTextCommands")
     with ExitStack() as stack:
         stack.enter_context(
-            patch(
-                "vyrtuous.administrator.administrator_service.administrator_predicator",
+            patch.object(
+                CoordinatorTextCommands,
+                "cog_check",
                 return_value=True,
             )
         )
-        stack.enter_context(
-            patch(
-                "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                return_value=permission_role,
-            )
-        )
-        stack.enter_context(
-            patch(
-                "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                return_value=permission_role,
-            )
-        )
+        # stack.enter_context(
+        #     patch(
+        #         "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
+        #         return_value=permission_role,
+        #     )
+        # )
+        # stack.enter_context(
+        #     patch(
+        #         "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
+        #         return_value=permission_role,
+        #     )
+        # )
         async with capture_command() as end_results:
             command = await coord_commands.toggle_stage_text_command(ctx, channel=c)
         for kind, content in end_results:

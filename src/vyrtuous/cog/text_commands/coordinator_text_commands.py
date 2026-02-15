@@ -29,7 +29,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
-from vyrtuous.field.duration import Duration, DurationObject
+from vyrtuous.duration.duration import Duration, DurationObject
 
 # from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
@@ -171,7 +171,8 @@ class CoordinatorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: DiscordContextObject = commands.parameter(
-            description="Tag a channel or include its ID."
+            converter=DiscordContextObject,
+            description="Tag a channel or include its ID.",
         ),
         *,
         duration: Duration = commands.parameter(
@@ -187,6 +188,7 @@ class CoordinatorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
+        self.__bot.logger.info(channel)
         default_kwargs = {
             "channel_snowflake": int(ctx.channel.id),
             "guild_snowflake": int(ctx.guild.id),

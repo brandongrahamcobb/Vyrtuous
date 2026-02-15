@@ -34,7 +34,7 @@ class VoiceMuteService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
-        duration=None,
+        duration_service=None,
         emoji=None,
         stream_service=None,
     ):
@@ -42,9 +42,64 @@ class VoiceMuteService:
         self.__database_factory = database_factory
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
-        self.__duration = duration
+        self.__duration_service = duration_service
         self.__emoji = emoji
         self.__stream_service = stream_service
+
+    async def clean_expired(self):
+        expired_voice_mutes = await self.__database_factory.select(expired=True)
+        if expired_voice_mutes:
+            for expired_voice_mute in expired_voice_mutes:
+                channel_snowflake = int(expired_voice_mute.channel_snowflake)
+                guild_snowflake = int(expired_voice_mute.guild_snowflake)
+                member_snowflake = int(expired_voice_mute.member_snowflake)
+                target = expired_voice_mute.target
+                guild = self.__bot.get_guild(guild_snowflake)
+                kwargs = {
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
+                    "member_snowflake": member_snowflake,
+                    "target": target,
+                }
+                if guild is None:
+                    await self.__database_factory.delete(**kwargs)
+                    self.__bot.logger.info(
+                        f"Unable to locate guild {guild_snowflake}, cleaning up expired voice-mute."
+                    )
+                    continue
+                channel = guild.get_channel(channel_snowflake)
+                if channel is None:
+                    await self.__database_factory.delete(**kwargs)
+                    self.__bot.logger.info(
+                        f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
+                    )
+                    continue
+                member = guild.get_member(member_snowflake)
+                if member is None:
+                    await self.__database_factory.delete(**kwargs)
+                    self.__bot.logger.info(
+                        f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.name}), cleaning up expired voice-mute."
+                    )
+                    continue
+                await self.__database_factory.delete(**kwargs)
+                if (
+                    member.voice
+                    and member.voice.channel
+                    and member.voice.channel.id == channel_snowflake
+                ):
+                    try:
+                        await member.edit(mute=False)
+                        self.__bot.logger.info(
+                            f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                        )
+                    except discord.Forbidden as e:
+                        self.__bot.logger.warning(
+                            f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
+                        )
+                else:
+                    self.__bot.logger.info(
+                        f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
+                    )
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
@@ -65,7 +120,9 @@ class VoiceMuteService:
             ]["voice_mutes"][voice_mute.channel_snowflake].update(
                 {
                     "reason": voice_mute.reason,
-                    "expires_in": self.duration.from_expires_in(voice_mute.expires_in),
+                    "expires_in": self.__duration_service.from_expires_in(
+                        voice_mute.expires_in
+                    ),
                 }
             )
         skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
@@ -179,7 +236,7 @@ class VoiceMuteService:
                     try:
                         await member.edit(mute=True)
                     except Exception as e:
-                        logger.warning(
+                        self.__bot.logger.warning(
                             f"Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
                             f"{channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in guild "
@@ -233,7 +290,7 @@ class VoiceMuteService:
                     try:
                         await member.edit(mute=False)
                     except Exception as e:
-                        logger.warning(
+                        self.__bot.logger.warning(
                             f"Unable to undo voice-mute "
                             f"for member {member.display_name} ({member.id}) "
                             f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "

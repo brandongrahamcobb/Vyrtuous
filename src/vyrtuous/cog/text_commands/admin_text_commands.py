@@ -17,14 +17,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Any, Coroutine, Union
+
 import discord
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator import Administrator
 from vyrtuous.administrator.administrator_service import (
+    AdministratorService,
     AdministratorRoleService,
     administrator_predicator,
+    NotAdministrator,
 )
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.administrator.administrator_service import AdministratorService
+from vyrtuous.moderator.moderator_service import ModeratorService
+from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.utils.discord_object_service import DiscordContextObject
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cap.cap_service import CapService
@@ -38,8 +48,6 @@ from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.utils.clear_service import ClearService
-from vyrtuous.utils.discord_object_service import DiscordObject
-from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
@@ -48,14 +56,77 @@ from vyrtuous.utils.state_service import StateService
 from vyrtuous.video_room.video_room_service import VideoRoomService
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.base.database_factory import DatabaseFactory
+from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
 
 
 class AdminTextCommands(commands.Cog):
     ROLE = Administrator
 
     def __init__(self, bot: DiscordBot):
+        self.__author_service = AuthorService()
         self.__bot = bot
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__emoji = Emojis()
+        self.message_service = MessageService(self.__bot)
+        self.__alias_service = AliasService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__stage_service = StageService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__administrator_service = AdministratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+        )
         self.message_service = MessageService(self.bot)
+
+    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+                self.__administrator_service.is_administrator_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotAdministrator
+
+        predicate._permission_level = "Administrator"
+        return await predicate(ctx)
 
     @commands.command(
         name="alias",
@@ -69,21 +140,20 @@ class AdminTextCommands(commands.Cog):
             description="Specify a category for a `ban`, `flag`, `role`, `tmute`, `vegan` or `vmute` action."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
-        channel: ChannelSnowflake = commands.parameter(
+        channel: DiscordContextObject = commands.parameter(
             description="Tag a channel or include the ID"
         ),
         *,
-        role: RoleSnowflake = commands.parameter(
+        role: DiscordContextObject = commands.parameter(
             default=None, description="Tag a role or include the ID."
         ),
     ):
-        role_dict = None
         state = StateService(ctx=ctx)
-        do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
+        channel_dict = channel
+        role_dict = None
         if category == "role":
-            role_dict = await do.determine_from_target(target=role)
-        msg = await AliasService.create_alias(
+            role_dict = role
+        msg = await self.__alias_service.create_alias(
             alias_name=alias_name,
             category=category,
             channel_dict=channel_dict,

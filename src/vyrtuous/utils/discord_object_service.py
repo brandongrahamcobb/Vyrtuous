@@ -43,6 +43,8 @@ class DiscordContextObject(commands.Converter):
         self.__bot = DiscordBot.get_instance()
 
     async def convert(self, ctx: commands.Context, argument: str):
+        if argument and str(argument).lower() == "all":
+            return {"columns": {}}
         channel = commands.TextChannelConverter()
         guild = commands.GuildConverter()
         member = commands.MemberConverter()
@@ -68,7 +70,7 @@ class DiscordContextObject(commands.Converter):
         except commands.BadArgument as e:
             self.__bot.logger.warning(e)
         else:
-            if member == self._source.guild.me:
+            if member == ctx.guild.me:
                 raise TargetIsBot()
             return {
                 "columns": {

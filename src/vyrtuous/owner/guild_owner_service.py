@@ -45,6 +45,26 @@ class GuildOwnerService:
         self.__developer_service = DeveloperService(
             author_service=author_service, database_factory=database_factory
         )
+        self.__database_factory = database_factory
+
+    async def update_guild_owners(self):
+        for guild in self.__bot.guilds:
+            guild_owner = await self.__database_factory.select(
+                guild_snowflake=guild.id, singular=True
+            )
+            if guild_owner and guild_owner.member_snowflake == guild.owner_id:
+                self.__bot.logger.info(
+                    f"Guild owner ({guild_owner.member_snowflake}) already in the db."
+                )
+                continue
+            else:
+                guild_owner = self.MODEL(
+                    guild_snowflake=guild.id, member_snowflake=guild.owner_id
+                )
+                await self.__database_factory.create(guild_owner)
+                self.__bot.logger.info(
+                    f"Guild owner ({guild_owner.member_snowflake}) added to the db."
+                )
 
     async def is_guild_owner_wrapper(
         self,

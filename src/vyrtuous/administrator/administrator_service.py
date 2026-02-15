@@ -99,26 +99,6 @@ class AdministratorService:
             raise NotAdministrator
         return True
 
-    def administrator_predicator(self):
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.is_administrator_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotAdministrator
-
-        predicate._permission_level = "Administrator"
-        return commands.check(predicate)
-
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
         pages = []
