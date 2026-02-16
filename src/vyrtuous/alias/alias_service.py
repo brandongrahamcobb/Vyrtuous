@@ -91,7 +91,7 @@ class AliasService:
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines = []
+        lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Command Aliases"
 
         where_kwargs = object_dict.get("columns", None)
@@ -101,7 +101,8 @@ class AliasService:
         embed = discord.Embed(
             title=title, description="Default view", color=discord.Color.blue()
         )
-        pages = [embed]
+        if not dictionary:
+            pages = [embed]
         alias_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             pages = []
@@ -161,8 +162,8 @@ class AliasService:
             role = guild.get_role(alias.role_snowflake)
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.category}` for channel {channel.mention} "
-                f" and role {role.mention} deleted successfully."
+                f"`{alias.category}` for channel {channel.mention if channel else alias.channel_snowflake} "
+                f" and role {role.mention if role else alias.role_snowflake} deleted successfully."
             )
         else:
             msg = (
@@ -180,12 +181,15 @@ class AliasService:
             f"created successfully for channel {channel.mention}."
         )
         alias = await self.__database_factory.select(
-            category=category, **kwargs, singular=True
+            category=category,
+            alias_name=alias_name,
+            guild_snowflake=channel.guild.id,
+            singular=True,
         )
         if alias and alias.category != "role":
             return (
                 f"Alias of type `{category}` "
-                f"already exists for this channel {channel.mention}."
+                f"with the name `{alias_name} already exists in this server channel ({channel.guild.name})."
             )
         if role:
             kwargs.update({"role_snowflake": role.id})

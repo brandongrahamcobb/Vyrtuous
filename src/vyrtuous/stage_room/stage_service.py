@@ -105,14 +105,18 @@ class StageService:
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines, pages = []
+        lines, pages = [], []
         title = f"{get_random_emoji()} Stages"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
-
+        embed = discord.Embed(
+            title=title, description="Default view", color=discord.Color.blue()
+        )
+        if not dictionary:
+            pages = [embed]
         stage_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0

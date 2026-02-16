@@ -24,7 +24,8 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator import Administrator, AdministratorRole
+from vyrtuous.administrator.administrator import (Administrator,
+                                                  AdministratorRole)
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
@@ -133,13 +134,18 @@ class AdministratorService:
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines, pages = []
+        lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Administrators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
+        embed = discord.Embed(
+            title=title, description="Default view", color=discord.Color.blue()
+        )
+        if not dictionary:
+            pages = [embed]
 
         admin_n = 0
         for guild_snowflake, guild_data in dictionary.items():

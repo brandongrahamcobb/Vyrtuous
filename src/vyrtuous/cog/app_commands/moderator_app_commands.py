@@ -29,16 +29,14 @@ from vyrtuous.ban.ban import Ban
 from vyrtuous.ban.ban_service import BanService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
-from vyrtuous.field.snowflake import (
-    AppChannelSnowflake,
-    AppMemberSnowflake,
-    AppMessageSnowflake,
-)
+from vyrtuous.field.snowflake import (AppChannelSnowflake, AppMemberSnowflake,
+                                      AppMessageSnowflake)
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal
 from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.moderator.moderator_service import ModeratorService, moderator_predicator
+from vyrtuous.moderator.moderator_service import (ModeratorService,
+                                                  moderator_predicator)
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute import TextMute

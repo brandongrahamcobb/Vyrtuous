@@ -26,14 +26,11 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.role.role import Role
 from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
+from vyrtuous.utils.dictionary import (clean_dictionary, flush_page,
+                                       generate_skipped_dict_pages,
+                                       generate_skipped_guilds,
+                                       generate_skipped_members,
+                                       generate_skipped_set_pages)
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.logger import logger
 

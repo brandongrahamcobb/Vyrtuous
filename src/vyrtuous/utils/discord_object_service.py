@@ -103,22 +103,22 @@ class MultiConverter(commands.Converter):
         try:
             channel = await channel.convert(ctx, argument)
             return channel
-        except commands.BadArgument as e:
+        except commands.ChannelNotFound as e:
             self.__bot.logger.warning(e)
         try:
             member = await member.convert(ctx, argument)
             return member
-        except commands.BadArgument as e:
+        except commands.MemberNotFound as e:
             self.__bot.logger.warning(e)
         try:
             guild = await guild.convert(ctx, argument)
             return guild
-        except commands.BadArgument as e:
+        except commands.GuildNotFound as e:
             self.__bot.logger.warning(e)
         try:
             role = await role.convert(ctx, argument)
             return role
-        except commands.BadArgument as e:
+        except commands.RoleNotFound as e:
             self.__bot.logger.warning(e)
         raise commands.BadArgument("Argument is not a channel, member, guild, or role.")
 

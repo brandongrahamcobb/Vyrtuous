@@ -79,6 +79,11 @@ class ServerMuteService:
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
+        embed = discord.Embed(
+            title=title, description="Default view", color=discord.Color.blue()
+        )
+        if not dictionary:
+            pages = [embed]
 
         smute_n = 0
         for guild_snowflake, guild_data in dictionary.items():

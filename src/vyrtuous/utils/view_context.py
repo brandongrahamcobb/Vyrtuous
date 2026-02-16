@@ -8,7 +8,8 @@ from vyrtuous.base.context import Context
 from vyrtuous.flag.flag import Flag
 from vyrtuous.text_mute.text_mute import TextMute
 from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.utils.view_utilities import limit_available_to_top_25_by_member_count
+from vyrtuous.utils.view_utilities import \
+    limit_available_to_top_25_by_member_count
 from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 

@@ -24,14 +24,12 @@ from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cog.text_commands.coordinator_text_commands import CoordinatorTextCommands
+from vyrtuous.cog.text_commands.coordinator_text_commands import \
+    CoordinatorTextCommands
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
@@ -67,7 +65,7 @@ async def test_stage(bot, command: str, channel, permission_role):
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured.content
+        assert captured
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

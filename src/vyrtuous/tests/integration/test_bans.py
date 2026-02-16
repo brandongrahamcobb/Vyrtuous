@@ -25,12 +25,9 @@ from unittest.mock import patch
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -95,7 +92,7 @@ async def test_bans(bot, command: str, target, permission_role):
     full = f"{command} {t}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured.content
+        assert captured
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

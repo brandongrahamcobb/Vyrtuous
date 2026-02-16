@@ -28,7 +28,6 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
@@ -44,7 +43,8 @@ from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
+from vyrtuous.utils.discord_object_service import (DiscordObjectService,
+                                                   MultiConverter)
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.state_service import StateService
@@ -56,9 +56,7 @@ class ModeratorTextCommands(commands.Cog):
     ROLE = Moderator
 
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
         self.config = bot.config
-        self.bot.db_pool = bot.db_pool
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
@@ -261,7 +259,6 @@ class ModeratorTextCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        print("Test")
         state = StateService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -272,9 +269,7 @@ class ModeratorTextCommands(commands.Cog):
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        print("True")
         object_dict = self.__discord_object_service.translate(obj=obj)
-        print(object_dict)
         pages = await self.__alias_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )

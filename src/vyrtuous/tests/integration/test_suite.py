@@ -23,7 +23,8 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from vyrtuous.tests.integration.mock_discord_channel import MockChannel
+from vyrtuous.tests.integration.mock_discord_channel import (MockTextChannel,
+                                                             MockVoiceChannel)
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
@@ -54,19 +55,22 @@ async def capture(channel):
 
     async def patched_end(self, *args, **kwargs):
         called.append((args, kwargs))
+        self._add_reactions = AsyncMock()
         if "success" in kwargs:
             channel._end_result.append("success")
         elif "warning" in kwargs:
             channel._end_result.append("warning")
         elif "error" in kwargs:
             channel._end_result.append("error")
-        return await original_end(self, *args, **kwargs)
+        else:
+            print(f"   ⚪ No success/warning/error found in kwargs")
+        return None
 
-    if called:
-        print("called")
     StateService.end = patched_end
+
     try:
         yield
+        await asyncio.sleep(0.5)
     finally:
         StateService.end = original_end
         after = channel._messages
@@ -86,8 +90,13 @@ def build_role(guild, state):
     return role
 
 
-def build_channel(bot, guild, state, id=None):
-    channel = MockChannel(bot=bot, id=id, guild=guild, state=state)
+def build_voice_channel(bot, guild, state, id=None):
+    channel = MockVoiceChannel(bot=bot, id=id, guild=guild, state=state)
+    return channel
+
+
+def build_text_channel(bot, guild, state, id=None):
+    channel = MockTextChannel(bot=bot, id=id, guild=guild, state=state)
     return channel
 
 
@@ -116,10 +125,11 @@ def setup(bot):
     role = build_role(guild, state)
     guild._roles.update({role.id: role})
     bot._guilds.append(guild)
-    text_channel = build_channel(bot, guild, state, id=TEXT_CHANNEL_SNOWFLAKE)
-    voice_channel = build_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)
+    text_channel = build_text_channel(bot, guild, state, id=TEXT_CHANNEL_SNOWFLAKE)
+    voice_channel = build_voice_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)
     guild._channels.append(text_channel)
     guild._channels.append(voice_channel)
+    guild._voice_channels = {voice_channel.id: voice_channel}
     author = build_member(
         bot=bot,
         guild=guild,
@@ -178,7 +188,7 @@ async def send_message(bot, content: str = None):
     async with capture(objects.get("text_channel", None)):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-    return objects.get("text_channel", None)._captured[-1]
+    return objects.get("text_channel", None)._end_result
 
 
 @asynccontextmanager

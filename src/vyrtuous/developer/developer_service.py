@@ -77,8 +77,7 @@ class DeveloperService:
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, **kwargs):
-        lines = []
-        pages = []
+        lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), (discord.Guild, discord.Member)) else ''}"
 
         where_kwargs = object_dict.get("columns", None)

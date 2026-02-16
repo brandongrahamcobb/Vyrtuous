@@ -28,7 +28,9 @@ from vyrtuous.tests.integration.mock_discord_state import MockState
 GUILD_SNOWFLAKE = 10000000000000500
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 TEXT_CHANNEL_NAME = "text-channel"
-CHANNEL_DATA = {
+VOICE_CHANNEL_NAME = "Voice Channel"
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+TEXT_CHANNEL_DATA = {
     "id": TEXT_CHANNEL_SNOWFLAKE,
     "name": TEXT_CHANNEL_NAME,
     "type": discord.TextChannel,
@@ -39,12 +41,78 @@ CHANNEL_DATA = {
     "parent_id": None,
     "guild_id": GUILD_SNOWFLAKE,
 }
+VOICE_CHANNEL_DATA = {
+    "bitrate": 64000,
+    "guild_id": GUILD_SNOWFLAKE,
+    "id": VOICE_CHANNEL_SNOWFLAKE,
+    "last_message_id": None,
+    "name": VOICE_CHANNEL_NAME,
+    "nsfw": False,
+    "parent_id": None,
+    "position": 0,
+    "rate_limit_per_user": 0,
+    "rtc_region": None,
+    "type": 2,
+    "user_limit": 0,
+    "video_quality_mode": 1,
+}
 
 
-class MockChannel(discord.TextChannel):
-
+class MockVoiceChannel(discord.VoiceChannel):
     def __init__(self, guild: MockGuild, state: MockState, **overrides):
-        data = CHANNEL_DATA.copy()
+        data = VOICE_CHANNEL_DATA.copy()
+        data.update(overrides)
+        super().__init__(data=data, guild=guild, state=state)
+        self._members = []
+        self._messages = []
+        self._state = state
+
+    def append_message(self, msg):
+        self._messages.append(msg)
+
+    async def fetch_message(self, message_snowflake):
+        if message_snowflake is None:
+            return None
+        for msg in self._messages:
+            if msg.id == message_snowflake:
+                return msg
+        raise ValueError(f"Message with snowflake {message_snowflake} not found")
+
+    def permissions_for(self, member):
+        return SimpleNamespace(
+            send_messages=True,
+            add_reactions=False,
+            manage_messages=False,
+            move_members=False,
+            mute_members=False,
+            view_channel=False,
+        )
+
+    async def send(self, content=None, embed=None, file=None, **kwargs):
+        msg = MockMessage(
+            author=self.guild.me,
+            channel=self,
+            content=content,
+            embed=embed,
+            file=file,
+            guild=self.guild,
+            state=self._state,
+        )
+        self._messages.append(msg)
+        return msg
+
+    async def set_permissions(self, target, **overwrites):
+        self.overwrites[target.id] = overwrites
+        return True
+
+    @property
+    def members(self):
+        return self._members
+
+
+class MockTextChannel(discord.TextChannel):
+    def __init__(self, guild: MockGuild, state: MockState, **overrides):
+        data = TEXT_CHANNEL_DATA.copy()
         data.update(overrides)
         super().__init__(data=data, guild=guild, state=state)
         self._members = []

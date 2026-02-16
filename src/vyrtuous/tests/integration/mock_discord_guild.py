@@ -79,6 +79,7 @@ class MockGuild(discord.Guild):
         super().__init__(data=data, state=state)
         self._channels = channels
         self._members = members
+        self._voice_channels = {}
         self._roles = roles
 
     def get_channel(self, channel_snowflake):
@@ -109,6 +110,10 @@ class MockGuild(discord.Guild):
     @property
     def channels(self):
         return self._channels
+
+    @property
+    def voice_channels(self):
+        return self._voice_channels
 
     @property
     def members(self):
