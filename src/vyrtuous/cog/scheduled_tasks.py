@@ -30,6 +30,7 @@ from vyrtuous.database import Database
 from vyrtuous.developer.developer import Developer
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
+
 # from vyrtuous.video_room.video_room import VideoRoom
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage import Stage

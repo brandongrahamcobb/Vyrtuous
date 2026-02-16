@@ -25,11 +25,13 @@ from discord.ext import commands
 from vyrtuous.administrator.administrator_service import AdministratorRoleService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bug.bug_service import BugService
 
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
@@ -37,8 +39,6 @@ from vyrtuous.utils.emojis import Emojis
 
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
-from vyrtuous.bug.bug_service import BugService
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -120,7 +120,7 @@ class GuildOwnerTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        role_dict = self.__discord_object_service.translate(obj=role)
+        role_dict = self.__discord_object_service.to_dict(obj=role)
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(role_dict.get("columns", None))
         pages = await self.__administrator_role_service.toggle_administrator_role(
@@ -146,7 +146,7 @@ class GuildOwnerTextCommands(commands.Cog):
     #         developer_service=self.__developer_service,
     #         emoji=self.__emoji,
     #     )
-    #     member_dict = self.__discord_object_service.translate(obj=member)
+    #     member_dict = self.__discord_object_service.to_dict(obj=member)
     #     where_kwargs = member_dict.get("columns", None)
     #     enabled = PermissionService.toggle_enabled()
     #     if enabled:
@@ -181,7 +181,7 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = target or "all"
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__developer_service.build_pages(object_dict=object_dict)
         return await state.end(success=pages)
 

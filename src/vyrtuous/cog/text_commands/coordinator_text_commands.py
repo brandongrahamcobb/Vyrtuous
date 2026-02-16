@@ -26,21 +26,23 @@ from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
+
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator import Coordinator
-from vyrtuous.coordinator.coordinator_service import (CoordinatorService,
-                                                      NotCoordinator)
+from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration import Duration, DurationObject
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
+
 # from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
+
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 
@@ -153,8 +155,8 @@ class CoordinatorTextCommands(commands.Cog):
             "member_snowflake": int(ctx.author.id),
         }
         updated_kwargs = default_kwargs.copy()
-        channel_dict = self.__discord_object_service.translate(obj=channel)
-        member_dict = self.__discord_object_service.translate(obj=member)
+        channel_dict = self.__discord_object_service.to_dict(obj=channel)
+        member_dict = self.__discord_object_service.to_dict(obj=member)
         updated_kwargs.update(channel_dict.get("columns", None))
         # await PermissionService.has_equal_or_lower_role(
         #     target_member_snowflake=int(member.get("id", None)),
@@ -196,7 +198,7 @@ class CoordinatorTextCommands(commands.Cog):
             "member_snowflake": int(ctx.author.id),
         }
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.translate(obj=obj)
+        channel_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__stage_service.toggle_stage(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,

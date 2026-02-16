@@ -24,16 +24,12 @@ from discord.ext import commands
 
 from vyrtuous.administrator.administrator import Administrator
 from vyrtuous.administrator.administrator_service import (
-    AdministratorRoleService,
-    AdministratorService,
-    NotAdministrator,
-)
+    AdministratorRoleService, AdministratorService, NotAdministrator)
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
-
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
@@ -47,19 +43,17 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.utils.author_service import AuthorService
-
 # from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
+from vyrtuous.utils.discord_object_service import (DiscordObjectService,
+                                                   MultiConverter)
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
-
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.video_room.video_room_service import VideoRoomService
-
 # from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
@@ -758,13 +752,15 @@ class AdminTextCommands(commands.Cog):
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
+        target_channel: discord.abc.GuildChannel = commands.parameter(
             converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
-        action: str = commands.parameter(description="create | modify | delete."),
-        entry_type: str = commands.parameter(description="all | channel."),
-        *snowflakes: int,
+        source_channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            default=None
+            description="Tag a channel or include its ID.",
+        ),
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -774,32 +770,17 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        channel_mentions, failed_snowflakes, resolved_channels = [], [], []
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
-        channel_dict = self.__discord_object_service.translate(obj=channel)
-        if snowflakes:
-            for snowflake in snowflakes:
-                try:
-                    snowflake_dict = self.__discord_object_service.translate(
-                        obj=snowflake
-                    )
-                    resolved_channels.append(snowflake_dict.get("id", None))
-                    channel_mentions.append(snowflake_dict.get("mention", None))
-                except Exception:
-                    failed_snowflakes.append(snowflake)
-                    continue
-        pages = await self.__stream_service.modify_stream(
-            action=action,
-            channel_dict=channel_dict,
-            channel_mentions=channel_mentions,
+        # default_kwargs = {
+        #     "channel_snowflake": int(ctx.channel.id),
+        #     "guild_snowflake": int(ctx.guild.id),
+        #     "member_snowflake": int(ctx.author.id),
+        # }
+        target_channel_dict = self.__discord_object_service.translate(obj=channel)
+        source_channel_dict = self.__discord_object_service.translate(obj=channel)
+        pages = await self.__stream_service.toggle_stream(
             default_kwargs=default_kwargs,
-            entry_type=entry_type,
-            failed_snowflakes=failed_snowflakes,
-            resolved_channels=resolved_channels,
+            source_channel_dict=source_channel_dict,
+            target_channel_dict=target_channel_dict,
         )
         return await state.end(success=pages)
 

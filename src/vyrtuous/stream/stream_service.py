@@ -18,9 +18,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Self
 from datetime import datetime, timezone
-from typing import Union
+from typing import Self, Union
 
 import discord
 from discord.ext import commands
@@ -166,6 +165,7 @@ class StreamService:
         self.__database_factory.model = self.MODEL
         self.__emoji = emoji
         self.__duration_service = duration_service
+        self.__paginator_service = paginator_service
         self.__moderator_service = moderator_service
 
     async def send_log(
@@ -225,16 +225,17 @@ class StreamService:
         return
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         streaming = await self.__database_factory.select(singular=False, **where_kwargs)
         for stream in streaming:
             dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            dictionary[stream.guild_snowflake]["channels"][stream.channel_snowflake] = {
-                "enabled": stream.enabled,
-                "entry_type": stream.entry_type,
-                "snowflakes": stream.snowflakes,
-            }
+            dictionary[stream.guild_snowflake]["channels"].setdefault(
+                stream.target_channel_snowflake, {"sources": []}
+            )
+            dictionary[stream.guild_snowflake]["channels"][
+                stream.target_channel_snowflake
+            ]["sources"].append(stream.source_channel_snowflake)
+
         skipped_channels = self.__dictionary_service.generate_skipped_channels(
             dictionary
         )
@@ -286,14 +287,18 @@ class StreamService:
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     continue
-                status = "\u2705" if entry["enabled"] else "\u26d4"
+                sources = []
+                for source_snowflake in entry["sources"]:
+                    source_channel = guild.get_channel(source_snowflake)
+                    if source_channel:
+                        sources.append(source_channel.mention)
+                if sources:
+                    source_lines = "\n".join(f"• {s}" for s in sources)
+                else:
+                    source_lines = "• All sources"
                 lines.append(
-                    f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
+                    f"**Target:** {channel.mention}\n**Sources:**\n{source_lines}"
                 )
-                if isinstance(
-                    object_dict.get("object", None), discord.abc.GuildChannel
-                ):
-                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                 field_count += 1
                 stream_n += 1
                 if field_count >= self.__CHUNK_SIZE:
@@ -302,7 +307,9 @@ class StreamService:
                         value="\n".join(lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, pages, title, guild.name)
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
                     lines = []
                     field_count = 0
             if lines:
@@ -316,67 +323,25 @@ class StreamService:
             pages[0].description = f"**({stream_n})**"
         return pages
 
-    async def modify_stream(
+    async def toggle_stream(
         self,
-        action,
-        channel_dict,
-        channel_mentions,
-        default_kwargs,
-        entry_type,
-        failed_snowflakes,
-        resolved_channels,
+        source_channel_dict,
+        target_channel_dict,
     ):
-        updated_kwargs = default_kwargs.copy()
-        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
-        channel_kwargs = channel_dict.get("columns", None)
         where_kwargs = {
-            "channel_snowflake": channel_kwargs["channel_snowflake"],
-            "entry_type": entry_type,
-            "guild_snowflake": int(guild_snowflake),
+            "source_channel_snowflake": source_channel_dict.get("id", None),
+            "target_channel_snowflake": target_channel_dict.get("id", None),
         }
-        if action is None and entry_type is None:
-            stream = await self.__database_factory.select(singular=True, **where_kwargs)
-            enabled = not stream.enabled
-            action = "enabled" if enabled else "disabled"
-            set_kwargs = {"enabled": enabled}
-            await self.__database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-        if action and entry_type:
-            match action.lower():
-                case "create" | "modify":
-                    resolved_channels = []
-                    if action.lower() == "create":
-                        stream = self.MODEL(
-                            **where_kwargs,
-                            enabled=True,
-                            snowflakes=resolved_channels,
-                        )
-                        await self.__database_factory.create(stream)
-                        action = "created"
-                    else:
-                        set_kwargs = {"snowflakes": resolved_channels}
-                        await self.__database_factory.update(
-                            set_kwargs=set_kwargs, where_kwargs=where_kwargs
-                        )
-                        action = "modified"
-                case "delete":
-                    await Stream.delete(**where_kwargs)
-                    action = "deleted"
+        stream = await self.__database_factory.select(singular=True, **where_kwargs)
+        if stream:
+            await self.__database_factory.delete(**where_kwargs)
+            action = "deleted"
+        else:
+            stream = self.MODEL(**where_kwargs)
+            await self.__database_factory.create(obj=stream)
+            action = "created"
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} for {channel_dict.get('mention', None)}",
+            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} from {source_channel_dict.get('mention', None)} to {target_channel_dict.get('mention', None)}.",
             color=0x00FF00,
         )
-        if channel_mentions:
-            embed.add_field(
-                name="Processed Channels",
-                value=", ".join(channel_mentions),
-                inline=False,
-            )
-        if failed_snowflakes:
-            embed.add_field(
-                name="Failed IDs",
-                value=", ".join(str(s) for s in failed_snowflakes),
-                inline=False,
-            )
         return [embed]

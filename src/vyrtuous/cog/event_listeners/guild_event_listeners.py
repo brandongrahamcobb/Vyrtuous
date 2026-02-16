@@ -20,8 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import \
-    AdministratorRoleService
+from vyrtuous.administrator.administrator_service import AdministratorRoleService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.utils.logger import logger

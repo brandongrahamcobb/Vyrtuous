@@ -25,10 +25,8 @@ from datetime import datetime, timezone
 class Stream:
     __tablename__ = "streaming"
     identifier = "stream"
-    channel_snowflake: int
-    enabled: bool
-    entry_type: str
+    target_channel_snowflake: int
+    source_channel_snowflake: int
     guild_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    snowflakes: list[int | None] = field(default_factory=list)
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

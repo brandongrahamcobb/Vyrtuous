@@ -87,7 +87,7 @@ class SysadminTextCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx=ctx)
-        member_dict = self.__discord_object_service.translate(obj=member)
+        member_dict = self.__discord_object_service.to_dict(obj=member)
         embed = await self.__bug_service.assign_bug_to_developer(
             reference=reference, member_dict=member_dict
         )
@@ -108,7 +108,7 @@ class SysadminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        member_dict = self.__discord_object_service.translate(obj=member)
+        member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__developer_service.toggle_developer(
             member_dict=member_dict,
         )

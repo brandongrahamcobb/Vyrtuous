@@ -198,7 +198,7 @@ class DevTextCommands(commands.Cog):
             where_kwargs = {"id": target_uuid}
         except Exception as e:
             logger.warning(str(e).capitalize())
-            object_dict = await self.__discord_object_service.translate(obj=obj)
+            object_dict = await self.__discord_object_service.to_dict(obj=obj)
             where_kwargs = object_dict.get("columns", None)
         pages = await self.__bug_service.build_pages(
             scope=scope, where_kwargs=where_kwargs, is_at_home=is_at_home
@@ -244,7 +244,7 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = channel or ctx.channel
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         member_count, role_count, total_count = 0, 0, 0
         for target, overwrite in object_dict.get("object", None).overwrites.items():
             if any(v is not None for v in overwrite):

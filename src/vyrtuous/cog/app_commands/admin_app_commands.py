@@ -24,14 +24,19 @@ from discord.ext import commands
 
 from vyrtuous.administrator.administrator import Administrator
 from vyrtuous.administrator.administrator_service import (
-    AdministratorRoleService, administrator_predicator)
+    AdministratorRoleService,
+    administrator_predicator,
+)
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.field.category import AppCategory
-from vyrtuous.field.snowflake import (AppChannelSnowflake, AppMemberSnowflake,
-                                      AppRoleSnowflake)
+from vyrtuous.field.snowflake import (
+    AppChannelSnowflake,
+    AppMemberSnowflake,
+    AppRoleSnowflake,
+)
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
 from vyrtuous.stage_room.stage_service import StageService

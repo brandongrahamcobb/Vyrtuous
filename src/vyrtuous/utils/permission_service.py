@@ -23,28 +23,41 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator_service import (
-    NotAdministrator, is_administrator, is_administrator_at_all)
+    NotAdministrator,
+    is_administrator,
+    is_administrator_at_all,
+)
 from vyrtuous.ban.ban import Ban
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.coordinator.coordinator_service import (NotCoordinator,
-                                                      is_coordinator,
-                                                      is_coordinator_at_all)
+from vyrtuous.coordinator.coordinator_service import (
+    NotCoordinator,
+    is_coordinator,
+    is_coordinator_at_all,
+)
 from vyrtuous.developer.developer_service import NotDeveloper, is_developer
 from vyrtuous.flag.flag import Flag
-from vyrtuous.inc.helpers import (CHUNK_SIZE, PERMISSION_TYPES,
-                                  TARGET_PERMISSIONS)
-from vyrtuous.moderator.moderator_service import (NotModerator, is_moderator,
-                                                  is_moderator_at_all)
-from vyrtuous.owner.guild_owner_service import (NotGuildOwner, is_guild_owner,
-                                                is_guild_owner_at_all)
+from vyrtuous.inc.helpers import CHUNK_SIZE, PERMISSION_TYPES, TARGET_PERMISSIONS
+from vyrtuous.moderator.moderator_service import (
+    NotModerator,
+    is_moderator,
+    is_moderator_at_all,
+)
+from vyrtuous.owner.guild_owner_service import (
+    NotGuildOwner,
+    is_guild_owner,
+    is_guild_owner_at_all,
+)
 from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, is_sysadmin
 from vyrtuous.text_mute.text_mute import TextMute
 from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.dictionary import (clean_dictionary, flush_page,
-                                       generate_skipped_channels,
-                                       generate_skipped_dict_pages,
-                                       generate_skipped_guilds,
-                                       generate_skipped_set_pages)
+from vyrtuous.utils.dictionary import (
+    clean_dictionary,
+    flush_page,
+    generate_skipped_channels,
+    generate_skipped_dict_pages,
+    generate_skipped_guilds,
+    generate_skipped_set_pages,
+)
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.errors import HasEqualOrLowerRole
 from vyrtuous.utils.logger import logger
