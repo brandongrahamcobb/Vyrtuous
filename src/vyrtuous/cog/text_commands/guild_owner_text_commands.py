@@ -22,21 +22,23 @@ from typing import Any, Coroutine, Literal, Optional, Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import \
-    AdministratorRoleService
+from vyrtuous.administrator.administrator_service import AdministratorRoleService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
+
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import (DiscordObjectService,
-                                                   MultiConverter)
+from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
+
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.bug.bug_service import BugService
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -54,6 +56,12 @@ class GuildOwnerTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
         self.__guild_owner_service = GuildOwnerService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -65,6 +73,11 @@ class GuildOwnerTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:

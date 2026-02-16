@@ -24,8 +24,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator import (Administrator,
-                                                  AdministratorRole)
+from vyrtuous.administrator.administrator import Administrator, AdministratorRole
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
@@ -205,7 +204,7 @@ class AdministratorService:
 
     async def administrators_by_role(self, role_snowflake: int):
         administrators = await self.__database_factory.select(
-            role_snowflakes=[int(role_snowflake)], inside_fields=["role_snowflakes"]
+            role_snowflakes=int(role_snowflake), inside_fields=["role_snowflakes"]
         )
         if administrators:
             return administrators
@@ -218,7 +217,7 @@ class AdministratorService:
         administrator = await self.__database_factory.select(
             guild_snowflake=int(guild_snowflake),
             member_snowflake=int(member_snowflake),
-            role_snowflakes=[int(role_snowflake)],
+            role_snowflakes=int(role_snowflake),
             inside_fields=["role_snowflakes"],
             singular=True,
         )
@@ -231,7 +230,7 @@ class AdministratorService:
         guild_snowflake = updated_kwargs.get("guild_snowflake", None)
         member_snowflake = updated_kwargs.get("member_snowflake", None)
         role_snowflake = updated_kwargs.get("role_snowflake", None)
-        administrator_existing = self.administrator_existing(
+        administrator_existing = await self.administrator_existing(
             updated_kwargs=updated_kwargs
         )
         if not administrator_existing:
@@ -268,7 +267,7 @@ class AdministratorService:
         administrator = await self.__database_factory.select(
             guild_snowflake=int(guild_snowflake),
             member_snowflake=int(member_snowflake),
-            role_snowflakes=[role_snowflake],
+            role_snowflakes=role_snowflake,
             singular=True,
             inside_fields=["role_snowflakes"],
         )
@@ -407,7 +406,7 @@ class AdministratorRoleService:
         )
         if administrator_roles:
             action = "revoked"
-            for administrator_role in administrator_roles:
+            if administrator_roles:
                 await self.__database_factory.delete(**kwargs)
             revoked_members = {}
             for administrator in administrators:
@@ -428,7 +427,7 @@ class AdministratorRoleService:
             granted_members = {}
             granted_members.setdefault(guild_snowflake, {})[role_id] = []
             administrator_role = AdministratorRole(**kwargs)
-            await administrator_role.create()
+            await self.__database_factory.create(administrator_role)
             for member in role_dict.get("object").members:
                 await self.__administrator_service.added_role(
                     {

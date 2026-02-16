@@ -55,38 +55,47 @@ class DiscordObjectService:
             kwargs["object"] = obj
             kwargs["type"] = type(obj)
         if isinstance(obj, discord.abc.GuildChannel):
-            return {
-                "columns": {
-                    "channel_snowflake": obj.id,
-                    "guild_snowflake": obj.guild.id,
-                },
-                "mention": obj.mention,
-                "name": obj.name,
-            }
+            kwargs.upadat(
+                {
+                    "columns": {
+                        "channel_snowflake": obj.id,
+                        "guild_snowflake": obj.guild.id,
+                    },
+                    "mention": obj.mention,
+                    "name": obj.name,
+                }
+            )
         elif isinstance(obj, discord.Member):
-            return {
-                "columns": {
-                    "member_snowflake": obj.id,
-                    "guild_snowflake": obj.guild.id,
-                },
-                "mention": obj.mention,
-                "name": obj.display_name,
-            }
+            kwargs.update(
+                {
+                    "columns": {
+                        "member_snowflake": obj.id,
+                        "guild_snowflake": obj.guild.id,
+                    },
+                    "mention": obj.mention,
+                    "name": obj.display_name,
+                }
+            )
         elif isinstance(obj, discord.Guild):
-            return {
-                "columns": {"guild_snowflake": obj.id},
-                "id": obj.id,
-                "name": obj.name,
-            }
+            kwargs.update(
+                {
+                    "columns": {"guild_snowflake": obj.id},
+                    "id": obj.id,
+                    "name": obj.name,
+                }
+            )
         elif isinstance(obj, discord.Role):
-            return {
-                "columns": {
-                    "guild_snowflake": obj.guild.id,
-                    "role_snowflake": obj.id,
-                },
-                "mention": obj.mention,
-                "name": obj.name,
-            }
+            kwargs.update(
+                {
+                    "columns": {
+                        "guild_snowflake": obj.guild.id,
+                        "role_snowflake": obj.id,
+                    },
+                    "mention": obj.mention,
+                    "name": obj.name,
+                }
+            )
+        return kwargs
 
 
 class MultiConverter(commands.Converter):
