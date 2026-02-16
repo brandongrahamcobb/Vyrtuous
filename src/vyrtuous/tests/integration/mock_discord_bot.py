@@ -34,7 +34,7 @@ class MockBot(commands.Bot):
         setup_logging(config, PATH_LOG)
         self.config = config
         self.db_pool = db_pool
-        self._guilds = []
+        self._guilds = {}
         self._tree = AsyncMock()
         self._tree.sync = AsyncMock()
         self._tree.add_command = Mock()
@@ -47,10 +47,8 @@ class MockBot(commands.Bot):
     def get_instance(cls):
         return cls()
 
-    def get_guild(self, target: int):
-        for guild in self._guilds:
-            if target == guild.id:
-                return guild
+    def get_guild(self, guild_snowflake: int):
+        return self._guilds.get(guild_snowflake, None)
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:
@@ -60,3 +58,7 @@ class MockBot(commands.Bot):
     @property
     def tree(self):
         return self._tree
+
+    @property
+    def guilds(self):
+        return list(self._guilds.values())

@@ -83,42 +83,36 @@ class MockGuild(discord.Guild):
         self._roles = roles
 
     def get_channel(self, channel_snowflake):
-        if channel_snowflake is None:
-            return None
-        for channel in self._channels:
-            if str(channel.id) == str(channel_snowflake):
-                return channel
+        return self._channels.get(channel_snowflake, None)
 
     def get_member(self, member_snowflake):
-        if member_snowflake is None:
-            return None
-        if member_snowflake in self._members.keys():
-            return self._members[member_snowflake]
-        else:
-            return None
-            # if str(member.id) == str(member_snowflake):
-            #     return member
+        return self._members.get(member_snowflake, None)
 
     def get_role(self, role_snowflake):
-        if role_snowflake is None:
-            return None
-        if role_snowflake in self._roles.keys():
-            return self._roles[role_snowflake]
-        else:
-            return None
+        return self._roles.get(role_snowflake, None)
 
     @property
     def channels(self):
-        return self._channels
+        return list(self._channels.values())
 
     @property
     def voice_channels(self):
-        return self._voice_channels
+        return list(self._voice_channels.values())
 
     @property
     def members(self):
-        return self._members.values()
+        return list(self._members.values())
 
     @property
     def roles(self):
-        return self._roles
+        return list(self._roles.values())
+
+    async def query_members(
+        self, *, limit=1, user_ids=None, cache=True, presences=None
+    ):
+        if user_ids:
+            # return only members matching the IDs
+            return [self._members[uid] for uid in user_ids if uid in self._members]
+        # otherwise return all members, up to the limit
+        all_members = list(self._members.values())
+        return all_members[:limit]

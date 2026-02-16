@@ -23,8 +23,10 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from vyrtuous.tests.integration.mock_discord_channel import (MockTextChannel,
-                                                             MockVoiceChannel)
+from vyrtuous.tests.integration.mock_discord_channel import (
+    MockTextChannel,
+    MockVoiceChannel,
+)
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
@@ -81,7 +83,7 @@ async def capture(channel):
 
 
 def build_guild(bot, state):
-    guild = MockGuild(bot=bot, channels=[], members={}, roles={}, state=state)
+    guild = MockGuild(bot=bot, channels={}, members={}, roles={}, state=state)
     return guild
 
 
@@ -124,12 +126,12 @@ def setup(bot):
     guild = build_guild(bot, state)
     role = build_role(guild, state)
     guild._roles.update({role.id: role})
-    bot._guilds.append(guild)
+    bot._guilds.update({guild.id: guild})
     text_channel = build_text_channel(bot, guild, state, id=TEXT_CHANNEL_SNOWFLAKE)
     voice_channel = build_voice_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)
-    guild._channels.append(text_channel)
-    guild._channels.append(voice_channel)
-    guild._voice_channels = {voice_channel.id: voice_channel}
+    guild._channels.update({text_channel.id: text_channel})
+    guild._channels.update({voice_channel.id: voice_channel})
+    guild._voice_channels.update({voice_channel.id: voice_channel})
     author = build_member(
         bot=bot,
         guild=guild,
