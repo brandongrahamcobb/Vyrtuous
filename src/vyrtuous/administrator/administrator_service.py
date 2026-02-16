@@ -329,7 +329,7 @@ class AdministratorRoleService:
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
         dictionary = {}
-        administrator_roles = await AdministratorRole.select(
+        administrator_roles = await self.__database_factory.select(
             singular=False, **where_kwargs
         )
         for administrator_role in administrator_roles:

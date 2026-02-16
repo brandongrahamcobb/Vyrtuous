@@ -29,7 +29,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    capture_command,
                                                    send_message, setup)
 
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
@@ -64,7 +64,7 @@ async def test_rmv(bot, command: str, source_channel, target_channel, permission
 
     """
     sc = source_channel.format(
-        source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     tc = target_channel.format(
         target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,

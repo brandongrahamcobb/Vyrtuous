@@ -108,7 +108,7 @@ class MockGuild(discord.Guild):
         return list(self._roles.values())
 
     async def query_members(
-        self, *, limit=1, user_ids=None, cache=True, presences=None
+        self, *, limit=1, user_ids=None, cache=True, presences=None, **kwargs
     ):
         if user_ids:
             # return only members matching the IDs

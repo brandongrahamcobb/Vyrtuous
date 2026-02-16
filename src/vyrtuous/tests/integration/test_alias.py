@@ -26,13 +26,16 @@ from unittest.mock import patch
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -105,7 +108,7 @@ async def test_alias(
     [{emoji} Alias `testban` deleted]
     """
     channel = channel_snowflake.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     kwargs = {"category": category, "alias_name": alias_name, "channel": channel}
     if role_snowflake:

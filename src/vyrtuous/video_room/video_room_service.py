@@ -128,7 +128,9 @@ class VideoRoomService:
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
         dictionary = {}
-        video_rooms = await VideoRoom.select(singular=False, **where_kwargs)
+        video_rooms = await self.__database_factory.select(
+            singular=False, **where_kwargs
+        )
         for video_room in video_rooms:
             dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
             dictionary[video_room.guild_snowflake]["channels"].setdefault(
@@ -160,8 +162,8 @@ class VideoRoomService:
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines, pages = []
-        title = f"{get_random_emoji()} Video Rooms"
+        lines, pages = [], []
+        title = f"{self.__emoji.get_random_emoji()} Video Rooms"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
@@ -190,13 +192,15 @@ class VideoRoomService:
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
                         field_count += 1
-                        if field_count >= CHUNK_SIZE:
+                        if field_count >= self.__CHUNK_SIZE:
                             embed.add_field(
                                 name="Information",
                                 value="\n".join(lines),
                                 inline=False,
                             )
-                            embed = flush_page(embed, pages, title, guild.name)
+                            embed = self.__dictionary_service.flush_page(
+                                embed, pages, title, guild.name
+                            )
                             lines = []
                             field_count = 0
                 if field_count >= self.__CHUNK_SIZE:

@@ -18,50 +18,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
-from vyrtuous.bot.discord_bot import DiscordBot
 
-
+@dataclass(frozen=True)
 class Data:
-
-    @classmethod
-    async def save(
-        cls,
-        identifier: str,
-        channel_members_voice_count: int,
-        channel_snowflake: int,
-        executor_highest_role: str,
-        executor_member_snowflake: int,
-        expires_at: datetime,
-        guild_members_offline_and_online_member_count: int,
-        guild_members_online_count: int,
-        guild_members_voice_count: int,
-        guild_snowflake: int,
-        is_modification: bool,
-        target_member_snowflake: int,
-        target_highest_role: str,
-        reason: str,
-    ):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO moderation_logs (infraction_type, channel_members_voice_count, channel_snowflake, executor_highest_role, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, is_modification, target_highest_role, target_member_snowflake, reason)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            """,
-                identifier,
-                channel_members_voice_count,
-                channel_snowflake,
-                executor_highest_role,
-                executor_member_snowflake,
-                expires_at,
-                guild_members_offline_and_online_member_count,
-                guild_members_online_count,
-                guild_members_voice_count,
-                guild_snowflake,
-                is_modification,
-                target_highest_role,
-                target_member_snowflake,
-                reason,
-            )
+    __table_name__ = "moderation_logs"
+    current_channel_members: int = 0
+    total_guild_members: int = 0
+    online_members: int = 0
+    total_voice_members: int = 0
+    author_snowflake: int | None = None
+    channel_snowflake: int | None = None
+    guild_snowflake: int | None = None
+    target_snowflake: int | None = None
+    expires_at: datetime = datetime.now(timezone.utc)
+    identiifer: str = ""
+    reason: str = "No reason provided."
+    is_modification: bool = False
+    target_highest_role: str = "Role undetermined"
+    executor_highest_role: str = "Role undetermined"

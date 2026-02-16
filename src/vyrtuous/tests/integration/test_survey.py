@@ -29,7 +29,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    capture_command,
                                                    send_message, setup)
 
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -59,7 +59,7 @@ async def test_survey(bot, command: str, channel, permission_role):
     [{emoji} Survey results for Channel1]
     """
     c = channel.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":

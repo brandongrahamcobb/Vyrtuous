@@ -72,7 +72,7 @@ class SysadminTextCommands(commands.Cog):
             raise NotSysadmin
 
         predicate._permission_level = "Sysadmin"
-        return predicate(ctx)
+        return await predicate(ctx)
 
     @commands.command(name="assign", help="Assign developer.")
     async def assign_bug_to_developer_text_command(

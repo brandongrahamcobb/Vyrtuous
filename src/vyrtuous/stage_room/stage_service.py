@@ -56,7 +56,7 @@ class StageService:
         if len(join_log[member.id]) < 1:
             join_log[member.id].append(now)
             embed = discord.Embed(
-                title=f"{get_random_emoji()} {stage.channel_snowflake} — Stage Mode",
+                title=f"{self.__emoji.get_random_emoji()} {stage.channel_snowflake} — Stage Mode",
                 description=f"Ends <t:{int(stage.expires_in.timestamp())}:R>",
                 color=discord.Color.green(),
             )
@@ -106,7 +106,7 @@ class StageService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{get_random_emoji()} Stages"
+        title = f"{self.__emoji.get_random_emoji()} Stages"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
@@ -164,7 +164,7 @@ class StageService:
         del stage_kwargs["member_snowflake"]
         stage = await self.__database_factory.select(**stage_kwargs, singular=True)
         if stage:
-            title = f"{get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
+            title = f"{self.__emoji.get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
             await self.__database_factory.delete(**updated_kwargs)
             # for member in channel_dict.get("object", None).members:
             # await VoiceMute.delete(
@@ -252,7 +252,7 @@ class StageService:
                 description_lines.append(f"**Failed:** {len(failed)}")
             embed = discord.Embed(
                 description="\n".join(description_lines),
-                title=f"{get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
+                title=f"{self.__emoji.get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
                 color=discord.Color.blurple(),
             )
             pages.append(embed)

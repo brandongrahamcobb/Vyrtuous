@@ -90,7 +90,14 @@ class DevTextCommands(commands.Cog):
 
     @commands.command(name="backup", help="DB backup.")
     async def backup_text_command(self, ctx: commands.Context):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         db = Database(config=self.__bot.config, directory="/app/backups")
         try:
             db.create_backup_directory()
@@ -101,7 +108,14 @@ class DevTextCommands(commands.Cog):
 
     @commands.command(name="cogs", help="Lists cogs.")
     async def list_cogs_text_command(self, ctx: commands.Context):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} Cogs for {ctx.guild.me.name}",
@@ -141,7 +155,14 @@ class DevTextCommands(commands.Cog):
             default=None, description="Optionally specify notes."
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         msg = self.__bug_service.interact_with_bug(
             action=action, notes=notes, reference=reference
         )
@@ -162,7 +183,14 @@ class DevTextCommands(commands.Cog):
             description="Optionally specify `resolved` or `unresolved`.",
         ),
     ):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
         try:
@@ -181,7 +209,14 @@ class DevTextCommands(commands.Cog):
         name="load", help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"
     )
     async def load_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         try:
             await self.__bot.load_extension(module)
         except commands.ExtensionError as e:
@@ -209,7 +244,7 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = channel or ctx.channel
-        object_dict = await self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.translate(obj=obj)
         member_count, role_count, total_count = 0, 0, 0
         for target, overwrite in object_dict.get("object", None).overwrites.items():
             if any(v is not None for v in overwrite):
@@ -243,7 +278,14 @@ class DevTextCommands(commands.Cog):
         name="reload", help="Reloads a cog by name 'vyrtuous.cog.<cog_name>'."
     )
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         try:
             await self.__bot.reload_extension(module)
         except commands.ExtensionError as e:
@@ -256,7 +298,14 @@ class DevTextCommands(commands.Cog):
         name="unload", help="Unloads a cog by name 'vyrtuous.cog.<cog_name>'."
     )
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         try:
             await self.__bot.reload_extension(module)
         except commands.ExtensionError as e:

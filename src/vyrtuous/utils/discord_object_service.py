@@ -56,7 +56,7 @@ class DiscordObjectService:
             kwargs["object"] = obj
             kwargs["type"] = type(obj)
         if isinstance(obj, discord.abc.GuildChannel):
-            kwargs.upadat(
+            kwargs.update(
                 {
                     "columns": {
                         "channel_snowflake": obj.id,

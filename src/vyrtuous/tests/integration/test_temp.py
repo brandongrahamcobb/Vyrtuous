@@ -30,7 +30,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    send_message, setup)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -63,7 +63,7 @@ async def test_temp(bot, command: str, channel, permission_role):
     [{emoji} Temporary Rooms has been deleted]
     """
     c = channel.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":

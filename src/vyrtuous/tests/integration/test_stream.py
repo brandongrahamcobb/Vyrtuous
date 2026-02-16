@@ -29,7 +29,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    capture_command,
                                                    send_message, setup)
 
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
@@ -131,7 +131,7 @@ async def test_stream(
     [{emoji} Streaming Route modified for Channel1]
     """
     snowflakes = None
-    sc = source_channel.format(source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE)
+    sc = source_channel.format(source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
     kwargs = {"channel": sc, "action": action}
     full = f"{command} {sc} {action}"
     if type:

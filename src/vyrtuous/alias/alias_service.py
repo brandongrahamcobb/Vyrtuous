@@ -174,7 +174,7 @@ class AliasService:
         await self.__database_factory.delete(**where_kwargs)
         return msg
 
-    async def create_alias(self, alias_name, category, channel, role):
+    async def create_alias(self, alias_name, category, channel, *, role=None):
         kwargs = {"channel_snowflake": channel.id, "guild_snowflake": channel.guild.id}
         msg = (
             f"Alias `{alias_name}` of type `{category}` "

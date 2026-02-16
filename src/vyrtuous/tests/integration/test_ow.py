@@ -30,7 +30,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    send_message, setup)
 
 ROLE_SNOWFLAKE = 10000000000000200
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -68,7 +68,7 @@ async def test_overwrites(bot, command: str, channel, permission_role):
     [{emoji} Room Unmuted\n Member1\n Member2]
     """
     c = channel.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":

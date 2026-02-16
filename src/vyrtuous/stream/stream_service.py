@@ -18,7 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from typing import Self
 from datetime import datetime, timezone
 from typing import Union
 
@@ -28,7 +28,124 @@ from discord.ext import commands
 from vyrtuous.stream.stream import Stream
 
 
+class StreamEmbed(discord.Embed):
+    def __init__(self, *, color=None, description=None, title=None, url=None):
+        self.__action = None
+        self.__timestamp = datetime.now(timezone.utc)
+        super().__init__(
+            color=color,
+            description=description,
+            timestamp=self.__timestamp,
+            title=title,
+            url=url,
+        )
+
+    def set_title(self, *, identifier, is_modification):
+        if is_modification:
+            self.color = 0xFF6B35
+        else:
+            self.color = 0xDC143C
+        if identifier in ("ban", "unban"):
+            if is_modification:
+                self.title = "🔄 User Unbanned"
+            else:
+                self.title = "🔨 User Banned"
+            self.__action = "banned"
+        elif identifier in ("flag", "unflag"):
+            if is_modification:
+                self.title = "🔄 User Unflagged"
+            else:
+                self.title = "🚩 User Flaged"
+            self.__action = "flagged"
+        elif identifier in ("tmute", "untmute"):
+            if is_modification:
+                self.title = "🔄 User Unmuted"
+            else:
+                self.title = "📝 User Text Muted"
+            self.__action = "text muted"
+        elif identifier in ("vmute", "unvmute"):
+            if is_modification:
+                self.title = "🔄 User Unmuted"
+            else:
+                self.title = "🎙️ User Voice Muted"
+            self.__action = "voice muted"
+        return self
+
+    def set_thumbnail(self, *, url):
+        self.set_thumbnail(url=url)
+
+    def set_executor(self, *, author, highest_role) -> Self:
+        fields = []
+        fields.append(f"**Executor:** {author.display_name} (@{author.name})")
+        fields.append(f"**Executor ID:** `{author.id}`")
+        fields.append(f"**Top Role:** {highest_role}")
+        field = "\n".join(fields)
+        self.add_field(name="👮‍♂️ Executed By", value=field, inline=True)
+        return self
+
+    def set_target(self, *, target, highest_role) -> Self:
+        fields = []
+        fields.append(f"**Display Name:** {target.display_name}")
+        fields.append(f"**Username:** @{target.name}")
+        fields.append(f"**User ID:** `{target.id}")
+        fields.append(f"**Account Age:** <t:{int(target.created_at.timestamp())}:R>")
+        fields.append(f"**Server Join:** <t:{int(target.joined_at.timestamp())}:R>")
+        fields.append(f"**Top Role:** {highest_role}")
+        field = "\n".join(fields)
+        self.add_field(name="👤 Target User", value=field, inline=False)
+        return self
+
+    def set_message_ctx(self, *, identifier, message) -> Self:
+        fields = []
+        fields.append(f"**Original Message ID:** `{message.id}`")
+        fields.append(f"**Message Link:** [Jump to Message]({message.jump_url})")
+        fields.append(f"**Command Channel:** {message.channel.mention}")
+        fields.append(f"**Type:** `{identifier}`")
+        field = "\n".join(fields)
+        self.add_field(name="📱 Message Context", value=field, inline=True)
+        return self
+
+    def set_action(self, *, duration) -> Self:
+        if duration is not None:
+            dt = "⏱️ Temporary"
+            expiration = f"{duration}"
+        else:
+            dt = "♾️ Permanent"
+            expiration = "Never"
+        fields = []
+        fields.append(f"**Expires:** {expiration}")
+        fields.append(f"**Alias:** {self.__action}")
+        self.add_field(name=f"**Type:** {dt}", value="\n".join(fields), inline=False)
+        return self
+
+    def set_reference(self, *, channel, target, message, source) -> Self:
+        text = f"Ref: {target.id}-{channel.id} | Msg: {message.id if message else 'Hidden'}"
+        icon_url = source.guild.icon.url
+        self.set_footer(text=text, icon_url=icon_url)
+        return self
+
+    def set_channel_ctx(self, *, channel, is_channel_scope) -> Self:
+        fields = []
+        fields.append(f"**Channel:** {channel.mention} (`{channel.id}`)")
+        fields.append(f"**Category:** {channel.category.name}")
+        fields.append(f"**Was in Channel:** {is_channel_scope}")
+        field = "\n".join(fields)
+        self.add_field(name="📍 Channel Context", value=field, inline=True)
+        return self
+
+    def set_reason(self, reason) -> Self:
+        self.add_field(name=f"📝 Reason", value=f"```{reason}```", inline=False)
+        return self
+
+    def set_description(self, *, channel, target) -> Self:
+        self.description = (
+            f"**Target:** {target.mention} {self.action} in {channel.mention}"
+        )
+        return self
+
+
 class StreamService:
+    __CHUNK_SIZE = 7
     MODEL = Stream
 
     def __init__(
@@ -38,106 +155,25 @@ class StreamService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
+        duration_service=None,
+        emoji=None,
+        moderator_service=None,
     ):
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
-        self.__dictionary_service.model = self.MODEL
+        self.__database_factory.model = self.MODEL
+        self.__emoji = emoji
+        self.__duration_service = duration_service
+        self.__moderator_service = moderator_service
 
-    async def send_entry(
+    async def send_log(
         self,
-        channel_snowflake: int,
-        identifier: str,
-        member: discord.Member,
-        source: (
-            Union[commands.Context, discord.Interaction, discord.Message] | None
-        ) = None,
-        is_channel_scope: bool = False,
-        is_modification: bool = False,
-        reason: str = "No reason provided",
-        duration: str | None = None,
-    ):
-        channel = self.__bot.get_channel(channel_snowflake)
-        expires_at = None
-        streaming = await Stream.select(singular=False)
-        author = None
-        if source:
-            author = self.__author_service.resolve_author(source=source)
-            executor_highest_role = await PermissionService.resolve_highest_role_at_all(
-                member_snowflake=int(author.id),
-            )
-        else:
-            executor_highest_role = "Role undetermined"
-        target_highest_role = await PermissionService.resolve_highest_role_at_all(
-            member_snowflake=int(member.id),
-        )
-        for stream in streaming:
-            channel_obj = self.__bot.get_channel(stream.channel_snowflake)
-            if channel_obj:
-                perms = channel_obj.permissions_for(channel_obj.guild.me)
-                if perms.send_messages and not channel_obj.guild.me.is_timed_out():
-                    pages = self.build_streaming_embeds(
-                        author=author,
-                        channel=channel,
-                        duration=duration,
-                        executor_highest_role=executor_highest_role,
-                        identifier=identifier,
-                        is_channel_scope=is_channel_scope,
-                        is_modification=is_modification,
-                        member=member,
-                        reason=reason,
-                        source=source,
-                        target_highest_role=target_highest_role,
-                    )
-                    paginator = PaginatorService(bot, channel_obj, pages)
-                    await paginator.start()
-        if isinstance(duration, DurationObject):
-            expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
-        elif duration is not None:
-            expires_at = (
-                datetime.now(timezone.utc) + DurationObject(duration).to_timedelta()
-            )
-        else:
-            expires_at = datetime.now(timezone.utc) + DurationObject(0).to_timedelta()
-        channel_members_voice_count = len(channel.members)
-        guild_members_offline_and_online_member_count = sum(
-            1 for member in channel.guild.members if not member.bot
-        )
-        guild_members_online_count = sum(
-            1
-            for member in channel.guild.members
-            if not member.bot and member.status != discord.Status.offline
-        )
-        guild_members_voice_count = sum(
-            len([member for member in channel.members if not member.bot])
-            for channel in channel.guild.voice_channels
-        )
-        # await Data.save(
-        #     channel_members_voice_count=channel_members_voice_count,
-        #     channel_snowflake=int(channel.id),
-        #     executor_member_snowflake=int(author.id) if author else None,
-        #     expires_at=expires_at,
-        #     guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count,
-        #     guild_members_online_count=guild_members_online_count,
-        #     guild_members_voice_count=guild_members_voice_count,
-        #     guild_snowflake=int(channel.guild.id),
-        #     executor_highest_role=executor_highest_role,
-        #     identifier=identifier,
-        #     is_modification=is_modification,
-        #     target_member_snowflake=int(member.id),
-        #     target_highest_role=target_highest_role,
-        #     reason=reason,
-        # )
-
-    def build_streaming_embeds(
-        self,
-        author,
+        author: discord.Member,
         channel: discord.abc.GuildChannel,
-        executor_highest_role: str,
         identifier: str,
-        member: discord.Member,
-        target_highest_role: str,
+        target: discord.Member,
         duration: str | None = None,
         is_channel_scope: bool = False,
         is_modification: bool = False,
@@ -151,109 +187,42 @@ class StreamService:
             message = source.message
         elif isinstance(source, discord.Message):
             message = source
-        if duration != "permanent":
-            if duration is None:
-                duration_info = (
-                    f"**Type:** {identifier.capitalize()}\n**Expires:** Never"
-                )
-            else:
-                duration_info = (
-                    f"**Type:** {identifier.capitalize()}\n**Expires:** {duration}"
-                )
-            if is_modification:
-                color, duration_type = 0xFF6B35, "⏰ Modified"
-            else:
-                color, duration_type = 0xFF8C00, "⏱️ Temporary"
-        else:
-            color, duration_type = 0xDC143C, "♾️ Permanent"
-            duration_info = (
-                f"**Type:** {identifier.capitalize()}\n**Expires:** {duration}"
+        pages = []
+        executor_role = await self.__moderator_service.resolve_highest_role_at_all(
+            member_snowflake=int(author.id),
+        )
+        target_role = await self.__moderator_service.resolve_highest_role_at_all(
+            member_snowflake=int(target.id),
+        )
+        embed = (
+            StreamEmbed()
+            .set_title(identifier=identifier, is_modification=is_modification)
+            .set_description(channel=channel, target=target)
+            .set_target(target=target, highest_role=target_role)
+            .set_executor(author=author, highest_role=executor_role)
+            .set_action(duration=duration)
+            .set_message_ctx(identifier=identifier, message=message)
+            .set_channel_ctx(channel=channel, is_channel_scope=is_channel_scope)
+            .set_reference(
+                channel=channel, target=target, message=message, source=source
             )
-        if identifier in ("ban", "unban"):
-            if is_modification:
-                title = "🔄 User Unbanned"
-            else:
-                title = "🔨 User Banned"
-            action = "banned"
-        elif identifier in ("flag", "unflag"):
-            if is_modification:
-                title = "🔄 User Unflagged"
-            else:
-                title = "🚩 User Flaged"
-            action = "flagged"
-        elif identifier in ("tmute", "untmute"):
-            if is_modification:
-                title = "🔄 User Unmuted"
-            else:
-                title = "📝 User Text Muted"
-            action = "text muted"
-        elif identifier in ("vmute", "unvmute"):
-            if is_modification:
-                title = "🔄 User Unmuted"
-            else:
-                title = "🎙️ User Voice Muted"
-            action = "voice muted"
-        else:
-            title = None
-            action = None
-        embed_user = discord.Embed(
-            title=f"{title} - User Identity",
-            color=color,
-            timestamp=datetime.now(timezone.utc),
         )
-        if not action:
-            embed_user.description = None
-        else:
-            embed_user.description = (
-                f"**Target:** {member.mention} {action} in {channel.mention}"
-            )
-        embed_user.set_thumbnail(url=author.display_avatar.url)
-        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>\n**Top Role:** {target_highest_role}"
-        embed_user.add_field(name="👤 Target User", value=user_priority, inline=False)
-        exec_priority = f"**Executor:** {author.display_name} (@{author.name})\n**Executor ID:** `{author.id}`\n**Top Role:** {executor_highest_role}"
-        embed_user.add_field(name="👮‍♂️ Executed By", value=exec_priority, inline=True)
-        if message:
-            ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Type:** `{identifier}`"
-            embed_user.add_field(name="📱 Command Context", value=ctx_info, inline=True)
-        embed_user.add_field(
-            name=f"**Type:** {duration_type}", value=duration_info, inline=False
-        )
-        embed_user.add_field(name="📝 Reason", value=f"```{reason}```", inline=False)
-        embed_user.set_footer(
-            text=f"Ref: {member.id}-{channel.id} | Msg: {message.id if message else 'Hidden'}",
-            icon_url=source.guild.icon.url,
-        )
-        embed_duration = discord.Embed(
-            title=f"{title} - Duration Info",
-            color=color,
-            timestamp=datetime.now(timezone.utc),
-        )
-        embed_duration.add_field(
-            name=f"{duration_type}", value=duration_info, inline=False
-        )
-        details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {source.guild.name}"
-        embed_duration.add_field(name="⚙️ Action Details", value=details, inline=True)
-        channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
-        embed_duration.add_field(
-            name="📍 Channel Info", value=channel_basic, inline=True
-        )
-        embeds = [embed_user, embed_duration]
-        if reason:
-            reason_chunks = [reason[i : i + 1000] for i in range(0, len(reason), 1000)]
-            if len(reason_chunks) > 1:
-                for i, chunk in enumerate(reason_chunks):
-                    reason_embed = discord.Embed(
-                        title=f"{title} - Reason (cont.)",
-                        color=color,
-                        timestamp=datetime.now(timezone.utc),
-                    )
-                    reason_embed.add_field(
-                        name=f"📝 Reason (Part {i + 1})",
-                        value=f"```{chunk}```",
-                        inline=False,
-                    )
-                    embeds.append(reason_embed)
-        return embeds
+        pages.append(embed)
+        embed = StreamEmbed(color=None, description=None, title=None, url=None)
+        embed.set_title(
+            identifier=identifier, is_modification=is_modification
+        ).set_reason(reason=reason)
+        pages.append(embed)
+
+        streaming = await self.__database_factory.select(singular=False)
+        for stream in streaming:
+            channel_obj = self.__bot.get_channel(stream.channel_snowflake)
+            if channel_obj:
+                perms = channel_obj.permissions_for(channel_obj.guild.me)
+                if perms.send_messages and not channel_obj.guild.me.is_timed_out():
+                    paginator = self.__paginator_service(self.__bot, channel_obj, pages)
+                    await paginator.start()
+        return
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
@@ -294,7 +263,7 @@ class StreamService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{get_random_emoji()} Streaming Routes"
+        title = f"{self.__emoji.get_random_emoji()} Streaming Routes"
 
         where_kwargs = object_dict.get("columns", None)
         dictionary = await self.build_clean_dictionary(
@@ -366,7 +335,7 @@ class StreamService:
             "guild_snowflake": int(guild_snowflake),
         }
         if action is None and entry_type is None:
-            stream = await Stream.select(singular=True, **where_kwargs)
+            stream = await self.__database_factory.select(singular=True, **where_kwargs)
             enabled = not stream.enabled
             action = "enabled" if enabled else "disabled"
             set_kwargs = {"enabled": enabled}
@@ -395,7 +364,7 @@ class StreamService:
                     await Stream.delete(**where_kwargs)
                     action = "deleted"
         embed = discord.Embed(
-            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict.get('mention', None)}",
+            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} for {channel_dict.get('mention', None)}",
             color=0x00FF00,
         )
         if channel_mentions:

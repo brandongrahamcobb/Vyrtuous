@@ -44,8 +44,8 @@ RED = "\033[91m"
 YELLOW = "\033[93m"
 GREEN = "\033[92m"
 RESET = "\033[0m"
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @asynccontextmanager
@@ -76,8 +76,8 @@ async def capture(channel):
     finally:
         StateService.end = original_end
         after = channel._messages
-        if not after:
-            await asyncio.sleep(1)
+        # if not after:
+        #     await asyncio.sleep(1)
         new_messages = after[len(before) :]
         channel._captured = new_messages
 

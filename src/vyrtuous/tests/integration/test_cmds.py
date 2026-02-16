@@ -30,7 +30,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    send_message, setup)
 
 GUILD_SNOWFLAKE = 10000000000000500
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 

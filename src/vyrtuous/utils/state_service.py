@@ -66,7 +66,7 @@ class StateService:
             raise commands.CheckFailure("Discord source not defined in StateService.")
         self.__author_service = author_service
         self.__bot = bot
-        self.__config = bot.config
+        self.__config = self.__bot.config
         self.__bug_service = bug_service
         self.__developer_service = developer_service
         self.__emoji = emoji

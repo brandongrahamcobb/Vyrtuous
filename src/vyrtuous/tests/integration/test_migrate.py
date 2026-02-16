@@ -30,7 +30,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    send_message, setup)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 TEXT_CHANNEL_NAME = "text-channel"
 
 
@@ -68,7 +68,7 @@ async def test_temp(
         channel_name=TEXT_CHANNEL_NAME,
     )
     cs = channel_snowflake.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {cn} {cs}"
     if os.environ["TEST_MODE"].lower() == "integration":

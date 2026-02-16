@@ -268,7 +268,7 @@ class VoiceMuteService:
         ]
         embed = discord.Embed(
             description="\n".join(description_lines),
-            title=f"{get_random_emoji()} Room Mute Summary",
+            title=f"{self.__emoji.get_random_emoji()} Room Mute Summary",
             color=discord.Color.blurple(),
         )
         pages.append(embed)
@@ -314,7 +314,7 @@ class VoiceMuteService:
         ]
         embed = discord.Embed(
             description="\n".join(description_lines),
-            title=f"{get_random_emoji()} Room Unmute Summary",
+            title=f"{self.__emoji.get_random_emoji()} Room Unmute Summary",
             color=discord.Color.blurple(),
         )
         pages.append(embed)

@@ -31,7 +31,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -85,7 +85,7 @@ async def test_flags(bot, command: str, target, permission_role):
     [{emoji} Flags for Member1\n Guild1\n Guild2]
     """
     t = target.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )

@@ -30,7 +30,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    send_message, setup)
 
 GUILD_SNOWFLAKE = 10000000000000500
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -73,7 +73,7 @@ async def test_temps(bot, command: str, target, permission_role):
     [{emoji} Temporary Rooms for Channel1]
     """
     t = target.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     full = f"{command} {t}"
     if os.environ["TEST_MODE"].lower() == "integration":

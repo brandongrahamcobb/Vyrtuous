@@ -45,8 +45,7 @@ def cf(monkeypatch):
 async def db():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     yield db_pool
-    # await asyncio.sleep(60)
-    # await db_pool.close()
+    await db_pool.close()
 
 
 @pytest_asyncio.fixture

@@ -29,7 +29,7 @@ from vyrtuous.tests.integration.test_suite import (build_message,
                                                    capture_command,
                                                    send_message, setup)
 
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
@@ -56,7 +56,7 @@ async def test_cap(bot, command: str, channel, category, hours, permission_role)
     [{emoji} Ban cap created\n Guild1\n Channel1]
     """
     c = channel.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {c} {category} {hours}"
     if os.environ["TEST_MODE"].lower() == "integration":

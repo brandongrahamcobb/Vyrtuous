@@ -182,7 +182,7 @@ class GuildOwnerTextCommands(commands.Cog):
         )
         obj = target or "all"
         object_dict = self.__discord_object_service.translate(obj=obj)
-        pages = await self.developer_service.build_pages(object_dict=object_dict)
+        pages = await self.__developer_service.build_pages(object_dict=object_dict)
         return await state.end(success=pages)
 
     @commands.command(name="sync", help="Sync app commands.")
