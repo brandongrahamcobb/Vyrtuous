@@ -42,12 +42,14 @@ class TargetIsBot(commands.CheckFailure):
 
 
 class DiscordObjectService:
-    def translate(
+    def to_dict(
         self,
         obj: Union[
             str, discord.abc.GuildChannel, discord.Role, discord.Guild, discord.Member
         ],
     ):
+        if not obj:
+            return None
         kwargs = {"columns": {}}
         if obj and str(obj).lower() == "all":
             return kwargs

@@ -38,77 +38,48 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, source_channel, action, type, target",
+    "permission_role, command, source_channel, target",
     [
         (
             "Administrator",
             "!stream",
             "{source_channel_snowflake}",
-            "create",
-            "all",
             None,
         ),
         (
             "Administrator",
             "!stream",
             "{source_channel_snowflake}",
-            "modify",
-            "channel",
             "{target_channel_snowflake}",
         ),
+        ("Administrator", "!stream", "{source_channel_snowflake}", None),
         (
             "Administrator",
             "!stream",
-            "{source_channel_snowflake}",
-            "delete",
-            None,
+            "<#{source_channel_snowflake}>",
             None,
         ),
         (
             "Administrator",
             "!stream",
             "<#{source_channel_snowflake}>",
-            "create",
-            "all",
             None,
         ),
         (
             "Administrator",
             "!stream",
             "<#{source_channel_snowflake}>",
-            "modify",
-            None,
-            None,
-        ),
-        (
-            "Administrator",
-            "!stream",
-            "<#{source_channel_snowflake}>",
-            "delete",
-            None,
             None,
         ),
         (
             "Administrator",
             "!stream",
             "{source_channel_snowflake}",
-            "create",
-            "channel",
             "{target_channel_snowflake}",
-        ),
-        (
-            "Administrator",
-            "!stream",
-            "{source_channel_snowflake}",
-            "create",
-            "channel",
-            "Fail",
         ),
     ],
 )
-async def test_stream(
-    bot, command: str, source_channel, action, target, type, permission_role
-):
+async def test_stream(bot, command: str, source_channel, target, permission_role):
     """
     Setup, modify or teardown a streaming route, modifying the
     the PostgresSQL database 'vyrtuous' in the table 'streaming'.
@@ -135,17 +106,12 @@ async def test_stream(
     """
     snowflakes = None
     sc = source_channel.format(source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-    kwargs = {"channel": sc, "action": action}
-    full = f"{command} {sc} {action}"
-    if type:
-        kwargs.update({"entry_type": type})
-        full = f"{command} {sc} {action} {type}"
+    full = f"{command} {sc}"
     if target:
         tc = target.format(
             target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         )
-        snowflakes = [tc]
-        full = f"{command} {sc} {action} {type} {tc}"
+        full = f"{command} {sc} {tc}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
         assert captured

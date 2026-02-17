@@ -108,11 +108,18 @@ class MockGuild(discord.Guild):
         return list(self._roles.values())
 
     async def query_members(
-        self, *, limit=1, user_ids=None, cache=True, presences=None, **kwargs
+        self,
+        argument=None,
+        *,
+        limit=1,
+        user_ids=None,
+        cache=True,
+        presences=None,
+        **kwargs,
     ):
         if user_ids:
-            # return only members matching the IDs
             return [self._members[uid] for uid in user_ids if uid in self._members]
-        # otherwise return all members, up to the limit
+        if argument:
+            return [m for m in self._members.values() if m.name == argument][:limit]
         all_members = list(self._members.values())
         return all_members[:limit]

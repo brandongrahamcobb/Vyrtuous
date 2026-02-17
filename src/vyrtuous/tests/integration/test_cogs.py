@@ -55,7 +55,7 @@ async def test_cogs(bot, command: str, permission_role):
     [{emoji} Cogs\n Cog1\n Cog2]
     """
     if os.environ["TEST_MODE"].lower() == "integration":
-        captured = await send_message(bot=bot, content=full)
+        captured = await send_message(bot=bot, content=command)
         assert captured
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)

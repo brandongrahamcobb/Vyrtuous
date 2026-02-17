@@ -44,7 +44,6 @@ MEMBER_DATA = {
 
 
 class MockMember(discord.Member):
-
     def __init__(
         self,
         guild: MockGuild,
@@ -52,7 +51,7 @@ class MockMember(discord.Member):
         is_bot: bool,
         name: str,
         state: MockState,
-        **overrides
+        **overrides,
     ):
         data = MEMBER_DATA.copy()
         data["user"]["bot"] = is_bot

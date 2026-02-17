@@ -122,15 +122,10 @@ class ModeratorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.__data_service = DataService(
-            duration_service=self.__duration_service,
-            moderator_service=self.__moderator_service,
-        )
         self.__stream_service = StreamService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
-            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
         )
         self.__voice_mute_service = VoiceMuteService(
@@ -473,7 +468,7 @@ class ModeratorTextCommands(commands.Cog):
         target: Union[
             str, discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+            converter=MultiConverter,
             default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),

@@ -28,9 +28,8 @@ from vyrtuous.utils.logger import logger
 
 
 class MessageService:
-
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
+        self.__bot = bot
 
     async def send_message(
         self,
@@ -147,44 +146,41 @@ class MessageService:
 
 
 class PaginatorService:
-
     NAV_EMOJIS = {"\u2b05\ufe0f": -1, "\u27a1\ufe0f": 1}
 
-    def __init__(self, bot, channel_source, pages, state=None, *, timeout=60):
-        self.bot = bot
-        self.channel_source = channel_source
-        self.pages = pages
-        self.state = state
+    def __init__(self, bot):
+        self.__bot = bot
         self.current_page = 0
-        self.timeout = timeout
         self.message = None
         self._reaction_lock = asyncio.Lock()
 
-    async def start(self):
-        embed = self.get_current_embed()
-        if isinstance(self.channel_source, discord.Interaction):
-            if not self.channel_source.response.is_done():
-                await self.channel_source.response.send_message(embed=embed)
-            self.message = await self.channel_source.original_response()
-        elif isinstance(self.channel_source, discord.Message):
-            self.message = await self.channel_source.reply(embed=embed)
+    async def start(self, channel, pages, *, timeout=60):
+        embed = self.get_current_embed(channel=channel, pages=pages)
+        if isinstance(channel, discord.Interaction):
+            if not channel.response.is_done():
+                await channel.response.send_message(embed=embed)
+            self.message = await channel.original_response()
+        elif isinstance(channel, discord.Message):
+            self.message = await channel.reply(embed=embed)
         else:
-            self.message = await self.channel_source.send(embed=embed)
+            self.message = await channel.send(embed=embed)
         for emoji in self.NAV_EMOJIS:
-            await self.message.add_reaction(emoji)
-        self.bot.loop.create_task(self.wait_for_reactions())
+            await self.message.add_reaction(channel=channel, emoji=emoji)
+        self.__bot.loop.create_task(
+            self.wait_for_reactions(channel=channel, pages=pages, timeout=timeout)
+        )
         return self.message
 
-    def get_current_embed(self):
-        embed = self.pages[self.current_page].copy()
-        total_pages = len(self.pages)
+    def get_current_embed(self, channel, pages):
+        embed = pages[self.current_page].copy()
+        total_pages = len(pages)
         label = "page"
         embed.set_footer(
-            text=f"{label} {self.current_page + 1}/{total_pages} • {self.channel_source.guild.name}"
+            text=f"{label} {self.current_page + 1}/{total_pages} • {channel.guild.name}"
         )
         return embed
 
-    async def wait_for_reactions(self):
+    async def wait_for_reactions(self, channel, pages, timeout):
         def look(reaction, user):
             return (
                 reaction.message.id == self.message.id
@@ -194,8 +190,8 @@ class PaginatorService:
 
         while True:
             try:
-                reaction, user = await self.bot.wait_for(
-                    "reaction_add", timeout=self.timeout, check=look
+                reaction, user = await self.__bot.wait_for(
+                    "reaction_add", timeout=timeout, check=look
                 )
             except asyncio.TimeoutError:
                 try:
@@ -203,17 +199,19 @@ class PaginatorService:
                 except Exception as e:
                     logger.warning(str(e).capitalize())
                 break
-            await self.handle_reaction(reaction)
+            await self.handle_reaction(channel=channel, pages=pages, reaction=reaction)
             try:
                 await self.message.remove_reaction(reaction.emoji, user)
             except Exception as e:
                 logger.warning(str(e).capitalize())
 
-    async def handle_reaction(self, reaction):
+    async def handle_reaction(self, channel, pages, reaction):
         async with self._reaction_lock:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):
                 self.current_page = max(
                     0, min(self.current_page + action, len(self.pages) - 1)
                 )
-                await self.message.edit(embed=self.get_current_embed())
+                await self.message.edit(
+                    embed=self.get_current_embed(channel=channel, pages=pages)
+                )

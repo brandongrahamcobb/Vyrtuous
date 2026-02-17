@@ -38,14 +38,14 @@ class StageService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
-        duration=None,
+        duration_service=None,
         emoji=None,
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
-        self.__duration = duration
+        self.__duration_service = duration_service
         self.__emoji = emoji
 
     async def send_stage_ask_to_speak_message(
@@ -64,7 +64,6 @@ class StageService:
             await self.__bot.get_channel(stage.channel_snowflake).send(embed=embed)
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         stages = await self.__database_factory.select(singular=False, **where_kwargs)
         for stage in stages:
@@ -77,7 +76,13 @@ class StageService:
             ].setdefault("stages", {})
             dictionary[stage.guild_snowflake]["channels"][stage.channel_snowflake][
                 "stages"
-            ].update({"expires_in": self.__duration.from_expires_in(stage.expires_in)})
+            ].update(
+                {
+                    "expires_in": self.__duration_service.from_expires_in(
+                        stage.expires_in
+                    )
+                }
+            )
         skipped_channels = self.__dictionary_service.generate_skipped_channels(
             dictionary
         )
@@ -141,7 +146,9 @@ class StageService:
                         value="\n".join(lines),
                         inline=False,
                     )
-                    embed = flush_page(embed, pages, title, guild.name)
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
                     lines = []
                     field_count = 0
                 if lines:

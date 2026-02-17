@@ -24,12 +24,16 @@ from discord.ext import commands
 
 from vyrtuous.administrator.administrator import Administrator
 from vyrtuous.administrator.administrator_service import (
-    AdministratorRoleService, AdministratorService, NotAdministrator)
+    AdministratorRoleService,
+    AdministratorService,
+    NotAdministrator,
+)
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
+
 # from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
@@ -43,17 +47,19 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.utils.author_service import AuthorService
+
 # from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import (DiscordObjectService,
-                                                   MultiConverter)
+from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.message_service import MessageService
+from vyrtuous.utils.message_service import MessageService, PaginatorService
+
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.video_room.video_room_service import VideoRoomService
+
 # from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
@@ -84,6 +90,7 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
             emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
@@ -144,12 +151,14 @@ class AdminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+            paginator_service=self.__paginator_service,
         )
         self.__video_room_service = VideoRoomService(
             bot=self.__bot,
@@ -245,7 +254,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = target or ctx.guild
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__administrator_role_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
@@ -275,7 +284,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        channel_dict = self.__discord_object_service.translate(obj=channel)
+        channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__cap_service.toggle_cap(
             category=category, channel_dict=channel_dict, hours=hours
         )
@@ -304,7 +313,7 @@ class AdminTextCommands(commands.Cog):
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__cap_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
@@ -332,7 +341,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        object_dict = self.__discord_object_service.translate(obj=target)
+        object_dict = self.__discord_object_service.to_dict(obj=target)
         where_kwargs = object_dict.get("columns", None)
         # view = VerifyView(
         #     category=str(category),
@@ -387,8 +396,8 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        channel_dict = self.__discord_object_service.translate(obj=channel)
-        member_dict = self.__discord_object_service.translate(obj=member)
+        channel_dict = self.__discord_object_service.to_dict(obj=channel)
+        member_dict = self.__discord_object_service.to_dict(obj=member)
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         # await PermissionService.has_equal_or_lower_role(
@@ -449,7 +458,7 @@ class AdminTextCommands(commands.Cog):
     #         "member_snowflake": int(ctx.author.id),
     #     }
     #     obj = target or int(ctx.channel.id)
-    #     object_dict = self.__discord_object_service.translate(obj=obj)
+    #     object_dict = self.__discord_object_service.to_dict(obj=obj)
     #     is_at_home = at_home(source=ctx)
     #     updated_kwargs = default_kwargs.copy()
     #     updated_kwargs.update(object_dict.get("columns", None))
@@ -504,7 +513,7 @@ class AdminTextCommands(commands.Cog):
             "member_snowflake": int(ctx.author.id),
         }
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.translate(obj=obj)
+        channel_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__voice_mute_service.room_mute(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
@@ -534,12 +543,8 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         failed, moved = [], []
-        source_channel_dict = self.__discord_object_service.translate(
-            obj=source_channel
-        )
-        target_channel_dict = self.__discord_object_service.translate(
-            obj=target_channel
-        )
+        source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
+        target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
         for member in source_channel_dict.get("object", None).members:
             try:
                 await member.move_to(target_channel_dict.get("object", None))
@@ -626,7 +631,7 @@ class AdminTextCommands(commands.Cog):
             "guild_snowflake": int(ctx.guild.id),
             "member_snowflake": int(ctx.author.id),
         }
-        member_dict = self.__discord_object_service.translate(obj=member)
+        member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__server_mute_service.toggle_server_mute(
             default_kwargs=default_kwargs, member_dict=member_dict, reason=reason
         )
@@ -653,7 +658,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = target or ctx.guild
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__server_mute_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
@@ -682,12 +687,12 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = target or ctx.channel
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__stage_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        return state.end(success=pages)
+        return await state.end(success=pages)
 
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
@@ -709,7 +714,7 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        channel_dict = self.__discord_object_service.translate(obj=channel)
+        channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__temporary_room_service.toggle_temporary_room(
             channel_dict=channel_dict
         )
@@ -741,7 +746,7 @@ class AdminTextCommands(commands.Cog):
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__temporary_room_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
@@ -758,7 +763,7 @@ class AdminTextCommands(commands.Cog):
         ),
         source_channel: discord.abc.GuildChannel = commands.parameter(
             converter=commands.VoiceChannelConverter,
-            default=None
+            default=None,
             description="Tag a channel or include its ID.",
         ),
     ):
@@ -775,10 +780,9 @@ class AdminTextCommands(commands.Cog):
         #     "guild_snowflake": int(ctx.guild.id),
         #     "member_snowflake": int(ctx.author.id),
         # }
-        target_channel_dict = self.__discord_object_service.translate(obj=channel)
-        source_channel_dict = self.__discord_object_service.translate(obj=channel)
+        target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
+        source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
         pages = await self.__stream_service.toggle_stream(
-            default_kwargs=default_kwargs,
             source_channel_dict=source_channel_dict,
             target_channel_dict=target_channel_dict,
         )
@@ -808,7 +812,7 @@ class AdminTextCommands(commands.Cog):
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__stream_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
@@ -834,7 +838,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.translate(obj=obj)
+        channel_dict = self.__discord_object_service.to_dict(obj=obj)
         msg = await self.__video_room_service.toggle_video_room(
             channel_dict=channel_dict
         )
@@ -866,7 +870,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = target or ctx.channel
-        object_dict = self.__discord_object_service.translate(obj=obj)
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
         is_at_home = at_home(source=ctx)
         pages = await self.__video_room_service.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
@@ -916,11 +920,11 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.translate(obj=obj)
+        channel_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__voice_mute_service.room_unmute(
             channel_dict=channel_dict, guild_snowflake=ctx.guild.id
         )
-        return state.end(success=pages)
+        return await state.end(success=pages)
 
 
 async def setup(bot: DiscordBot):

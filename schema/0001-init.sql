@@ -317,12 +317,10 @@ ALTER TABLE public.roles OWNER TO vyrtuous;
 --
 
 CREATE TABLE public.streaming (
-    channel_snowflake bigint NOT NULL,
+    target_channel_snowflake bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    enabled boolean DEFAULT false,
-    entry_type text NOT NULL,
+    source_channel_snowflake bigint DEFAULT NULL,
     guild_snowflake bigint NOT NULL,
-    snowflakes bigint[],
     updated_at timestamp with time zone DEFAULT now()
 );
 
@@ -518,7 +516,7 @@ ALTER TABLE ONLY public.roles
 --
 
 ALTER TABLE ONLY public.streaming
-    ADD CONSTRAINT streaming_pkey PRIMARY KEY (channel_snowflake, entry_type);
+    ADD CONSTRAINT unique_target_source UNIQUE (target_channel_snowflake, source_channel_snowflake);
 
 
 --

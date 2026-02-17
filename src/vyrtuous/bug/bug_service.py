@@ -297,40 +297,40 @@ class BugService:
         except discord.Forbidden as e:
             self.__bot.logger.info(str(e).capitalize())
 
-    async def assign_bug_to_developer(self, reference, member_dict):
-        where_kwargs = member_dict.get("columns", None)
-
-        self.__database_factory.model = Developer
-        developer = await self.__database_factory.select(singular=True, **where_kwargs)
-        if not developer:
-            return (
-                f"Developer not found for target ({member_dict.get('mention', None)})."
-            )
-        self.__database_factory.model = self.MODEL
-        bug = await self.__database_factory.select(
-            id=reference, resolved=False, singular=True
-        )
-        if not bug:
-            return f"Unresolved issue not found for reference: {reference}."
-        member_snowflakes = bug.member_snowflakes
-        where_kwargs = {"id": bug.id}
-        member_snowflakes = bug.member_snowflakes
-        if developer.member_snowflake in bug.member_snowflakes:
-            member_snowflakes.remove(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="unassigned",
-                member_snowflake=developer.member_snowflake,
-            )
-            return embed
-        else:
-            member_snowflakes.append(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="assigned",
-                member_snowflake=developer.member_snowflake,
-            )
-            await member_dict.get("object", None).send(embed=embed)
-            return embed
+    # async def assign_bug_to_developer(self, reference, member_dict):
+    #     where_kwargs = member_dict.get("columns", None)
+    #
+    #     self.__developer_service.
+    #     developer = await self.__database_factory.select(singular=True, **where_kwargs)
+    #     if not developer:
+    #         return (
+    #             f"Developer not found for target ({member_dict.get('mention', None)})."
+    #         )
+    #     self.__database_factory.model = self.MODEL
+    #     bug = await self.__database_factory.select(
+    #         id=reference, resolved=False, singular=True
+    #     )
+    #     if not bug:
+    #         return f"Unresolved issue not found for reference: {reference}."
+    #     member_snowflakes = bug.member_snowflakes
+    #     where_kwargs = {"id": bug.id}
+    #     member_snowflakes = bug.member_snowflakes
+    #     if developer.member_snowflake in bug.member_snowflakes:
+    #         member_snowflakes.remove(developer.member_snowflake)
+    #         set_kwargs = {"member_snowflakes": member_snowflakes}
+    #         await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+    #         embed = await bug.create_embed(
+    #             action="unassigned",
+    #             member_snowflake=developer.member_snowflake,
+    #         )
+    #         return embed
+    #     else:
+    #         member_snowflakes.append(developer.member_snowflake)
+    #         set_kwargs = {"member_snowflakes": member_snowflakes}
+    #         await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+    #         embed = await bug.create_embed(
+    #             action="assigned",
+    #             member_snowflake=developer.member_snowflake,
+    #         )
+    #         await member_dict.get("object", None).send(embed=embed)
+    #         return embed

@@ -272,6 +272,7 @@ class VoiceMuteService:
             color=discord.Color.blurple(),
         )
         pages.append(embed)
+        print(pages)
         return pages
 
     async def room_unmute(self, channel_dict, guild_snowflake):

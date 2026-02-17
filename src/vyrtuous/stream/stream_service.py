@@ -157,6 +157,7 @@ class StreamService:
         duration_service=None,
         emoji=None,
         moderator_service=None,
+        paginator_service=None,
     ):
         self.__author_service = author_service
         self.__bot = bot
@@ -267,6 +268,10 @@ class StreamService:
         title = f"{self.__emoji.get_random_emoji()} Streaming Routes"
 
         where_kwargs = object_dict.get("columns", None)
+        if where_kwargs.get("channel_snowflake", None):
+            where_kwargs["target_channel_snowflake"] = where_kwargs.pop(
+                "channel_snowflake"
+            )
         dictionary = await self.build_clean_dictionary(
             is_at_home=is_at_home, where_kwargs=where_kwargs
         )
@@ -329,9 +334,15 @@ class StreamService:
         target_channel_dict,
     ):
         where_kwargs = {
-            "source_channel_snowflake": source_channel_dict.get("id", None),
+            "guild_snowflake": target_channel_dict.get("columns", None).get(
+                "guild_snowflake"
+            ),
             "target_channel_snowflake": target_channel_dict.get("id", None),
         }
+        if source_channel_dict:
+            where_kwargs.update(
+                {"source_channel_snowflake": source_channel_dict.get("id", None)}
+            )
         stream = await self.__database_factory.select(singular=True, **where_kwargs)
         if stream:
             await self.__database_factory.delete(**where_kwargs)
@@ -341,7 +352,8 @@ class StreamService:
             await self.__database_factory.create(obj=stream)
             action = "created"
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} from {source_channel_dict.get('mention', None)} to {target_channel_dict.get('mention', None)}.",
+            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} {f'from {source_channel_dict.get('mention', None)}' if source_channel_dict else ''} to {target_channel_dict.get('mention', None)}",
             color=0x00FF00,
         )
+
         return [embed]

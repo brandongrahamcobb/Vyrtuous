@@ -340,7 +340,7 @@ class AdministratorRoleService:
 
         skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
         skipped_roles = self.__dictionary_service.generate_skipped_roles(dictionary)
-        cleaned_dictionary = clean_dictionary(
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
             dictionary=dictionary,
             skipped_guilds=skipped_guilds,
             skipped_roles=skipped_roles,

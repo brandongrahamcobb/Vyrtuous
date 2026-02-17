@@ -26,7 +26,7 @@ class Stream:
     __tablename__ = "streaming"
     identifier = "stream"
     target_channel_snowflake: int
-    source_channel_snowflake: int
     guild_snowflake: int
+    source_channel_snowflake: int | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
