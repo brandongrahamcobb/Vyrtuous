@@ -27,7 +27,7 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 
-# from vyrtuous.cog.help_command import skip_help_discovery
+from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.developer.developer_service import DeveloperService
@@ -170,7 +170,7 @@ class CoordinatorTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="stage", help="Start/stop stage")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def toggle_stage_text_command(
         self,
         ctx: commands.Context,

@@ -17,65 +17,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import discord
-from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.bug.bug_service import BugService
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.field.snowflake import AppMemberSnowflake
 from vyrtuous.sysadmin.sysadmin import Sysadmin
-from vyrtuous.sysadmin.sysadmin_service import sysadmin_predicator
-from vyrtuous.utils.discord_object_service import DiscordObject
-from vyrtuous.utils.message_service import MessageService
-from vyrtuous.utils.state_service import StateService
 
 
 class SysadminAppCommands(commands.Cog):
-
     ROLE = Sysadmin
 
-    def __init__(self, bot: DiscordBot):
-        self.bot = bot
-        self.message_service = MessageService(self.bot)
-
-    @app_commands.command(name="assign", description="Assign developer.")
-    @app_commands.describe(
-        reference="Include an issue reference ID",
-        member="Tag a member or include their ID",
-    )
-    @sysadmin_predicator()
-    async def assign_bug_to_developer_app_command(
-        self,
-        interaction: discord.Interaction,
-        reference: str,
-        member: AppMemberSnowflake,
-    ):
-        state = StateService(interaction=interaction)
-        do = DiscordObject(interaction=interaction)
-        member_dict = await do.determine_from_target(target=member)
-        embed = await BugService.assign_bug_to_developer(
-            reference=reference, member_dict=member_dict
-        )
-        return await state.end(success=embed)
-
-    @app_commands.command(name="dev", description="Grant/revoke devs.")
-    @app_commands.describe(member="Tag a member or include their ID")
-    @sysadmin_predicator()
-    async def toggle_developer_app_command(
-        self, interaction: discord.Interaction, member: AppMemberSnowflake
-    ):
-        state = StateService(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
-        do = DiscordObject(interaction=interaction)
-        member_dict = await do.determine_from_target(target=member)
-        msg = await DeveloperService.toggle_developer(member_dict=member_dict)
-        return await state.end(success=msg)
+    def __init__(self, *, bot: DiscordBot | None = None):
+        self.__bot = bot
 
 
 async def setup(bot: DiscordBot):

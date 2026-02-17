@@ -24,7 +24,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from vyrtuous.alias.alias import Alias
+from vyrtuous.alias.alias_service import AliasService
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import PERMISSION_TYPES
 from vyrtuous.moderator.moderator_service import moderator_predicator
@@ -32,6 +33,8 @@ from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.emojis import Emojis
 
 
 def skip_help_discovery():
@@ -43,9 +46,20 @@ def skip_help_discovery():
 
 
 class HelpCommand(commands.Cog):
+    __MODEL = Alias
 
-    def __init__(self, bot: DiscordBot):
-        self.bot = bot
+    def __init__(self, *, bot: DiscordBot | None = None):
+        self.__bot = bot
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__database_factory.model = self.__MODEL
+        self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__emoji = Emojis()
+        self.__alias_service = AliasService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
         self.message_service = MessageService(self.bot)
@@ -139,11 +153,17 @@ class HelpCommand(commands.Cog):
         cmd = self.bot.get_command(name.lower())
         if cmd:
             return ("command", cmd)
-        alias = await Alias.select(
+        alias = await self.__database_factory.select(
             alias_name=name.lower(), guild_snowflake=source.guild.id, singular=True
         )
         if alias and alias.guild_snowflake == source.guild.id:
             return ("alias", alias)
+        return (None, None)
+
+    async def resolve_app_command_or_alias(self, source, name: str):
+        command = self.bot.tree.get_command(name.lower(), guild=source.guild)
+        if command:
+            return ("command", command)
         return (None, None)
 
     def split_command_list(self, commands_list, max_length=1024):
@@ -190,9 +210,6 @@ class HelpCommand(commands.Cog):
                     )
             return perm_alias_map
 
-    @app_commands.command(name="help", description="List commands.")
-    @app_commands.describe(command_name="The command to view details for.")
-    @moderator_predicator()
     async def help_app_command(
         self, interaction: discord.Interaction, *, command_name: str | None = None
     ):

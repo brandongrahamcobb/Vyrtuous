@@ -34,7 +34,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
 
-# from vyrtuous.cog.help_command import skip_help_discovery
+from vyrtuous.cog.help_command import skip_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
@@ -232,7 +232,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="aroles", help="Administrator roles.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def list_administrator_roles_text_command(
         self,
         ctx: commands.Context,
@@ -262,7 +262,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="cap", help="Cap alias duration for mods.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def cap_text_command(
         self,
         ctx: commands.Context,
@@ -291,7 +291,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="caps", help="List caps.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
@@ -442,7 +442,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=f"```log\n{output}\n```")
 
     # @commands.command(name="pc", help="View permissions.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     # async def list_permissions_text_command(
     #     self,
     #     ctx: commands.Context,
@@ -586,7 +586,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=embed)
 
     @commands.command(name="roleid", help="Get role by name.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
         state = StateService(
             author_service=self.__author_service,
@@ -666,7 +666,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stages", help="List stages.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
@@ -697,7 +697,7 @@ class AdminTextCommands(commands.Cog):
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
     )
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -724,7 +724,7 @@ class AdminTextCommands(commands.Cog):
         name="temps",
         help="List temporary rooms with matching command aliases.",
     )
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
@@ -753,7 +753,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -789,7 +789,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -819,7 +819,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
@@ -848,7 +848,7 @@ class AdminTextCommands(commands.Cog):
         name="vrs",
         help="List video rooms.",
     )
-    # @skip_help_discovery()
+    @skip_help_discovery()
     async def list_video_rooms_text_command(
         self,
         ctx: commands.Context,

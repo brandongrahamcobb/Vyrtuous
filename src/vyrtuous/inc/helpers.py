@@ -71,22 +71,3 @@ DISCORD_COMMAND_PREFIX = "!"
 #### PATHS
 PATH_TOML = join(DIR_HOME, "git", "sandbox", "python", "Vyrtuous", "pyproject.toml")
 PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
-
-PERMISSION_TYPES = [
-    "Everyone",
-    "Moderator",
-    "Coordinator",
-    "Administrator",
-    "Guild Owner",
-    "Developer",
-    "Sysadmin",
-]
-TARGET_PERMISSIONS = (
-    "add_reactions",
-    "manage_messages",
-    "move_members",
-    "mute_members",
-    "send_messages",
-    "view_channel",
-)
-CHUNK_SIZE = 7

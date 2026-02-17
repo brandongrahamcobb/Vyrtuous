@@ -17,130 +17,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Literal, Optional
-
-import discord
-from discord import app_commands
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import AdministratorRoleService
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cog.help_command import skip_help_discovery
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.field.snowflake import AppMemberSnowflake, AppRoleSnowflake
 from vyrtuous.owner.guild_owner import GuildOwner
-from vyrtuous.owner.guild_owner_service import guild_owner_predicator
-from vyrtuous.utils.discord_object_service import DiscordObject
-from vyrtuous.utils.message_service import MessageService
-from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.utils.state_service import StateService
 
 
 class GuildOwnerAppCommands(commands.Cog):
-
     ROLE = GuildOwner
 
-    def __init__(self, bot: DiscordBot):
-        self.bot = bot
-        self.message_service = MessageService(self.bot)
-
-    @app_commands.command(name="admin", description="Role -> Administrator.")
-    @guild_owner_predicator()
-    async def toggle_administrator_by_role_app_command(
-        self, interaction: discord.Interaction, role: AppRoleSnowflake
-    ):
-        state = StateService(interaction=interaction)
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
-        do = DiscordObject(interaction=interaction)
-        role_dict = await do.determine_from_target(target=role)
-        pages = await AdministratorRoleService.toggle_administrator_role(
-            defaukt_kwargs=default_kwargs,
-            role_dict=role_dict,
-        )
-        await StateService.send_pages(
-            title="Administrator Role", pages=pages, state=state
-        )
-
-    @app_commands.command(name="devs", description="List devs.")
-    @app_commands.describe(target="Specify one of: 'all', or server ID.")
-    @guild_owner_predicator()
-    async def list_developers_app_command(
-        self, interaction: discord.Interaction, target: str
-    ):
-        state = StateService(interaction=interaction)
-        do = DiscordObject(interaction=interaction)
-        target = target or "all"
-        object_dict = await do.determine_from_target(target=target)
-        pages = await DeveloperService.build_pages(object_dict=object_dict)
-        await StateService.send_pages(title="Developer", pages=pages, state=state)
-
-    @app_commands.command(name="hero", description="Grant/revoke invincibility.")
-    @app_commands.describe(member="Tag a member or include their ID")
-    @guild_owner_predicator()
-    @skip_help_discovery()
-    async def invincibility_app_command(
-        self, interaction: discord.Interaction, member: AppMemberSnowflake
-    ):
-        state = StateService(interaction=interaction)
-        do = DiscordObject(interaction=interaction)
-        member_dict = await do.determine_from_target(target=member)
-        where_kwargs = member_dict.get("columns", None)
-        enabled = PermissionService.toggle_enabled()
-        if enabled:
-            PermissionService.add_invincible_member(**where_kwargs)
-            await PermissionService.unrestrict(**where_kwargs)
-            msg = (
-                f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member_dict.get("mention", None)}."
-            )
-        else:
-            PermissionService.remove_invincible_member(**where_kwargs)
-            msg = f"Invincibility has been disabled for {member_dict.get("mention", None)}"
-        return await state.end(success=msg)
-
-    @app_commands.command(name="sync", description="Sync app commands.")
-    @guild_owner_predicator()
-    async def sync_app_command(
-        self,
-        interaction: discord.Interaction,
-        spec: Optional[Literal["~", "*", "^"]] = None,
-    ):
-        await interaction.response.defer(ephemeral=True)
-        state = StateService(interaction=interaction)
-        guilds = interaction.client.guilds
-        synced = []
-        if not guilds:
-            if spec == "~":
-                synced = await interaction.client.tree.sync(guild=interaction.guild)
-            elif spec == "*":
-                interaction.client.tree.copy_global_to(guild=interaction.guild)
-                synced = await interaction.client.tree.sync(guild=interaction.guild)
-            elif spec == "^":
-                interaction.client.tree.clear_commands(guild=interaction.guild)
-                await interaction.client.tree.sync(guild=interaction.guild)
-            else:
-                synced = await interaction.client.tree.sync()
-            try:
-                if spec is None:
-                    msg = f"Synced {len(synced)} " f"commands globally."
-                else:
-                    msg = f"Synced {len(synced)} " f"commands to the current server."
-                return await state.end(success=msg)
-            except Exception as e:
-                return await state.end(warning=str(e).capitalize())
-        ret = 0
-        for guild in guilds:
-            try:
-                await interaction.client.tree.sync(guild=guild)
-            except discord.HTTPException:
-                pass
-            else:
-                ret += 1
-        return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
+    def __init__(self, *, bot: DiscordBot | None = None):
+        self.__bot = bot
 
 
 async def setup(bot: DiscordBot):

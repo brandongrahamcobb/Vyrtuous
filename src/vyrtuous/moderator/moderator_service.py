@@ -23,12 +23,15 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import AdministratorService
-from vyrtuous.coordinator.coordinator_service import CoordinatorService
-from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.administrator.administrator_service import (
+    AdministratorService,
+    NotAdministrator,
+)
+from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
+from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
 from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
+from vyrtuous.sysadmin.sysadmin_service import Sysadminservice, NotSysadmin
 
 
 class NotModerator(commands.CheckFailure):
@@ -39,9 +42,25 @@ class NotModerator(commands.CheckFailure):
         super().__init__(message)
 
 
+class HasEqualOrLowerRole(commands.CheckFailure):
+    def __init__(self, target_rank=str):
+        super().__init__(
+            message=f"You may not execute this command on this `{target_rank}` because they have equal or higher role than you in this channel/server."
+        )
+
+
 class ModeratorService:
     __CHUNK_SIZE = 7
     MODEL = Moderator
+    PERMISSION_TYPES = [
+        "Everyone",
+        "Moderator",
+        "Coordinator",
+        "Administrator",
+        "Guild Owner",
+        "Developer",
+        "Sysadmin",
+    ]
 
     def __init__(
         self,
@@ -357,3 +376,243 @@ class ModeratorService:
             f"Moderator access for {member_dict.get('mention', None)} has been "
             f"{action} in {channel_dict.get('mention', None)}."
         )
+
+    async def check_minimum_role(
+        self,
+        channel_snowflake,
+        guild_snowflake,
+        member_snowflake,
+        lowest_role: str,
+    ) -> str:
+        verifications = (
+            ("Sysadmin", self.__sysadmin_service.is_sysadmin),
+            ("Developer", self.__developer_service.is_developer),
+            ("Guild Owner", self.__guild_owner_service.is_guild_owner),
+            ("Administrator", self.__administrator_service.is_administrator),
+            ("Coordinator", self.__coordinator_service.is_coordinator),
+            ("Moderator", self.is_moderator),
+        )
+        passed_lowest = False
+        for role_name, verify in verifications:
+            try:
+                if role_name in ("Sysadmin", "Developer"):
+                    if await verify(member_snowflake=int(member_snowflake)):
+                        return role_name
+                elif role_name in ("Guild Owner", "Administrator"):
+                    if await verify(
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
+                else:
+                    if await verify(
+                        channel_snowflake=int(channel_snowflake),
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
+            except commands.CheckFailure:
+                if lowest_role is not None and passed_lowest:
+                    raise
+            if role_name == lowest_role:
+                passed_lowest = True
+        return "Everyone"
+
+    async def check_equal_or_lower_role(
+        self,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
+        target_member_snowflake: int,
+    ) -> bool:
+        sender_name = await self.resolve_highest_role(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        sender_rank = self.PERMISSION_TYPES.index(sender_name)
+        target_name = await self.resolve_highest_role(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=target_member_snowflake,
+        )
+        target_rank = self.PERMISSION_TYPES.index(target_name)
+        self.compare_ranks(sender_rank=sender_rank, target_rank=target_rank)
+        return sender_name
+
+    async def resolve_highest_role(
+        self,
+        channel_snowflake: int,
+        member_snowflake: int,
+        guild_snowflake: int,
+    ):
+        try:
+            if await self.__sysadmin_service.is_sysadmin(
+                member_snowflake=int(member_snowflake)
+            ):
+                return "Sysadmin"
+        except NotSysadmin as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__developer_service.is_developer(
+                member_snowflake=int(member_snowflake)
+            ):
+                return "Developer"
+        except NotDeveloper as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__guild_owner_service.is_guild_owner(
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(member_snowflake),
+            ):
+                return "Guild Owner"
+        except NotGuildOwner as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__administrator_service.is_administrator(
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(member_snowflake),
+            ):
+                return "Administrator"
+        except NotAdministrator as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        if channel_snowflake:
+            try:
+                if await self.__coordinator_service.is_coordinator(
+                    channel_snowflake=int(channel_snowflake),
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(member_snowflake),
+                ):
+                    return "Coordinator"
+            except NotCoordinator as e:
+                self.__bot.logger.warning(str(e).capitalize())
+            try:
+                if await self.is_moderator(
+                    channel_snowflake=int(channel_snowflake),
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(member_snowflake),
+                ):
+                    return "Moderator"
+            except NotModerator as e:
+                self.__bot.logger.warning(str(e).capitalize())
+        return "Everyone"
+
+    async def resolve_highest_role_at_all(
+        self,
+        member_snowflake: int,
+    ):
+        try:
+            if await self.__sysadmin_service.is_sysadmin(
+                member_snowflake=int(member_snowflake)
+            ):
+                return "Sysadmin"
+        except NotSysadmin as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__developer_service.is_developer(
+                member_snowflake=int(member_snowflake)
+            ):
+                return "Developer"
+        except NotDeveloper as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__guild_owner_service.is_guild_owner_at_all(
+                member_snowflake=int(member_snowflake),
+            ):
+                return "Guild Owner"
+        except NotGuildOwner as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__administrator_service.is_administrator_at_all(
+                member_snowflake=int(member_snowflake),
+            ):
+                return "Administrator"
+        except NotAdministrator as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.__coordinator_service.is_coordinator_at_all(
+                member_snowflake=int(member_snowflake),
+            ):
+                return "Coordinator"
+        except NotCoordinator as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        try:
+            if await self.is_moderator_at_all(
+                member_snowflake=int(member_snowflake),
+            ):
+                return "Moderator"
+        except NotModerator as e:
+            self.__bot.logger.warning(str(e).capitalize())
+        return "Everyone"
+
+    def compare_ranks(self, sender_rank, target_rank):
+        try:
+            if sender_rank <= target_rank:
+                raise HasEqualOrLowerRole(self.PERMISSION_TYPES[target_rank])
+        except HasEqualOrLowerRole as e:
+            self.__bot.logger.warning(e)
+        return True
+
+    async def can_list(
+        self, source=Union[commands.Context, discord.Interaction, discord.Message]
+    ):
+        available_channels = {}
+        available_guilds = {}
+        member_snowflake = self.__author_service.resolve_author(source=source).id
+        verifications = (
+            ("all", self.__sysadmin_service.is_sysadmin),
+            ("all", self.__developer_service.is_developer),
+            ("guild", self.__guild_owner_service.is_guild_owner),
+            ("guild", self.__administrator_service.is_administrator),
+            ("channel", self.__coordinator_service.is_coordinator),
+            ("channel", self.is_moderator),
+        )
+        for role_scope, verify in verifications:
+            if role_scope == "all":
+                try:
+                    if await verify(member_snowflake=int(member_snowflake)):
+                        available_guilds["all"] = self.__bot.guilds
+                        available_channels["all"] = []
+                        for guild in self.__bot.guilds:
+                            available_guilds[guild.id] = guild
+                            available_channels.setdefault(guild.id, [])
+                            for channel in guild.channels:
+                                if isinstance(channel, discord.VoiceChannel):
+                                    available_channels[guild.id].append(channel)
+                                    available_channels["all"].append(channel)
+                except commands.CheckFailure:
+                    pass
+            elif role_scope == "guild":
+                try:
+                    for guild in self.__bot.guilds:
+                        if await verify(
+                            guild_snowflake=int(guild.id),
+                            member_snowflake=int(member_snowflake),
+                        ):
+                            available_guilds[guild.id] = guild
+                            available_channels.setdefault(guild.id, [])
+                            for channel in guild.channels:
+                                if isinstance(channel, discord.VoiceChannel):
+                                    available_channels[guild.id].append(channel)
+                except commands.CheckFailure:
+                    pass
+            elif role_scope == "channel":
+                try:
+                    for guild in self.__bot.guilds:
+                        for channel in guild.channels:
+                            if await verify(
+                                channel_snowflake=int(channel.id),
+                                guild_snowflake=int(guild.id),
+                                member_snowflake=int(member_snowflake),
+                            ):
+                                available_guilds[guild.id] = guild
+                                available_channels.setdefault(guild.id, [])
+                                if isinstance(channel, discord.VoiceChannel):
+                                    available_channels[guild.id].append(channel)
+                except commands.CheckFailure:
+                    pass
+        for gid in list(available_channels):
+            available_channels[gid] = list(
+                {c.id: c for c in available_channels[gid]}.values()
+            )
+        return available_channels, available_guilds
