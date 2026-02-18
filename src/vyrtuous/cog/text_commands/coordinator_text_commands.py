@@ -26,8 +26,7 @@ from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-
-from vyrtuous.cog.help_command import skip_help_discovery
+from vyrtuous.cog.help_command import skip_text_command_help_discovery
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.developer.developer_service import DeveloperService
@@ -68,10 +67,18 @@ class CoordinatorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+        )
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
             author_service=self.__author_service,
             bot=self.__bot,
+            bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )
@@ -98,12 +105,6 @@ class CoordinatorTextCommands(commands.Cog):
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
-        )
-        self.__bug_service = BugService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
 
@@ -170,7 +171,7 @@ class CoordinatorTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="stage", help="Start/stop stage")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def toggle_stage_text_command(
         self,
         ctx: commands.Context,

@@ -21,23 +21,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.alias.alias import Alias
-from vyrtuous.ban.ban import Ban
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cap.cap import Cap
-from vyrtuous.coordinator.coordinator import Coordinator
-from vyrtuous.flag.flag import Flag
-from vyrtuous.inc.helpers import CHUNK_SIZE
-from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.stage_room.stage import Stage
 from vyrtuous.temporary_room.temporary_room import TemporaryRoom
-from vyrtuous.text_mute.text_mute import TextMute
-from vyrtuous.vegan.vegan import Vegan
-from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
-class TemporaryRoomService(RecordService):
+class TemporaryRoomService:
+    __CHUNK_SIZE = 7
     MODEL = TemporaryRoom
 
     def __init__(
@@ -45,9 +33,18 @@ class TemporaryRoomService(RecordService):
         *,
         alias_service=None,
         bot=None,
+        cap_service=None,
         database_factory=None,
         dictionary_service=None,
         emoji=None,
+        moderator_service=None,
+        stage_service=None,
+        coordinator_service=None,
+        voice_mute_service=None,
+        ban_service=None,
+        flag_service=None,
+        vegan_service=None,
+        text_mute_service=None,
     ):
         self.__alias_service = alias_service
         self.__bot = bot
@@ -55,6 +52,14 @@ class TemporaryRoomService(RecordService):
         self.__dictionary_service = dictionary_service
         self.__database_factory.model = self.MODEL
         self.__emoji = emoji
+        self.__moderator_service = moderator_service
+        self.__stage_service = stage_service
+        self.__coordinator_service = coordinator_service
+        self.__voice_mute_service = voice_mute_service
+        self.__ban_service = ban_service
+        self.__flag_service = flag_service
+        self.__vegan_service = vegan_service
+        self.__text_mute_service = text_mute_service
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
@@ -107,7 +112,7 @@ class TemporaryRoomService(RecordService):
         return cleaned_dictionary
 
     async def build_pages(self, object_dict, is_at_home):
-        lines = []
+        lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Temporary Rooms"
 
         where_kwargs = object_dict.get("columns", None)
@@ -141,7 +146,7 @@ class TemporaryRoomService(RecordService):
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
                         field_count += 1
-                        if field_count >= CHUNK_SIZE:
+                        if field_count >= self.__CHUNK_SIZE:
                             embed.add_field(
                                 name="Information",
                                 value="\n".join(lines),
@@ -176,40 +181,40 @@ class TemporaryRoomService(RecordService):
 
     async def migrate_temporary_room(self, channel_dict, default_kwargs, old_name):
         guild_snowflake = default_kwargs.get("guild_snowflake", None)
-        # old_room = await self.__database_factory.select(
-        #     guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
-        # )
-        # if not old_room:
-        #     return f"No temporary room found with the name {old_name}."
-        # set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
-        # temp_where_kwargs = {
-        #     "channel_snowflake": old_room.channel_snowflake,
-        #     "guild_snowflake": int(guild_snowflake),
-        #     "room_name": channel_dict.get("name", None),
-        # }
-        # where_kwargs = {
-        #     "channel_snowflake": old_room.channel_snowflake,
-        #     "guild_snowflake": int(guild_snowflake),
-        # }
-        # kwargs = {
-        #     "set_kwargs": set_kwargs,
-        #     "where_kwargs": where_kwargs,
-        # }
-        # await self.__database_factory.update(
-        #     set_kwargs=set_kwargs,
-        #     where_kwargs=temp_where_kwargs,
-        # )
-        # await Alias.update(**kwargs)
-        # await Ban.update(**kwargs)
-        # await Cap.update(**kwargs)
-        # await Coordinator.update(**kwargs)
-        # await Flag.update(**kwargs)
-        # await Moderator.update(**kwargs)
-        # await Stage.update(**kwargs)
-        # await TextMute.update(**kwargs)
-        # await VoiceMute.update(**kwargs)
-        # await Vegan.update(**kwargs)
-        # return f"Temporary room `{old_name}` migrated to {channel_dict.get('mention', None)}."
+        old_room = await self.__database_factory.select(
+            guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
+        )
+        if not old_room:
+            return f"No temporary room found with the name {old_name}."
+        set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
+        temp_where_kwargs = {
+            "channel_snowflake": old_room.channel_snowflake,
+            "guild_snowflake": int(guild_snowflake),
+            "room_name": channel_dict.get("name", None),
+        }
+        where_kwargs = {
+            "channel_snowflake": old_room.channel_snowflake,
+            "guild_snowflake": int(guild_snowflake),
+        }
+        kwargs = {
+            "set_kwargs": set_kwargs,
+            "where_kwargs": where_kwargs,
+        }
+        await self.__database_factory.update(
+            set_kwargs=set_kwargs,
+            where_kwargs=temp_where_kwargs,
+        )
+        await self.__alias_service.migrate(kwargs)
+        await self.__ban_service.migrate(kwargs)
+        await self.__cap_service.migrate(kwargs)
+        await self.__coordinator_service.migrate(kwargs)
+        await self.__flag_service.migrate(kwargs)
+        await self.__moderator_service.migrate(kwargs)
+        await self.__stage_service.migrate(kwargs)
+        await self.__text_mute_service.migrate(kwargs)
+        await self.__voice_mute_service.migrate(kwargs)
+        await self.__vegan_service.migrate(kwargs)
+        return f"Temporary room `{old_name}` migrated to {channel_dict.get('mention', None)}."
 
     async def toggle_temporary_room(self, channel_dict):
         kwargs = {}

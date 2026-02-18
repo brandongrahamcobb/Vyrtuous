@@ -58,7 +58,7 @@ class VideoRoomService:
             self.__bot.logger.info(f"Unable to enforce video by kicking the user. {e}")
         try:
             await member.send(
-                f"{get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel."
+                f"{self.__emoji.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel."
             )
         except Exception as e:
             self.__bot.logger.info(f"Unable to send a message to enforce video. {e}")
@@ -126,7 +126,6 @@ class VideoRoomService:
                 break
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         video_rooms = await self.__database_factory.select(
             singular=False, **where_kwargs

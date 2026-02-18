@@ -35,6 +35,48 @@ class NotAlias(commands.CheckFailure):
 class AliasService:
     __CHUNK_SIZE = 7
     MODEL = Alias
+    CATEGORY_TO_HELP = {
+        "ban": [
+            "**member**: Tag a member or include their ID",
+            "**duration**: m/h/d",
+            "**reason**: Reason for ban",
+        ],
+        "flag": [
+            "**member**: Tag a member or include their ID",
+            "**reason**: Reason for flag",
+        ],
+        "role": [
+            "**member**: Tag a member or include their ID",
+            "**role**: Tag a role or include its ID",
+        ],
+        "tmute": [
+            "**member**: Tag a member or include their ID",
+            "**duration**: m/h/d",
+            "**reason**: Reason for text-mute",
+        ],
+        "vegan": ["**member**: Tag a member or include their ID"],
+        "vmute": [
+            "**member**: Tag a member or include their ID",
+            "**duration**: m/h/d",
+            "**reason**: Reason for voice-mute",
+        ],
+    }
+    CATEGORY_TO_DESCRIPTION = {
+        "ban": "Toggles a ban.",
+        "flag": "Toggles a moderation flag.",
+        "role": "Toggles a role to a user.",
+        "tmute": "Toggles a mute in text channels.",
+        "vegan": "Toggles a going vegan flag.",
+        "vmute": "Toggles a mute in voice channels.",
+    }
+    CATEGORY_TO_PERMISSION_LEVEL = {
+        "ban": "Moderator",
+        "flag": "Moderator",
+        "role": "Coordinator",
+        "tmute": "Moderator",
+        "vegan": "Moderator",
+        "vmute": "Moderator",
+    }
 
     def __init__(
         self, *, bot=None, database_factory=None, dictionary_service=None, emoji=None

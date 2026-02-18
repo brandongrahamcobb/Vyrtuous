@@ -19,7 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import uuid
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -32,13 +31,19 @@ class BugService:
     MODEL = Bug
 
     def __init__(
-        self, bot=None, database_factory=None, dictionary_service=None, emoji=None
+        self,
+        bot=None,
+        database_factory=None,
+        developer_service=None,
+        dictionary_service=None,
+        emoji=None,
     ):
         self.__bot = bot
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+        self.__developer_service = developer_service
 
     async def interact_with_bug(self, action, notes, reference):
         message = "You successfully "
@@ -112,39 +117,19 @@ class BugService:
                                 f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), deleting developer log. {str(e).capitalize()}"
                             )
                             return await self.__database_factory.delete(id=reference)
-                        # time_since_updated = await self.duration.from_expires_at(
-                        #     bug.updated_at
-                        # )
-                        # assigned_developer_mentions = []
-                        # for developer_snowflake in bug.member_snowflakes:
-                        #     assigned_developer = self.__bot.get_user(
-                        #         developer_snowflake
-                        #     )
-                        #     assigned_developer_mentions.append(
-                        #         assigned_developer.mention
-                        #     )
-                        # embed.add_field(
-                        #     name=f"Updated: {time_since_updated}",
-                        #     value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {bug.notes}",
-                        #     inline=False,
-                        # )
-                        # developers = await self.__database_factory.select()
-                        # for developer in developers:
-                        #     member = guild.get_member(developer.member_snowflake)
-                        #     if member is None:
-                        #         self.__bot.logger.info(
-                        #             f"Unable to locate member {member.id} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
-                        #         )
-                        #         continue
-                        #     try:
-                        #         await member.send(embed=embed)
-                        #         self.__bot.logger.info(
-                        #             f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
-                        #         )
-                        #     except Exception as e:
-                        #         self.__bot.logger.warning(
-                        #             f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
-                        #         )
+                        time_since_updated = await self.duration.from_expires_at(
+                            bug.updated_at
+                        )
+                        self.__developer_service.clean_expired(
+                            channel=channel,
+                            embed=embed,
+                            guild_snowflake=guild_snowflake,
+                            member=member,
+                            member_snowflakes=bug.member_snowflakes,
+                            msg=msg,
+                            notes=bug.notes,
+                            time_since_updated=time_since_updated,
+                        )
 
     async def create_embed(self, action, bug, member_snowflake):
         guild = self.__bot.get_guild(bug.guild_snowflake)
@@ -173,7 +158,6 @@ class BugService:
         return embed
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         bugs = await self.__database_factory.select(singular=False, **where_kwargs)
         for bug in bugs:
@@ -297,40 +281,33 @@ class BugService:
         except discord.Forbidden as e:
             self.__bot.logger.info(str(e).capitalize())
 
-    # async def assign_bug_to_developer(self, reference, member_dict):
-    #     where_kwargs = member_dict.get("columns", None)
-    #
-    #     self.__developer_service.
-    #     developer = await self.__database_factory.select(singular=True, **where_kwargs)
-    #     if not developer:
-    #         return (
-    #             f"Developer not found for target ({member_dict.get('mention', None)})."
-    #         )
-    #     self.__database_factory.model = self.MODEL
-    #     bug = await self.__database_factory.select(
-    #         id=reference, resolved=False, singular=True
-    #     )
-    #     if not bug:
-    #         return f"Unresolved issue not found for reference: {reference}."
-    #     member_snowflakes = bug.member_snowflakes
-    #     where_kwargs = {"id": bug.id}
-    #     member_snowflakes = bug.member_snowflakes
-    #     if developer.member_snowflake in bug.member_snowflakes:
-    #         member_snowflakes.remove(developer.member_snowflake)
-    #         set_kwargs = {"member_snowflakes": member_snowflakes}
-    #         await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-    #         embed = await bug.create_embed(
-    #             action="unassigned",
-    #             member_snowflake=developer.member_snowflake,
-    #         )
-    #         return embed
-    #     else:
-    #         member_snowflakes.append(developer.member_snowflake)
-    #         set_kwargs = {"member_snowflakes": member_snowflakes}
-    #         await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-    #         embed = await bug.create_embed(
-    #             action="assigned",
-    #             member_snowflake=developer.member_snowflake,
-    #         )
-    #         await member_dict.get("object", None).send(embed=embed)
-    #         return embed
+    async def assign_bug_to_developer(
+        self, developer, member_dict, reference, where_kwargs
+    ):
+        bug = await self.__database_factory.select(
+            id=reference, resolved=False, singular=True
+        )
+        if not bug:
+            return f"Unresolved issue not found for reference: {reference}."
+        member_snowflakes = bug.member_snowflakes
+        where_kwargs = {"id": bug.id}
+        member_snowflakes = bug.member_snowflakes
+        if developer.member_snowflake in bug.member_snowflakes:
+            member_snowflakes.remove(developer.member_snowflake)
+            set_kwargs = {"member_snowflakes": member_snowflakes}
+            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            embed = await bug.create_embed(
+                action="unassigned",
+                member_snowflake=developer.member_snowflake,
+            )
+            return embed
+        else:
+            member_snowflakes.append(developer.member_snowflake)
+            set_kwargs = {"member_snowflakes": member_snowflakes}
+            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            embed = await bug.create_embed(
+                action="assigned",
+                member_snowflake=developer.member_snowflake,
+            )
+            await member_dict.get("object", None).send(embed=embed)
+            return embed

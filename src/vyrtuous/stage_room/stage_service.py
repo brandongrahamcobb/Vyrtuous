@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 stage_service.py The purpose of this program is to extend Service to service the stage class.
 
@@ -20,12 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import time
+from copy import copy
 
 import discord
 
 from vyrtuous.stage_room.stage import Stage
-
-# from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
 class StageService:
@@ -40,6 +37,8 @@ class StageService:
         dictionary_service=None,
         duration_service=None,
         emoji=None,
+        moderator_service=None,
+        voice_mute_service=None,
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
@@ -47,6 +46,8 @@ class StageService:
         self.__dictionary_service = dictionary_service
         self.__duration_service = duration_service
         self.__emoji = emoji
+        self.__moderator_service = moderator_service
+        self.__voice_mute_service = voice_mute_service
 
     async def send_stage_ask_to_speak_message(
         self, join_log: dict[int, discord.Member], member: discord.Member, stage: Stage
@@ -173,34 +174,9 @@ class StageService:
         if stage:
             title = f"{self.__emoji.get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
             await self.__database_factory.delete(**updated_kwargs)
-            # for member in channel_dict.get("object", None).members:
-            # await VoiceMute.delete(
-            #     **updated_kwargs,
-            #     member_snowflake=member.id,
-            #     target="room",
-            # )
-            # voice_mute = await VoiceMute.select(
-            #     **updated_kwargs,
-            #     member_snowflake=member.id,
-            #     target="user",
-            #     singular=True,
-            # )
-            # if not voice_mute and member.voice and member.voice.mute:
-            #     try:
-            #         await member.edit(
-            #             mute=False,
-            #             reason="Stage ended — no user-specific mute found",
-            #         )
-            #         succeeded.append(member)
-            #     except discord.Forbidden as e:
-            #         logger.warning(
-            #             f"Unable to undo voice-mute "
-            #             f"for member {member.display_name} ({member.id}) in "
-            #             f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
-            #             f"guild {guild.name} ({guild.id}). "
-            #             f"{str(e).capitalize()}"
-            #         )
-            #         failed.append(member)
+            failed, succeeded = await self.__voice_mute_service.off_stage(
+                channel_dict=channel_dict, member=member, updated_kwargs=updated_kwargs
+            )
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
                 f"**Unmuted:** {len(succeeded)} users",
@@ -219,36 +195,11 @@ class StageService:
                 expires_in=duration.expires_in,
             )
             await self.__database_factory.create(stage)
-            # for member in channel_dict.get("object", None).members:
-            # if await PermissionService.check(
-            #     **updated_kwargs,
-            #     lowest_role="Coordinator",
-            # ) or member.id == updated_kwargs.get("member_snowflake", None):
-            #     skipped.append(member)
-            #     continue
-            # voice_mute = await VoiceMute(
-            #     **updated_kwargs,
-            #     expires_in=duration.expires_in,
-            #     member_snowflake=member.id,
-            #     target="room",
-            #     reason="Stage mute",
-            # )
-            # await voice_mute.create()
-            # try:
-            #     if member.voice and member.voice.channel.id == channel_dict.get(
-            #         "id", None
-            #     ):
-            #         await member.edit(mute=True)
-            #     succeeded.append(member)
-            # except Exception as e:
-            #     logger.warning(
-            #         f"Unable to voice-mute "
-            #         f"member {member.display_name} ({member.id}) "
-            #         f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
-            #         f"in guild {guild.name} ({guild.id}). "
-            #         f"{str(e).capitalize()}"
-            #     )
-            #     failed.append(member)
+            failed, skipped, succeeded = await self.__voice_mute_service.on_stage(
+                channel_dict=channel_dict,
+                duration=duration,
+                updated_kwargs=updated_kwargs,
+            )
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
                 f"**Expires:** {duration}",
@@ -266,10 +217,10 @@ class StageService:
         return pages
 
     async def toggle_stage_mute(self, channel_dict, default_kwargs, member_dict):
-        # await PermissionService.has_equal_or_lower_role(
-        #     **default_kwargs,
-        #     target_member_snowflake=member_dict.get("id", None),
-        # )
+        await self.__moderator_service.has_equal_or_lower_role(
+            **default_kwargs,
+            target_member_snowflake=member_dict.get("id", None),
+        )
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
         stage = await self.__database_factory.select(singular=True, **updated_kwargs)
@@ -278,3 +229,34 @@ class StageService:
                 mute=not member_dict.get("object", None).voice.mute
             )
             return f"Successfully toggled the mute for {member_dict.get('mention', None)} in {channel_dict.get('mention', None)}."
+
+    async def clean_expired(self):
+        expired_stages = await self.__database_factory.select(expired=True)
+        if expired_stages:
+            for expired_stage in expired_stages:
+                channel_snowflake = int(expired_stage.channel_snowflake)
+                guild_snowflake = int(expired_stage.guild_snowflake)
+                guild = self.__bot.get_guild(guild_snowflake)
+                if guild is None:
+                    await self.__database_factory.delete(
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
+                    )
+                    self.__bot.logger.info(
+                        f"Unable to locate guild {guild_snowflake}, cleaning up expired stage."
+                    )
+                    continue
+                channel = guild.get_channel(channel_snowflake)
+                if channel is None:
+                    await self.__database_factory.delete(
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
+                    )
+                    self.__bot.logger.info(
+                        f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
+                    )
+                    continue
+                self.__voice_mute_service.clean_stage_expired(
+                    channel=channel, guild=guild
+                )
+            self.__bot.logger.info("Cleaned up expired stages.")

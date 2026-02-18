@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 from io import BytesIO
-from pathlib import Path
 
 import discord
 import matplotlib.dates as mdates
@@ -28,27 +27,41 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from vyrtuous.ban.ban import Ban
-from vyrtuous.base.infraction import Infraction
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.text_mute.text_mute import TextMute
-from vyrtuous.utils.dir_to_classes import dir_to_classes
-from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.voice_mute.voice_mute import VoiceMute
-
 
 class DataView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction):
+    def __init__(
+        self,
+        *,
+        ban_service=None,
+        duration_service=None,
+        flag_service=None,
+        interaction: discord.Interaction = None,
+        moderator_service=None,
+        text_mute_service=None,
+        voice_mute_service=None,
+        state=None,
+    ):
         super().__init__(timeout=120)
-        self.bot = DiscordBot.get_instance()
-        self.information = {}
-        self.available_channels = {}
-        self.author_snowflake = int(interaction.user.id)
-        self.interaction = interaction
+        self.__information = {}
+        self.__available_channels = {}
+        self.__author_snowflake = int(interaction.user.id)
+        self.__interaction = interaction
+        self.__moderator_service = moderator_service
+        self.__ban_service = ban_service
+        self.__voice_mute_service = voice_mute_service
+        self.__flag_service = flag_service
+        self.__text_mute_service = text_mute_service
+        self.__infractions = [
+            self.__ban_service.MODEL,
+            self.__flag_service.MODEL,
+            self.__text_mute_service.MODEL,
+            self.__voice_mute_service.MODEL,
+        ]
+        self.__state = state
+        self.__duration_service = duration_service
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.author_snowflake
+        return interaction.user.id == self.__author_snowflake
 
     async def setup(self):
         self.channel_select.options = [
@@ -76,10 +89,10 @@ class DataView(discord.ui.View):
 
     async def _build_guild_options(self):
         guild_options = []
-        available_channels, available_guilds = await PermissionService.can_list(
-            source=self.interaction
+        available_channels, available_guilds = await self.__moderator_service.can_list(
+            source=self.__interaction
         )
-        self.available_channels = available_channels
+        self.__available_channels = available_channels
         if "all" in available_guilds:
             guild_list = available_guilds["all"]
             guild_options.append(discord.SelectOption(label="All", value="all"))
@@ -91,19 +104,18 @@ class DataView(discord.ui.View):
         return guild_options
 
     def _build_infraction_options(self):
-        infractions = [Ban, TextMute, VoiceMute]
         return [
             discord.SelectOption(
                 label=infraction.identifier, value=infraction.identifier
             )
-            for infraction in infractions
+            for infraction in self.__infractions
             if infraction.identifier != "smute"
         ]
 
     @discord.ui.select(placeholder="Select guild", options=[])
     async def guild_select(self, interaction, select):
         value = select.values[0]
-        self.information["guild_snowflake"] = None if value == "all" else int(value)
+        self.__information["guild_snowflake"] = None if value == "all" else int(value)
         self.guild_select.placeholder = (
             "All" if value == "all" else interaction.guild.name
         )
@@ -111,7 +123,7 @@ class DataView(discord.ui.View):
         channel_options = []
         if value == "all":
             top_channels = []
-            for guild_id, ch_list in self.available_channels.items():
+            for guild_id, ch_list in self.__available_channels.items():
                 if guild_id == "all":
                     continue
                 guild = interaction.client.get_guild(int(guild_id))
@@ -139,7 +151,7 @@ class DataView(discord.ui.View):
             top_ids = {c.id for c in top_channels}
             filtered_channels = []
             seen = set()
-            for ch_list in self.available_channels.values():
+            for ch_list in self.__available_channels.values():
                 for ch in ch_list:
                     if ch != "all" and ch.id in top_ids and ch.id not in seen:
                         seen.add(ch.id)
@@ -161,7 +173,7 @@ class DataView(discord.ui.View):
     @discord.ui.select(placeholder="Select channel", options=[])
     async def channel_select(self, interaction, select):
         value = select.values[0]
-        self.information["channel_snowflake"] = None if value == "all" else int(value)
+        self.__information["channel_snowflake"] = None if value == "all" else int(value)
         self.channel_select.placeholder = (
             "All" if value == "all" else interaction.guild.get_channel(int(value)).name
         )
@@ -174,7 +186,9 @@ class DataView(discord.ui.View):
     )
     async def duration_select(self, interaction, select):
         duration_name = select.values[0]
-        self.duration_select.placeholder = self.information["duration"] = duration_name
+        self.duration_select.placeholder = self.__information["duration"] = (
+            duration_name
+        )
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -183,13 +197,11 @@ class DataView(discord.ui.View):
         options=[],
     )
     async def infraction_select(self, interaction, select):
-        dir_paths = []
-        dir_paths.append(Path("/app/vyrtuous/db/infractions"))
         infraction_name = select.values[0]
-        for obj in dir_to_classes(dir_paths=dir_paths, parent=Infraction):
-            if obj.identifier == infraction_name and obj.identifier != "smute":
-                self.information["infraction"] = obj
-                self.information["title"] = obj.__name__
+        for infraction in self.__infractions:
+            if infraction.identifier == infraction_name:
+                self.__information["infraction"] = infraction
+                self.__information["title"] = infraction.__name__
         self.infraction_select.placeholder = infraction_name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -199,23 +211,25 @@ class DataView(discord.ui.View):
         column_names = ["created_at", "infraction_type"]
         conditions = []
         values = []
-        if self.information.get("channel_snowflake"):
+        if self.__information.get("channel_snowflake"):
             conditions.append(f"channel_snowflake=${len(values) + 1}")
-            values.append(self.information["channel_snowflake"])
-        if self.information.get("guild_snowflake"):
+            values.append(self.__information["channel_snowflake"])
+        if self.__information.get("guild_snowflake"):
             conditions.append(f"guild_snowflake=${len(values) + 1}")
-            values.append(self.information["guild_snowflake"])
-        if "infraction" in self.information:
+            values.append(self.__information["guild_snowflake"])
+        if "infraction" in self.__information:
             conditions.append(f"infraction_type=${len(values) + 1}")
-            values.append(self.information["infraction"].identifier)
-        if "duration" in self.information:
+            values.append(self.__information["infraction"].identifier)
+        if "duration" in self.__information:
             conditions.append(f"created_at >= ${len(values) + 1}")
             values.append(
                 datetime.now(timezone.utc)
-                - DurationObject(self.information["duration"]).to_timedelta()
+                - self.__duration_service.parse(
+                    self.__information["duration"]
+                ).to_timedelta()
             )
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        async with self.bot.db_pool.acquire() as conn:
+        async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 f"SELECT created_at, infraction_type FROM moderation_logs {where_clause}",
                 *values,
@@ -236,9 +250,11 @@ class DataView(discord.ui.View):
         plt.figure(figsize=(12, 6))
         sns.lineplot(data=df, x="created_at", y="cumulative")
         plt.plot(df["created_at"], y_pred)
-        plt.title(f"Cumulative {self.information['title']}s Over Time (R² = {r2:.3f})")
+        plt.title(
+            f"Cumulative {self.__information['title']}s Over Time (R² = {r2:.3f})"
+        )
         plt.xlabel("Time")
-        plt.ylabel(f"Total {self.information['title']}s")
+        plt.ylabel(f"Total {self.__information['title']}s")
         ax = plt.gca()
         ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=6))
         ax.xaxis.set_major_formatter(
@@ -250,9 +266,10 @@ class DataView(discord.ui.View):
         plt.close()
         buffer.seek(0)
         file = discord.File(fp=buffer, filename="infractions_over_time.png")
-        await interaction.response.send_message(ephemeral=True, file=file)
+        return await self.__state.end(success=file)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
         await interaction.message.delete()
         self.stop()
+        return await self.__state.end(success="Cancelled action.")

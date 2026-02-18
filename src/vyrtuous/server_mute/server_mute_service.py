@@ -37,7 +37,6 @@ class ServerMuteService:
         self.__emoji = emoji
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         server_mutes = await self.__database_factory.select(
             singular=False, **where_kwargs

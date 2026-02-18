@@ -19,28 +19,35 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.ban.ban import Ban
-from vyrtuous.flag.flag import Flag
-from vyrtuous.text_mute.text_mute import TextMute
-from vyrtuous.voice_mute.voice_mute import VoiceMute
-
 
 class ModifyInfractionView(discord.ui.View):
     def __init__(
         self,
-        ctx,
-        modal,
-        state,
+        *,
+        ban_service=None,
+        ctx=None,
+        database_factory=None,
+        flag_service=None,
+        modal=None,
+        text_mute_service=None,
+        state=None,
+        voice_mute_service=None,
     ):
         super().__init__(timeout=120)
-        self.ctx = ctx
-        self.infractions = [Ban, Flag, TextMute, VoiceMute]
-        self.modal = modal
-        self._record_map = {}
-        self.state = state
+        self.__ctx = ctx
+        self.__infraction_services = {
+            "ban_service": ban_service,
+            "flag_service": flag_service,
+            "text_mute_service": text_mute_service,
+            "voice_mute_service": voice_mute_service,
+        }
+        self.__modal = modal
+        self.__record_map = {}
+        self.__state = state
+        self.__database_factory = database_factory
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.ctx.source_member_snowflake
+        return interaction.user.id == self.__ctx.source_member_snowflake
 
     async def setup(self):
         channel_options = await self._build_channel_options()
@@ -49,27 +56,28 @@ class ModifyInfractionView(discord.ui.View):
     async def _build_channel_options(self):
         channel_options = [
             discord.SelectOption(label=c.name, value=str(c.id))
-            for c in self.ctx.available_channels
+            for c in self.__ctx.available_channels
             if c != "all"
         ]
-        if "all" in self.ctx.available_channels:
+        if "all" in self.__ctx.available_channels:
             channel_options.append(discord.SelectOption(label="All", value="all"))
         return channel_options
 
     async def _build_infraction_options(self):
-        for infraction in self.infractions:
-            record = await infraction.select(
-                channel_snowflake=self.ctx.target_channel_snowflake,
-                guild_snowflake=self.ctx.source_guild_snowflake,
-                member_snowflake=self.ctx.target_member_snowflake,
+        for infraction_service in self.__infraction_services.values():
+            self.__database_factory.model = infraction_service.MODEL
+            record = await self.__database_factory.select(
+                channel_snowflake=self.__ctx.target_channel_snowflake,
+                guild_snowflake=self.__ctx.source_guild_snowflake,
+                member_snowflake=self.__ctx.target_member_snowflake,
                 singular=True,
             )
             if record:
                 key = str(record.identifier)
-                self._record_map[key] = record
+                self.__record_map[key] = record
         return [
             discord.SelectOption(label=r.identifier, value=k)
-            for k, r in self._record_map.items()
+            for k, r in self.__record_map.items()
         ]
 
     @discord.ui.select(
@@ -78,7 +86,7 @@ class ModifyInfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.ctx.target_channel_snowflake = channel.id
+        self.__ctx.target_channel_snowflake = channel.id
         self.channel_select.placeholder = channel.name
         infraction_options = await self._build_infraction_options()
         self.infraction_select.options = infraction_options
@@ -93,8 +101,8 @@ class ModifyInfractionView(discord.ui.View):
     )
     async def infraction_select(self, interaction, select):
         key = select.values[0]
-        self.ctx.record = self._record_map[key]
-        self.infraction_select.placeholder = self.ctx.record.identifier
+        self.__ctx.infraction = self.__record_map[key]
+        self.infraction_select.placeholder = self.__ctx.infraction.identifier
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -104,16 +112,19 @@ class ModifyInfractionView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
-        modal = self.modal(ctx=self.ctx, state=self.state)
+        modal = self.__modal(
+            ctx=self.__ctx, state=self.__state, **self.__infraction_services
+        )
         await modal.setup()
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
+        await interaction.message.delete()
         self.stop()
-        return await self.state.end(success="Cancelled action.")
+        return await self.__state.end(success="Cancelled action.")
 
     def has_the_user_selected_all_fields(self):
-        if not self.ctx.target_channel_snowflake or not self.ctx.record:
+        if not self.__ctx.target_channel_snowflake or not self.__ctx.infraction:
             return False
         return True

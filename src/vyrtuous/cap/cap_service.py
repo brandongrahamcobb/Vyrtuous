@@ -45,7 +45,6 @@ class CapService:
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
-        pages = []
         caps = await self.__database_factory.select(singular=False, **where_kwargs)
         for cap in caps:
             dictionary.setdefault(cap.guild_snowflake, {"channels": {}})

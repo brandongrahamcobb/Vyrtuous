@@ -17,31 +17,35 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Any, Coroutine, Union
 import inspect
 from collections import defaultdict
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import PERMISSION_TYPES
-from vyrtuous.moderator.moderator_service import moderator_predicator
-from vyrtuous.utils.logger import logger
-from vyrtuous.utils.message_service import MessageService
-from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.utils.state_service import StateService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.permission_service import PermissionService
+from vyrtuous.utils.state_service import StateService
+from vyrtuous.alias.alias import Alias
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.bug.bug_service import BugService
+from vyrtuous.coordinator.coordinator_service import CoordinatorService
+from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.administrator.administrator_service import AdministratorService
 
 
-def skip_help_discovery():
+def skip_text_command_help_discovery():
     async def predicate(ctx):
         return True
 
-    predicate._skip_help_discovery = True
+    predicate._skip_text_command_help_discovery = True
     return commands.check(predicate)
 
 
@@ -60,9 +64,7 @@ class HelpCommand(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.config = bot.config
-        self.bot.db_pool = bot.db_pool
-        self.message_service = MessageService(self.bot)
+        self.config = self.__bot.config
         self.permission_page_title_pairs = [
             ("Sysadmin", "`Sysadmin` inherits `Developer`."),
             ("Developer", "`Developer` inherits `Guild Owner`."),
@@ -72,25 +74,93 @@ class HelpCommand(commands.Cog):
             ("Moderator", "`Moderator` inherits `Everyone`."),
             ("Everyone", "Commands available to everyone."),
         ]
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__administrator_service = AdministratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+
+    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
+        async def predicate(
+            source: Union[commands.Context, discord.Interaction, discord.Message],
+        ):
+            for verify in (
+                self.__sysadmin_service.is_sysadmin_wrapper,
+                self.__developer_service.is_developer_wrapper,
+                self.__guild_owner_service.is_guild_owner_wrapper,
+                self.__administrator_service.is_administrator_wrapper,
+                self.__coordinator_service.is_coordinator_at_all_wrapper,
+                self.__moderator_service.is_moderator_at_all_wrapper,
+            ):
+                try:
+                    if await verify(source):
+                        return True
+                except commands.CheckFailure:
+                    continue
+            raise NotModerator
+
+        predicate._permission_level = "Moderator"
+        return await predicate(ctx)
 
     async def get_channel_alias_help(
         self, channel_snowflake: int, guild_snowflake: int
     ) -> list[str]:
         lines = []
-        aliases = await Alias.select(guild_snowflake=int(guild_snowflake))
+        aliases = await self.__datbase_factory.select(
+            guild_snowflake=int(guild_snowflake)
+        )
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:
                 grouped[alias.category].append(alias.alias_name)
             for category, alias_names in grouped.items():
-                help_lines = Alias.alias_help.get(category, None)
+                help_lines = self.__alias_service.alias_help.get(category, None)
                 if not help_lines:
                     continue
                 for alias_name in alias_names:
                     lines.append(f"**{alias_name}**")
                     for line in help_lines:
                         lines.append(f"• {line}")
-            return lines
+        return lines
 
     async def get_available_commands(self, all, bot, user_highest):
         available = []
@@ -98,11 +168,11 @@ class HelpCommand(commands.Cog):
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
-                if PERMISSION_TYPES.index(user_highest) >= PERMISSION_TYPES.index(
-                    perm_level
-                ):
+                if self.__moderator_service.PERMISSION_TYPES.index(
+                    user_highest
+                ) >= self.__moderator_service.PERMISSION_TYPES.index(perm_level):
                     has_skip = any(
-                        hasattr(check, "_skip_help_discovery")
+                        hasattr(check, "_skip_text_command_help_discovery")
                         for check in command.checks
                     )
                     if has_skip:
@@ -110,7 +180,7 @@ class HelpCommand(commands.Cog):
                     else:
                         available.append(command)
             except Exception as e:
-                logger.warning(
+                self.__bot.logger.warning(
                     f"Exception while evaluating command {command}: {str(e).capitalize()}"
                 )
         return available, skipped
@@ -140,7 +210,9 @@ class HelpCommand(commands.Cog):
         return colors.get(perm_level, discord.Color.greyple())
 
     async def group_commands_by_permission(self, bot, source, commands_list):
-        permission_groups = {level: [] for level in PERMISSION_TYPES}
+        permission_groups = {
+            level: [] for level in self.__moderator_service.PERMISSION_TYPES
+        }
         for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, command)
             if perm_level in permission_groups:
@@ -158,12 +230,6 @@ class HelpCommand(commands.Cog):
         )
         if alias and alias.guild_snowflake == source.guild.id:
             return ("alias", alias)
-        return (None, None)
-
-    async def resolve_app_command_or_alias(self, source, name: str):
-        command = self.bot.tree.get_command(name.lower(), guild=source.guild)
-        if command:
-            return ("command", command)
         return (None, None)
 
     def split_command_list(self, commands_list, max_length=1024):
@@ -189,7 +255,7 @@ class HelpCommand(commands.Cog):
         return func
 
     async def get_permission_filtered_aliases(self, source):
-        aliases = await Alias.select(
+        aliases = await self.__datbase_factory.select(
             channel_snowflake=source.channel.id,
             guild_snowflake=source.guild.id,
         )
@@ -199,179 +265,18 @@ class HelpCommand(commands.Cog):
                 grouped[alias.category].append(alias)
             perm_alias_map = defaultdict(list)
             for category, alias_list in grouped.items():
-                perm_level = Alias.CATEGORY_TO_PERMISSION_LEVEL.get(
+                perm_level = self.__alias_service.CATEGORY_TO_PERMISSION_LEVEL.get(
                     category, "Everyone"
                 )
                 for a in alias_list:
-                    help_lines = Alias.CATEGORY_TO_HELP.get(category, [])
+                    help_lines = self.__alias_service.CATEGORY_TO_HELP.get(category, [])
                     perm_alias_map[perm_level].append(
                         f"**{self.config['discord_command_prefix']}{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
                     )
             return perm_alias_map
 
-    async def help_app_command(
-        self, interaction: discord.Interaction, *, command_name: str | None = None
-    ):
-        state = StateService(interaction=interaction)
-        bot = interaction.client
-        pages, param_details, parameters = [], [], []
-        if command_name and command_name != "all":
-            kind, obj = await self.resolve_command_or_alias(interaction, command_name)
-            if not kind:
-                return await state.end(
-                    warning=f"Command or alias `{command_name}` not found."
-                )
-            if kind == "command":
-                cmd = obj
-                embed = discord.Embed(
-                    title=f"{self.config['discord_command_prefix']}{cmd.name}",
-                    description=cmd.help or "No description provided.",
-                    color=discord.Color.blue(),
-                )
-                callback = self.unwrap_callback(cmd.callback)
-                sig = inspect.signature(callback)
-                for name, param in sig.parameters.items():
-                    if param.annotation == discord.Interaction:
-                        continue
-                    parameters.append((name, param))
-                if parameters and parameters[0][0] == "self":
-                    parameters.pop(0)
-                if parameters and parameters[0][0] == "ctx":
-                    parameters.pop(0)
-                if parameters:
-                    usage_parts = [f"{self.config['discord_command_prefix']}{cmd.name}"]
-                    for name, param in parameters:
-                        param_desc = None
-                        if isinstance(param.default, commands.Parameter):
-                            param_desc = param.default.description
-                        is_optional = param.default != inspect.Parameter.empty
-                        usage_parts.append(f"[{name}]" if is_optional else f"<{name}>")
-                        if param_desc:
-                            param_details.append(f"**{name}**: {param_desc}")
-                        else:
-                            param_details.append(f"**{name}**")
-                    embed.add_field(
-                        name="Usage", value=f"`{' '.join(usage_parts)}`", inline=False
-                    )
-                    if param_details:
-                        embed.add_field(
-                            name="Parameters",
-                            value="\n".join(param_details),
-                            inline=False,
-                        )
-                        return await state.end(success=embed)
-                alias = obj
-                help_lines = Alias.CATEGORY_TO_HELP.get(alias.category, None)
-                if not help_lines:
-                    return await state.end(
-                        warning=f"No help available for `{alias.alias_name}`."
-                    )
-                embed = discord.Embed(
-                    title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
-                    description=f"Alias for **{alias.category}**",
-                    color=discord.Color.green(),
-                )
-                embed.add_field(
-                    name="Usage",
-                    value="\n".join(f"• {line}" for line in help_lines),
-                    inline=False,
-                )
-                return await state.end(success=embed)
-        all = False
-        if command_name and command_name == "all":
-            all = True
-        user_highest = await PermissionService.resolve_highest_role_at_all(
-            member_snowflake=interaction.user.id,
-        )
-        all_commands, skipped_commands = await self.get_available_commands(
-            all=all, bot=bot, user_highest=user_highest
-        )
-        permission_groups = await self.group_commands_by_permission(
-            bot, interaction, all_commands
-        )
-        skipped_permission_groups = await self.group_commands_by_permission(
-            bot, interaction, skipped_commands
-        )
-        aliases = await Alias.select(
-            channel_snowflake=interaction.channel.id,
-            guild_snowflake=interaction.guild.id,
-        )
-        perm_alias_map = defaultdict(list)
-        if aliases:
-            for alias in aliases:
-                short_desc = Alias.CATEGORY_TO_DESCRIPTION.get(
-                    alias.category, "No description"
-                )
-                perm_level_for_alias = Alias.CATEGORY_TO_PERMISSION_LEVEL.get(
-                    alias.category, "Everyone"
-                )
-                perm_alias_map[perm_level_for_alias].append(
-                    f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
-                )
-        user_index = PERMISSION_TYPES.index(user_highest)
-        for perm_level, description in self.permission_page_title_pairs:
-            if PERMISSION_TYPES.index(perm_level) > user_index:
-                continue
-            commands_in_level = sorted(
-                permission_groups.get(perm_level, []), key=lambda c: c.name
-            )
-            embed = discord.Embed(
-                title=f"{perm_level} Commands",
-                description=description,
-                color=self.get_permission_color(perm_level),
-            )
-            if commands_in_level:
-                command_lines = [
-                    f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
-                    for cmd in commands_in_level
-                ]
-                command_text = "\n".join(command_lines)
-                if len(command_text) > 1024:
-                    chunks = self.split_command_list(commands_in_level)
-                    for i, chunk in enumerate(chunks):
-                        field_name = (
-                            f"{perm_level} Commands"
-                            if i == 0
-                            else f"{perm_level} Commands (cont.)"
-                        )
-                        embed.add_field(name=field_name, value=chunk, inline=False)
-                else:
-                    embed.add_field(name="", value=command_text, inline=False)
-            if perm_level in perm_alias_map:
-                aliases_text = "\n".join(perm_alias_map[perm_level])
-                embed.add_field(name="Aliases", value=aliases_text, inline=False)
-            if all:
-                skipped_in_level = sorted(
-                    skipped_permission_groups.get(perm_level, []), key=lambda c: c.name
-                )
-                if skipped_in_level:
-                    skipped_lines = [
-                        f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
-                        for cmd in skipped_in_level
-                    ]
-                    skipped_text = "\n".join(skipped_lines)
-                    if len(skipped_text) > 1024:
-                        chunks = self.split_command_list(skipped_in_level)
-                        for i, chunk in enumerate(chunks):
-                            embed.add_field(
-                                name="Additional" if i == 0 else "Additional (cont.)",
-                                value=chunk,
-                                inline=False,
-                            )
-                    else:
-                        embed.add_field(
-                            name="Additional", value=skipped_text, inline=False
-                        )
-            pages.append(embed)
-        if not pages:
-            return await state.end(
-                warning="\U000026a0\U0000fe0f No commands available to you."
-            )
-        return await state.end(success=pages)
-
     @commands.command(name="help", help="List commands.")
-    @moderator_predicator()
     async def help_text_command(self, ctx, *, command_name: str | None = None):
         state = StateService(ctx=ctx)
         bot = ctx.bot
@@ -423,7 +328,9 @@ class HelpCommand(commands.Cog):
                         return await state.end(success=embed)
             if kind == "alias":
                 alias = obj
-                help_lines = Alias.CATEGORY_TO_HELP.get(alias.category, None)
+                help_lines = self.__alias_service.CATEGORY_TO_HELP.get(
+                    alias.category, None
+                )
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
@@ -454,24 +361,26 @@ class HelpCommand(commands.Cog):
         skipped_permission_groups = await self.group_commands_by_permission(
             bot, ctx, skipped_commands
         )
-        aliases = await Alias.select(
+        aliases = await self.__datbase_factory.select(
             channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id
         )
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = Alias.CATEGORY_TO_DESCRIPTION.get(
+                short_desc = self.__alias_service.CATEGORY_TO_DESCRIPTION.get(
                     alias.category, "No description"
                 )
-                perm_level_for_alias = Alias.CATEGORY_TO_PERMISSION_LEVEL.get(
-                    alias.category, "Everyone"
+                perm_level_for_alias = (
+                    self.__alias_service.CATEGORY_TO_PERMISSION_LEVEL.get(
+                        alias.category, "Everyone"
+                    )
                 )
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
                 )
-        user_index = PERMISSION_TYPES.index(user_highest)
+        user_index = self.__moderator_service.PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
-            if PERMISSION_TYPES.index(perm_level) > user_index:
+            if self.__moderator_service.PERMISSION_TYPES.index(perm_level) > user_index:
                 continue
             commands_in_level = sorted(
                 permission_groups.get(perm_level, []), key=lambda c: c.name

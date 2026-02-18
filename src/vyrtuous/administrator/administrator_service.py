@@ -25,9 +25,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator import Administrator, AdministratorRole
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
 class NotAdministrator(commands.CheckFailure):
@@ -372,7 +369,7 @@ class AdministratorRoleService:
         admin_role_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )

@@ -31,7 +31,7 @@ from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoor
 from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
 from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
-from vyrtuous.sysadmin.sysadmin_service import Sysadminservice, NotSysadmin
+from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, Sysadminservice
 
 
 class NotModerator(commands.CheckFailure):
@@ -418,7 +418,7 @@ class ModeratorService:
                 passed_lowest = True
         return "Everyone"
 
-    async def check_equal_or_lower_role(
+    async def has_equal_or_lower_role(
         self,
         channel_snowflake: int,
         guild_snowflake: int,

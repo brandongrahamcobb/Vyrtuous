@@ -33,7 +33,7 @@ from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
+from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
@@ -65,6 +65,7 @@ class DevTextCommands(commands.Cog):
         self.__developer_service = DeveloperService(
             author_service=self.__author_service,
             bot=self.__bot,
+            bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )

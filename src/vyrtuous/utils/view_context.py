@@ -3,37 +3,66 @@ from typing import Union
 
 import discord
 
-from vyrtuous.ban.ban import Ban
 from vyrtuous.base.context import Context
-from vyrtuous.flag.flag import Flag
-from vyrtuous.text_mute.text_mute import TextMute
-from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.utils.view_utilities import limit_available_to_top_25_by_member_count
-from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
 class ViewContext(Context):
-    def __init__(self, interaction):
+    def __init__(
+        self,
+        *,
+        ban_service=None,
+        flag_service=None,
+        interaction: discord.Interaction = None,
+        moderator_service=None,
+        text_mute_service=None,
+        voice_mute_service=None,
+    ):
         super().__init__(interaction=interaction)
         self.available_channels: list[discord.VoiceChannel | None] = []
         self.available_guilds: list[discord.Guild | None] = []
         self._expires_in: datetime | None = None
-        self.infraction = None
         self.interaction = interaction
-        self._record: Union[Ban, Flag, TextMute, VoiceMute] | None = None
         self._target_member_snowflake: int | None = None
         self._target_channel_snowflake: int | None = None
         self.service = None
+        self.__ban_service = ban_service
+        self.__voice_mute_service = voice_mute_service
+        self.__flag_service = flag_service
+        self.__text_mute_service = text_mute_service
+        self._infraction = Union[
+            self.__ban_service.MODEL,
+            self.__flag_service.MODEL,
+            self.__text_mute_service.MODEL,
+            self.__voice_mute_service.MODEL,
+        ]
+        self.__moderator_service = moderator_service
+
+    def limit_available_to_top_25_by_member_count(self, available):
+        all_key = "all"
+        items = []
+        if all_key in available:
+            items.append(all_key)
+        objects = []
+        for k, v in available.items():
+            if k == all_key:
+                continue
+            if isinstance(v, (list, tuple, set)):
+                objects.extend(v)
+            else:
+                objects.append(v)
+        objects.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
+        top_25 = objects[:25]
+        return items + top_25
 
     async def setup(self, target_member_snowflake):
         self.target_member_snowflake = target_member_snowflake
-        available_channels, available_guilds = await PermissionService.can_list(
+        available_channels, available_guilds = await self.__moderator_service.can_list(
             source=self.interaction
         )
-        self.available_channels = limit_available_to_top_25_by_member_count(
+        self.available_channels = self.limit_available_to_top_25_by_member_count(
             available=available_channels
         )
-        self.available_guilds = limit_available_to_top_25_by_member_count(
+        self.available_guilds = self.limit_available_to_top_25_by_member_count(
             available=available_guilds
         )
 
@@ -71,12 +100,22 @@ class ViewContext(Context):
             raise ValueError("Expires in is not an datetime.")
 
     @property
-    def record(self):
-        return self._record
+    def infraction(self):
+        return self._infraction
 
-    @record.setter
-    def record(self, nr):
-        if isinstance(nr, (Ban, Flag, TextMute, VoiceMute)):
+    @infraction.setter
+    def infraction(self, nr):
+        if isinstance(
+            nr,
+            (
+                self.__ban_service.MODEL,
+                self.__flag_service.MODEL,
+                self.__text_mute_service.MODEL,
+                self.__voice_mute_service.MODEL,
+            ),
+        ):
             self._record = nr
         else:
-            raise ValueError("Record is not one of Ban, Flag, TextMute or VoiceMute.")
+            raise ValueError(
+                "Infraction is not one of Ban, Flag, TextMute or VoiceMute."
+            )

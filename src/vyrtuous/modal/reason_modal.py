@@ -21,7 +21,23 @@ import discord
 
 
 class ReasonModal(discord.ui.Modal):
-    def __init__(self, ctx, state):
+    def __init__(
+        self,
+        *,
+        ctx=None,
+        state=None,
+        ban_service=None,
+        flag_service=None,
+        text_mute_service=None,
+        voice_mute_service=None,
+    ):
+        super().__init__(timeout=120)
+        self.__infraction_services = [
+            ban_service,
+            flag_service,
+            text_mute_service,
+            voice_mute_service,
+        ]
         super().__init__(title="Reason")
         self.ctx = ctx
         self.channel_snowflake = ctx.target_channel_snowflake
@@ -54,9 +70,9 @@ class ReasonModal(discord.ui.Modal):
             await self.state.end(
                 success=f"Existing infraction reason has been updated to {self.reason_selection.value}."
             )
-        # else:
-        #     for service in RecordService.__subclasses__():
-        #         if isinstance(self.ctx.record, service.model):
-        #             await service.enforce(
-        #                 ctx=self.ctx, source=interaction, state=self.state
-        #             )
+        else:
+            for service in self.__infraction_services:
+                if isinstance(self.ctx.record, service.model):
+                    await service.enforce(
+                        ctx=self.ctx, source=interaction, state=self.state
+                    )

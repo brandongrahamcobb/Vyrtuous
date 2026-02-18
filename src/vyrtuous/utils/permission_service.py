@@ -18,11 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
 
 class PermissionService:
-    # invincible_members: Dict[Tuple[int, int], bool] = {}
     __CHUNK_SIZE = 7
     __TARGET_PERMISSIONS = (
         "add_reactions",
@@ -33,67 +31,10 @@ class PermissionService:
         "view_channel",
     )
 
-    def __init__(self, *, bot=None, dictionary_service=None):
+    def __init__(self, *, bot=None, dictionary_service=None, emoji=None):
         self.__bot = bot
         self.__dictionary_service = dictionary_service
-
-    # @classmetod
-    # async def unrestrict(cls, guild_snowflake, member_snowflake):
-    #     guild = bot.get_guild(guild_snowflake)
-    #     member = guild.get_member(member_snowflake)
-    #     kwargs = {
-    #         "guild_snowflake": int(guild_snowflake),
-    #         "member_snowflake": member_snowflake,
-    #     }
-    #     bans = await Ban.select(**kwargs)
-    #     text_mutes = await TextMute.select(**kwargs)
-    #     voice_mutes = await VoiceMute.select(**kwargs)
-    #     if bans:
-    #         for ban in bans:
-    #             channel = guild.get_channel(ban.channel_snowflake)
-    #             if channel:
-    #                 try:
-    #                     await channel.set_permissions(member, overwrite=None)
-    #                 except discord.Forbidden:
-    #                     logger.warning(
-    #                         f"Unable to unban {member.name} ({member.id}) in {channel.name} ({channel.id})."
-    #                     )
-    #     if text_mutes:
-    #         for text_mute in text_mutes:
-    #             channel = guild.get_channel(text_mute.channel_snowflake)
-    #             if channel:
-    #                 try:
-    #                     await channel.set_permissions(member, send_messages=True)
-    #                 except discord.Forbidden:
-    #                     logger.warning(
-    #                         f"Unable to untmute {member.name} ({member.id}) in {channel.name} ({channel.id})."
-    #                     )
-    #     if voice_mutes:
-    #         for voice_mute in voice_mutes:
-    #             channel = guild.get_channel(voice_mute.channel_snowflake)
-    #             if channel and member.voice and member.voice.mute:
-    #                 await member.edit(mute=False)
-    #     await Ban.delete(**kwargs)
-    #     await Flag.delete(**kwargs)
-    #     await TextMute.delete(**kwargs)
-    #     await VoiceMute.delete(**kwargs)
-    #
-    # @classmethod
-    # def add_invincible_member(cls, guild_snowflake: int, member_snowflake: int):
-    #     cls.invincible_members[(guild_snowflake, member_snowflake)] = True
-    #
-    # @classmethod
-    # def get_invincible_members(cls):
-    #     return cls.invincible_members
-    #
-    # @classmethod
-    # def remove_invincible_member(cls, guild_snowflake: int, member_snowflake: int):
-    #     cls.invincible_members.pop((guild_snowflake, member_snowflake), None)
-    #
-    # @classmethod
-    # def toggle_enabled(cls):
-    #     cls.state = not cls.state
-    #     return cls.state
+        self.__emoji = emoji
 
     async def build_clean_dictionary(self, channel_objs, is_at_home, me):
         dictionary = {}

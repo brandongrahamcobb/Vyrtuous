@@ -21,40 +21,39 @@ from datetime import datetime, timezone
 
 import discord
 
-from vyrtuous.cap.cap_service import CapService
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.modal.reason_modal import ReasonModal
-
 
 class InfractionView(discord.ui.View):
     def __init__(
         self,
-        ctx,
-        state,
+        *,
+        cap_service=None,
+        ctx=None,
+        modal=None,
+        state=None,
     ):
         super().__init__(timeout=120)
-        self.ctx = ctx
-        self.duration: DurationObject | None = None
-        self.selected_duration = None
-        self.selected_channel_snowflake: int | None = None
-        self.state = state
+        self.__cap_service = cap_service
+        self.__ctx = ctx
+        self.__duration = None
+        self.__modal = modal
+        self.__state = state
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.ctx.source_member_snowflake
+        return interaction.user.id == self.__ctx.source_member_snowflake
 
     async def setup(self):
         channel_options = await self._build_channel_options()
         duration_options = self._build_duration_options()
         self.channel_select.options = channel_options
-        self.duration_select.options = duration_options
+        self.__duration_select.options = duration_options
 
     async def _build_channel_options(self):
         channel_options = [
             discord.SelectOption(label=c.name, value=str(c.id))
-            for c in self.ctx.available_channels
+            for c in self.__ctx.available_channels
             if c != "all"
         ]
-        if "all" in self.ctx.available_channels:
+        if "all" in self.__ctx.available_channels:
             channel_options.append(discord.SelectOption(label="All", value="all"))
         return channel_options
 
@@ -73,7 +72,7 @@ class InfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.ctx.target_channel_snowflake = channel.id
+        self.__ctx.target_channel_snowflake = channel.id
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -84,11 +83,11 @@ class InfractionView(discord.ui.View):
     )
     async def duration_select(self, interaction, select):
         duration_name = select.values[0]
-        self.duration_select.placeholder = duration_name
-        self.duration = DurationObject(duration_name)
-        self.ctx.expires_in = (
-            datetime.now(timezone.utc) + self.duration.to_timedelta()
-            if self.duration.number != 0
+        self.__duration_select.placeholder = duration_name
+        self.__duration = self.__duration_service(duration_name)
+        self.__ctx.expires_in = (
+            datetime.now(timezone.utc) + self.__duration.to_timedelta()
+            if self.__duration.number != 0
             else None
         )
         await interaction.response.defer()
@@ -100,26 +99,28 @@ class InfractionView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
-        if await CapService.assert_duration_exceeds_cap(
-            category=self.ctx.record.identifier,
-            duration=self.duration,
-            source_kwargs=self.ctx.source_kwargs,
+        if await self.__cap_duration.assert_duration_exceeds_cap(
+            category=self.__ctx.infraction.identifier,
+            duration=self.__duration,
+            source_kwargs=self.__ctx.source_kwargs,
         ):
             return await interaction.response.send_message(
                 content="Duration exceeds the channel cap.", ephemeral=True
             )
-        modal = ReasonModal(
-            ctx=self.ctx,
-            state=self.state,
+        modal = self.__modal(
+            ctx=self.__ctx,
+            state=self.__state,
         )
         await modal.setup()
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
-        return await self.state.end(success="Cancelled action.")
+        await interaction.message.delete()
+        self.stop()
+        return await self.__state.end(success="Cancelled action.")
 
     def has_the_user_selected_all_fields(self):
-        if not self.ctx.expires_in or not self.ctx.target_channel_snowflake:
+        if not self.__ctx.expires_in or not self.__ctx.target_channel_snowflake:
             return False
         return True

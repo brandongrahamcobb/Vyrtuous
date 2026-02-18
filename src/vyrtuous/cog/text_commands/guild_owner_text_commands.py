@@ -23,22 +23,26 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator_service import AdministratorRoleService
+from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-
-# from vyrtuous.cog.help_command import skip_help_discovery
+from vyrtuous.cog.help_command import skip_text_command_help_discovery
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.flag.flag_service import FlagService
+from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
-
-# from vyrtuous.utils.permission_service import PermissionService
+from vyrtuous.utils.hero_service import HeroService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -50,18 +54,27 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__emoji = Emojis()
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
-        self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            emoji=self.__emoji,
-        )
+        self.__duration_service = DurationService()
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__developer_service = DeveloperService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+
         self.__guild_owner_service = GuildOwnerService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -78,6 +91,46 @@ class GuildOwnerTextCommands(commands.Cog):
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
+        )
+        self.__voice_mute_service = VoiceMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
+        )
+        self.__ban_service = BanService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+        )
+        self.__flag_service = FlagService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__text_mute_service = TextMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+        )
+        self.__hero_service = HeroService(
+            ban_service=self.__ban_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            flag_service=self.__flag_service,
+            text_mute_service=self.__text_mute_service,
+            voice_mute_service=self.__voice_mute_service,
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
@@ -128,38 +181,44 @@ class GuildOwnerTextCommands(commands.Cog):
         )
         return await state.end(success=pages)
 
-    # @commands.command(name="hero", help="Grant/revoke invincibility.")
-    # @skip_help_discovery()
-    # async def invincibility_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     member: discord.Member = commands.parameter(
-    #         converter=commands.MemberConverter,
-    #         description="Tag a member or include their ID",
-    #     ),
-    # ):
-    #     state = StateService(
-    #         author_service=self.__author_service,
-    #         bot=self.__bot,
-    #         bug_service=self.__bug_service,
-    #         ctx=ctx,
-    #         developer_service=self.__developer_service,
-    #         emoji=self.__emoji,
-    #     )
-    #     member_dict = self.__discord_object_service.to_dict(obj=member)
-    #     where_kwargs = member_dict.get("columns", None)
-    #     enabled = PermissionService.toggle_enabled()
-    #     if enabled:
-    #         PermissionService.add_invincible_member(**where_kwargs)
-    #         await PermissionService.unrestrict(**where_kwargs)
-    #         msg = (
-    #             f"All moderation events have been forgiven "
-    #             f"and invincibility has been enabled for {member_dict.get('mention', None)}."
-    #         )
-    #     else:
-    #         PermissionService.remove_invincible_member(**where_kwargs)
-    #         msg = f"Invincibility has been disabled for {member_dict.get('mention', None)}"
-    #     return await state.end(success=msg)
+    @commands.command(name="hero", help="Grant/revoke invincibility.")
+    @skip_text_command_help_discovery()
+    async def invincibility_text_command(
+        self,
+        ctx: commands.Context,
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        member_dict = self.__discord_object_service.to_dict(obj=member)
+        where_kwargs = member_dict.get("columns", None)
+        enabled = self.__hero_service.toggle_enabled()
+        if enabled:
+            self.__hero_service + (
+                where_kwargs.get("guild_snowflake", None),
+                where_kwargs.get("member_snowflake", None),
+            )
+            await self.__hero_service.unrestrict(**where_kwargs)
+            msg = (
+                f"All moderation events have been forgiven "
+                f"and invincibility has been enabled for {member_dict.get('mention', None)}."
+            )
+        else:
+            self.__hero_service - (
+                where_kwargs.get("guild_snowflake", None),
+                where_kwargs.get("member_snowflake", None),
+            )
+            msg = f"Invincibility has been disabled for {member_dict.get('mention', None)}"
+        return await state.end(success=msg)
 
     @commands.command(name="devs", help="List devs.")
     async def list_developers_text_command(

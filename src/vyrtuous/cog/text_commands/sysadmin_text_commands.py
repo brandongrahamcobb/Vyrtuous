@@ -74,31 +74,31 @@ class SysadminTextCommands(commands.Cog):
         predicate._permission_level = "Sysadmin"
         return await predicate(ctx)
 
-    # @commands.command(name="assign", help="Assign developer.")
-    # async def assign_bug_to_developer_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     reference: str = commands.parameter(
-    #         description="Include an issue reference ID"
-    #     ),
-    #     member: discord.Member = commands.parameter(
-    #         converter=commands.MemberConverter,
-    #         description="Tag a member or include their ID",
-    #     ),
-    # ):
-    #     state = StateService(
-    #         author_service=self.__author_service,
-    #         bot=self.__bot,
-    #         bug_service=self.__bug_service,
-    #         ctx=ctx,
-    #         developer_service=self.__developer_service,
-    #         emoji=self.__emoji,
-    #     )
-    #     member_dict = self.__discord_object_service.to_dict(obj=member)
-    #     embed = await self.__bug_service.assign_bug_to_developer(
-    #         reference=reference, member_dict=member_dict
-    #     )
-    #     return await state.end(success=embed)
+    @commands.command(name="assign", help="Assign developer.")
+    async def assign_bug_to_developer_text_command(
+        self,
+        ctx: commands.Context,
+        reference: str = commands.parameter(
+            description="Include an issue reference ID"
+        ),
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        member_dict = self.__discord_object_service.to_dict(obj=member)
+        embed = await self.__developer_service.assign_bug_to_developer(
+            reference=reference, member_dict=member_dict
+        )
+        return await state.end(success=embed)
 
     @commands.command(name="dev", help="Grant/revoke devs.")
     async def toggle_developer_text_command(

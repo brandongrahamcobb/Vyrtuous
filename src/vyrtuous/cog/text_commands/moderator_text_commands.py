@@ -28,8 +28,7 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-
-from vyrtuous.cog.help_command import skip_help_discovery
+from vyrtuous.cog.help_command import skip_text_command_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
@@ -80,15 +79,24 @@ class ModeratorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.__stage_service = StageService(
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__stage_service = StageService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+        )
         self.__developer_service = DeveloperService(
             author_service=self.__author_service,
             bot=self.__bot,
+            bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )
@@ -107,13 +115,6 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
-        self.__temporary_room_service = TemporaryRoomService(
-            alias_service=self.__alias_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
         self.__stream_service = StreamService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -126,14 +127,8 @@ class ModeratorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
-        )
-        self.__moderator_service = ModeratorService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
         )
         self.__ban_service = BanService(
             bot=self.__bot,
@@ -168,6 +163,22 @@ class ModeratorTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__temporary_room_service = TemporaryRoomService(
+            alias_service=self.__alias_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            cap_service=self.__cap_service,
+            moderator_service=self.__moderator_service,
+            stage_service=self.__stage_service,
+            coordinator_service=self.__coordinator_service,
+            voice_mute_service=self.__voice_mute_service,
+            ban_service=self.__ban_service,
+            flag_service=self.__flag_service,
+            vegan_service=self.__vegan_service,
+            text_mute_service=self.__text_mute_service,
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -192,7 +203,7 @@ class ModeratorTextCommands(commands.Cog):
         return await predicate(ctx)
 
     @commands.command(name="admins", help="Lists admins.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
@@ -306,7 +317,7 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="del", help="Delete message.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
@@ -361,7 +372,7 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="ls", help="List new vegans.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
@@ -394,7 +405,7 @@ class ModeratorTextCommands(commands.Cog):
         name="migrate",
         help="Migrate a temporary room to a new channel by snowflake.",
     )
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -482,7 +493,7 @@ class ModeratorTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="mstage", help="Toggle stage mute/unmute.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
@@ -521,39 +532,42 @@ class ModeratorTextCommands(commands.Cog):
         )
         return await state.end(success=msg)
 
-    # @commands.command(name="summary", help="List user moderation.")
-    # async def list_moderation_summary_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     member: discord.Member = commands.parameter(
-    #         converter=commands.MemberConverter,
-    #         description="Specify a member ID/mention."
-    #     ),
-    # ):
-    #     state = StateService(
-    #         author_service=self.__author_service,
-    #         bot=self.__bot,
-    #         bug_service=self.__bug_service,
-    #         ctx=ctx,
-    #         developer_service=self.__developer_service,
-    #         emoji=self.__emoji,
-    #     )
-    #     pages = []
-    #     dir_paths = []
-    #     dir_paths.append(Path("/app/vyrtuous/db/infractions"))
-    #     obj = member or int(ctx.member)
-    #     is_at_home = at_home(source=ctx)
-    #     member_dict = self.__discord_object_service.to_dict(obj=obj)
-    #     for obj in dir_to_classes(dir_paths=dir_paths, parent=AliasService):
-    #         object_pages = await obj.build_pages(
-    #             object_dict=member_dict, is_at_home=is_at_home
-    #         )
-    #         if object_pages:
-    #             pages.extend(object_pages)
-    #     await StateService.send_pages(title="Infractions", pages=pages, state=state)
+    @commands.command(name="summary", help="List user moderation.")
+    async def list_moderation_summary_text_command(
+        self,
+        ctx: commands.Context,
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Specify a member ID/mention.",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        pages = []
+        obj = member or int(ctx.member)
+        is_at_home = at_home(source=ctx)
+        member_dict = self.__discord_object_service.to_dict(obj=obj)
+        services = []
+        services.append(self.__ban_service)
+        services.append(self.__flag_service)
+        services.append(self.__text_mute_service)
+        services.append(self.__text_mute_service)
+        for service in services:
+            summary_pages = await service.build_pages(
+                object_dict=member_dict, is_at_home=is_at_home
+            )
+            if summary_pages:
+                pages.extend(summary_pages)
+        return await state.end(success=pages)
 
     @commands.command(name="survey", help="Survey stage members.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,

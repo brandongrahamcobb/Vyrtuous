@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 
@@ -87,7 +87,7 @@ class BanService:
                         member, view_channel=None, reason="Cleaning up expired ban."
                     )
                 except discord.Forbidden as e:
-                    logger.error(str(e).capitalize())
+                    self.__bot.logger.error(str(e).capitalize())
                 if (
                     member.voice
                     and member.voice.channel
@@ -99,7 +99,7 @@ class BanService:
                             f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
                         )
                     except discord.Forbidden as e:
-                        logger.warning(
+                        self.__bot.logger.warning(
                             f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                         )
 
@@ -115,7 +115,9 @@ class BanService:
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
-            if not ban.reset and ban.last_kicked < now - timedelta(weeks=1):
+            if not ban.reset and ban.last_kicked < datetime.now(
+                timezone.utc
+            ) - timedelta(weeks=1):
                 guild = self.__bot.get_guild(guild_snowflake)
                 if guild is None:
                     self.__bot.logger.info(
@@ -139,13 +141,12 @@ class BanService:
                         target=member, overwrite=None, reason="Resetting ban overwrite."
                     )
                 except discord.Forbidden as e:
-                    logger.error(str(e).capitalize())
+                    self.__bot.logger.error(str(e).capitalize())
                 await self.__database_factory.update(
                     set_kwargs=set_kwargs, where_kwargs=where_kwargs
                 )
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         bans = await self.__database_factory.select(singular=False, **where_kwargs)
         for ban in bans:

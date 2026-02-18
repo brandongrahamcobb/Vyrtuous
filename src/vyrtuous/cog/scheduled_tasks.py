@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
-
-import discord
 from discord.ext import commands, tasks
 
 from vyrtuous.ban.ban_service import BanService
@@ -27,23 +24,19 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.database import Database
-from vyrtuous.developer.developer import Developer
-from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.moderator.moderator_service import ModeratorService
 
 # from vyrtuous.video_room.video_room import VideoRoom
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.stage_room.stage import Stage
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
-from vyrtuous.text_mute.text_mute import TextMute
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
-from vyrtuous.voice_mute.voice_mute import VoiceMute
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
@@ -85,25 +78,24 @@ class ScheduledTasks(commands.Cog):
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
+        )
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
         )
         self.__stage_service = StageService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
         )
         self.__guild_owner_service = GuildOwnerService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
-        self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
-        self.__sysadmin_service = SysadminService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -113,6 +105,11 @@ class ScheduledTasks(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
         )
 
     async def cog_load(self):
@@ -124,8 +121,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_voice_mutes.start()
         if not self.check_expired_text_mutes.is_running():
             self.check_expired_text_mutes.start()
-        # if not self.check_expired_stages.is_running():
-        #     self.check_expired_stages.start()
+        if not self.check_expired_stages.is_running():
+            self.check_expired_stages.start()
         if not self.check_expired_bugs.is_running():
             self.check_expired_bugs.start()
         if not self.check_guild_owners.is_running():
@@ -134,9 +131,6 @@ class ScheduledTasks(commands.Cog):
             self.check_sysadmin.start()
         if not self.temporarily_cleanup_overwrites.is_running():
             self.temporarily_cleanup_overwrites.start()
-
-    #        if not self.update_video_room_status.is_running():
-    #            self.update_video_room_status.start()
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
@@ -148,101 +142,13 @@ class ScheduledTasks(commands.Cog):
         await self.__voice_mute_service.clean_expired()
         logger.info("Cleaned up expired voice-mutes.")
 
-    # @tasks.loop(minutes=1)
-    # async def check_expired_stages(self):
-    #     self.__database_factory.model = Stage
-    #     expired_stages = await self.__database_factory.select(expired=True)
-    #     if expired_stages:
-    #         for expired_stage in expired_stages:
-    #             channel_snowflake = int(expired_stage.channel_snowflake)
-    #             guild_snowflake = int(expired_stage.guild_snowflake)
-    #             guild = self.__bot.get_guild(guild_snowflake)
-    #             if guild is None:
-    #                 await Stage.delete(
-    #                     channel_snowflake=channel_snowflake,
-    #                     guild_snowflake=guild_snowflake,
-    #                 )
-    #                 logger.info(
-    #                     f"Unable to locate guild {guild_snowflake}, cleaning up expired stage."
-    #                 )
-    #                 continue
-    #             channel = guild.get_channel(channel_snowflake)
-    #             if channel is None:
-    #                 await Stage.delete(
-    #                     channel_snowflake=channel_snowflake,
-    #                     guild_snowflake=guild_snowflake,
-    #                 )
-    #                 logger.info(
-    #                     f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
-    #                 )
-    #                 continue
-    #             voice_mutes = await VoiceMute.select(
-    #                 channel_snowflake=channel.id,
-    #                 guild_snowflake=guild.id,
-    #                 target="room",
-    #             )
-    #             await Stage.delete(
-    #                 channel_snowflake=channel.id, guild_snowflake=guild.id
-    #             )
-    #             for voice_mute in voice_mutes:
-    #                 member_snowflake = voice_mute.member_snowflake
-    #                 member = guild.get_member(member_snowflake)
-    #                 if member is None:
-    #                     await VoiceMute.delete(
-    #                         channel_snowflake=channel.id,
-    #                         member_snowflake=int(member_snowflake),
-    #                         guild_snowflake=guild.id,
-    #                         target="room",
-    #                     )
-    #                     logger.info(
-    #                         f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) from expired stage."
-    #                     )
-    #                     continue
-    #                 await VoiceMute.delete(
-    #                     channel_snowflake=channel.id,
-    #                     member_snowflake=member.id,
-    #                     guild_snowflake=guild.id,
-    #                     target="room",
-    #                 )
-    #                 if (
-    #                     member.voice
-    #                     and member.voice.channel
-    #                     and member.voice.mute
-    #                     and member.voice_channel.id == channel.id
-    #                 ):
-    #                     try:
-    #                         await member.edit(
-    #                             mute=False, reason="Stage room closed automatically."
-    #                         )
-    #                         logger.info(
-    #                             f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in in guild {guild.name} ({guild_snowflake}) after stage expired."
-    #                         )
-    #                     except discord.Forbidden as e:
-    #                         logger.warning(
-    #                             f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
-    #                         )
-    #                 else:
-    #                     logger.info(
-    #                         f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
-    #                     )
-    #         logger.info("Cleaned up expired stages.")
+    @tasks.loop(minutes=1)
+    async def check_expired_stages(self):
+        await self.__stage_service.clean_expired()
 
-    #    @tasks.loop(minutes=5)
-    #    async def update_video_room_status(self):
-    #        video_rooms = await VideoRoom.fetch_all()
-    #        for video_room in video_rooms:
-    #            channel = self.__bot.get_channel(video_room.channel_snowflake)
-    #            if channel:
-    #                try:
-    #                    await channel.edit(status="Video-Only Room", reason="Reset video-only room status")
-    #                except discord.Forbidden as e:
-    #                    logger.info("Failed to enforce video room status")
-    #            else:
-    #                logger.info("Failed to enforce video room status")
     @tasks.loop(hours=8)
     async def check_expired_bugs(self):
         await self.__bug_service.clean_expired()
-        # await self.__developer_service.ping_devs_about_bugs()
         self.__bot.logger.info("Sent developer log to developers.")
 
     @tasks.loop(minutes=1)
@@ -291,10 +197,10 @@ class ScheduledTasks(commands.Cog):
     async def before_check_expired_text_mutes(self):
         await self.__bot.wait_until_ready()
 
-    # @check_expired_stages.before_loop
-    # async def before_check_expired_stages(self):
-    #     await self.__bot.wait_until_ready()
-    #
+    @check_expired_stages.before_loop
+    async def before_check_expired_stages(self):
+        await self.__bot.wait_until_ready()
+
     @check_guild_owners.before_loop
     async def before_check_guild_owners(self):
         await self.__bot.wait_until_ready()
@@ -306,11 +212,6 @@ class ScheduledTasks(commands.Cog):
     @temporarily_cleanup_overwrites.before_loop
     async def before_temporarily_cleanup_overwrites(self):
         await self.__bot.wait_until_ready()
-
-
-#    @update_video_room_status.before_loop
-#    async def before_update_video_room_status(self):
-#        await self.__bot.wait_until_ready()
 
 
 async def setup(bot: DiscordBot):

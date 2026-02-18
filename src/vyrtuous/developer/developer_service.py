@@ -37,13 +37,20 @@ class DeveloperService:
     MODEL = Developer
 
     def __init__(
-        self, *, author_service=None, bot=None, database_factory=None, emoji=None
+        self,
+        *,
+        author_service=None,
+        bot=None,
+        bug_service=None,
+        database_factory=None,
+        emoji=None,
     ):
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__emoji = emoji
+        self.__bug_service = bug_service
 
     async def is_developer(self, member_snowflake: int) -> bool:
         developer = await self.__database_factory.select(
@@ -166,3 +173,53 @@ class DeveloperService:
             await self.__database_factory.create(developer)
             action = "granted"
         return f"Developer access for {member_dict.get('mention', None)} has been {action} globally."
+
+    async def clean_expired(
+        self,
+        channel,
+        embed,
+        guild_snowflake,
+        member,
+        member_snowflakes,
+        msg,
+        notes,
+        time_since_updated,
+    ):
+        guild = self.__bot.get_guild(guild_snowflake)
+        assigned_developer_mentions = []
+        for developer_snowflake in member_snowflakes:
+            assigned_developer = self.__bot.get_user(developer_snowflake)
+            assigned_developer_mentions.append(assigned_developer.mention)
+        embed.add_field(
+            name=f"Updated: {time_since_updated}",
+            value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {notes}",
+            inline=False,
+        )
+        developers = await self.__database_factory.select()
+        for developer in developers:
+            member = guild.get_member(developer.member_snowflake)
+            if member is None:
+                self.__bot.logger.info(
+                    f"Unable to locate member {member.id} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
+                )
+                continue
+            try:
+                await member.send(embed=embed)
+                self.__bot.logger.info(
+                    f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                )
+            except Exception as e:
+                self.__bot.logger.warning(
+                    f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
+                )
+
+    async def assign_bug_to_developer(self, member_dict, reference):
+        where_kwargs = member_dict.get("columns", None)
+        developer = await self.__database_factory.select(singular=True, **where_kwargs)
+        if not developer:
+            return (
+                f"Developer not found for target ({member_dict.get('mention', None)})."
+            )
+        await self.__bug_service.assign_bug_to_developer(
+            member_dict=member_dict, reference=reference, where_kwargs=where_kwargs
+        )

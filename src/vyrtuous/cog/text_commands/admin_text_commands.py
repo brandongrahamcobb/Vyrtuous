@@ -33,13 +33,13 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
-
-from vyrtuous.cog.help_command import skip_help_discovery
+from vyrtuous.cog.help_command import skip_text_command_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.field.category import Category
 from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
 from vyrtuous.stage_room.stage_service import StageService
@@ -48,7 +48,7 @@ from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.utils.author_service import AuthorService
 
-# from vyrtuous.utils.clear_service import ClearService
+from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
@@ -60,8 +60,11 @@ from vyrtuous.utils.message_service import MessageService, PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.video_room.video_room_service import VideoRoomService
 
-# from vyrtuous.view.cancel_confirm_view import VerifyView
+from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.flag.flag_service import FlagService
+from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.vegan.vegan_service import VeganService
 
 
 class AdminTextCommands(commands.Cog):
@@ -86,16 +89,26 @@ class AdminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+
         self.__stage_service = StageService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
         )
         self.__developer_service = DeveloperService(
             author_service=self.__author_service,
             bot=self.__bot,
+            bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )
@@ -123,6 +136,11 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__clear_service = ClearService(
+            database_factory=self.__database_factory,
+            moderator_service=self.__moderator_service,
+            sysadmin_service=self.__sysadmin_service,
+        )
         self.message_service = MessageService(self.__bot)
         self.__administrator_role_service = AdministratorRoleService(
             bot=self.__bot,
@@ -139,13 +157,6 @@ class AdminTextCommands(commands.Cog):
         )
         self.__discord_object_service = DiscordObjectService()
         self.__server_mute_service = ServerMuteService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__temporary_room_service = TemporaryRoomService(
-            alias_service=self.__alias_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -172,7 +183,46 @@ class AdminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
+        )
+        self.__flag_service = FlagService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__vegan_service = VeganService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__text_mute_service = TextMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__temporary_room_service = TemporaryRoomService(
+            alias_service=self.__alias_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            cap_service=self.__cap_service,
+            moderator_service=self.__moderator_service,
+            stage_service=self.__stage_service,
+            coordinator_service=self.__coordinator_service,
+            voice_mute_service=self.__voice_mute_service,
+            ban_service=self.__ban_service,
+            flag_service=self.__flag_service,
+            vegan_service=self.__vegan_service,
+            text_mute_service=self.__text_mute_service,
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
@@ -232,7 +282,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="aroles", help="Administrator roles.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_administrator_roles_text_command(
         self,
         ctx: commands.Context,
@@ -262,7 +312,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="cap", help="Cap alias duration for mods.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def cap_text_command(
         self,
         ctx: commands.Context,
@@ -291,7 +341,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=msg)
 
     @commands.command(name="caps", help="List caps.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
@@ -343,15 +393,15 @@ class AdminTextCommands(commands.Cog):
         }
         object_dict = self.__discord_object_service.to_dict(obj=target)
         where_kwargs = object_dict.get("columns", None)
-        # view = VerifyView(
-        #     category=str(category),
-        #     mention=object_dict.get("mention", "All"),
-        #     author_snowflake=ctx.author.id,
-        #     **where_kwargs,
-        # )
-        # embed = view.build_embed()
-        # await ctx.reply(embed=embed, view=view)
-        # await view.wait()
+        view = VerifyView(
+            category=str(category),
+            mention=object_dict.get("mention", "All"),
+            author_snowflake=ctx.author.id,
+            **where_kwargs,
+        )
+        embed = view.build_embed()
+        await ctx.reply(embed=embed, view=view)
+        await view.wait()
         state = StateService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -360,14 +410,14 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        # msg = await ClearService.clear(
-        #     category=category,
-        #     default_kwargs=default_kwargs,
-        #     object_dict=object_dict,
-        #     where_kwargs=where_kwargs,
-        #     target=target,
-        #     view=view,
-        # )
+        msg = await self.__clear_service.clear(
+            category=category,
+            default_kwargs=default_kwargs,
+            object_dict=object_dict,
+            where_kwargs=where_kwargs,
+            target=target,
+            view=view,
+        )
         return await state.end(success=msg)
 
     @commands.command(name="coord", help="Grant/revoke coords.")
@@ -400,10 +450,10 @@ class AdminTextCommands(commands.Cog):
         member_dict = self.__discord_object_service.to_dict(obj=member)
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(channel_dict.get("columns", None))
-        # await PermissionService.has_equal_or_lower_role(
-        #     target_member_snowflake=int(member_dict.get("id", None)),
-        #     **updated_kwargs,
-        # )
+        await self.__moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(member_dict.get("id", None)),
+            **updated_kwargs,
+        )
         msg = await self.__coordinator_service.toggle_coordinator(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
@@ -442,7 +492,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=f"```log\n{output}\n```")
 
     # @commands.command(name="pc", help="View permissions.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     # async def list_permissions_text_command(
     #     self,
     #     ctx: commands.Context,
@@ -586,7 +636,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=embed)
 
     @commands.command(name="roleid", help="Get role by name.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
         state = StateService(
             author_service=self.__author_service,
@@ -666,7 +716,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stages", help="List stages.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
@@ -697,7 +747,7 @@ class AdminTextCommands(commands.Cog):
     @commands.command(
         name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
     )
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -724,7 +774,7 @@ class AdminTextCommands(commands.Cog):
         name="temps",
         help="List temporary rooms with matching command aliases.",
     )
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
@@ -753,7 +803,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -789,7 +839,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -819,7 +869,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
@@ -848,7 +898,7 @@ class AdminTextCommands(commands.Cog):
         name="vrs",
         help="List video rooms.",
     )
-    @skip_help_discovery()
+    @skip_text_command_help_discovery()
     async def list_video_rooms_text_command(
         self,
         ctx: commands.Context,

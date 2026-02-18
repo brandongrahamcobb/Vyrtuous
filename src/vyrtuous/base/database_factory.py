@@ -20,9 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Literal, Type, TypeVar, overload
 
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.logger import logger
-
 T = TypeVar("T", bound="DatabaseFactory")
 
 
@@ -55,6 +52,21 @@ class DatabaseFactory(object):
     async def delete(self, **kwargs):
         fields = list(self.model.__annotations__.keys())
         table_name = getattr(self.model, "__tablename__")
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
+        conditions = []
+        values = []
+        if filtered_kwargs:
+            for index, field in enumerate(sorted(filtered_kwargs)):
+                conditions.append(f"{field}=${index + 1}")
+                values.append(filtered_kwargs[field])
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+        async with self.__bot.db_pool.acquire() as conn:
+            await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
+        self.__bot.logger.info(f"Deleted entry from {table_name}.")
+
+    async def delete_by_cls(self, cls, **kwargs):
+        fields = list(cls.__annotations__.keys())
+        table_name = getattr(cls, "__tablename__")
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         conditions = []
         values = []
@@ -143,7 +155,6 @@ class DatabaseFactory(object):
         self.__bot.logger.info(f"Updated entry from {table_name}.")
 
     async def primary_keys(self):
-        bot = DiscordBot.get_instance()
         table_name = getattr(self.model, "TABLE_NAME")
         statement = """
             SELECT kcu.column_name

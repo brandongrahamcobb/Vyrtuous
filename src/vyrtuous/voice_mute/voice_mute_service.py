@@ -38,6 +38,7 @@ class VoiceMuteService:
         dictionary_service=None,
         duration_service=None,
         emoji=None,
+        moderator_service=None,
         stream_service=None,
     ):
         self.__bot = bot
@@ -46,6 +47,7 @@ class VoiceMuteService:
         self.__dictionary_service = dictionary_service
         self.__duration_service = duration_service
         self.__emoji = emoji
+        self.__moderator_service = moderator_service
         self.__stream_service = stream_service
 
     async def clean_expired(self):
@@ -409,3 +411,121 @@ class VoiceMuteService:
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    async def clean_expired_stage(self, channel, guild):
+        voice_mutes = await self.__database_factory.select(
+            channel_snowflake=channel.id,
+            guild_snowflake=guild.id,
+            target="room",
+        )
+        for voice_mute in voice_mutes:
+            member_snowflake = voice_mute.member_snowflake
+            member = guild.get_member(member_snowflake)
+            if member is None:
+                await self.__database_factory.delete(
+                    channel_snowflake=channel.id,
+                    member_snowflake=int(member_snowflake),
+                    guild_snowflake=guild.id,
+                    target="room",
+                )
+                self.__bot.logger.info(
+                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) from expired stage."
+                )
+                continue
+            await self.__database_factory.delete(
+                channel_snowflake=channel.id,
+                member_snowflake=member.id,
+                guild_snowflake=guild.id,
+                target="room",
+            )
+            if (
+                member.voice
+                and member.voice.channel
+                and member.voice.mute
+                and member.voice_channel.id == channel.id
+            ):
+                try:
+                    await member.edit(
+                        mute=False, reason="Stage room closed automatically."
+                    )
+                    self.__bot.logger.info(
+                        f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in in guild {guild.name} ({guild.id}) after stage expired."
+                    )
+                except discord.Forbidden as e:
+                    self.__bot.logger.warning(
+                        f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_id}). {str(e).capitalize()}"
+                    )
+            else:
+                self.__bot.logger.info(
+                    f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.id}), skipping undo voice-mute."
+                )
+
+    async def off_stage(self, channel_dict, updated_kwargs):
+        failed, succeeded = [], []
+        kwargs = channel_dict.get("columns", None)
+        guild = self.__bot.get_guild(kwargs.get("guild_snowflake", None))
+        for member in channel_dict.get("object", None).members:
+            await self.__database_factory.delete(
+                **updated_kwargs,
+                member_snowflake=member.id,
+                target="room",
+            )
+            voice_mute = await self.__database_factory.select(
+                **updated_kwargs,
+                member_snowflake=member.id,
+                target="user",
+                singular=True,
+            )
+            if not voice_mute and member.voice and member.voice.mute:
+                try:
+                    await member.edit(
+                        mute=False,
+                        reason="Stage ended — no user-specific mute found",
+                    )
+                    succeeded.append(member)
+                except discord.Forbidden as e:
+                    self.__bot.logger.warning(
+                        f"Unable to undo voice-mute "
+                        f"for member {member.display_name} ({member.id}) in "
+                        f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
+                        f"guild {guild.name} ({guild.id}). "
+                        f"{str(e).capitalize()}"
+                    )
+                    failed.append(member)
+        return failed, succeeded
+
+    async def on_stage(self, channel_dict, duration, updated_kwargs):
+        failed, skipped, succeeded = [], [], []
+        kwargs = channel_dict.get("columns", None)
+        guild = self.__bot.get_guild(kwargs.get("guild_snowflake", None))
+        for member in channel_dict.get("object", None).members:
+            if await self.__moderator_service.check(
+                **updated_kwargs,
+                lowest_role="Coordinator",
+            ) or member.id == updated_kwargs.get("member_snowflake", None):
+                skipped.append(member)
+                continue
+            voice_mute = self.MODEL(
+                **updated_kwargs,
+                expires_in=duration.expires_in,
+                member_snowflake=member.id,
+                target="room",
+                reason="Stage mute",
+            )
+            await self.__database_factory.create(voice_mute)
+            try:
+                if member.voice and member.voice.channel.id == channel_dict.get(
+                    "id", None
+                ):
+                    await member.edit(mute=True)
+                succeeded.append(member)
+            except Exception as e:
+                self.__bot.logger.warning(
+                    f"Unable to voice-mute "
+                    f"member {member.display_name} ({member.id}) "
+                    f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
+                    f"in guild {guild.name} ({guild.id}). "
+                    f"{str(e).capitalize()}"
+                )
+                failed.append(member)
+        return failed, skipped, succeeded

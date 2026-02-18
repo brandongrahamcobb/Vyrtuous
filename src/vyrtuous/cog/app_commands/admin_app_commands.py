@@ -20,8 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.administrator.administrator import Administrator
+from vyrtuous.bot.discord_bot import DiscordBot
 
 
 class AdminAppCommands(commands.Cog):

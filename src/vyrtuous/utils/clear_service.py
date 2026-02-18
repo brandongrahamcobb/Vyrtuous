@@ -18,17 +18,37 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from pathlib import Path
+import importlib.util
+import inspect
 
 import discord
 
-from vyrtuous.administrator.administrator import AdministratorRole
-from vyrtuous.base.database_factory import DatabaseFactory
-from vyrtuous.sysadmin.sysadmin_service import is_sysadmin
-from vyrtuous.utils.dir_to_classes import dir_to_classes
-from vyrtuous.utils.permission_service import PermissionService
-
 
 class ClearService:
+    def __init__(
+        self, *, database_factory=None, moderator_service=None, sysadmin_service=None
+    ):
+        self.__database_factory = database_factory
+        self.__moderator_service = moderator_service
+        self.__sysadmin_service = sysadmin_service
+
+    def dir_to_classes(self, dir_paths, attr):
+        classes = []
+        for dir_path in dir_paths:
+            for py_file in dir_path.rglob("*.py"):
+                module_name = py_file.stem
+                spec = importlib.util.spec_from_file_location(module_name, str(py_file))
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                for _, cls in inspect.getmembers(module, inspect.isclass):
+                    if cls.__module__ != module.__name__:
+                        continue
+                    if getattr(cls, "__skip_db_discovery__", False):
+                        continue
+                    if attr in getattr(cls, "__annotations__", {}):
+                        classes.append(cls)
+        return classes
+
     async def clear(
         self,
         category,
@@ -38,80 +58,68 @@ class ClearService:
         view,
         where_kwargs,
     ):
-        guild_snowflake = default_kwargs.get("guild_snowflake", None)
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous"))
         updated_kwargs = default_kwargs.copy()
         updated_kwargs.update(object_dict.get("columns", None))
         if isinstance(object_dict.get("object", None), discord.Member):
-            await PermissionService.has_equal_or_lower_role(
+            await self.__moderator_service.has_equal_or_lower_role(
                 **default_kwargs,
                 target_member_snowflake=object_dict.get("id", None),
             )
             if view.result:
-                for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
-                    if "member_snowflake" in getattr(obj, "__annotations__", {}):
-                        if str(category) == "all":
-                            await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
-                        elif str(category).lower() == obj.identifier:
-                            await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
+                for obj in self.dir_to_classes(
+                    dir_paths=dir_paths, attr="member_snowflake"
+                ):
+                    if str(category) == "all":
+                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
+                    elif str(category).lower() == obj.identifier:
+                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
-            await PermissionService.check(**updated_kwargs, lowest_role="Guild Owner")
+            await self.__moderator_service.check(
+                **updated_kwargs, lowest_role="Guild Owner"
+            )
             if view.result:
-                for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
-                    if "channel_snowflake" in getattr(obj, "__annotations__", {}):
-                        if category == "all":
-                            await obj.delete(**where_kwargs)
-                            msg = f"Deleted all database information for {object_dict.get('mention')}."
-                        elif str(category).lower() == obj.identifier:
-                            await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
+                for obj in self.dir_to_classes(
+                    dir_paths=dir_paths, attr="channel_snowflake"
+                ):
+                    if category == "all":
+                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        msg = f"Deleted all database information for {object_dict.get('mention')}."
+                    elif str(category).lower() == obj.identifier:
+                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
-            await PermissionService.check(**updated_kwargs, lowest_role="Developer")
+            await self.__moderator_service.check(
+                **updated_kwargs, lowest_role="Developer"
+            )
             if view.result:
-                for obj in dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory):
-                    if any(
-                        getattr(obj, attr, None) is not None
-                        or attr in getattr(obj, "__annotations__", {})
-                        for attr in (
-                            "channel_snowflake",
-                            "guild_snowflake",
-                            "member_snowflake",
-                        )
-                    ):
-                        if str(category).lower() == "all":
-                            await obj.delete(**where_kwargs)
-                            msg = f"Deleted all database information for {object_dict.get('name')}."
-                        elif str(category).lower() == obj.identifier:
-                            await obj.delete(**where_kwargs)
-                            msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
-                        elif isinstance(obj, AdministratorRole):
-                            administrator_roles = AdministratorRole.select(
-                                guild_snowflake=int(guild_snowflake),
-                            )
-                            for administrator_role in administrator_roles:
-                                await obj.revoke_role(
-                                    guild_snowflake=int(guild_snowflake),
-                                    role_snowflake=administrator_role.role_snowflake,
-                                )
-        elif target == "all" and await is_sysadmin(
+                attributes = [
+                    "channel_snowflake",
+                    "guild_snowflake",
+                    "member_snowflake",
+                ]
+                objects = [
+                    obj
+                    for attr in attributes
+                    for obj in self.dir_to_classes(dir_paths=dir_paths, attr=attr)
+                ]
+                for obj in objects:
+                    if str(category).lower() == "all":
+                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        msg = f"Deleted all database information for {object_dict.get('name')}."
+                    elif str(category).lower() == obj.identifier:
+                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
+        elif target == "all" and await self.__sysadmin_service.is_sysadmin(
             member_snowflake=default_kwargs.get("member_snowflake")
         ):
             if view.result:
-                for obj in dir_to_classes(dir_paths=dir_paths):
-                    await obj.delete(**where_kwargs)
+                for obj in self.dir_to_classes(dir_paths=dir_paths):
+                    await self.__database_factory.delete_by_cls(obj, **where_kwargs)
                     msg = "Deleted all database entries."
-                    if isinstance(obj, AdministratorRole):
-                        administrator_roles = AdministratorRole.select(
-                            guild_snowflake=int(guild_snowflake),
-                        )
-                        for administrator_role in administrator_roles:
-                            await obj.revoke_role(
-                                guild_snowflake=int(guild_snowflake),
-                                role_snowflake=administrator_role.role_snowflake,
-                            )
         else:
             msg = f"Invalid target ({target})."
         return msg

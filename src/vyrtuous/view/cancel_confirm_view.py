@@ -19,16 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
-
 
 class VerifyView(discord.ui.View):
-
     def __init__(
         self,
-        category,
-        author_snowflake,
-        mention,
+        *,
+        category=None,
+        author_snowflake=None,
+        mention=None,
         guild_snowflake=None,
         channel_snowflake=None,
         member_snowflake=None,
@@ -37,65 +35,76 @@ class VerifyView(discord.ui.View):
         super().__init__(timeout=timeout)
         match category:
             case "alias":
-                self.action = "Deletes all aliases."
-            case "admin":
-                self.action = "Deletes all administrators."
-            case "arole":
-                self.action = "Deletes all administrator roles."
+                self.__action = "Deletes all aliases."
             case "all":
-                self.action = "Deletes all of the above: administrators, administrator roles, aliases, bans, coords, devs, flags, mods, stages, temporary rooms, text-mutes, vegans, voice-mutes and video rooms."
+                self.__action = "Deletes all of the above: administrators, administrator roles, aliases, bans, coords, devs, flags, mods, stages, temporary rooms, text-mutes, vegans, voice-mutes and video rooms."
             case "ban":
-                self.action = "Deletes all bans."
+                self.__action = "Deletes all bans."
             case "coord":
-                self.action = "Deletes all coordinators."
+                self.__action = "Deletes all coordinators."
             case "dev":
-                self.action = "Deletes all developers."
+                self.__action = "Deletes all developers."
             case "flag":
-                self.action = "Deletes all flags."
+                self.__action = "Deletes all flags."
             case "mod":
-                self.action = "Deletes all moderators."
+                self.__action = "Deletes all moderators."
             case "stage":
-                self.action = "Deletes all stages."
+                self.__action = "Deletes all stages."
             case "troom":
-                self.action = "Deletes all temporary rooms."
+                self.__action = "Deletes all temporary rooms."
             case "tmute":
-                self.action = "Deletes all text-mutes."
+                self.__action = "Deletes all text-mutes."
             case "vegan":
-                self.action = "Deletes all vegans."
+                self.__action = "Deletes all vegans."
             case "vmute":
-                self.action = "Deletes all voice-mutes."
+                self.__action = "Deletes all voice-mutes."
             case "vroom":
-                self.action = "Deletes all video rooms."
+                self.__action = "Deletes all video rooms."
             case _:
                 raise ValueError("Invalid action type specified for confirmation view.")
-        self.author_snowflake = author_snowflake
-        self.bot = DiscordBot.get_instance()
-        self.guild_snowflake = guild_snowflake
-        self.channel_snowflake = channel_snowflake
-        self.member_snowflake = member_snowflake
-        self.result = None
-        self.mention = mention
+        self.__author_snowflake = author_snowflake
+        self._guild_snowflake = guild_snowflake
+        self._channel_snowflake = channel_snowflake
+        self._member_snowflake = member_snowflake
+        self._result = None
+        self.__mention = mention
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.author_snowflake
+        return interaction.user.id == self.__author_snowflake
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm(self, interaction, button):
-        self.result = True
+        self._result = True
         await interaction.message.delete()
         self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
-        self.result = False
+        self._result = False
         await interaction.message.delete()
         self.stop()
 
     def build_embed(self):
         embed = discord.Embed(
             title="\U000026a0\U0000fe0f Clear Command Confirmation",
-            description=f"**Action:** {self.action}\n**Target:** {self.mention}",
+            description=f"**Action:** {self.__action}\n**Target:** {self.__mention}",
             color=discord.Color.orange(),
         )
         embed.set_footer(text="Please confirm or cancel this action.")
         return embed
+
+    @property
+    def channel_snowflake(self):
+        return self._channel_snowflake
+
+    @property
+    def guild_snowflake(self):
+        return self._guild_snowflake
+
+    @property
+    def member_snowflake(self):
+        return self._member_snowflake
+
+    @property
+    def result(self):
+        return self._result

@@ -45,7 +45,6 @@ class VeganService:
         self.__stream_service = stream_service
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         vegans = await self.__database_factory.select(singular=False, **where_kwargs)
         for vegan in vegans:
