@@ -84,9 +84,9 @@ class InfractionView(discord.ui.View):
     async def duration_select(self, interaction, select):
         duration_name = select.values[0]
         self.__duration_select.placeholder = duration_name
-        self.__duration = self.__duration_service(duration_name)
+        self.__duration = self.__duration_service.parse(duration=duration_name)
         self.__ctx.expires_in = (
-            datetime.now(timezone.utc) + self.__duration.to_timedelta()
+            self.__duration_service.to_expires_in(duration=self.__duration)
             if self.__duration.number != 0
             else None
         )

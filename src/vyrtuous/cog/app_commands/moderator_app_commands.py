@@ -202,6 +202,7 @@ class ModeratorAppCommands(commands.Cog):
             "member_snowflake": int(interaction.user.id),
         }
         view = DataView(
+            bot=self.__bot,
             ban_service=self.__ban_service,
             duration_service=self.__duration_service,
             flag_service=self.__flag_service,
@@ -320,6 +321,7 @@ class ModeratorAppCommands(commands.Cog):
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
+            duration_service=self.__duration_service,
             modal=ReasonModal,
             state=state,
         )
@@ -355,6 +357,7 @@ class ModeratorAppCommands(commands.Cog):
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
+            duration_service=self.__duration_service,
             modal=ReasonModal,
             state=state,
         )
@@ -390,6 +393,7 @@ class ModeratorAppCommands(commands.Cog):
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
+            duration_service=self.__duration_service,
             modal=ReasonModal,
             state=state,
         )

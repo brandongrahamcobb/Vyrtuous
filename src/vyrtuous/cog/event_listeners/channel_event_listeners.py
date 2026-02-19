@@ -222,10 +222,10 @@ class ChannelEventListeners(commands.Cog):
                 if before.self_mute == after.self_mute:
                     return
                 return
-        await self.__ban_service.is_banned_then_kick_and_reset(
+        await self.__ban_service.is_banned_then_kick_and_reset_cooldown(
             channel=after.channel, member=member
         )
-        if self.__server_mute_service.is_server_muted(
+        if await self.__server_mute_service.is_server_muted(
             channel=after.channel, member=member
         ):
             return

@@ -32,6 +32,7 @@ class DataView(discord.ui.View):
     def __init__(
         self,
         *,
+        bot=None,
         ban_service=None,
         duration_service=None,
         flag_service=None,
@@ -42,6 +43,7 @@ class DataView(discord.ui.View):
         state=None,
     ):
         super().__init__(timeout=120)
+        self.__bot = bot
         self.__information = {}
         self.__available_channels = {}
         self.__author_snowflake = int(interaction.user.id)
@@ -222,12 +224,8 @@ class DataView(discord.ui.View):
             values.append(self.__information["infraction"].identifier)
         if "duration" in self.__information:
             conditions.append(f"created_at >= ${len(values) + 1}")
-            values.append(
-                datetime.now(timezone.utc)
-                - self.__duration_service.parse(
-                    self.__information["duration"]
-                ).to_timedelta()
-            )
+            duration = self.__duration_service.parse(self.__information["duration"])
+            values.append(self.__duration_service.to_expires_in(duration=duration))
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(

@@ -32,7 +32,6 @@ from vyrtuous.cog.text_commands.help_text_command import (
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration import Duration, DurationObject
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
@@ -212,8 +211,8 @@ class CoordinatorTextCommands(commands.Cog):
             description="Tag a channel or include its ID.",
         ),
         *,
-        duration: Duration = commands.parameter(
-            default=DurationObject("1h"),
+        duration: str = commands.parameter(
+            default="1h",
             description="Options: (+|-)duration(m|h|d) 0 - permanent / 24h - default",
         ),
     ):

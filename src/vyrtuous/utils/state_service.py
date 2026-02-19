@@ -130,10 +130,10 @@ class StateService:
         if isinstance(message_obj, list) and message_obj:
             self.__paginator = PaginatorService(
                 bot=self.__bot,
-                channel_source=self._source,
-                pages=message_obj,
             )
-            self.message = await self.__paginator.start()
+            self.message = await self.__paginator.start(
+                channel=self._source, pages=message_obj
+            )
             cache[self.message.id] = {
                 "date": self.start_time,
                 "health_type": health_type,

@@ -165,7 +165,7 @@ class PaginatorService:
         else:
             self.message = await channel.send(embed=embed)
         for emoji in self.NAV_EMOJIS:
-            await self.message.add_reaction(channel=channel, emoji=emoji)
+            await self.message.add_reaction(emoji)
         self.__bot.loop.create_task(
             self.wait_for_reactions(channel=channel, pages=pages, timeout=timeout)
         )

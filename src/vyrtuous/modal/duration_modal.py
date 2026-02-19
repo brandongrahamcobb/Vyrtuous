@@ -23,7 +23,9 @@ import discord
 
 
 class DurationModal(discord.ui.Modal):
-    def __init__(self, ctx, state, *, cap_service=None, duration=None):
+    def __init__(
+        self, ctx, state, *, cap_service=None, duration=None, duration_service=None
+    ):
         super().__init__(title="Duration")
         self.ctx = ctx
         self.channel_snowflake = ctx.target_channel_snowflake
@@ -36,6 +38,7 @@ class DurationModal(discord.ui.Modal):
         }
         self.state = state
         self.__duration = duration
+        self.__duration_service = duration_service
         self.__cap_service = cap_service
 
     async def setup(self):
@@ -43,7 +46,9 @@ class DurationModal(discord.ui.Modal):
             label="Type the duration",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=self.__duration.from_expires_in_to_str(self.ctx.record.expires_in)
+            default=self.__duration_service.from_expires_in_to_str(
+                self.ctx.record.expires_in
+            )
             or "",
         )
         self.add_item(self.duration_selection)
@@ -51,9 +56,10 @@ class DurationModal(discord.ui.Modal):
     async def on_submit(self, interaction):
         await interaction.response.defer()
         self.state.interaction = interaction
-        self.duration = self.__duration(self.duration_selection.value)
+        self.duration = self.__duration_service.parse(self.duration_selection.value)
         self.ctx.expires_in = (
-            datetime.now(timezone.utc) + self.duration.to_timedelta()
+            datetime.now(timezone.utc)
+            + self.__duration_service.to_timedelta(duration=self.duration)
             if self.duration.number != 0
             else None
         )
