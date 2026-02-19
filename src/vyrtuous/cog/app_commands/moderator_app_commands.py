@@ -47,6 +47,7 @@ from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.utils.view_context import ViewContext
 from vyrtuous.view.data_view import DataView
@@ -114,10 +115,14 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            paginator_service=self.__paginator_service,
         )
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,

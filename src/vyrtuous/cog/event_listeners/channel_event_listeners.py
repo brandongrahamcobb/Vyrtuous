@@ -72,6 +72,7 @@ class ChannelEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
@@ -133,6 +134,7 @@ class ChannelEventListeners(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
+            voice_mute_service=self.__voice_mute_service,
         )
         self.__cap_service = CapService(
             bot=self.__bot,

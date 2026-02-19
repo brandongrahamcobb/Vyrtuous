@@ -33,7 +33,7 @@ from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
+from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
@@ -174,6 +174,7 @@ class DevTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[str, discord.Guild, None] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify one of: `all`, server ID or UUID.",
         ),
@@ -196,7 +197,7 @@ class DevTextCommands(commands.Cog):
         try:
             target_uuid = UUID(str(target))
             where_kwargs = {"id": target_uuid}
-        except Exception as e:
+        except ValueError as e:
             logger.warning(str(e).capitalize())
             object_dict = self.__discord_object_service.to_dict(obj=obj)
             where_kwargs = object_dict.get("columns", None)

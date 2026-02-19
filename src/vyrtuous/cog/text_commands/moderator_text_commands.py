@@ -50,6 +50,7 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
+from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
@@ -101,12 +102,32 @@ class ModeratorTextCommands(commands.Cog):
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )
+        self.__paginator_service = PaginatorService(bot=self.__bot)
+        self.__stream_service = StreamService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            paginator_service=self.__paginator_service,
+        )
+        self.__voice_mute_service = VoiceMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            data_service=self.__data_service,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
+        )
         self.__stage_service = StageService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
+            voice_mute_service=self.__voice_mute_service,
         )
         self.__developer_service = DeveloperService(
             author_service=self.__author_service,
@@ -130,21 +151,7 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
-        self.__stream_service = StreamService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-        )
-        self.__voice_mute_service = VoiceMuteService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            data_service=self.__data_service,
-            dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
-            emoji=self.__emoji,
-            moderator_service=self.__moderator_service,
-            stream_service=self.__stream_service,
-        )
+
         self.__ban_service = BanService(
             bot=self.__bot,
             database_factory=self.__database_factory,

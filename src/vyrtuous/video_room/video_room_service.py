@@ -162,7 +162,7 @@ class VideoRoomService:
         return f"Video-only room {action} in {channel_dict.get('mention', None)}."
 
     async def load_video_rooms_into_memory(self):
-        self.video_rooms = self.__database_factory.select()
+        self.video_rooms = await self.__database_factory.select()
 
     def is_active_video_room(self, channel):
         for video_room in self.video_rooms:

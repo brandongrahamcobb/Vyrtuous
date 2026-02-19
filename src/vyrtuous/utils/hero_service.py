@@ -131,64 +131,94 @@ class HeroService:
                 continue
             dictionary.setdefault(guild_snowflake, {"members": {}})
             dictionary[guild_snowflake]["members"][member_snowflake] = True
-            skipped_channels = self.__dictionary_service.generate_skipped_members(
-                dictionary
-            )
-            skipped_guilds = self.__dictionary_service.generate_skipped_guilds(
-                dictionary
-            )
-            cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-                dictionary=dictionary,
-                skipped_channels=skipped_channels,
-                skipped_guilds=skipped_guilds,
-            )
-            # if is_at_home:
-            #     if skipped_channels:
-            #         pages.extend(
-            #             self.__dictionary_service.generate_skipped_dict_pages(
-            #                 skipped=skipped_channels,
-            #                 title="Skipped Channels in Server",
-            #             )
-            #         )
-            #     if skipped_guilds:
-            #         pages.extend(
-            #             self.__dictionary_service.generate_skipped_set_pages(
-            #                 skipped=skipped_guilds,
-            #                 title="Skipped Servers",
-            #             )
-            #         )
-            return cleaned_dictionary
+        skipped_channels = self.__dictionary_service.generate_skipped_members(
+            dictionary
+        )
+        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
+        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
+            dictionary=dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
+        # if is_at_home:
+        #     if skipped_channels:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_dict_pages(
+        #                 skipped=skipped_channels,
+        #                 title="Skipped Channels in Server",
+        #             )
+        #         )
+        #     if skipped_guilds:
+        #         pages.extend(
+        #             self.__dictionary_service.generate_skipped_set_pages(
+        #                 skipped=skipped_guilds,
+        #                 title="Skipped Servers",
+        #             )
+        #         )
+        return cleaned_dictionary
 
-    async def build_pages(self, is_at_home, default_kwargs):
+    async def build_pages(
+        self, object_dict=None, is_at_home=False, default_kwargs=None
+    ):
         lines, pages = [], []
-        guild_snowflake = default_kwargs.get("guild_snowflake", None)
-        guild = self.__bot.get_guild(guild_snowflake)
+        default_kwargs = default_kwargs or {}
         title = f"{self.__emoji.get_random_emoji()} {self.__bot.user.display_name} Invincible Members"
+        if object_dict:
+            obj = object_dict.get("object", None)
+            name_str = (
+                f" for {object_dict.get('name', None)}"
+                if isinstance(obj, discord.Member)
+                else ""
+            )
+            title = f"{self.__emoji.get_random_emoji()} Moderator{name_str}"
+        where_kwargs = object_dict.get("columns") if object_dict else None
         dictionary = self.build_clean_dictionary()
+        hero_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
+            thumbnail_set = False
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for member_snowflake in guild_data.get("members", []):
+            for member_snowflake, member_dictionary in guild_data.get(
+                "members", {}
+            ).items():
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                lines.append(f"Member: {member.mention}")
-                field_count += 1
-                if field_count >= self.__CHUNK_SIZE:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed = self.__dictionary_service.flush_page(
-                        embed, pages, title, guild.name
-                    )
-                    lines = []
-                    field_count = 0
+                hero_n += 1
+                if not object_dict or not isinstance(obj, discord.Member):
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    field_count += 1
+                elif not thumbnail_set:
+                    embed.set_thumbnail(url=obj.display_avatar.url)
+                    thumbnail_set = True
+
+                for channel_snowflake, channel_dictionary in member_dictionary.get(
+                    "moderators", {}
+                ).items():
+                    if not object_dict or not isinstance(obj, discord.abc.GuildChannel):
+                        channel = guild.get_channel(channel_snowflake)
+                        if not channel:
+                            continue
+                        lines.append(f"**Channel:** {channel.mention}")
+                    field_count += 1
+                    if field_count >= self.__CHUNK_SIZE:
+                        embed.add_field(
+                            name="Information", value="\n".join(lines), inline=False
+                        )
+                        embed = self.__dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
+                        lines = []
+                        field_count = 0
+
             if lines:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
+        if pages:
+            pages[0].description = f"**({hero_n})**"
         return pages

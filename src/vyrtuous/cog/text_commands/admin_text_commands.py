@@ -147,7 +147,6 @@ class AdminTextCommands(commands.Cog):
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )
-        self.message_service = MessageService(self.__bot)
         self.__administrator_role_service = AdministratorRoleService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -173,6 +172,7 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
             paginator_service=self.__paginator_service,
         )
         self.__video_room_service = VideoRoomService(

@@ -556,7 +556,7 @@ class VoiceMuteService:
         self.__database_factory.update(**updated_kwargs)
 
     async def is_voice_muted(self, channel, member):
-        voice_mute = self.__database_factory.select(
+        voice_mute = await self.__database_factory.select(
             channel_snowflake=channel.id, member_snowflake=member.id
         )
         if voice_mute:

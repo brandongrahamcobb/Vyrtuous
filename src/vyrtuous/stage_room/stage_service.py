@@ -288,7 +288,7 @@ class StageService:
         return should_be_muted, expires_in
 
     async def is_active_stage_room(self, channel):
-        stage_room = self.__database_factory.select(channel_snowflake=channel.id)
+        stage_room = await self.__database_factory.select(channel_snowflake=channel.id)
         if stage_room:
             return True
         return False

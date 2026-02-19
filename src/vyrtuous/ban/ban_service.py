@@ -383,12 +383,12 @@ class BanService:
         return embed
 
     async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+        await self.__database_factory.update(**updated_kwargs)
 
     async def is_banned(
         self, channel: discord.abc.GuildChannel, member: discord.Member
     ):
-        ban = self.__database_factory.select(
+        ban = await self.__database_factory.select(
             channel_snowflake=channel.id, member_snowflake=member.id
         )
         if ban:

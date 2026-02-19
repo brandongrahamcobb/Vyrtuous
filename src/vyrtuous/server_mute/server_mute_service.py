@@ -33,6 +33,7 @@ class ServerMuteService:
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
@@ -187,7 +188,7 @@ class ServerMuteService:
         return True
 
     async def is_server_muted(self, channel, member):
-        server_mute = self.__database_factory.select(
+        server_mute = await self.__database_factory.select(
             channel_snowflake=channel.id, member_snowflake=member.id
         )
         if server_mute:

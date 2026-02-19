@@ -48,6 +48,7 @@ from vyrtuous.utils.hero_service import HeroService
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.utils.home import at_home
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -93,6 +94,7 @@ class GuildOwnerTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
@@ -262,6 +264,40 @@ class GuildOwnerTextCommands(commands.Cog):
         obj = target or "all"
         object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__developer_service.build_pages(object_dict=object_dict)
+        return await state.end(success=pages)
+
+    @commands.command(name="heroes", help="List heroes.")
+    async def list_heroes_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        target: Union[str, discord.Member] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="'all', or user mention/ID",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        default_kwargs = {
+            "channel_snowflake": ctx.channel.id,
+            "guild_snowflake": ctx.guild.id,
+            "member_snowflake": ctx.author.id,
+        }
+        is_at_home = at_home(source=ctx)
+        obj = target or "all"
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
+        pages = await self.__hero_service.build_pages(
+            is_at_home=is_at_home,
+            default_kwargs=default_kwargs,
+            object_dict=object_dict,
+        )
         return await state.end(success=pages)
 
     @commands.command(name="sync", help="Sync app commands.")

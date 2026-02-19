@@ -249,7 +249,7 @@ class FlagService:
         self.__database_factory.update(**updated_kwargs)
 
     async def load_flags_into_memory(self):
-        self.__flags = self.__database_factory.select()
+        self.__flags = await self.__database_factory.select()
 
     async def warn(self, channel: discord.abc.GuildChannel, member: discord.Member):
         if channel.id == 1222056499959042108:

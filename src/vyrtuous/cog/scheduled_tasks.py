@@ -102,6 +102,7 @@ class ScheduledTasks(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
+            voice_mute_service=self.__voice_mute_service,
         )
         self.__guild_owner_service = GuildOwnerService(
             author_service=self.__author_service,

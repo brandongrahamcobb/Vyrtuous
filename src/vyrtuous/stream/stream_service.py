@@ -153,6 +153,7 @@ class StreamService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
+        emoji=None,
         moderator_service=None,
         paginator_service=None,
     ):
@@ -160,6 +161,7 @@ class StreamService:
         self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__database_factory.model = self.MODEL
+        self.__emoji = emoji
         self.__paginator_service = paginator_service
         self.__moderator_service = moderator_service
 

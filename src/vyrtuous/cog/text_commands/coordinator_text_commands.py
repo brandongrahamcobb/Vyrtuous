@@ -46,6 +46,11 @@ from vyrtuous.utils.emojis import Emojis
 
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.stream.stream_service import StreamService
+from vyrtuous.utils.message_service import PaginatorService
+from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.utils.data_service import DataService
+from vyrtuous.duration.duration_service import DurationService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -57,6 +62,7 @@ class CoordinatorTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
+        self.__duration_service = DurationService()
         self.__moderator_service = ModeratorService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -64,12 +70,36 @@ class CoordinatorTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__data_service = DataService(
+            duration_service=self.__duration_service,
+            moderator_service=self.__moderator_service,
+        )
+        self.__paginator_service = PaginatorService(bot=self.__bot)
+        self.__stream_service = StreamService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            paginator_service=self.__paginator_service,
+        )
+        self.__voice_mute_service = VoiceMuteService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            data_service=self.__data_service,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
+        )
         self.__stage_service = StageService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
+            voice_mute_service=self.__voice_mute_service,
         )
         self.__bug_service = BugService(
             bot=self.__bot,

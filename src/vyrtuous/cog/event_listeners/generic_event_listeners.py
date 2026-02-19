@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import traceback
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -162,13 +164,18 @@ class GenericEventListeners(commands.Cog):
                 ctx=ctx, source=message, state=state
             )
         except:
-            import traceback
-
             traceback.print_exc()
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         logger.error(str(error))
         if isinstance(error, commands.BadArgument):
             return await state.end(error=str(error))
@@ -180,7 +187,14 @@ class GenericEventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
-        state = StateService(interaction=interaction)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            interaction=interaction,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         logger.error(str(error))
         if isinstance(error, app_commands.CheckFailure):
             return await state.end(error=str(error))
