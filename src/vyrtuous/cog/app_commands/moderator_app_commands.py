@@ -115,7 +115,6 @@ class ModeratorAppCommands(commands.Cog):
             database_factory=self.__database_factory,
         )
         self.__stream_service = StreamService(
-            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,

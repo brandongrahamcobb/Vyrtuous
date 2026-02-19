@@ -27,7 +27,9 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.cog.help_command import skip_text_command_help_discovery
+from vyrtuous.cog.text_commands.help_text_command import (
+    skip_text_command_help_discovery,
+)
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.flag.flag_service import FlagService

@@ -108,7 +108,6 @@ class VoiceMuteService:
                     )
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         voice_mutes = await self.__database_factory.select(
             target="user", **where_kwargs
@@ -413,7 +412,7 @@ class VoiceMuteService:
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {DurationObject.from_expires_in(ctx.expires_in)}\n"
+                f"**Expires:** {self.__duration_service.from_expires_in(ctx.expires_in)}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
@@ -452,7 +451,7 @@ class VoiceMuteService:
                     target="room",
                 )
                 self.__bot.logger.info(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) from expired stage."
+                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.id}) from expired stage."
                 )
                 continue
             await self.__database_factory.delete(
@@ -476,7 +475,7 @@ class VoiceMuteService:
                     )
                 except discord.Forbidden as e:
                     self.__bot.logger.warning(
-                        f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_id}). {str(e).capitalize()}"
+                        f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.id}). {str(e).capitalize()}"
                     )
             else:
                 self.__bot.logger.info(

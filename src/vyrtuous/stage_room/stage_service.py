@@ -167,7 +167,6 @@ class StageService:
 
     async def toggle_stage(self, channel_dict, default_kwargs, duration):
         updated_kwargs = default_kwargs.copy()
-        guild = self.__bot.get_guild(updated_kwargs.get("guild_snowflake", None))
         failed, pages, skipped, succeeded = [], [], [], []
         updated_kwargs.update(channel_dict.get("columns", None))
         stage_kwargs = updated_kwargs.copy()
@@ -177,7 +176,7 @@ class StageService:
             title = f"{self.__emoji.get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
             await self.__database_factory.delete(**updated_kwargs)
             failed, succeeded = await self.__voice_mute_service.off_stage(
-                channel_dict=channel_dict, member=member, updated_kwargs=updated_kwargs
+                channel_dict=channel_dict, updated_kwargs=updated_kwargs
             )
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
@@ -271,7 +270,7 @@ class StageService:
         expires_in = None
         stage = await self.__database_factory.select(channel_snowlfake=after.channel)
         if stage:
-            self.send_stage_ask_to_speak_message(
+            await self.send_stage_ask_to_speak_message(
                 join_log=self.__join_log, member=member, stage=stage
             )
             default_kwargs = {
@@ -285,7 +284,6 @@ class StageService:
             )
             if highest_role == "Everyone":
                 should_be_muted = True
-                target = "room"
                 expires_in = stage.expires_in
         return should_be_muted, expires_in
 

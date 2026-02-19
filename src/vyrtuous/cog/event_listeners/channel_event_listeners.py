@@ -17,49 +17,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import time
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import discord
 from discord.ext import commands
 
-from vyrtuous.alias.alias import Alias
 from vyrtuous.alias.alias_service import AliasService
-from vyrtuous.ban.ban import Ban
 from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cap.cap import Cap
 from vyrtuous.cap.cap_service import CapService
-from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.duration.duration_service import DurationService
-from vyrtuous.field.duration import DurationObject
-from vyrtuous.flag.flag import Flag
 from vyrtuous.flag.flag_service import FlagService
-from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.moderator.moderator_service import ModeratorService
-from vyrtuous.server_mute.server_mute import ServerMute
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
-from vyrtuous.stage_room.stage import Stage
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.temporary_room.temporary_room import TemporaryRoom
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
-from vyrtuous.text_mute.text_mute import TextMute
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.hero_service import HeroService
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
-from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.vegan.vegan_service import VeganService
-from vyrtuous.video_room.video_room import VideoRoom
 from vyrtuous.video_room.video_room_service import VideoRoomService
-from vyrtuous.voice_mute.voice_mute import VoiceMute
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 

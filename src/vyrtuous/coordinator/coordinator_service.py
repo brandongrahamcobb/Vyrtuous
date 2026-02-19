@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 coordinator_service.py The purpose of this program is to extend Service to service the coordinator class.
 
@@ -19,16 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
 from typing import Union
 
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.coordinator.coordinator import Coordinator
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
 class NotCoordinator(commands.CheckFailure):
@@ -54,7 +49,7 @@ class CoordinatorService:
     ):
         self.__author_service = author_service
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__database_factory.model = self.MODEL
         self.__emoji = emoji
@@ -104,7 +99,6 @@ class CoordinatorService:
         )
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         coordinators = await self.__database_factory.select(
             singular=False, **where_kwargs
@@ -200,7 +194,9 @@ class CoordinatorService:
                             value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(embed, pages, title, guild.name)
+                        embed = self.__dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
                         lines = []
                         field_count = 0
             if lines:

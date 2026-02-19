@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 guild_owner_service.py The purpose of this program is to extend Service to service the guild owner class.
 
@@ -18,15 +16,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from copy import copy
 from typing import Union
 
 import discord
 from discord.ext import commands
 
-from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.owner.guild_owner import GuildOwner
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
 class NotGuildOwner(commands.CheckFailure):

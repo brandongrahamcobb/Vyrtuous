@@ -6,7 +6,6 @@ import discord
 
 from vyrtuous.alias.alias import Alias
 from vyrtuous.alias.alias_service import AliasService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
 
 
 class AliasContext:

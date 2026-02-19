@@ -18,7 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+import time
 import discord
 
 from vyrtuous.flag.flag import Flag
@@ -262,7 +262,7 @@ class FlagService:
                         )
                         embed.set_thumbnail(url=member.display_avatar.url)
                         embed.add_field(
-                            name=f"Channel: {after_channel.mention}",
+                            name=f"Channel: {channel.mention}",
                             value=f"Reason: {flag.reason}",
                             inline=False,
                         )
@@ -272,4 +272,4 @@ class FlagService:
                         ]
                         if len(self.__join_log[member.id]) < 1:
                             self.__join_log[member.id].append(now)
-                            await after_channel.send(embed=embed)
+                            await channel.send(embed=embed)

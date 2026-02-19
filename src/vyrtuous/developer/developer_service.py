@@ -24,7 +24,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.developer.developer import Developer
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
 
 
 class NotDeveloper(commands.CheckFailure):

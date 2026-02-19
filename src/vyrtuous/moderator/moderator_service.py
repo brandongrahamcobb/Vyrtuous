@@ -31,7 +31,7 @@ from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoor
 from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
 from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
-from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, Sysadminservice
+from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
 
 
 class NotModerator(commands.CheckFailure):
@@ -147,7 +147,6 @@ class ModeratorService:
         return True
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         moderators = await self.__database_factory.select(
             singular=False, **where_kwargs

@@ -21,31 +21,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 
-from vyrtuous.base.record_service import RecordService
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import CHUNK_SIZE
 from vyrtuous.role.role import Role
-from vyrtuous.stream.stream_service import StreamService
-from vyrtuous.utils.dictionary import (
-    clean_dictionary,
-    flush_page,
-    generate_skipped_dict_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    generate_skipped_set_pages,
-)
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
 
 
-class RoleService(RecordService):
+class RoleService:
     __CHUNK_SIZE = 7
     MODEL = Role
 
     def __init__(
         self,
         *,
-        bot=bot,
+        bot=None,
         database_factory=None,
         dictionary_service=None,
         emoji=None,
@@ -59,13 +45,12 @@ class RoleService(RecordService):
         self.__stream_service = stream_service
 
     async def act_embed(self, ctx):
-        bot = DiscordBot.get_instance()
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
         channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         role = guild.get_role(ctx.target_role_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name} has been granted a role",
+            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been granted a role",
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
@@ -82,7 +67,7 @@ class RoleService(RecordService):
         member = guild.get_member(ctx.target_member_snowflake)
         role = guild.get_role(ctx.target_role_snowflake)
         embed = discord.Embed(
-            title=f"{get_random_emoji()} {member.display_name}'s role has been revoked",
+            title=f"{self.__emoji.get_random_emoji()} {member.display_name}'s role has been revoked",
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
@@ -109,7 +94,7 @@ class RoleService(RecordService):
         try:
             await member.remove_roles(role, reason="Revoking role.")
         except discord.Forbidden as e:
-            logger.error(str(e).capitalize())
+            self.__bot.logger.error(str(e).capitalize())
 
     async def added_role(
         self,
@@ -130,13 +115,12 @@ class RoleService(RecordService):
             msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
             category = category_class(**kwargs)
             await category.create()
-            logger.info(msg)
+            self.__bot.logger.info(msg)
         else:
             return
 
-    @classmethod
     async def removed_role(
-        cls,
+        self,
         category_class,
         category_role_class,
         guild_snowflake,
@@ -153,7 +137,7 @@ class RoleService(RecordService):
             kwargs.update({"member_snowflake": role.member_snowflake})
             msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
             await category_class.delete(**kwargs)
-            logger.info(msg)
+            self.__bot.logger.info(msg)
         else:
             return
 
@@ -189,8 +173,7 @@ class RoleService(RecordService):
                 )
             if skipped_members:
                 pages.extend(
-                    self.__dictionary_service,
-                    generate_skipped_dict_pages(
+                    self.__dictionary_service.generate_skipped_dict_pages(
                         skipped=skipped_members,
                         title="Skipped Members in Server",
                     ),
@@ -243,7 +226,9 @@ class RoleService(RecordService):
                             value="\n".join(lines),
                             inline=False,
                         )
-                        embed = flush_page(embed, pages, title, guild.name)
+                        embed = self.__dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
                         lines = []
                         field_count = 0
             if lines:
