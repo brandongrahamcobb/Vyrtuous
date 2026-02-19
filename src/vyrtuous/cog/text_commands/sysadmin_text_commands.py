@@ -38,7 +38,7 @@ from vyrtuous.utils.state_service import StateService
 class SysadminTextCommands(commands.Cog):
     ROLE = Sysadmin
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, *, bot: DiscordBot | None = None):
         self.__bot = bot
         self.__emoji = Emojis()
         self.__author_service = AuthorService()
@@ -130,4 +130,4 @@ class SysadminTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(SysadminTextCommands(bot))
+    await bot.add_cog(SysadminTextCommands(bot=bot))

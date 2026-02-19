@@ -58,7 +58,7 @@ from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 class ModeratorTextCommands(commands.Cog):
     ROLE = Moderator
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, *, bot: DiscordBot | None = None):
         self.config = bot.config
         self.__author_service = AuthorService()
         self.__bot = bot
@@ -640,5 +640,4 @@ class ModeratorTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    cog = ModeratorTextCommands(bot)
-    await bot.add_cog(cog)
+    await bot.add_cog(ModeratorTextCommands(bot=bot))

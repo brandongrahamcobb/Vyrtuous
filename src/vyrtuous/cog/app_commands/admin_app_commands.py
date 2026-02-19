@@ -32,4 +32,4 @@ class AdminAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(AdminAppCommands(bot))
+    await bot.add_cog(AdminAppCommands(bot=bot))

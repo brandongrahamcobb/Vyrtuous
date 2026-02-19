@@ -51,7 +51,7 @@ from vyrtuous.utils.state_service import StateService
 class CoordinatorTextCommands(commands.Cog):
     ROLE = Coordinator
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, *, bot: DiscordBot | None = None):
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
@@ -211,4 +211,4 @@ class CoordinatorTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(CoordinatorTextCommands(bot))
+    await bot.add_cog(CoordinatorTextCommands(bot=bot))

@@ -31,4 +31,4 @@ class DevAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(DevAppCommands(bot))
+    await bot.add_cog(DevAppCommands(bot=bot))

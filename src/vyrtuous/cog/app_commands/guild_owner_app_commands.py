@@ -31,4 +31,4 @@ class GuildOwnerAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(GuildOwnerAppCommands(bot))
+    await bot.add_cog(GuildOwnerAppCommands(bot=bot))

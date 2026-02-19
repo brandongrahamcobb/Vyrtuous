@@ -72,7 +72,7 @@ from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 class AdminTextCommands(commands.Cog):
     ROLE = Administrator
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, *, bot: DiscordBot | None = None):
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
@@ -994,4 +994,4 @@ class AdminTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(AdminTextCommands(bot))
+    await bot.add_cog(AdminTextCommands(bot=bot))

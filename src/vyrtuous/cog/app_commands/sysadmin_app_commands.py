@@ -31,4 +31,4 @@ class SysadminAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(SysadminAppCommands(bot))
+    await bot.add_cog(SysadminAppCommands(bot=bot))

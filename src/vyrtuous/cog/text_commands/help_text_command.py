@@ -50,7 +50,7 @@ def skip_text_command_help_discovery():
     return commands.check(predicate)
 
 
-class HelpCommand(commands.Cog):
+class HelpTextCommand(commands.Cog):
     __MODEL = Alias
 
     def __init__(self, *, bot: DiscordBot | None = None):
@@ -441,5 +441,4 @@ class HelpCommand(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    cog = HelpCommand(bot)
-    await bot.add_cog(cog)
+    await bot.add_cog(HelpTextCommand(bot=bot))

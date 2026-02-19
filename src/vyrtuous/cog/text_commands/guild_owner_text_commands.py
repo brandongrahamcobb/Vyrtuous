@@ -53,7 +53,7 @@ from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 class GuildOwnerTextCommands(commands.Cog):
     ROLE = GuildOwner
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, *, bot: DiscordBot | None = None):
         self.__bot = bot
         self.__author_service = AuthorService()
         self.__emoji = Emojis()
@@ -312,4 +312,4 @@ class GuildOwnerTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(GuildOwnerTextCommands(bot))
+    await bot.add_cog(GuildOwnerTextCommands(bot=bot))

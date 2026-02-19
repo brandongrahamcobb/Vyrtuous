@@ -25,6 +25,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator_service import AdministratorService
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
@@ -46,9 +47,10 @@ def skip_app_command_help_discovery():
     return app_commands.check(predicate)
 
 
-class HelpCommand(commands.Cog):
+class HelpAppCommand(commands.Cog):
     def __init__(self, *, bot: DiscordBot | None = None):
         self.__bot = bot
+        self.__database_factory = DatabaseFactory()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__author_service = AuthorService()
@@ -350,5 +352,4 @@ class HelpCommand(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    cog = HelpCommand(bot)
-    await bot.add_cog(cog)
+    await bot.add_cog(HelpAppCommand(bot=bot))

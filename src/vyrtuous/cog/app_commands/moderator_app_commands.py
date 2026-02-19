@@ -216,13 +216,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def change_moderation_duration_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: discord.Member = app_commands.parameter(
-            converter=app_commands.MemberConverter,
-            default=None,
-            description="Tag a member or include their ID",
-        ),
+        self, interaction: discord.Interaction, member: discord.Member
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -255,13 +249,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="reason", description="Modify a reason.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def change_moderation_reason_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: discord.Member = app_commands.parameter(
-            converter=app_commands.MemberConverter,
-            default=None,
-            description="Tag a member or include their ID",
-        ),
+        self, interaction: discord.Interaction, member: discord.Member
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -303,13 +291,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="vban", description="Create a ban.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def create_ban_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: discord.Member = app_commands.parameter(
-            converter=app_commands.MemberConverter,
-            default=None,
-            description="Tag a member or include their ID",
-        ),
+        self, interaction: discord.Interaction, member: discord.Member
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -344,13 +326,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="vmute", description="Create a mute.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def create_voice_mute_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: discord.Member = app_commands.parameter(
-            converter=app_commands.MemberConverter,
-            default=None,
-            description="Tag a member or include their ID",
-        ),
+        self, interaction: discord.Interaction, member: discord.Member
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -385,13 +361,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="vtmute", description="Create a text-mute.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def create_text_mute_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: discord.Member = app_commands.parameter(
-            converter=app_commands.MemberConverter,
-            default=None,
-            description="Tag a member or include their ID",
-        ),
+        self, interaction: discord.Interaction, member: discord.Member
     ):
         state = StateService(
             author_service=self.__author_service,
@@ -425,5 +395,4 @@ class ModeratorAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    cog = ModeratorAppCommands(bot)
-    await bot.add_cog(cog)
+    await bot.add_cog(ModeratorAppCommands(bot=bot))

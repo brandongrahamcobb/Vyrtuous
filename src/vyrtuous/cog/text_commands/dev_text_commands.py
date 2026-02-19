@@ -44,7 +44,7 @@ from vyrtuous.utils.state_service import StateService
 class DevTextCommands(commands.Cog):
     ROLE = Developer
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, *, bot: DiscordBot | None = None):
         self.__bot = bot
         self.message_service = MessageService(self.__bot)
         self.__author_service = AuthorService()
@@ -316,4 +316,4 @@ class DevTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(DevTextCommands(bot))
+    await bot.add_cog(DevTextCommands(bot=bot))
