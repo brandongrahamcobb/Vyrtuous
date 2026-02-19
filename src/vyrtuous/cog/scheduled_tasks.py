@@ -34,6 +34,7 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
@@ -56,9 +57,21 @@ class ScheduledTasks(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
         )
+        self.__moderator_service = ModeratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__data_service = DataService(
+            duration_service=self.__duration_service,
+            moderator_service=self.__moderator_service,
+        )
         self.__ban_service = BanService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
@@ -67,6 +80,7 @@ class ScheduledTasks(commands.Cog):
         self.__text_mute_service = TextMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
@@ -75,18 +89,12 @@ class ScheduledTasks(commands.Cog):
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
-        )
-        self.__moderator_service = ModeratorService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
         )
         self.__stage_service = StageService(
             bot=self.__bot,

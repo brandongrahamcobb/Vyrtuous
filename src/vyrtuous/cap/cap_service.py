@@ -176,3 +176,6 @@ class CapService:
             if duration_seconds > self.__duration_service.to_seconds():
                 exceeds_cap = True
         return exceeds_cap
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)

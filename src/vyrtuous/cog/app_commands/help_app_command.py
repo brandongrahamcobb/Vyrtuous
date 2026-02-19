@@ -17,26 +17,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Coroutine, Union
-
 import inspect
+from typing import Any, Coroutine, Union
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.state_service import StateService
-from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
+from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
-from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.dictionary_service import DictionaryService
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.state_service import StateService
 
 
 def skip_app_command_help_discovery():

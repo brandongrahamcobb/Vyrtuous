@@ -190,3 +190,6 @@ class VeganService:
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)

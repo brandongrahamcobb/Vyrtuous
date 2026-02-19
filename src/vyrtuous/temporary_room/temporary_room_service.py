@@ -48,6 +48,7 @@ class TemporaryRoomService:
     ):
         self.__alias_service = alias_service
         self.__bot = bot
+        self.__cap_service = cap_service
         self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__database_factory.model = self.MODEL
@@ -60,6 +61,7 @@ class TemporaryRoomService:
         self.__flag_service = flag_service
         self.__vegan_service = vegan_service
         self.__text_mute_service = text_mute_service
+        self.deleted_rooms = {}
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         pages = []
@@ -231,3 +233,19 @@ class TemporaryRoomService:
             await self.__database_factory.create(temporary_room)
             action = "created"
         return f"Temporary room {action} in {channel_dict.get('mention', None)}."
+
+    async def add_deleted_room(self, channel):
+        room = await self.__database_factory.select(
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+            singular=True,
+        )
+        if room:
+            self.deleted_rooms[channel.name] = room
+
+    async def rename_room(self, before, after):
+        set_kwargs = {"room_name": after.id}
+        where_kwargs = {"room_name": before.id}
+        await self.__database_factory.update(
+            set_kwargs=set_kwargs, where_kwargs=where_kwargs
+        )

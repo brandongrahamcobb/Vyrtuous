@@ -17,28 +17,29 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Coroutine, Union
 import inspect
 from collections import defaultdict
+from typing import Any, Coroutine, Union
 
 import discord
 from discord.ext import commands
 
+from vyrtuous.administrator.administrator_service import AdministratorService
+from vyrtuous.alias.alias import Alias
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bug.bug_service import BugService
+from vyrtuous.coordinator.coordinator_service import CoordinatorService
+from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.alias.alias import Alias
-from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.bug.bug_service import BugService
-from vyrtuous.coordinator.coordinator_service import CoordinatorService
-from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
-from vyrtuous.owner.guild_owner_service import GuildOwnerService
-from vyrtuous.sysadmin.sysadmin_service import SysadminService
-from vyrtuous.administrator.administrator_service import AdministratorService
 
 
 def skip_text_command_help_discovery():
@@ -53,6 +54,7 @@ class HelpCommand(commands.Cog):
     __MODEL = Alias
 
     def __init__(self, *, bot: DiscordBot | None = None):
+        self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__database_factory.model = self.__MODEL

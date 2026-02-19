@@ -35,6 +35,7 @@ class TextMuteService:
         *,
         bot=None,
         database_factory=None,
+        data_service=None,
         dictionary_service=None,
         duration_service=None,
         emoji=None,
@@ -43,6 +44,7 @@ class TextMuteService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+        self.__data_service = data_service
         self.__dictionary_service = dictionary_service
         self.__duration_service = duration_service
         self.__emoji = emoji
@@ -137,7 +139,6 @@ class TextMuteService:
                 )
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
-        pages = []
         dictionary = {}
         text_mutes = await self.__database_factory.select(
             singular=False, **where_kwargs
@@ -257,39 +258,9 @@ class TextMuteService:
             pages[0].description = f"**({tmute_n})**"
         return pages
 
-    async def text_mute_overwrite(self, channel, member):
-        kwargs = {
-            "channel_snowflake": channel.id,
-            "guild_snowflake": channel.guild.id,
-            "member_snowflake": member.id,
-        }
-        text_mute = await self.__database_factory.select(**kwargs, singular=True)
-        if text_mute:
-            targets = []
-            for target, overwrite in channel.overwrites.items():
-                if any(value is not None for value in overwrite._values.values()):
-                    if isinstance(target, discord.Member):
-                        targets.append(target)
-            if member not in targets:
-                try:
-                    await channel.set_permissions(
-                        target=member,
-                        send_messages=False,
-                        add_reactions=False,
-                        reason="Reinstating active text-mute overwrite.",
-                    )
-                    set_kwargs = {
-                        "last_muted": datetime.now(timezone.utc),
-                        "reset": False,
-                    }
-                    await self.__database_factory.update(
-                        set_kwargs=set_kwargs, where_kwargs=kwargs
-                    )
-                except discord.Forbidden as e:
-                    self.__bot.logger.warning(e)
-
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         text_mute = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -311,19 +282,28 @@ class TextMuteService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+        await self.__stream_service.send_log(
+            channel=channel,
             duration=self.__duration_service.from_expires_in(ctx.expires_in),
             identifier="tmute",
             member=member,
             source=source,
             reason=ctx.reason,
         )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="tmute",
+            duration=self.__duration_service.from_expires_in(ctx.expires_in),
+            reason=ctx.reason,
+            target=member,
+        )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -342,12 +322,21 @@ class TextMuteService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+        await self.__stream_service.send_log(
+            channel=channel,
             identifier="untmute",
             is_modification=True,
             member=member,
             source=source,
+            reason=ctx.reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="untmute",
+            is_modification=True,
+            reason=ctx.reason,
+            target=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -380,3 +369,60 @@ class TextMuteService:
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)
+
+    async def is_text_muted(
+        self, channel: discord.abc.GuildChannel, member: discord.Member
+    ):
+        mute = await self.__database_factory.select(
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+            member_snowflake=member.id,
+            singular=True,
+        )
+        if mute:
+            return True
+        return False
+
+    async def is_text_muted_then_mute_and_reset_cooldown(
+        self, channel: discord.abc.GuildChannel, member: discord.Member
+    ):
+        if await self.is_text_muted(channel=channel, member=member):
+            targets = []
+            for target, overwrite in channel.overwrites.items():
+                if any(value is not None for value in overwrite._values.values()):
+                    if isinstance(target, discord.Member):
+                        targets.append(target)
+            if member not in targets:
+                try:
+                    await channel.set_permissions(
+                        member,
+                        send_messages=False,
+                        add_reactions=False,
+                        reason="Reinstating active text-mute.",
+                    )
+                    await self.update_last_text_muted(channel=channel, member=member)
+                except discord.Forbidden as e:
+                    self.__bot.logger.warning(e)
+
+    async def update_last_text_muted(
+        self, channel: discord.abc.GuildChannel, member: discord.Member
+    ):
+        where_kwargs = {
+            "channel_snowflake": channel.id,
+            "guild_snowflake": channel.guild.id,
+            "member_snowflake": member.id,
+        }
+        set_kwargs = {
+            "last_muted": datetime.now(timezone.utc),
+            "reset": False,
+        }
+        await self.__database_factory.update(
+            set_kwargs=set_kwargs,
+            where_kwargs=where_kwargs,
+        )
+        self.__bot.logger.info(
+            f"Updated last_muted record for {member.display_name} in {channel.name}."
+        )

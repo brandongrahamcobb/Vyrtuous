@@ -616,3 +616,6 @@ class ModeratorService:
                 {c.id: c for c in available_channels[gid]}.values()
             )
         return available_channels, available_guilds
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)

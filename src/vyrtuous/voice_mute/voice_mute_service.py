@@ -35,6 +35,7 @@ class VoiceMuteService:
         *,
         bot=None,
         database_factory=None,
+        data_service=None,
         dictionary_service=None,
         duration_service=None,
         emoji=None,
@@ -44,6 +45,7 @@ class VoiceMuteService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+        self.__data_service = data_service
         self.__dictionary_service = dictionary_service
         self.__duration_service = duration_service
         self.__emoji = emoji
@@ -325,6 +327,8 @@ class VoiceMuteService:
 
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         voice_mute = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -343,20 +347,30 @@ class VoiceMuteService:
                     await member.edit(mute=True, reason=ctx.reason)
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
-            duration=DurationObject.from_expires_in(ctx.expires_in),
+        await self.__stream_service.send_log(
+            channel=channel,
+            duration=self.__duration_service.from_expires_in(ctx.expires_in),
             identifier="vmute",
             is_channel_scope=is_channel_scope,
             member=member,
             source=source,
             reason=ctx.reason,
         )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="vmute",
+            duration=self.__duration_service.from_expires_in(ctx.expires_in),
+            reason=ctx.reason,
+            target=member,
+        )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -370,13 +384,22 @@ class VoiceMuteService:
                 await member.edit(mute=False)
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+        await self.__stream_service.send_log(
+            channel=channel,
             identifier="unvmute",
             is_channel_scope=is_channel_scope,
             is_modification=True,
             member=member,
             source=source,
+            reason=ctx.reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="unvmute",
+            is_modification=True,
+            reason=ctx.reason,
+            target=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -529,3 +552,78 @@ class VoiceMuteService:
                 )
                 failed.append(member)
         return failed, skipped, succeeded
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)
+
+    async def is_voice_muted(self, channel, member):
+        voice_mute = self.__database_factory.select(
+            channel_snowflake=channel.id, member_snowflake=member.id
+        )
+        if voice_mute:
+            return True
+        return False
+
+    async def mute(self, channel, duration, member, target):
+        expires_in = duration.to_expires_in()
+        voice_mute = self.MODEL(
+            channel_snowflake=channel.id,
+            expires_in=expires_in,
+            guild_snowflake=channel.guild.id,
+            member_snowflake=member.id,
+            reason="No reason provided.",
+            target=target,
+        )
+        await self.__database_factory.create(obj=voice_mute)
+        await self.__stream_service.send_log(
+            channel=channel,
+            duration=duration,
+            identifier="vmute",
+            is_channel_scope=True,
+            member=member,
+            reason="Right-click voice-mute.",
+        )
+        await self.__data_service.save_data(
+            channel=channel,
+            identifier="vmute",
+            duration=duration,
+            target=member,
+        )
+        await self.toggle_mute(channel=channel, member=member, should_be_muted=True)
+
+    async def unmute(self, channel, member, target):
+        await self.__database_factory.delete(
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+            member_snowflake=member.id,
+            target=target,
+        )
+        await self.__stream_service.send_log(
+            channel_snowflake=channel.id,
+            identifier="unvmute",
+            is_channel_scope=True,
+            member=member,
+            reason="Right-click unvoice-mute.",
+        )
+        await self.__data_service.save_data(
+            channel=channel,
+            identifier="unvmute",
+            target=member,
+        )
+        await self.toggle_mute(channel=channel, member=member, should_be_muted=False)
+
+    async def toggle_mute(self, channel, member, should_be_muted):
+        try:
+            await member.edit(
+                mute=should_be_muted,
+                reason=f"Setting mute to {should_be_muted} in {channel.name}",
+            )
+        except discord.Forbidden as e:
+            self.__bot.logger.warning(
+                f"No permission to edit "
+                f"mute for {member.display_name}. {str(e).capitalize()}"
+            )
+        except discord.HTTPException as e:
+            self.__bot.logger.warning(
+                f"Failed to edit mute for {member.display_name}: {str(e).capitalize()}"
+            )

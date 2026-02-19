@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import time
+from collections import defaultdict
 from copy import copy
 
 import discord
@@ -48,6 +49,7 @@ class StageService:
         self.__emoji = emoji
         self.__moderator_service = moderator_service
         self.__voice_mute_service = voice_mute_service
+        self.__join_log = defaultdict(list)
 
     async def send_stage_ask_to_speak_message(
         self, join_log: dict[int, discord.Member], member: discord.Member, stage: Stage
@@ -260,3 +262,35 @@ class StageService:
                     channel=channel, guild=guild
                 )
             self.__bot.logger.info("Cleaned up expired stages.")
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)
+
+    async def enforce(self, after, member):
+        should_be_muted = False
+        expires_in = None
+        stage = await self.__database_factory.select(channel_snowlfake=after.channel)
+        if stage:
+            self.send_stage_ask_to_speak_message(
+                join_log=self.__join_log, member=member, stage=stage
+            )
+            default_kwargs = {
+                "channel_snowflake": after.channel.id,
+                "guild_snowflake": after.channel.guild.id,
+                "member_snowflake": member.id,
+            }
+            updated_kwargs = default_kwargs.copy()
+            highest_role = await self.__moderator_service.resolve_highest_role(
+                updated_kwargs=updated_kwargs
+            )
+            if highest_role == "Everyone":
+                should_be_muted = True
+                target = "room"
+                expires_in = stage.expires_in
+        return should_be_muted, expires_in
+
+    async def is_active_stage_room(self, channel):
+        stage_room = self.__database_factory.select(channel_snowflake=channel.id)
+        if stage_room:
+            return True
+        return False

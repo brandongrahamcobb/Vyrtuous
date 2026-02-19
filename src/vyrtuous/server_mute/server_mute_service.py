@@ -162,3 +162,34 @@ class ServerMuteService:
         ):
             await member_dict.get("object", None).edit(mute=should_be_muted)
         return f"Successfully server {action} {member_dict.get('mention', None)} in {guild.name}."
+
+    async def enforce(self, after, member):
+        server_mute = await self.__database_factory.select(
+            member_snowflake=member.id, singular=True
+        )
+        if server_mute:
+            if member.guild.id == server_mute.guild_snowflake:
+                if not after.mute:
+                    try:
+                        await member.edit(mute=True, reason="Server mute is active.")
+                    except discord.Forbidden as e:
+                        self.__bot.logger.warning(
+                            f"No permission to "
+                            f"edit mute for {member.display_name}. {str(e).capitalize()}"
+                        )
+                    except discord.HTTPException as e:
+                        self.__bot.logger.warning(
+                            f"Failed to edit mute for "
+                            f"{member.display_name}: "
+                            f"{str(e).capitalize()}"
+                        )
+            return False
+        return True
+
+    async def is_server_muted(self, channel, member):
+        server_mute = self.__database_factory.select(
+            channel_snowflake=channel.id, member_snowflake=member.id
+        )
+        if server_mute:
+            return True
+        return False

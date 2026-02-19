@@ -33,6 +33,7 @@ class FlagService:
         *,
         bot,
         database_factory=None,
+        data_service=None,
         dictionary_service=None,
         emoji=None,
         stream_service=None,
@@ -40,14 +41,15 @@ class FlagService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+        self.__data_service = data_service
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
-        self.flags = []
+        self.__flags = []
+        self.__join_log = {}
         self.__stream_service = stream_service
 
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
-        pages = []
         flags = await self.__database_factory.select(singular=False, **where_kwargs)
         for flag in flags:
             dictionary.setdefault(flag.guild_snowflake, {"members": {}})
@@ -155,6 +157,8 @@ class FlagService:
 
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         flag = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -163,35 +167,52 @@ class FlagService:
             reason=ctx.reason,
         )
         await self.__database_factory.create(flag)
-        self.flags.append(flag)
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+        self.__flags.append(flag)
+        await self.__stream_service.send_log(
+            channel=channel,
             identifier="flag",
             member=member,
             source=source,
             reason=ctx.reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="flag",
+            reason=ctx.reason,
+            target=member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
+        channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
             guild_snowflake=ctx.source_guild_snowflake,
             member_snowflake=ctx.target_member_snowflake,
         )
-        for flag in self.flags:
+        for flag in self.__flags:
             if flag.channel_snowflake == ctx.target_channel_snowflake:
-                self.flags.remove(flag)
+                self.__flags.remove(flag)
                 break
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+        await self.__stream_service.send_log(
+            channel=channel,
             identifier="unflag",
             is_modification=True,
             member=member,
             source=source,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="uflag",
+            is_modification=True,
+            reason=ctx.reason,
+            target=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -223,3 +244,32 @@ class FlagService:
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)
+
+    async def load_flags_into_memory(self):
+        self.__flags = self.__database_factory.select()
+
+    async def warn(self, channel: discord.abc.GuildChannel, member: discord.Member):
+        if channel.id == 1222056499959042108:
+            for flag in self.__flags:
+                if flag.channel_snowflake == channel.id:
+                    if flag.member_snowflake == member.id:
+                        embed = discord.Embed(
+                            title=f"\u26a0\ufe0f {member.display_name} is flagged",
+                            color=discord.Color.red(),
+                        )
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        embed.add_field(
+                            name=f"Channel: {after_channel.mention}",
+                            value=f"Reason: {flag.reason}",
+                            inline=False,
+                        )
+                        now = time.time()
+                        self.__join_log[member.id] = [
+                            t for t in self.__join_log[member.id] if now - t < 300
+                        ]
+                        if len(self.__join_log[member.id]) < 1:
+                            self.__join_log[member.id].append(now)
+                            await after_channel.send(embed=embed)

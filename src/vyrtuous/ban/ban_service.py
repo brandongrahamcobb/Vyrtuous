@@ -35,6 +35,7 @@ class BanService:
         *,
         bot=None,
         database_factory=None,
+        data_service=None,
         dictionary_service=None,
         duration_service=None,
         emoji=None,
@@ -43,6 +44,7 @@ class BanService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = Ban
+        self.__data_service = data_service
         self.__dictionary_service = dictionary_service
         self.__duration_service = duration_service
         self.__emoji = emoji
@@ -255,50 +257,9 @@ class BanService:
             pages[0].description = f"**({ban_n})**"
         return pages
 
-    async def ban_overwrite(self, channel, member):
-        if channel:
-            kwargs = {
-                "channel_snowflake": channel.id,
-                "guild_snowflake": channel.guild.id,
-                "member_snowflake": member.id,
-            }
-            ban = await self.__database_factory.select(
-                **kwargs, model=self.MODEL, singular=True
-            )
-            if ban:
-                targets = []
-                for target, overwrite in channel.overwrites.items():
-                    if any(value is not None for value in overwrite._values.values()):
-                        if isinstance(target, discord.Member):
-                            targets.append(target)
-                if member not in targets:
-                    try:
-                        await channel.set_permissions(
-                            member, view_channel=False, reason="Reinstating active ban."
-                        )
-                    except discord.Forbidden as e:
-                        self.__bot.logger.warning(e)
-                    if (
-                        member.voice
-                        and member.voice.channel
-                        and member.voice.channel.id == channel.id
-                    ):
-                        try:
-                            await member.move_to(None, reason="Reinstating active ban.")
-                            set_kwargs = {
-                                "last_kicked": datetime.now(timezone.utc),
-                                "reset": False,
-                            }
-                            await self.__database_factory.update(
-                                model=self.MODEL,
-                                set_kwargs=set_kwargs,
-                                where_kwargs=kwargs,
-                            )
-                        except discord.Forbidden as e:
-                            self.__bot.logger.warning(e)
-
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         ban = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -337,8 +298,8 @@ class BanService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.channel_snowflake,
+        await self.__stream_service.send_log(
+            channel=channel,
             duration=self.__duration_service.from_expires_in(ctx.expires_in),
             identifier="ban",
             is_channel_scope=is_channel_scope,
@@ -346,11 +307,20 @@ class BanService:
             source=source,
             reason=ctx.reason,
         )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="ban",
+            duration=self.__duration_service.from_expires_in(ctx.expires_in),
+            reason=ctx.reason,
+            target=member,
+        )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
+        author = guild.get_member(ctx.author_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -364,12 +334,21 @@ class BanService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+        await self.__stream_service.send_log(
+            channel=channel,
             identifier="unban",
             is_modification=True,
             member=member,
             source=source,
+            reason=ctx.reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="unban",
+            is_modification=True,
+            reason=ctx.reason,
+            target=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -402,3 +381,74 @@ class BanService:
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)
+
+    async def is_banned(
+        self, channel: discord.abc.GuildChannel, member: discord.Member
+    ):
+        ban = self.__database_factory.select(
+            channel_snowflake=channel.id, member_snowflake=member.id
+        )
+        if ban:
+            return True
+        return False
+
+    async def is_banned_then_kick_and_reset_cooldown(
+        self, channel: discord.abc.GuildChannel, member: discord.Member
+    ):
+        if await self.is_banned(channel=channel, member=member):
+            if (
+                member.voice
+                and member.voice.channel
+                and member.voice.channel.id == channel.id
+            ):
+                await self.kick(channel=channel, member=member)
+        targets = []
+        for target, overwrite in channel.overwrites.items():
+            if any(value is not None for value in overwrite._values.values()):
+                if isinstance(target, discord.Member):
+                    targets.append(target)
+        if member not in targets:
+            await self.toggle_view_channel(
+                channel=channel, member=member, view_channel=False
+            )
+
+    async def toggle_view_channel(
+        self,
+        channel: discord.abc.GuildChannel,
+        member: discord.Member,
+        view_channel: bool,
+    ):
+        try:
+            await channel.set_permissions(
+                member,
+                view_channel=False,
+                reason=f"Toggled ban {'off' if not view_channel else 'on'}.",
+            )
+        except discord.Forbidden as e:
+            self.__bot.logger.warning(e)
+
+    async def kick(self, channel: discord.abc.GuildChannel, member: discord.Member):
+        try:
+            await member.move_to(None, reason="Reinstating active ban.")
+            await self.update_last_kicked(channel=channel, member=member)
+        except discord.Forbidden as e:
+            self.__bot.logger.warning(e)
+
+    async def update_last_kicked(
+        self, channel: discord.abc.GuildChannel, member: discord.Member
+    ):
+        where_kwargs = {"channel_snowflake": channel.id, "member_snowflake": member.id}
+        set_kwargs = {
+            "last_kicked": datetime.now(timezone.utc),
+            "reset": False,
+        }
+        await self.__database_factory.update(
+            set_kwargs=set_kwargs,
+            where_kwargs=where_kwargs,
+        )
+        self.__bot.logger.info(
+            f"Updated last_kicked record for {member.display_name} in {channel.name}."
+        )

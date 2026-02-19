@@ -2,10 +2,11 @@ from copy import copy
 from datetime import datetime, timezone
 from typing import Dict, Tuple
 
+import discord
+
 from vyrtuous.alias.alias import Alias
 from vyrtuous.alias.alias_service import AliasService
-
-# from vyrtuous.utils.permission_service import PermissionService
+from vyrtuous.utils.discord_object_service import DiscordObjectService
 
 
 class AliasContext:
@@ -13,31 +14,48 @@ class AliasContext:
 
     def __init__(
         self,
-        message,
         *,
         bot=None,
         cap_service=None,
         database_factory=None,
-        duration=None,
+        dictionary_service=None,
+        discord_object_service=None,
+        duration_service=None,
+        emoji=None,
+        message: discord.Message | None = None,
+        moderator_service=None,
     ):
-        super().__init__(message=message)
         self.alias = None
-        self.alias_name = None
+        self.alias_name: str
+        self.__bot = bot
+        self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
+        self.__dictionary_service = dictionary_service
+        self.__emoji = emoji
+        self.__alias_service = AliasService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
         self.args = []
         self.expires_in = None
         self.kwargs: Dict[str, Tuple[int, str]] = {}
         self.source_kwargs: Dict[str, int] = {}
         self.message = message
         self.reason = "No reason provided"
-        self.target_channel_snowflake = None
-        self.target_member_snowflake = None
-        self.target_role_snowflake = None
+        self.target_channel_snowflake: int
+        self.target_member_snowflake: int
+        self.target_role_snowflake: int
+        self.source_guild_snowflake: int
+        self.source_channel_snowflake = message.channel.id
+        self.source_guild_snowflake = message.guild.id
+        self.source_member_snowflake = message.author.id
         self.record = None
-        self.__bot = bot
         self.__cap_service = cap_service
-        self.__database_factory = copy(database_factory)
-        self.__database_factory.model = self.MODEL
-        self.__duration = duration
+        self.__discord_object_service = discord_object_service
+        self.__duration_service = duration_service
+        self.__moderator_service = moderator_service
 
     async def setup(self):
         self.build_source_kwargs()
@@ -46,6 +64,13 @@ class AliasContext:
         await self.populate_alias()
         self.fill_map()
         await self.convert_args_to_values()
+
+    def build_source_kwargs(self):
+        self.source_kwargs = {
+            "channel_snowflake": self.source_channel_snowflake,
+            "guild_snowflake": self.source_guild_snowflake,
+            "member_snowflake": self.source_member_snowflake,
+        }
 
     def message_to_args(self) -> None:
         self.args = (
@@ -69,10 +94,12 @@ class AliasContext:
             self.kwargs[key] = (pos, value)
 
     def alias_name_from_args(self):
+        if not self.args:
+            return
         self.alias_name = self.args[0]
 
     async def populate_alias(self):
-        alias_entry = await self__database_factory.select(
+        alias_entry = await self.__database_factory.select(
             alias_name=self.alias_name,
             guild_snowflake=self.source_guild_snowflake,
             singular=True,
@@ -82,7 +109,7 @@ class AliasContext:
         self.target_channel_snowflake = int(alias_entry.channel_snowflake)
         if getattr(alias_entry, "role_snowflake"):
             self.target_role_snowflake = int(alias_entry.role_snowflake)
-        alias = AliasService.alias_category_to_alias(
+        alias = self.__alias_service.alias_category_to_alias(
             alias_category=alias_entry.category
         )
         self.alias = alias
@@ -93,27 +120,27 @@ class AliasContext:
             value = tuple[1]
             if field == "duration":
                 if not value:
-                    duration = self.__duration("8h")
+                    duration = self.__duration_service.parse("8h")
                 else:
-                    duration = self.__duration(value)
-                # if await self.__cap_service.assert_duration_exceeds_cap(
-                #     duration=duration,
-                #     source_kwargs=self.source_kwargs,
-                #     category=self.alias.category,
-                # ):
-                #     await PermissionService.check(
-                #         channel_snowflake=self.target_channel_snowflake,
-                #         guild_snowflake=self.source_guild_snowflake,
-                #         member_snowflake=self.target_member_snowflake,
-                #         lowest_role="Coordinator",
-                #     )
+                    duration = self.__duration_service.parse(value)
+                if await self.__cap_service.assert_duration_exceeds_cap(
+                    duration=duration,
+                    source_kwargs=self.source_kwargs,
+                    category=self.alias.category,
+                ):
+                    await self.__moderator_service.check(
+                        channel_snowflake=self.target_channel_snowflake,
+                        guild_snowflake=self.source_guild_snowflake,
+                        member_snowflake=self.target_member_snowflake,
+                        lowest_role="Coordinator",
+                    )
                 self.expires_in = (
                     None
                     if duration.number == 0
                     else datetime.now(timezone.utc) + duration.to_timedelta()
                 )
             elif field == "member":
-                member_dict = await self.do.determine_from_target(target=value)
+                member_dict = await self.__discord_object_service.to_dict(obj=value)
                 self.target_member_snowflake = member_dict.get("id", None)
             elif field == "reason":
                 self.reason = value

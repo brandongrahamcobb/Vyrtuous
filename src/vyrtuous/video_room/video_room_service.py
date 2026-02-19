@@ -44,87 +44,6 @@ class VideoRoomService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    async def enforce_video(self, member, channel, delay):
-        await asyncio.sleep(delay)
-        if not member.voice:
-            return
-        if member.voice.channel != channel:
-            return
-        if member.voice.self_video:
-            return
-        try:
-            await member.move_to(None)
-        except Exception as e:
-            self.__bot.logger.info(f"Unable to enforce video by kicking the user. {e}")
-        try:
-            await member.send(
-                f"{self.__emoji.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel."
-            )
-        except Exception as e:
-            self.__bot.logger.info(f"Unable to send a message to enforce video. {e}")
-
-    def cancel_task(self, key):
-        task = self.video_tasks.pop(key, None)
-        if task:
-            task.cancel()
-
-    async def enforce_video_message(self, channel_snowflake, member_snowflake, message):
-        channel = self.__bot.get_channel(channel_snowflake)
-        now = datetime.now(timezone.utc)
-        last_trigger = self.cooldowns.get(member_snowflake, None)
-        if last_trigger and now - last_trigger < self.__COOLDOWN:
-            return
-        self.cooldowns[member_snowflake] = now
-        await channel.send(message)
-
-        async def reset_cooldown():
-            await asyncio.sleep(self.__COOLDOWN.total_seconds())
-            if self.cooldowns.get(member_snowflake) == now:
-                del self.cooldowns[member_snowflake]
-
-        asyncio.create_task(reset_cooldown())
-
-    async def reinforce_video_room(self, member, before, after):
-        if not after.channel:
-            self.cancel_task((member.guild.id, member.id))
-            return
-        for video_room in self.video_rooms:
-            if after.channel.id != video_room.channel_snowflake:
-                continue
-            if not after.self_video:
-                if after.channel != before.channel:
-                    if after.channel.permissions_for(
-                        after.channel.guild.me
-                    ).send_messages:
-                        await self.enforce_video_message(
-                            channel_snowflake=after.channel.id,
-                            member_snowflake=member.id,
-                            message=f"{self.__emoji.get_random_emoji()} "
-                            f"Hi {member.mention}, "
-                            f"{after.channel.mention} is a video "
-                            f"only room. You have 5 minutes to turn "
-                            f"on your camera!",
-                        )
-            key = (member.guild.id, member.id)
-            if before.channel != after.channel:
-                self.cancel_task(key)
-                if not after.self_video:
-                    task = asyncio.create_task(
-                        self.enforce_video(member, after.channel, 300)
-                    )
-                    self.video_tasks[key] = task
-                break
-            if before.self_video and not after.self_video:
-                self.cancel_task(key)
-                task = asyncio.create_task(
-                    self.enforce_video(member, after.channel, 60)
-                )
-                self.video_tasks[key] = task
-                break
-            if not before.self_video and after.self_video:
-                self.cancel_task(key)
-                break
-
     async def build_clean_dictionary(self, is_at_home, where_kwargs):
         dictionary = {}
         video_rooms = await self.__database_factory.select(
@@ -241,3 +160,75 @@ class VideoRoomService:
             self.video_rooms.append(video_room)
             action = "created"
         return f"Video-only room {action} in {channel_dict.get('mention', None)}."
+
+    async def load_video_rooms_into_memory(self):
+        self.video_rooms = self.__database_factory.select()
+
+    def is_active_video_room(self, channel):
+        for video_room in self.video_rooms:
+            if video_room.channel_snowflake == channel.id:
+                return True
+        return False
+
+    async def update_video_room_tasks(self, before, after, member):
+        key = (member.guild.id, member.id)
+        if before.channel and not after.channel:
+            self.cancel_task(key)
+            return
+        if not before.channel and after.channel:
+            if not after.self_video:
+                await self.prompt_enable_camera(member, after.channel)
+                self.schedule_enforcement(member, after.channel, delay=300)
+            return
+        if after.channel and before.self_video and not after.self_video:
+            await self.prompt_enable_camera(member, after.channel)
+            self.schedule_enforcement(member, after.channel, delay=300)
+            return
+        if after.channel and not before.self_video and after.self_video:
+            self.cancel_task(key)
+
+    def schedule_enforcement(self, member, channel, delay):
+        key = (member.guild.id, member.id)
+        self.cancel_task(key)
+        task = asyncio.create_task(self.enforce_video(member, channel, delay))
+        self.video_tasks[key] = task
+
+    def cancel_task(self, key):
+        task = self.video_tasks.pop(key, None)
+        if task:
+            task.cancel()
+
+    async def prompt_enable_camera(self, member, channel):
+        now = datetime.now(timezone.utc)
+        last = self.cooldowns.get(member.id)
+        if last and now - last < self.__COOLDOWN:
+            return
+        self.cooldowns[member.id] = now
+        await channel.send(
+            f"{self.__emoji.get_random_emoji()} "
+            f"Hi {member.mention}, {channel.mention} is a video-only room. "
+            f"You have 5 minutes to enable your camera."
+        )
+
+    async def enforce_video(self, member, channel, delay):
+        await asyncio.sleep(delay)
+        if not member.voice:
+            return
+        if member.voice.channel != channel:
+            return
+        if member.voice.self_video:
+            return
+        try:
+            await member.move_to(None)
+        except Exception as e:
+            self.__bot.logger.info(f"Video enforcement failed: {e}")
+            return
+        try:
+            await member.send(
+                f"{self.__emoji.get_random_emoji()} "
+                f"You were removed from {channel.mention} because your camera was off. "
+                f"There is a 30-minute cooldown before you can rejoin."
+            )
+        except Exception:
+            pass
+        self.cooldowns[member.id] = datetime.now(timezone.utc)

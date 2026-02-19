@@ -28,6 +28,7 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
+from vyrtuous.cap.cap_service import CapService
 from vyrtuous.cog.help_command import skip_text_command_help_discovery
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
@@ -42,6 +43,7 @@ from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
@@ -62,6 +64,13 @@ class ModeratorTextCommands(commands.Cog):
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__duration_service = DurationService()
+        self.__cap_service = CapService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+        )
         self.__sysadmin_service = SysadminService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -85,6 +94,10 @@ class ModeratorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+        )
+        self.__data_service = DataService(
+            duration_service=self.__duration_service,
+            moderator_service=self.__moderator_service,
         )
         self.__stage_service = StageService(
             bot=self.__bot,
@@ -116,7 +129,6 @@ class ModeratorTextCommands(commands.Cog):
         )
         self.__discord_object_service = DiscordObjectService()
         self.__stream_service = StreamService(
-            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -124,6 +136,7 @@ class ModeratorTextCommands(commands.Cog):
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
@@ -133,6 +146,7 @@ class ModeratorTextCommands(commands.Cog):
         self.__ban_service = BanService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
@@ -140,6 +154,7 @@ class ModeratorTextCommands(commands.Cog):
         self.__flag_service = FlagService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
@@ -154,6 +169,7 @@ class ModeratorTextCommands(commands.Cog):
         self.__text_mute_service = TextMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,

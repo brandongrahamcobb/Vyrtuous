@@ -232,3 +232,6 @@ class CoordinatorService:
             f"Coordinator access has been {action} for {member_dict.get('mention', None)} "
             f"in {channel_dict.get('mention', None)}."
         )
+
+    async def migrate(self, updated_kwargs):
+        self.__database_factory.update(**updated_kwargs)

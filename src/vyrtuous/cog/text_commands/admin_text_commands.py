@@ -29,6 +29,7 @@ from vyrtuous.administrator.administrator_service import (
     NotAdministrator,
 )
 from vyrtuous.alias.alias_service import AliasService
+from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
@@ -38,6 +39,7 @@ from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.field.category import Category
+from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
@@ -46,9 +48,10 @@ from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
+from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
-
 from vyrtuous.utils.clear_service import ClearService
+from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
@@ -58,13 +61,10 @@ from vyrtuous.utils.message_service import MessageService, PaginatorService
 
 # from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.video_room.video_room_service import VideoRoomService
-
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.flag.flag_service import FlagService
-from vyrtuous.text_mute.text_mute_service import TextMuteService
-from vyrtuous.vegan.vegan_service import VeganService
 
 
 class AdminTextCommands(commands.Cog):
@@ -141,6 +141,10 @@ class AdminTextCommands(commands.Cog):
             moderator_service=self.__moderator_service,
             sysadmin_service=self.__sysadmin_service,
         )
+        self.__data_service = DataService(
+            duration_service=self.__duration_service,
+            moderator_service=self.__moderator_service,
+        )
         self.message_service = MessageService(self.__bot)
         self.__administrator_role_service = AdministratorRoleService(
             bot=self.__bot,
@@ -164,11 +168,9 @@ class AdminTextCommands(commands.Cog):
         )
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
-            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
             paginator_service=self.__paginator_service,
         )
         self.__video_room_service = VideoRoomService(
@@ -181,6 +183,7 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            data_service=self.__data_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
@@ -189,6 +192,7 @@ class AdminTextCommands(commands.Cog):
         self.__flag_service = FlagService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
@@ -203,6 +207,16 @@ class AdminTextCommands(commands.Cog):
         self.__text_mute_service = TextMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
+            data_service=self.__data_service,
+            dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__ban_service = BanService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_service=self.__duration_service,
             emoji=self.__emoji,
