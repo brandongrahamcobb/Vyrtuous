@@ -39,6 +39,7 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.utils.message_service import PaginatorService
 
 
 class ScheduledTasks(commands.Cog):
@@ -51,18 +52,21 @@ class ScheduledTasks(commands.Cog):
         self.__duration_service = DurationService()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__stream_service = StreamService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-        )
         self.__moderator_service = ModeratorService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+        )
+        self.__paginator_service = PaginatorService(bot=self.__bot)
+        self.__stream_service = StreamService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            paginator_service=self.__paginator_service,
         )
         self.__data_service = DataService(
             duration_service=self.__duration_service,
