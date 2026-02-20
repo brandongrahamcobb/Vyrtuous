@@ -26,8 +26,6 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.database import Database
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.moderator.moderator_service import ModeratorService
-
-# from vyrtuous.video_room.video_room import VideoRoom
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService

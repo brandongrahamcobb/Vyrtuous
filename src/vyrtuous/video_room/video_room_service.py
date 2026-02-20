@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 video_rooms_service.py The purpose of this program is to extend Service to service the video room class.
 
@@ -20,11 +18,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+from copy import copy
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from typing import Dict, List
 
 import discord
 
 from vyrtuous.video_room.video_room import VideoRoom
+
+
+@dataclass
+class VideoRoomDictionary:
+    data: Dict[int, Dict[str, Dict[int, bool]]] = field(default_factory=dict)
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 class VideoRoomService:
@@ -44,52 +52,34 @@ class VideoRoomService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         video_rooms = await self.__database_factory.select(
             singular=False, **where_kwargs
         )
         for video_room in video_rooms:
             dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            dictionary[video_room.guild_snowflake]["channels"].setdefault(
-                video_room.channel_snowflake, {}
-            )
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        # if is_at_home:
-        #     if skipped_channels:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_channels, title="Skipped Channels in Server,"
-        #             )
-        #         )
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        return cleaned_dictionary
+            dictionary[video_room.guild_snowflake]["channels"][
+                video_room.channel_snowflake
+            ] = True
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Video Rooms"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=VideoRoomDictionary, dictionary=dictionary
         )
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
 
         vr_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(

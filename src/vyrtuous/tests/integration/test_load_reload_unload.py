@@ -63,7 +63,7 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
     [{emoji} Unloaded ScheduledTasks]
 
     """
-    c = cog.format(cog="vyrtuous.cog.scheduled_tasks")
+    c = cog.format(cog="vyrtuous.utils.scheduled_tasks")
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)

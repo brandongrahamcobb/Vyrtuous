@@ -26,7 +26,7 @@ from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.cog.text_commands.help_text_command import (
+from vyrtuous.moderator.help_text_command import (
     skip_text_command_help_discovery,
 )
 from vyrtuous.coordinator.coordinator import Coordinator
@@ -35,15 +35,11 @@ from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
-
-# from vyrtuous.field.snowflake import ChannelSnowflake, MemberSnowflake
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
-
-# from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.utils.message_service import PaginatorService
@@ -96,6 +92,7 @@ class CoordinatorTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_service=self.__duration_service,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
@@ -231,10 +228,11 @@ class CoordinatorTextCommands(commands.Cog):
         }
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
+        duration_obj = self.__duration_service.parse(duration)
         pages = await self.__stage_service.toggle_stage(
             channel_dict=channel_dict,
             default_kwargs=default_kwargs,
-            duration=duration,
+            duration=duration_obj,
         )
         return await state.end(success=pages)
 

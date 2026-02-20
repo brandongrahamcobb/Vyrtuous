@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 streaming_service.py The purpose of this program is to extend Service service the stream command class.
 
@@ -18,13 +16,25 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
+from copy import copy
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Self, Union
+from typing import Dict, List, Self, Union
 
 import discord
 from discord.ext import commands
 
 from vyrtuous.stream.stream import Stream
+
+
+@dataclass
+class StreamDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, List[int]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 class StreamEmbed(discord.Embed):
@@ -221,7 +231,7 @@ class StreamService:
                     await paginator.start()
         return
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         streaming = await self.__database_factory.select(singular=False, **where_kwargs)
         for stream in streaming:
@@ -232,32 +242,7 @@ class StreamService:
             dictionary[stream.guild_snowflake]["channels"][
                 stream.target_channel_snowflake
             ]["sources"].append(stream.source_channel_snowflake)
-
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        # if is_at_home:
-        #     if skipped_channels:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_channels,
-        #                 title="Skipped Channels in Server",
-        #             )
-        #         )
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
@@ -268,17 +253,17 @@ class StreamService:
             where_kwargs["target_channel_snowflake"] = where_kwargs.pop(
                 "channel_snowflake"
             )
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=StreamDictionary, dictionary=dictionary
         )
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not dictionary:
-            pages = [embed]
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
 
         stream_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(

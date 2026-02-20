@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 bug_service.py The purpose of this program is to extend Service to service the bug command class.
 
@@ -19,11 +17,21 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List
 
 import discord
 
 from vyrtuous.bug.bug import Bug
+
+
+@dataclass
+class BugDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Any]]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_messages: List[discord.Embed] = field(default_factory=list)
 
 
 class BugService:
@@ -157,7 +165,7 @@ class BugService:
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         bugs = await self.__database_factory.select(singular=False, **where_kwargs)
         for bug in bugs:
@@ -177,47 +185,22 @@ class BugService:
                 bug.member_snowflakes
             )
             messages[bug.message_snowflake]["notes"].append(bug.notes)
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        skipped_messages = await self.__dictionary_service.generate_skipped_messages(
-            dictionary
-        )
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_messages=skipped_messages,
-        )
-        # if is_at_home:
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        #     if skipped_messages:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_messages,
-        #                 title="Skipped Messages in Server",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
     async def build_pages(self, scope, where_kwargs, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Developer Logs"
 
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=BugDictionary, dictionary=dictionary
         )
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not dictionary:
-            pages = [embed]
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_messages)
 
         bug_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(

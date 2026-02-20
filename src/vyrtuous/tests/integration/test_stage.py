@@ -24,7 +24,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cog.text_commands.coordinator_text_commands import CoordinatorTextCommands
+from vyrtuous.coordinator.coordinator_text_commands import CoordinatorTextCommands
 from vyrtuous.tests.conftest import context
 from vyrtuous.tests.integration.test_suite import (
     build_message,

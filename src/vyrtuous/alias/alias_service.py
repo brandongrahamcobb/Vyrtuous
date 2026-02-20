@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 alias_service.py The purpose of this program is to extend Service to service aliases.
 
@@ -19,6 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
+from copy import copy
+from typing import Dict, List, Union
+
 import discord
 from discord.ext import commands
 
@@ -30,6 +32,15 @@ class NotAlias(commands.CheckFailure):
         super().__init__(
             message=("Invalid alias."),
         )
+
+
+@dataclass(frozen=True)
+class AliasDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, Union[List, str]]]]]] = (
+        field(default_factory=dict)
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 class AliasService:
@@ -87,7 +98,7 @@ class AliasService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         aliases = await self.__database_factory.select(singular=False, **where_kwargs)
         for alias in aliases:
@@ -105,47 +116,24 @@ class AliasService:
                     dictionary[alias.guild_snowflake]["channels"][
                         alias.channel_snowflake
                     ]["aliases"][alias.category][alias.alias_name] = role.mention
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        # if is_at_home:
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        #     if skipped_channels:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_channels,
-        #                 title="Skipped Channels in Server",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Command Aliases"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=AliasDictionary, dictionary=dictionary
         )
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not dictionary:
-            pages = [embed]
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
+
         alias_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             pages = []
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
@@ -186,7 +174,6 @@ class AliasService:
         if pages:
             pages[0].description = f"**({alias_n})**"
         return pages
-        return []
 
     async def delete_alias(self, alias_name, default_kwargs):
         guild_snowflake = default_kwargs.get("guild_snowflake", None)

@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 vegan_service.py The purpose of this program is to extend Service to service the vegan class.
 
@@ -19,9 +17,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
+from dataclasses import dataclass, field
+from typing import Dict, List
+
 import discord
 
 from vyrtuous.vegan.vegan import Vegan
+
+
+@dataclass
+class VeganDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, dict]]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
 class VeganService:
@@ -44,7 +53,7 @@ class VeganService:
         self.__emoji = emoji
         self.__stream_service = stream_service
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_clean_dictionary(self, where_kwargs):
         dictionary = {}
         vegans = await self.__database_factory.select(singular=False, **where_kwargs)
         for vegan in vegans:
@@ -55,41 +64,25 @@ class VeganService:
             dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
             ].setdefault("placeholder", {})
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        skipped_members = self.__dictionary_service.generate_skipped_members(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-        # if is_at_home:
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        #     if skipped_members:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_members,
-        #                 title="Skipped Members in Server",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Vegans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.__dictionary_service.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+        dictionary = await self.__dictionary_service.build_dictionary(
+            where_kwargs=where_kwargs
         )
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=VeganDictionary, dictionary=dictionary
+        )
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
 
         vegan_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             thumbnail = False
             guild = self.__bot.get_guild(guild_snowflake)

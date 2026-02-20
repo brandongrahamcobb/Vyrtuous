@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 temporary_rooms_service.py The purpose of this program is to extend Service to service the temporary room class.
 
@@ -19,9 +17,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
+from dataclasses import dataclass, field
+from typing import Dict, List
+
 import discord
 
 from vyrtuous.temporary_room.temporary_room import TemporaryRoom
+
+
+@dataclass
+class TemporaryRoomDictionary:
+    data: Dict[int, Dict[str, Dict[int, bool]]] = field(default_factory=dict)
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 class TemporaryRoomService:
@@ -63,71 +72,35 @@ class TemporaryRoomService:
         self.__text_mute_service = text_mute_service
         self.deleted_rooms = {}
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         pages = []
         dictionary = {}
-        # aliases = await Alias.select(singular=False, **where_kwargs)
         temporary_rooms = await self.__database_factory.select(
             singular=False, **where_kwargs
         )
         for temporary_room in temporary_rooms:
             dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
-            dictionary[temporary_room.guild_snowflake]["channels"].setdefault(
-                temporary_room.channel_snowflake, {}
-            )
-            # if aliases:
-            #     for alias in aliases:
-            #         if (
-            #             alias.guild_snowflake == temporary_room.guild_snowflake
-            #             and alias.channel_snowflake == temporary_room.channel_snowflake
-            #         ):
-            #             dictionary[temporary_room.guild_snowflake]["channels"][
-            #                 temporary_room.channel_snowflake
-            #             ].setdefault(alias.category, [])
-            #             dictionary[temporary_room.guild_snowflake]["channels"][
-            #                 temporary_room.channel_snowflake
-            #             ][alias.category].append(alias.alias_name)
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        if is_at_home:
-            if skipped_channels:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_channels,
-                        title="Skipped Channels in Server",
-                    )
-                )
-            if skipped_guilds:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-        return cleaned_dictionary
+            dictionary[temporary_room.guild_snowflake]["channels"][
+                temporary_room.channel_snowflake
+            ] = True
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Temporary Rooms"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=TemporaryRoomDictionary, dictionary=dictionary
         )
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not dictionary:
-            pages = [embed]
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
+
         temp_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(

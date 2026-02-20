@@ -66,7 +66,7 @@ class DeveloperService:
         member_snowflake = member.id
         return await self.is_developer(member_snowflake)
 
-    async def build_clean_dictionary(self, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         developers = await self.__database_factory.select(
             singular=False, **where_kwargs
@@ -79,15 +79,14 @@ class DeveloperService:
             dictionary["members"][developer.member_snowflake]["developers"].update(
                 {"placeholder": "placeholder"}
             )
-        cleaned_dictionary = dictionary
-        return cleaned_dictionary
+        return dictionary
 
-    async def build_pages(self, object_dict, **kwargs):
+    async def build_pages(self, object_dict):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Developers {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), (discord.Guild, discord.Member)) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_clean_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
 
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()

@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
-
 import discord
 
 
@@ -28,13 +26,14 @@ class InfractionView(discord.ui.View):
         *,
         cap_service=None,
         ctx=None,
+        duration_service=None,
         modal=None,
         state=None,
     ):
         super().__init__(timeout=120)
         self.__cap_service = cap_service
         self.__ctx = ctx
-        self.__duration = None
+        self.__duration_service = duration_service
         self.__modal = modal
         self.__state = state
 

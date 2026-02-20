@@ -1,4 +1,4 @@
-"""!/bin/python3
+"""!/bin/python3stage"
 stage_service.py The purpose of this program is to extend Service to service the stage class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
@@ -20,10 +20,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import time
 from collections import defaultdict
 from copy import copy
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 import discord
 
 from vyrtuous.stage_room.stage import Stage
+
+
+@dataclass
+class StageDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, Any]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 class StageService:
@@ -66,7 +77,7 @@ class StageService:
             embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
             await self.__bot.get_channel(stage.channel_snowflake).send(embed=embed)
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         stages = await self.__database_factory.select(singular=False, **where_kwargs)
         for stage in stages:
@@ -86,47 +97,24 @@ class StageService:
                     )
                 }
             )
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        # if is_at_home:
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        #     if skipped_channels:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_channels,
-        #                 title="Skipped Channels in Server",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Stages"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=StageDictionary, dictionary=dictionary
         )
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not dictionary:
-            pages = [embed]
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
+
         stage_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -193,7 +181,7 @@ class StageService:
         else:
             stage = self.MODEL(
                 **stage_kwargs,
-                expires_in=duration.expires_in,
+                expires_in=self.__duration_service.to_expires_in(duration),
             )
             await self.__database_factory.create(stage)
             failed, skipped, succeeded = await self.__voice_mute_service.on_stage(

@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 text_mute_service.py The purpose of this program is to extend AliasService to service the text mute infraction.
 
@@ -19,11 +17,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
 from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 import discord
 
 from vyrtuous.text_mute.text_mute import TextMute
+
+
+@dataclass
+class TextMuteDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, Any]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
 class TextMuteService:
@@ -138,7 +148,7 @@ class TextMuteService:
                     set_kwargs=set_kwargs, where_kwargs=where_kwargs
                 )
 
-    async def build_clean_dictionary(self, is_at_home, where_kwargs):
+    async def build_dictionary(self, where_kwargs):
         dictionary = {}
         text_mutes = await self.__database_factory.select(
             singular=False, **where_kwargs
@@ -161,46 +171,24 @@ class TextMuteService:
                     ),
                 }
             )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        skipped_members = self.__dictionary_service.generate_skipped_members(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-        # if is_at_home:
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        #     if skipped_members:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_members,
-        #                 title="Skipped Members in Server",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Text Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
         where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_clean_dictionary(
-            is_at_home=is_at_home, where_kwargs=where_kwargs
+
+        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=TextMuteDictionary, dictionary=dictionary
         )
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not dictionary:
-            pages = [embed]
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
 
         tmute_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             thumbnail = False
             guild = self.__bot.get_guild(guild_snowflake)

@@ -34,7 +34,7 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
-from vyrtuous.cog.text_commands.help_text_command import (
+from vyrtuous.moderator.help_text_command import (
     skip_text_command_help_discovery,
 )
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
@@ -59,9 +59,7 @@ from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiCon
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
-from vyrtuous.utils.message_service import MessageService, PaginatorService
-
-# from vyrtuous.utils.permission_service import PermissionService
+from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.video_room.video_room_service import VideoRoomService
@@ -879,9 +877,14 @@ class AdminTextCommands(commands.Cog):
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__stream_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        try:
+            pages = await self.__stream_service.build_pages(
+                object_dict=object_dict, is_at_home=is_at_home
+            )
+        except:
+            import traceback
+
+            traceback.print_exc()
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")

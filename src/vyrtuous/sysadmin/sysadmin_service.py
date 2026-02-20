@@ -1,5 +1,3 @@
-from copy import copy
-
 """!/bin/python3
 sysadmin_service.py The purpose of this program is to extend Service to service the sysadmin class.
 
@@ -19,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
 from typing import Union
 
 import discord

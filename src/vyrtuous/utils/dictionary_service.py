@@ -27,6 +27,48 @@ class DictionaryService:
     def __init__(self, *, bot=None):
         self.__bot = bot
 
+    async def process_dictionary(self, cls, dictionary):
+        skipped_pages = {}
+        skipped_channels = self.generate_skipped_channels(dictionary)
+        skipped_guilds = self.generate_skipped_guilds(dictionary)
+        skipped_members = self.generate_skipped_members(dictionary)
+        skipped_messages = await self.generate_skipped_messages(dictionary)
+        skipped_roles = self.generate_skipped_roles(dictionary)
+        data = self.clean_dictionary(
+            dictionary=dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+            skipped_messages=skipped_messages,
+            skipped_roles=skipped_roles,
+        )
+        if hasattr(cls, "skipped_channels") and cls.skipped_channels:
+            skipped_pages["skipped_channels"] = self.generate_skipped_dict_pages(
+                skipped=cls.skipped_channels,
+                title="Skipped Channels in Server",
+            )
+        if hasattr(cls, "skipped_guilds") and cls.skipped_guilds:
+            skipped_pages["skipped_guilds"] = self.generate_skipped_set_pages(
+                skipped=cls.skipped_guilds,
+                title="Skipped Servers",
+            )
+        if hasattr(cls, "skipped_members") and cls.skipped_members:
+            skipped_pages["skipped_members"] = self.generate_skipped_dict_pages(
+                skipped=cls.skipped_members,
+                title="Skipped Members in Server",
+            )
+        if hasattr(cls, "skipped_messages") and cls.skipped_messages:
+            skipped_pages["skipped_messages"] = self.generate_skipped_dict_pages(
+                skipped=cls.skipped_messages,
+                title="Skipped Messages in Server",
+            )
+        if hasattr(cls, "skipped_roles") and cls.skipped_roles:
+            skipped_pages["skipped_roles"] = self.generate_skipped_dict_pages(
+                skipped=cls.skipped_roles,
+                title="Skipped Roles in Server",
+            )
+        return cls(data=data, **skipped_pages)
+
     def generate_skipped_set_pages(self, skipped, title):
         field_count = 0
         pages = []
@@ -119,19 +161,6 @@ class DictionaryService:
                     skipped_roles.setdefault(guild_snowflake, []).append(role_snowflake)
         return skipped_roles
 
-    def generate_skipped_snowflakes(self, dictionary: dict) -> dict:
-        skipped_snowflakes = {}
-        for guild_snowflake, guild_data in dictionary.items():
-            guild = self.__bot.get_guild(guild_snowflake)
-            if not guild:
-                continue
-            for snowflake in guild_data.get("snowflakes", []):
-                if not guild.get_channel(snowflake):
-                    if not guild.get_member(snowflake):
-                        if not guild.get_role(snowflake):
-                            skipped_snowflakes.append(snowflake)
-        return skipped_snowflakes
-
     def clean_dictionary(
         self,
         dictionary: dict,
@@ -199,13 +228,22 @@ class DictionaryService:
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     continue
-                for member_data in channel_logs:
-                    try:
-                        await channel.fetch_message(member_data["message_snowflake"])
-                    except Exception:
-                        skipped_messages.setdefault(guild_snowflake, []).append(
-                            member_data["message_snowflake"]
-                        )
+                members = channel_logs.get("members")
+                if not isinstance(members, dict):
+                    continue
+                for member_id, member_data in members.items():
+                    if not isinstance(member_data, dict):
+                        continue
+                    messages = member_data.get("messages")
+                    if not isinstance(messages, dict):
+                        continue
+                    for message_snowflake, message_data in messages.items():
+                        try:
+                            await channel.fetch_message(message_snowflake)
+                        except Exception:
+                            skipped_messages.setdefault(guild_snowflake, []).append(
+                                message_snowflake
+                            )
         return skipped_messages
 
     def flush_page(self, embed, pages, title, guild_name):

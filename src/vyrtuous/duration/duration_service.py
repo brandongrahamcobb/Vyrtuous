@@ -64,7 +64,7 @@ class DurationService:
 
     def from_expires_in(self, expires_in: datetime) -> Duration:
         if expires_in is None:
-            return Duration(number=0, prefix="", unit="")
+            return Duration(number=0, prefix="", sign="1", unit="")
         now = datetime.now(timezone.utc)
         remaining = expires_in - now
         total_seconds = int(remaining.total_seconds())
