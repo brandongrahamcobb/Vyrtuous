@@ -143,7 +143,16 @@ class HeroService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Invincible Members {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.TextChannel):
+            obj_name = obj.name
+        elif isinstance(obj, discord.Member):
+            obj_name = object_dict.get("name", None)
+        title = f"{self.__emoji.get_random_emoji()} Heroes for {obj_name}"
 
         dictionary = self.build_dictionary()
         processed_dictionary = await self.__dictionary_service.process_dictionary(

@@ -181,9 +181,9 @@ class BanService:
                     set_kwargs=set_kwargs, where_kwargs=where_kwargs
                 )
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        bans = await self.__database_factory.select(singular=False, **where_kwargs)
+        bans = await self.__database_factory.select(singular=False, **kwargs)
         for ban in bans:
             dictionary.setdefault(ban.guild_snowflake, {"members": {}})
             dictionary[ban.guild_snowflake]["members"].setdefault(
@@ -200,10 +200,20 @@ class BanService:
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
         thumbnail = False
-        where_kwargs = object_dict.get("columns", None)
-        title = f"{self.__emoji.get_random_emoji()} Bans {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        elif isinstance(obj, discord.Member):
+            obj_name = object_dict.get("name", None)
+        title = f"{self.__emoji.get_random_emoji()} Bans for {obj_name}"
+
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BanDictionary, dictionary=dictionary
         )

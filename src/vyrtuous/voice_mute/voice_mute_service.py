@@ -140,11 +140,9 @@ class VoiceMuteService:
                         f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                     )
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        voice_mutes = await self.__database_factory.select(
-            target="user", **where_kwargs
-        )
+        voice_mutes = await self.__database_factory.select(target="user", **kwargs)
         for voice_mute in voice_mutes:
             dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
             dictionary[voice_mute.guild_snowflake]["members"].setdefault(
@@ -162,11 +160,20 @@ class VoiceMuteService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Voice Mutes {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.TextChannel):
+            obj_name = obj.name
+        elif isinstance(obj, discord.Member):
+            obj_name = object_dict.get("name", None)
+        title = f"{self.__emoji.get_random_emoji()} Voice Mutes for {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=VoiceMuteDictionary, dictionary=dictionary
         )
@@ -529,7 +536,7 @@ class VoiceMuteService:
                     failed.append(member)
         return failed, succeeded
 
-    async def on_stage(self, channel_dict, context, duration):
+    async def on_stage(self, channel_dict, context, duration_value):
         failed, skipped, succeeded = [], [], []
         guild = self.__bot.get_guild(
             channel_dict.get("columns", None).get("guild_snowflake", None)
@@ -546,7 +553,9 @@ class VoiceMuteService:
                 continue
             voice_mute = self.MODEL(
                 **channel_dict.get("columns", None),
-                expires_in=duration.expires_in,
+                expires_in=self.__duration_builder.parse(
+                    value=duration_value
+                ).to_expires_in(),
                 member_snowflake=member.id,
                 target="room",
                 reason="Stage mute",

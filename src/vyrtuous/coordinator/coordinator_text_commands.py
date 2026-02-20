@@ -181,8 +181,8 @@ class CoordinatorTextCommands(commands.Cog):
         member_dict = self.__discord_object_service.to_dict(obj=member)
         await self.__moderator_service.check_minimum_role(
             channel_snowflake=channel_dict.get("id", None),
-            guild_snowflake=ctx.guild,
-            member_snowflake=ctx.author,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
             lowest_role="Coordinator",
         )
         await self.__moderator_service.has_equal_or_lower_role(
@@ -224,8 +224,8 @@ class CoordinatorTextCommands(commands.Cog):
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
         await self.__moderator_service.check_minimum_role(
             channel_snowflake=channel_dict.get("id", None),
-            guild_snowflake=ctx.guild,
-            member_snowflake=ctx.author,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
             lowest_role="Coordinator",
         )
         pages = await self.__stage_service.toggle_stage(

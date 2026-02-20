@@ -77,9 +77,9 @@ class StageService:
             embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
             await self.__bot.get_channel(stage.channel_snowflake).send(embed=embed)
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        stages = await self.__database_factory.select(singular=False, **where_kwargs)
+        stages = await self.__database_factory.select(singular=False, **kwargs)
         for stage in stages:
             dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
             dictionary[stage.guild_snowflake]["channels"].setdefault(
@@ -95,11 +95,18 @@ class StageService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Stages"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Stages for {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=StageDictionary, dictionary=dictionary
         )

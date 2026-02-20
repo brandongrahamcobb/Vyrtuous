@@ -73,9 +73,12 @@ class AliasContext:
     async def setup(self):
         self._message_to_args()
         self._alias_name_from_args()
-        await self._populate_alias()
+        self.alias = await self._populate_alias()
+        if not self.alias:
+            return False
         self._fill_map()
         await self._convert_args_to_values()
+        return True
 
     def _message_to_args(self) -> None:
         self.__args = (
@@ -110,7 +113,7 @@ class AliasContext:
             singular=True,
         )
         if not alias_entry:
-            return
+            return None
         self.guild = self.__bot.get_guild(int(alias_entry.guild_snowflake))
         self.channel = self.guild.get_channel(int(alias_entry.channel_snowflake))
         if getattr(alias_entry, "role_snowflake"):
@@ -118,9 +121,9 @@ class AliasContext:
         alias = self.__alias_service.alias_category_to_alias(
             alias_category=alias_entry.category
         )
-        self.alias = alias
         self.category = alias_entry.category
         self.record = alias.record
+        return alias
 
     async def _convert_args_to_values(self):
         for field, tuple in self.__kwargs.items():

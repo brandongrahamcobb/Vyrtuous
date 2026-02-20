@@ -54,9 +54,9 @@ class CapService:
         self.__duration_builder = duration_builder
         self.__emoji = emoji
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        caps = await self.__database_factory.select(singular=False, **where_kwargs)
+        caps = await self.__database_factory.select(singular=False, **kwargs)
         for cap in caps:
             dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
             dictionary[cap.guild_snowflake]["channels"].setdefault(
@@ -69,11 +69,18 @@ class CapService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Caps"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Caps for {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=CapDictionary, dictionary=dictionary
         )

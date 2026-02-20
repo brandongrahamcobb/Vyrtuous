@@ -151,11 +151,9 @@ class ModeratorService:
             raise NotModerator
         return True
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        moderators = await self.__database_factory.select(
-            singular=False, **where_kwargs
-        )
+        moderators = await self.__database_factory.select(singular=False, **kwargs)
         for moderator in moderators:
             dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
             dictionary[moderator.guild_snowflake]["members"].setdefault(
@@ -173,11 +171,20 @@ class ModeratorService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Moderator {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        elif isinstance(obj, discord.Member):
+            obj_name = object_dict.get("name", None)
+        title = f"{self.__emoji.get_random_emoji()} Moderators for {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=ModeratorDictionary, dictionary=dictionary
         )

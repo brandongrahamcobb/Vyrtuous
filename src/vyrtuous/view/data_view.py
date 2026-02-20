@@ -209,7 +209,7 @@ class DataView(discord.ui.View):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        column_names = ["created_at", "infraction_type"]
+        column_names = ["created_at", "identifier"]
         conditions = []
         values = []
         if self.__information.get("channel_snowflake"):
@@ -231,7 +231,7 @@ class DataView(discord.ui.View):
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT created_at, infraction_type FROM moderation_logs {where_clause}",
+                f"SELECT created_at, identifier FROM moderation_logs {where_clause}",
                 *values,
             )
         df = pd.DataFrame(rows, columns=column_names)

@@ -159,7 +159,8 @@ class GenericEventListeners(commands.Cog):
                 emoji=self.__emoji,
                 moderator_service=self.__moderator_service,
             )
-            await ctx.setup()
+            if not await ctx.setup():
+                return
             await self.__moderator_service.has_equal_or_lower_role(
                 **d_ctx.to_dict(),
                 target_member_snowflake=ctx.member.id,

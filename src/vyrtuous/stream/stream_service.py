@@ -250,9 +250,9 @@ class StreamService:
                     await paginator.start()
         return
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        streaming = await self.__database_factory.select(singular=False, **where_kwargs)
+        streaming = await self.__database_factory.select(singular=False, **kwargs)
         for stream in streaming:
             dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
             dictionary[stream.guild_snowflake]["channels"].setdefault(
@@ -265,15 +265,23 @@ class StreamService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Streaming Routes"
 
-        where_kwargs = object_dict.get("columns", None)
-        if where_kwargs.get("channel_snowflake", None):
-            where_kwargs["target_channel_snowflake"] = where_kwargs.pop(
-                "channel_snowflake"
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Streaming Routes for {obj_name}"
+
+        if object_dict.get("columns", None).get("channel_snowflake", None):
+            object_dict.get("columns", None)["target_channel_snowflake"] = (
+                object_dict.get("columns", None).pop("channel_snowflake")
             )
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=StreamDictionary, dictionary=dictionary
         )

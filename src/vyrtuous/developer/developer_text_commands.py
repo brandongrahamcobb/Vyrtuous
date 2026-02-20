@@ -195,13 +195,13 @@ class DevTextCommands(commands.Cog):
         is_at_home = at_home(source=ctx)
         try:
             target_uuid = UUID(str(target))
-            where_kwargs = {"id": target_uuid}
+            kwargs = {"id": target_uuid}
         except ValueError as e:
             logger.warning(str(e).capitalize())
             object_dict = self.__discord_object_service.to_dict(obj=obj)
-            where_kwargs = object_dict.get("columns", None)
+            kwargs = object_dict.get("columns", None)
         pages = await self.__bug_service.build_pages(
-            scope=scope, where_kwargs=where_kwargs, is_at_home=is_at_home
+            scope=scope, kwargs=kwargs, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 

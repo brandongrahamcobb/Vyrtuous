@@ -94,11 +94,9 @@ class AdministratorService:
             raise NotAdministrator
         return True
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        administrators = await self.__database_factory.select(
-            singular=False, **where_kwargs
-        )
+        administrators = await self.__database_factory.select(singular=False, **kwargs)
         for administrator in administrators:
             dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
             dictionary[administrator.guild_snowflake]["members"].setdefault(
@@ -114,11 +112,19 @@ class AdministratorService:
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
 
-        title = f"{self.__emoji.get_random_emoji()} Administrators {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        elif isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        elif isinstance(obj, discord.Member):
+            obj_name = object_dict.get("name", None)
+        title = f"{self.__emoji.get_random_emoji()} Administrators for {obj_name}"
 
-        where_kwargs = object_dict.get("columns", None)
-
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=AdministratorDictionary,
             dictionary=dictionary,

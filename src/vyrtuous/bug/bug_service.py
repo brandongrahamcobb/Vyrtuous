@@ -162,9 +162,9 @@ class BugService:
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        bugs = await self.__database_factory.select(singular=False, **where_kwargs)
+        bugs = await self.__database_factory.select(singular=False, **kwargs)
         for bug in bugs:
             dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
             messages = dictionary[bug.guild_snowflake]["messages"]
@@ -184,11 +184,11 @@ class BugService:
             messages[bug.message_snowflake]["notes"].append(bug.notes)
         return dictionary
 
-    async def build_pages(self, scope, where_kwargs, is_at_home):
+    async def build_pages(self, scope, kwargs, is_at_home):
         lines, pages = [], []
         title = f"{self.__emoji.get_random_emoji()} Developer Logs"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(kwargs=kwargs)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BugDictionary, dictionary=dictionary
         )

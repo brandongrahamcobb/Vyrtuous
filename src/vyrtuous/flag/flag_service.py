@@ -83,9 +83,9 @@ class FlagService:
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
             )
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, kwargs):
         dictionary = {}
-        flags = await self.__database_factory.select(singular=False, **where_kwargs)
+        flags = await self.__database_factory.select(singular=False, **kwargs)
         for flag in flags:
             dictionary.setdefault(flag.guild_snowflake, {"members": {}})
             dictionary[flag.guild_snowflake]["members"].setdefault(
@@ -105,12 +105,20 @@ class FlagService:
 
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        bot = self.__bot
-        title = f"{self.__emoji.get_random_emoji()} Flags {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj = object_dict.get("object")
+        obj_name = "All Servers"
+        if isinstance(obj, discord.Guild):
+            obj_name = obj.name
+        if isinstance(obj, discord.abc.GuildChannel):
+            obj_name = obj.name
+        elif isinstance(obj, discord.Member):
+            obj_name = object_dict.get("name", None)
+        title = f"{self.__emoji.get_random_emoji()} Flags for {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(
+            kwargs=object_dict.get("columns", None)
+        )
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=FlagDictionary, dictionary=dictionary
         )
