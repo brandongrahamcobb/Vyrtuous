@@ -32,10 +32,12 @@ class ClearService:
         self.__moderator_service = moderator_service
         self.__sysadmin_service = sysadmin_service
 
-    def dir_to_classes(self, dir_paths, attr):
+    def dir_to_classes(self, dir_paths, *, attr=None):
         classes = []
         for dir_path in dir_paths:
             for py_file in dir_path.rglob("*.py"):
+                if py_file.name == "__init__.py":
+                    continue
                 module_name = py_file.stem
                 spec = importlib.util.spec_from_file_location(module_name, str(py_file))
                 module = importlib.util.module_from_spec(spec)

@@ -19,6 +19,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from copy import copy
 from dataclasses import dataclass, field
+import importlib.util
+import inspect
+from pathlib import Path
 from typing import Dict, List, Union
 
 import discord
@@ -231,11 +234,28 @@ class AliasService:
         await self.__database_factory.create(alias)
         return msg
 
-    # def alias_category_to_alias(self, alias_category):
-    #     dir_paths = []
-    #     dir_paths.append(Path("/app/vyrtuous/db"))
-    #     typed_aliases = dir_to_classes(dir_paths=dir_paths, parent=Alias)
-    #     for a in typed_aliases:
-    #         if a.category == alias_category:
-    #             return a()
-    #     raise NotAlias()
+    def alias_category_to_alias(self, alias_category):
+        dir_paths = []
+        dir_paths.append(Path("/app/vyrtuous"))
+        typed_aliases = self.dir_to_classes(dir_paths=dir_paths)
+        for a in typed_aliases:
+            if a.category == alias_category:
+                return a()
+        raise NotAlias()
+
+    def dir_to_classes(self, dir_paths, *, attr="ARGS_MAP"):
+        classes = []
+        for dir_path in dir_paths:
+            for py_file in dir_path.rglob("*.py"):
+                if py_file.name == "__init__.py":
+                    continue
+                module_name = py_file.stem
+                spec = importlib.util.spec_from_file_location(module_name, str(py_file))
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                for _, cls in inspect.getmembers(module, inspect.isclass):
+                    if cls.__module__ != module.__name__:
+                        continue
+                    if attr in getattr(cls, "__annotations__", {}):
+                        classes.append(cls)
+        return classes

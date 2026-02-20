@@ -37,7 +37,6 @@ class AliasContext:
         cap_service=None,
         database_factory=None,
         dictionary_service=None,
-        discord_object_service=None,
         duration_service=None,
         emoji=None,
         message: discord.Message | None = None,
@@ -71,7 +70,6 @@ class AliasContext:
         self.source_member_snowflake = message.author.id
         self.record = None
         self.__cap_service = cap_service
-        self.__discord_object_service = discord_object_service
         self.__duration_service = duration_service
         self.__moderator_service = moderator_service
 
@@ -155,10 +153,9 @@ class AliasContext:
                 self.expires_in = (
                     None
                     if duration.number == 0
-                    else datetime.now(timezone.utc) + duration.to_timedelta()
+                    else self.__duration_service.to_expires_in(duration)
                 )
             elif field == "member":
-                member_dict = await self.__discord_object_service.to_dict(obj=value)
-                self.target_member_snowflake = member_dict.get("id", None)
+                self.target_member_snowflake = int(value)
             elif field == "reason":
                 self.reason = value

@@ -152,15 +152,14 @@ class CapService:
         cap = await self.__database_factory.select(
             **source_kwargs, category=category, singular=True
         )
-        duration_seconds = self.__duration_service.from_expires_in(
-            duration.expires_in
-        ).to_seconds()
+        duration_seconds = self.__duration_service.to_seconds(duration)
         if cap:
             if duration_seconds > cap.duration_seconds:
                 exceeds_cap = True
         else:
-            self.__duration_service.duration = "8h"
-            if duration_seconds > self.__duration_service.to_seconds():
+            duration = self.__duration_service.parse("8h")
+            cap_duration_seconds = self.__duration_service.to_seconds(duration)
+            if duration_seconds > cap_duration_seconds:
                 exceeds_cap = True
         return exceeds_cap
 

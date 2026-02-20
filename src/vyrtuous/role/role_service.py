@@ -19,9 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from copy import copy
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import discord
+from discord.ext import commands
 
 from vyrtuous.role.role import Role
 
@@ -54,6 +55,23 @@ class RoleService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__stream_service = stream_service
+
+    async def enforce_or_undo(
+        self,
+        ctx,
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+        state,
+    ):
+        obj = await self.__database_factory.select(
+            channel_snowflake=ctx.target_channel_snowflake,
+            guild_snowflake=ctx.source_guild_snowflake,
+            member_snowflake=ctx.target_member_snowflake,
+            singular=True,
+        )
+        if obj:
+            await self.undo(ctx=ctx, source=source, state=state)
+        else:
+            await self.enforce(ctx=ctx, source=source, state=state)
 
     async def act_embed(self, ctx):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)

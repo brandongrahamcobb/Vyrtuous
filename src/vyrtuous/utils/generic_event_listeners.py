@@ -41,6 +41,7 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.utils.data_service import DataService
 
 
 class GenericEventListeners(commands.Cog):
@@ -105,7 +106,10 @@ class GenericEventListeners(commands.Cog):
             duration_service=self.__duration_service,
             emoji=self.__emoji,
         )
-        self.__discord_object_service = DiscordObjectService()
+        self.__data_service = DataService(
+            duration_service=self.__duration_service,
+            moderator_service=self.__moderator_service,
+        )
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -148,7 +152,6 @@ class GenericEventListeners(commands.Cog):
                 cap_service=self.__cap_service,
                 database_factory=self.__database_factory,
                 dictionary_service=self.__dictionary_service,
-                discord_object_service=self.__discord_object_service,
                 duration_service=self.__duration_service,
                 emoji=self.__emoji,
                 message=message,
@@ -160,9 +163,16 @@ class GenericEventListeners(commands.Cog):
                 member_snowflake=ctx.source_member_snowflake,
                 target_member_snowflake=ctx.target_member_snowflake,
             )
-            await ctx.alias.service.enforce_or_undo(
-                ctx=ctx, source=message, state=state
+            service = ctx.alias.service(
+                bot=self.__bot,
+                database_factory=self.__database_factory,
+                data_service=self.__data_service,
+                dictionary_service=self.__dictionary_service,
+                duration_service=self.__duration_service,
+                emoji=self.__emoji,
+                stream_service=self.__stream_service,
             )
+            await service.enforce_or_undo(ctx=ctx, source=message, state=state)
         except:
             traceback.print_exc()
 
