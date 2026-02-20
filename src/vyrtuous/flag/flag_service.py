@@ -165,7 +165,7 @@ class FlagService:
 
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.author_snowflake)
+        author = guild.get_member(ctx.source_member_snowflake)
         channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         flag = self.MODEL(
@@ -177,6 +177,7 @@ class FlagService:
         await self.__database_factory.create(flag)
         self.__flags.append(flag)
         await self.__stream_service.send_log(
+            author=author,
             channel=channel,
             identifier="flag",
             member=member,
@@ -188,14 +189,14 @@ class FlagService:
             channel=channel,
             identifier="flag",
             reason=ctx.reason,
-            target=member,
+            member=member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.author_snowflake)
+        author = guild.get_member(ctx.source_member_snowflake)
         channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
@@ -208,6 +209,7 @@ class FlagService:
                 self.__flags.remove(flag)
                 break
         await self.__stream_service.send_log(
+            author=author,
             channel=channel,
             identifier="unflag",
             is_modification=True,
@@ -220,7 +222,7 @@ class FlagService:
             identifier="uflag",
             is_modification=True,
             reason=ctx.reason,
-            target=member,
+            member=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)

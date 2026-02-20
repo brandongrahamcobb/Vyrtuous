@@ -28,8 +28,11 @@ from vyrtuous.utils.data import Data
 
 
 class DataService:
-    def __init__(self, *, duration_service, moderator_service=None):
+    def __init__(
+        self, *, database_factory=None, duration_service=None, moderator_service=None
+    ):
         self.__data = Data()
+        self.__database_factory = database_factory
         self.__duration_service = duration_service
         self.__moderator_service = moderator_service
 
@@ -41,10 +44,12 @@ class DataService:
         online_members=0,
         total_voice_members=0,
     ) -> Self:
-        replace(self.__data, current_channel_members=current_channel_members)
-        replace(self.__data, total_guild_members=total_guild_members)
-        replace(self.__data, online_members=online_members)
-        replace(self.__data, total_voice_members=total_voice_members)
+        self.__data = replace(
+            self.__data, current_channel_members=current_channel_members
+        )
+        self.__data = replace(self.__data, total_guild_members=total_guild_members)
+        self.__data = replace(self.__data, online_members=online_members)
+        self.__data = replace(self.__data, total_voice_members=total_voice_members)
         return self
 
     def set_snowflakes(
@@ -56,48 +61,48 @@ class DataService:
         target_snowflake=None,
     ) -> Self:
         if author_snowflake:
-            replace(self.__data, author_snowflake=author_snowflake)
+            self.__data = replace(self.__data, author_snowflake=author_snowflake)
         if channel_snowflake:
-            replace(self.__data, channel_snowflake=channel_snowflake)
+            self.__data = replace(self.__data, channel_snowflake=channel_snowflake)
         if guild_snowflake:
-            replace(self.__data, guild_snowflake=guild_snowflake)
+            self.__data = replace(self.__data, guild_snowflake=guild_snowflake)
         if target_snowflake:
-            replace(self.__data, target_snowflake=target_snowflake)
+            self.__data = replace(self.__data, target_snowflake=target_snowflake)
         return self
 
     def set_expires_at(self, *, expires_at=None) -> Self:
-        replace(
+        self.__data = replace(
             self.__data,
             expires_at=expires_at if expires_at else datetime.now(timezone.utc),
         )
         return self
 
     def set_identifier(self, *, identifier=None) -> Self:
-        replace(self.__data, identiifer=identifier)
+        self.__data = replace(self.__data, identifier=identifier)
         return self
 
     def set_reason(self, *, reason="No reason provided") -> Self:
-        replace(self.__data, reason=reason)
+        self.__data = replace(self.__data, reason=reason)
         return self
 
     def set_is_modification(self, *, is_modification=False) -> Self:
-        replace(self.__data, is_modification=is_modification)
+        self.__data = replace(self.__data, is_modification=is_modification)
         return self
 
     async def set_highest_roles(
         self,
         *,
         author: discord.Member | None = None,
-        target: discord.Member | None = None,
+        member: discord.Member | None = None,
     ) -> Self:
         executor_role = await self.__moderator_service.resolve_highest_role_at_all(
             member_snowflake=int(author.id),
         )
         target_role = await self.__moderator_service.resolve_highest_role_at_all(
-            member_snowflake=int(target.id),
+            member_snowflake=int(member.id),
         )
-        replace(self.__data, executor_role=executor_role)
-        replace(self.__data, target_role=target_role)
+        self.__data = replace(self.__data, executor_role=executor_role)
+        self.__data = replace(self.__data, target_role=target_role)
         return self
 
     async def save_data(
@@ -105,14 +110,13 @@ class DataService:
         author: discord.Member,
         channel: discord.abc.GuildChannel,
         identifier: str,
-        target: discord.Member,
+        member: discord.Member,
         duration: str | None = None,
         is_modification: bool = False,
         reason: str = "No reason provided",
     ):
-        duration = self.__duration_service.parse(duration)
         if duration is not None:
-            expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+            expires_at = self.__duration_service.to_expires_in(duration=duration)
         else:
             expires_at = None
         current_channel_members = len(channel.members)
@@ -136,10 +140,10 @@ class DataService:
             .set_snowflakes(channel_snowflake=int(channel.id)) \
             .set_snowflakes(guild_snowflake=int(channel.guild.id)) \
             .set_snowflakes(author_snowflake=int(author.id)) \
-            .set_snowflakes(target_snowflake=int(target.id)) \
+            .set_snowflakes(target_snowflake=int(member.id)) \
             .set_expires_at(expires_at=expires_at) \
             .set_identifier(identifier=identifier) \
             .set_is_modification(is_modification=is_modification) \
             .set_reason(reason=reason)
         # fmt: on
-        await self.__database_factory.create(self.data)
+        await self.__database_factory.create(self.__data)

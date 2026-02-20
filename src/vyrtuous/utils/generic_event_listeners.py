@@ -36,7 +36,6 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
@@ -93,7 +92,6 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -107,6 +105,7 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
         )
         self.__data_service = DataService(
+            database_factory=self.__database_factory,
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )

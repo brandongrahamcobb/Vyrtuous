@@ -85,8 +85,12 @@ class StreamEmbed(discord.Embed):
 
     def set_executor(self, *, author, highest_role) -> Self:
         fields = []
-        fields.append(f"**Executor:** {author.display_name} (@{author.name})")
-        fields.append(f"**Executor ID:** `{author.id}`")
+        if author:
+            fields.append(f"**Executor:** {author.display_name} (@{author.name})")
+            fields.append(f"**Executor id:** `{author.id}`")
+        else:
+            fields.append(f"**Executor:** Unknown")
+            fields.append(f"**Executor id:** Unknown")
         fields.append(f"**Top Role:** {highest_role}")
         field = "\n".join(fields)
         self.add_field(name="👮‍♂️ Executed By", value=field, inline=True)
@@ -148,7 +152,7 @@ class StreamEmbed(discord.Embed):
 
     def set_description(self, *, channel, target) -> Self:
         self.description = (
-            f"**Target:** {target.mention} {self.action} in {channel.mention}"
+            f"**Target:** {target.mention} {self.__action} in {channel.mention}"
         )
         return self
 
@@ -177,10 +181,10 @@ class StreamService:
 
     async def send_log(
         self,
-        author: discord.Member,
         channel: discord.abc.GuildChannel,
         identifier: str,
-        target: discord.Member,
+        member: discord.Member,
+        author: discord.Member | None = None,
         duration: str | None = None,
         is_channel_scope: bool = False,
         is_modification: bool = False,
@@ -195,23 +199,27 @@ class StreamService:
         elif isinstance(source, discord.Message):
             message = source
         pages = []
-        executor_role = await self.__moderator_service.resolve_highest_role_at_all(
-            member_snowflake=int(author.id),
+        executor_role = (
+            await self.__moderator_service.resolve_highest_role_at_all(
+                member_snowflake=int(author.id),
+            )
+            if author
+            else "Unknown"
         )
         target_role = await self.__moderator_service.resolve_highest_role_at_all(
-            member_snowflake=int(target.id),
+            member_snowflake=int(member.id),
         )
         embed = (
             StreamEmbed()
             .set_title(identifier=identifier, is_modification=is_modification)
-            .set_description(channel=channel, target=target)
-            .set_target(target=target, highest_role=target_role)
+            .set_description(channel=channel, target=member)
+            .set_target(target=member, highest_role=target_role)
             .set_executor(author=author, highest_role=executor_role)
             .set_action(duration=duration)
             .set_message_ctx(identifier=identifier, message=message)
             .set_channel_ctx(channel=channel, is_channel_scope=is_channel_scope)
             .set_reference(
-                channel=channel, target=target, message=message, source=source
+                channel=channel, target=member, message=message, source=source
             )
         )
         pages.append(embed)

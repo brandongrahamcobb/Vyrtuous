@@ -11,5 +11,13 @@ ADD COLUMN IF NOT EXISTS source_channel_snowflake bigint NOT NULL;
 ALTER TABLE public.streaming
 DROP CONSTRAINT IF EXISTS streaming_pkey;
 
-ALTER TABLE your_table
+ALTER TABLE streaming
 ADD CONSTRAINT unique_target_source UNIQUE (target_channel_snowflake, source_channel_snowflake);
+
+ALTER TABLE moderation_logs RENAME COLUMN channel_members_voice_count TO current_channel_members;
+ALTER TABLE moderation_logs RENAME COLUMN guild_members_offline_and_online_member_count TO total_guild_members;
+ALTER TABLE moderation_logs RENAME COLUMN guild_members_online_count TO online_members;
+ALTER TABLE moderation_logs RENAME COLUMN guild_members_voice_count TO total_voice_members;
+ALTER TABLE moderation_logs RENAME COLUMN infraction_type TO identifier;
+ALTER TABLE moderation_logs RENAME COLUMN executor_member_snowflake TO author_snowflake;
+ALTER TABLE moderation_logs RENAME COLUMN target_member_snowflake TO target_snowflake;

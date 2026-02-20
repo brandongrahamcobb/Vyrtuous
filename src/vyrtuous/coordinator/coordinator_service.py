@@ -96,16 +96,11 @@ class CoordinatorService:
         member_snowflake = member.id
         return await self.is_coordinator_at_all(member_snowflake=member_snowflake)
 
-    async def is_coordinator_wrapper(
-        self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
+    async def is_coordinator_wrapper(self, context):
         return await self.is_coordinator(
-            channel_snowflake=source.channel.id,
-            guild_snowflake=source.guild.id,
-            member_snowflake=int(member_snowflake),
+            channel_snowflake=int(context.channel.id),
+            guild_snowflake=int(context.guild.id),
+            member_snowflake=int(context.member.id),
         )
 
     async def build_dictionary(self, where_kwargs):

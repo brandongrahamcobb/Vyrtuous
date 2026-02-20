@@ -98,6 +98,7 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__data_service = DataService(
+            database_factory=self.__database_factory,
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )
@@ -129,7 +130,6 @@ class ModeratorTextCommands(commands.Cog):
             voice_mute_service=self.__voice_mute_service,
         )
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -204,10 +204,9 @@ class ModeratorTextCommands(commands.Cog):
             text_mute_service=self.__text_mute_service,
         )
 
-    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
+    async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
+        async def predicate(ctx: commands.Context):
+            context = DefaultContext(ctx=ctx)
             for verify in (
                 self.__sysadmin_service.is_sysadmin_wrapper,
                 self.__developer_service.is_developer_wrapper,
@@ -217,14 +216,14 @@ class ModeratorTextCommands(commands.Cog):
                 self.__moderator_service.is_moderator_at_all_wrapper,
             ):
                 try:
-                    if await verify(source):
+                    if await verify(context=context):
                         return True
                 except commands.CheckFailure:
                     continue
             raise NotModerator
 
         predicate._permission_level = "Moderator"
-        return await predicate(ctx)
+        return await predicate(ctx=ctx)
 
     @commands.command(name="admins", help="Lists admins.")
     @skip_text_command_help_discovery()

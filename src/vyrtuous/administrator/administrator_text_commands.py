@@ -105,7 +105,6 @@ class AdminTextCommands(commands.Cog):
             moderator_service=self.__moderator_service,
         )
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -141,6 +140,7 @@ class AdminTextCommands(commands.Cog):
             sysadmin_service=self.__sysadmin_service,
         )
         self.__data_service = DataService(
+            database_factory=self.__database_factory,
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )
@@ -241,8 +241,9 @@ class AdminTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
+            ctx: commands.Context,
         ):
+            context = DefaultContext(ctx=ctx)
             for verify in (
                 self.__sysadmin_service.is_sysadmin_wrapper,
                 self.__developer_service.is_developer_wrapper,
@@ -250,7 +251,7 @@ class AdminTextCommands(commands.Cog):
                 self.__administrator_service.is_administrator_wrapper,
             ):
                 try:
-                    if await verify(source):
+                    if await verify(context=context):
                         return True
                 except commands.CheckFailure:
                     continue

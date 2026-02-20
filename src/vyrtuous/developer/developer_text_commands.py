@@ -39,6 +39,7 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.utils.default_context import DefaultContext
 
 
 class DevTextCommands(commands.Cog):
@@ -63,7 +64,6 @@ class DevTextCommands(commands.Cog):
             database_factory=self.__database_factory,
         )
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -71,23 +71,22 @@ class DevTextCommands(commands.Cog):
         )
         self.__discord_object_service = DiscordObjectService()
 
-    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
+    async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
+        async def predicate(ctx: commands.Context):
+            context = DefaultContext(ctx=ctx)
             for verify in (
                 self.__sysadmin_service.is_sysadmin_wrapper,
                 self.__developer_service.is_developer_wrapper,
             ):
                 try:
-                    if await verify(source):
+                    if await verify(context=context):
                         return True
                 except commands.CheckFailure:
                     continue
             raise NotDeveloper
 
         predicate._permission_level = "Developer"
-        return await predicate(ctx)
+        return await predicate(ctx=ctx)
 
     @commands.command(name="backup", help="DB backup.")
     async def backup_text_command(self, ctx: commands.Context):

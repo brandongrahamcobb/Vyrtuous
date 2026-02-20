@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 
 @dataclass(frozen=True)
 class Data:
-    __table_name__ = "moderation_logs"
+    __tablename__ = "moderation_logs"
     current_channel_members: int = 0
     total_guild_members: int = 0
     online_members: int = 0
@@ -34,7 +34,7 @@ class Data:
     guild_snowflake: int | None = None
     target_snowflake: int | None = None
     expires_at: datetime = datetime.now(timezone.utc)
-    identiifer: str = ""
+    identifier: str = ""
     reason: str = "No reason provided."
     is_modification: bool = False
     target_highest_role: str = "Role undetermined"

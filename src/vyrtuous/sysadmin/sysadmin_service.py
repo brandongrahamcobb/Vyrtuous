@@ -18,9 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from copy import copy
-from typing import Union
 
-import discord
 from discord.ext import commands
 
 from vyrtuous.sysadmin.sysadmin import Sysadmin
@@ -52,13 +50,8 @@ class SysadminService:
         else:
             self.__bot.logger.info(f"Sysadmin ({member_snowflake}) already in the db.")
 
-    async def is_sysadmin_wrapper(
-        self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
-        return await self.is_sysadmin(member_snowflake)
+    async def is_sysadmin_wrapper(self, context):
+        return await self.is_sysadmin(member_snowflake=context.author.id)
 
     async def is_sysadmin(self, member_snowflake: int) -> bool:
         if int(self.__bot.config["discord_owner_id"]) == member_snowflake:

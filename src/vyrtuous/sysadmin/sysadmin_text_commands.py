@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Coroutine, Union
+from typing import Any, Coroutine
 
 import discord
 from discord.ext import commands
@@ -33,6 +33,7 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.utils.default_context import DefaultContext
 
 
 class SysadminTextCommands(commands.Cog):
@@ -52,7 +53,6 @@ class SysadminTextCommands(commands.Cog):
         )
         self.__discord_object_service = DiscordObjectService()
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             emoji=self.__emoji,
@@ -63,16 +63,15 @@ class SysadminTextCommands(commands.Cog):
             database_factory=self.__database_factory,
         )
 
-    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
-        ):
-            if await self.__sysadmin_service.is_sysadmin_wrapper(source):
+    async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
+        async def predicate(ctx: commands.Context):
+            context = DefaultContext(ctx=ctx)
+            if await self.__sysadmin_service.is_sysadmin_wrapper(context=context):
                 return True
             raise NotSysadmin
 
         predicate._permission_level = "Sysadmin"
-        return await predicate(ctx)
+        return await predicate(ctx=ctx)
 
     @commands.command(name="assign", help="Assign developer.")
     async def assign_bug_to_developer_text_command(

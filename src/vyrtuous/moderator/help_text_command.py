@@ -95,7 +95,6 @@ class HelpTextCommand(commands.Cog):
             emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,

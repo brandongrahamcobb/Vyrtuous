@@ -66,7 +66,6 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
-            author_service=self.__author_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -79,6 +78,7 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__data_service = DataService(
+            database_factory=self.__database_factory,
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )

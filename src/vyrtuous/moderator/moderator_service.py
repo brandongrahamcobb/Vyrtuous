@@ -93,7 +93,7 @@ class ModeratorService:
             database_factory=self.__database_factory,
         )
         self.__developer_service = DeveloperService(
-            author_service=author_service, bot=bot, database_factory=database_factory
+            bot=bot, database_factory=database_factory
         )
         self.__guild_owner_service = GuildOwnerService(
             author_service=author_service, bot=bot, database_factory=database_factory
@@ -112,16 +112,11 @@ class ModeratorService:
             emoji=emoji,
         )
 
-    async def is_moderator_wrapper(
-        self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
+    async def is_moderator_wrapper(self, context):
         return await self.is_moderator(
-            channel_snowflake=source.channel.id,
-            guild_snowflake=source.guild.id,
-            member_snowflake=int(member_snowflake),
+            channel_snowflake=int(context.channel.id),
+            guild_snowflake=int(context.guild.id),
+            member_snowflake=int(context.author.id),
         )
 
     async def is_moderator(

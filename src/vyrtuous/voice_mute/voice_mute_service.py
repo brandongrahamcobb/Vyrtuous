@@ -338,7 +338,7 @@ class VoiceMuteService:
 
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.author_snowflake)
+        author = guild.get_member(ctx.source_member_snowflake)
         channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         voice_mute = self.MODEL(
@@ -359,6 +359,7 @@ class VoiceMuteService:
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_log(
+            author=author,
             channel=channel,
             duration=self.__duration_service.from_expires_in(ctx.expires_in),
             identifier="vmute",
@@ -373,14 +374,14 @@ class VoiceMuteService:
             identifier="vmute",
             duration=self.__duration_service.from_expires_in(ctx.expires_in),
             reason=ctx.reason,
-            target=member,
+            member=member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.author_snowflake)
+        author = guild.get_member(ctx.source_member_snowflake)
         channel = guild.get_channel(ctx.target_channel_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
@@ -396,6 +397,7 @@ class VoiceMuteService:
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_log(
+            author=author,
             channel=channel,
             identifier="unvmute",
             is_channel_scope=is_channel_scope,
@@ -410,7 +412,7 @@ class VoiceMuteService:
             identifier="unvmute",
             is_modification=True,
             reason=ctx.reason,
-            target=member,
+            member=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -603,7 +605,7 @@ class VoiceMuteService:
             channel=channel,
             identifier="vmute",
             duration=duration,
-            target=member,
+            member=member,
         )
         await self.toggle_mute(channel=channel, member=member, should_be_muted=True)
 
@@ -624,7 +626,7 @@ class VoiceMuteService:
         await self.__data_service.save_data(
             channel=channel,
             identifier="unvmute",
-            target=member,
+            member=member,
         )
         await self.toggle_mute(channel=channel, member=member, should_be_muted=False)
 

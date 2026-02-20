@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from copy import copy
-from typing import Union
 
 import discord
 from discord.ext import commands
@@ -38,13 +37,11 @@ class DeveloperService:
     def __init__(
         self,
         *,
-        author_service=None,
         bot=None,
         bug_service=None,
         database_factory=None,
         emoji=None,
     ):
-        self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
@@ -59,12 +56,8 @@ class DeveloperService:
             raise NotDeveloper
         return True
 
-    async def is_developer_wrapper(
-        self, source: Union[commands.Context, discord.Interaction, discord.Message]
-    ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
-        return await self.is_developer(member_snowflake)
+    async def is_developer_wrapper(self, context):
+        return await self.is_developer(member_snowflake=int(context.author.id))
 
     async def build_dictionary(self, where_kwargs):
         dictionary = {}

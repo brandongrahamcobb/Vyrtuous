@@ -264,7 +264,7 @@ class BanService:
 
     async def enforce(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.author_snowflake)
+        author = guild.get_member(ctx.source_member_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         ban = self.MODEL(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -304,6 +304,7 @@ class BanService:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_log(
+            author=author,
             channel=channel,
             duration=self.__duration_service.from_expires_in(ctx.expires_in),
             identifier="ban",
@@ -318,14 +319,14 @@ class BanService:
             identifier="ban",
             duration=self.__duration_service.from_expires_in(ctx.expires_in),
             reason=ctx.reason,
-            target=member,
+            member=member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
         guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.author_snowflake)
+        author = guild.get_member(ctx.source_member_snowflake)
         member = guild.get_member(ctx.target_member_snowflake)
         await self.__database_factory.delete(
             channel_snowflake=ctx.target_channel_snowflake,
@@ -340,6 +341,7 @@ class BanService:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_log(
+            author=author,
             channel=channel,
             identifier="unban",
             is_modification=True,
@@ -353,7 +355,7 @@ class BanService:
             identifier="unban",
             is_modification=True,
             reason=ctx.reason,
-            target=member,
+            member=member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)

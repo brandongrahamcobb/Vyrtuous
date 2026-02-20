@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from copy import copy
 from dataclasses import dataclass, field
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import discord
 from discord.ext import commands
@@ -64,13 +64,11 @@ class AdministratorService:
 
     async def is_administrator_wrapper(
         self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
+        context,
     ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
         return await self.is_administrator(
-            guild_snowflake=int(source.guild.id),
-            member_snowflake=int(member_snowflake),
+            guild_snowflake=int(context.guild.id),
+            member_snowflake=int(context.author.id),
         )
 
     async def is_administrator(

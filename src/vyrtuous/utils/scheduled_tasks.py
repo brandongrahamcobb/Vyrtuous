@@ -67,6 +67,7 @@ class ScheduledTasks(commands.Cog):
             paginator_service=self.__paginator_service,
         )
         self.__data_service = DataService(
+            database_factory=self.__database_factory,
             duration_service=self.__duration_service,
             moderator_service=self.__moderator_service,
         )

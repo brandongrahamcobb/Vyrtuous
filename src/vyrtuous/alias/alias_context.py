@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from copy import copy
-from datetime import datetime, timezone
 from typing import Dict, Tuple
 
 import discord
