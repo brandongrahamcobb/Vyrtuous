@@ -29,7 +29,7 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
@@ -56,7 +56,7 @@ class CoordinatorTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__moderator_service = ModeratorService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -66,7 +66,7 @@ class CoordinatorTextCommands(commands.Cog):
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
         )
         self.__paginator_service = PaginatorService(bot=self.__bot)
@@ -83,7 +83,7 @@ class CoordinatorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
@@ -92,7 +92,7 @@ class CoordinatorTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
@@ -179,6 +179,12 @@ class CoordinatorTextCommands(commands.Cog):
         context = DefaultContext(ctx=ctx)
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         member_dict = self.__discord_object_service.to_dict(obj=member)
+        await self.__moderator_service.check_minimum_role(
+            channel_snowflake=channel_dict.get("id", None),
+            guild_snowflake=ctx.guild,
+            member_snowflake=ctx.author,
+            lowest_role="Coordinator",
+        )
         await self.__moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(member_dict.get("id", None)),
             member_snowflake=context.author.id,
@@ -216,11 +222,14 @@ class CoordinatorTextCommands(commands.Cog):
         context = DefaultContext(ctx=ctx)
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
-        duration_obj = self.__duration_service.parse(duration)
+        await self.__moderator_service.check_minimum_role(
+            channel_snowflake=channel_dict.get("id", None),
+            guild_snowflake=ctx.guild,
+            member_snowflake=ctx.author,
+            lowest_role="Coordinator",
+        )
         pages = await self.__stage_service.toggle_stage(
-            channel_dict=channel_dict,
-            context=context,
-            duration=duration_obj,
+            channel_dict=channel_dict, context=context, duration_value=duration
         )
         return await state.end(success=pages)
 

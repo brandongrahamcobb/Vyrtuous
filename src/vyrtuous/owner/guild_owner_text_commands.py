@@ -28,7 +28,7 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator_service import ModeratorService
@@ -58,7 +58,7 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__emoji = Emojis()
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -79,7 +79,7 @@ class GuildOwnerTextCommands(commands.Cog):
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
         )
         self.__guild_owner_service = GuildOwnerService(
@@ -113,7 +113,7 @@ class GuildOwnerTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
@@ -123,7 +123,7 @@ class GuildOwnerTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__flag_service = FlagService(
@@ -139,7 +139,7 @@ class GuildOwnerTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__hero_service = HeroService(

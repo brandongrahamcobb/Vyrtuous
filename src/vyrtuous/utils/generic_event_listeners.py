@@ -30,17 +30,18 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.data_service import DataService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.utils.data_service import DataService
 
 
 class GenericEventListeners(commands.Cog):
@@ -53,7 +54,7 @@ class GenericEventListeners(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__moderator_service = ModeratorService(
             author_service=self.__author_service,
@@ -66,6 +67,7 @@ class GenericEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
@@ -73,7 +75,7 @@ class GenericEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -81,7 +83,7 @@ class GenericEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -101,12 +103,12 @@ class GenericEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
         )
 
@@ -146,32 +148,34 @@ class GenericEventListeners(commands.Cog):
                 developer_service=self.__developer_service,
                 emoji=self.__emoji,
             )
+            d_ctx = DefaultContext(message=message)
             ctx = AliasContext(
                 bot=self.__bot,
                 cap_service=self.__cap_service,
+                content=message.content,
                 database_factory=self.__database_factory,
+                default_ctx=d_ctx,
                 dictionary_service=self.__dictionary_service,
-                duration_service=self.__duration_service,
                 emoji=self.__emoji,
-                message=message,
+                moderator_service=self.__moderator_service,
             )
             await ctx.setup()
             await self.__moderator_service.has_equal_or_lower_role(
-                channel_snowflake=ctx.target_channel_snowflake,
-                guild_snowflake=ctx.source_guild_snowflake,
-                member_snowflake=ctx.source_member_snowflake,
-                target_member_snowflake=ctx.target_member_snowflake,
+                **d_ctx.to_dict(),
+                target_member_snowflake=ctx.member.id,
             )
             service = ctx.alias.service(
                 bot=self.__bot,
                 database_factory=self.__database_factory,
                 data_service=self.__data_service,
                 dictionary_service=self.__dictionary_service,
-                duration_service=self.__duration_service,
+                duration_builder=self.__duration_builder,
                 emoji=self.__emoji,
                 stream_service=self.__stream_service,
             )
-            await service.enforce_or_undo(ctx=ctx, source=message, state=state)
+            await service.enforce_or_undo(
+                ctx=ctx, default_ctx=d_ctx, source=message, state=state
+            )
         except:
             traceback.print_exc()
 

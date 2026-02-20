@@ -126,15 +126,15 @@ class VeganService:
         return pages
 
     async def enforce(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        member = guild.get_member(ctx.member.id)
         vegan = self.MODEL(
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
         )
         await self.__database_factory.create(vegan)
         await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+            channel_snowflake=ctx.channel.id,
             identifier="vegan",
             member=member,
             source=source,
@@ -143,15 +143,15 @@ class VeganService:
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        member = guild.get_member(ctx.member.id)
         await self.__database_factory.delete(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
         )
         await self.__stream_service.send_entry(
-            channel_snowflake=ctx.target_channel_snowflake,
+            channel_snowflake=ctx.channel.id,
             identifier="carnist",
             is_modification=True,
             member=member,
@@ -161,8 +161,8 @@ class VeganService:
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        member = guild.get_member(ctx.member.id)
         embed = discord.Embed(
             title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
@@ -173,8 +173,8 @@ class VeganService:
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        member = guild.get_member(ctx.member.id)
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
             f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",

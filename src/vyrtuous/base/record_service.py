@@ -35,9 +35,9 @@ class RecordService:
         state: StateService,
     ):
         obj = await ctx.record.select(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
             singular=True,
         )
         if obj:

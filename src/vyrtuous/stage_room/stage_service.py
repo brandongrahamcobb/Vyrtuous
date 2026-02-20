@@ -47,7 +47,7 @@ class StageService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
-        duration_service=None,
+        duration_builder=None,
         emoji=None,
         moderator_service=None,
         voice_mute_service=None,
@@ -56,7 +56,7 @@ class StageService:
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
-        self.__duration_service = duration_service
+        self.__duration_builder = duration_builder
         self.__emoji = emoji
         self.__moderator_service = moderator_service
         self.__voice_mute_service = voice_mute_service
@@ -90,13 +90,7 @@ class StageService:
             ].setdefault("stages", {})
             dictionary[stage.guild_snowflake]["channels"][stage.channel_snowflake][
                 "stages"
-            ].update(
-                {
-                    "expires_in": self.__duration_service.from_expires_in(
-                        stage.expires_in
-                    )
-                }
-            )
+            ].update({"expires_in": stage.expires_in})
         return dictionary
 
     async def build_pages(self, object_dict, is_at_home):
@@ -153,7 +147,7 @@ class StageService:
             pages[0].description = f"**({stage_n})**"
         return pages
 
-    async def toggle_stage(self, channel_dict, context, duration):
+    async def toggle_stage(self, channel_dict, context, duration_value):
         failed, pages, skipped, succeeded = [], [], [], []
         stage = await self.__database_factory.select(
             **channel_dict.get("columns", None), singular=True
@@ -179,17 +173,19 @@ class StageService:
         else:
             stage = self.MODEL(
                 **channel_dict.get("columns", None),
-                expires_in=self.__duration_service.to_expires_in(duration),
+                expires_in=self.__duration_builder.parse(
+                    value=duration_value
+                ).to_expires_in(),
             )
             await self.__database_factory.create(stage)
             failed, skipped, succeeded = await self.__voice_mute_service.on_stage(
                 channel_dict=channel_dict,
                 context=context,
-                duration=duration,
+                duration_value=duration_value,
             )
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
-                f"**Expires:** {duration}",
+                f"**Expires:** {self.__duration_builder.parse(value=duration_value).to_unix_ts()}",
                 f"**Muted:** {len(succeeded)} users",
                 f"**Skipped:** {len(skipped)}",
             ]

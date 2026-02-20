@@ -35,8 +35,3 @@ class Duration:
         self.prefix = prefix
         self.sign = sign
         self.unit = unit
-
-    # def __str__(self):
-    #     if self._number == 0:
-    #         return "permanent"
-    #     return f"<t:{int(self.expires_in.timestamp())}:R>"

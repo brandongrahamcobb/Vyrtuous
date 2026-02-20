@@ -125,9 +125,6 @@ class BugService:
                                 f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), deleting developer log. {str(e).capitalize()}"
                             )
                             return await self.__database_factory.delete(id=reference)
-                        time_since_updated = await self.duration.from_expires_at(
-                            bug.updated_at
-                        )
                         self.__developer_service.clean_expired(
                             channel=channel,
                             embed=embed,
@@ -136,7 +133,7 @@ class BugService:
                             member_snowflakes=bug.member_snowflakes,
                             msg=msg,
                             notes=bug.notes,
-                            time_since_updated=time_since_updated,
+                            updated_at=bug.updated_at,
                         )
 
     async def create_embed(self, action, bug, member_snowflake):

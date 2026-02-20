@@ -43,15 +43,15 @@ class CapService:
         self,
         bot=None,
         database_factory=None,
+        duration_builder=None,
         dictionary_service=None,
-        duration_service=None,
         emoji=None,
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
-        self.__duration_service = duration_service
+        self.__duration_builder = duration_builder
         self.__emoji = emoji
 
     async def build_dictionary(self, where_kwargs):
@@ -96,7 +96,7 @@ class CapService:
                     "caps", {}
                 ).items():
                     lines.append(
-                        f"  ↳ {moderation_type} ({self.__duration_service.from_seconds(duration_seconds)})"
+                        f"  ↳ {moderation_type} ({self.__duration_builder.from_seconds(duration_seconds).build(as_str=True)})"
                     )
                     cap_n += 1
                     field_count += 1
@@ -147,18 +147,22 @@ class CapService:
                 f"{channel_dict.get('mention', None)} successfully."
             )
 
-    async def assert_duration_exceeds_cap(self, category, duration, source_kwargs):
+    async def assertion(self, ctx, default_ctx):
+        duration_value = ctx.duration_value
         exceeds_cap = False
         cap = await self.__database_factory.select(
-            **source_kwargs, category=category, singular=True
+            **default_ctx.to_dict(), category=ctx.category, singular=True
         )
-        duration_seconds = self.__duration_service.to_seconds(duration)
+        duration_seconds = self.__duration_builder.parse(
+            value=duration_value
+        ).to_seconds()
         if cap:
             if duration_seconds > cap.duration_seconds:
                 exceeds_cap = True
         else:
-            duration = self.__duration_service.parse("8h")
-            cap_duration_seconds = self.__duration_service.to_seconds(duration)
+            cap_duration_seconds = self.__duration_builder.parse(
+                value="8h"
+            ).to_seconds()
             if duration_seconds > cap_duration_seconds:
                 exceeds_cap = True
         return exceeds_cap

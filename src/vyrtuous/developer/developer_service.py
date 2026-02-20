@@ -174,7 +174,7 @@ class DeveloperService:
         member_snowflakes,
         msg,
         notes,
-        time_since_updated,
+        updated_at,
     ):
         guild = self.__bot.get_guild(guild_snowflake)
         assigned_developer_mentions = []

@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from copy import copy
-from typing import Dict, Tuple
+from datetime import datetime
 
 import discord
 
@@ -34,16 +34,18 @@ class AliasContext:
         *,
         bot=None,
         cap_service=None,
+        content=None,
         database_factory=None,
+        default_ctx=None,
         dictionary_service=None,
-        duration_service=None,
         emoji=None,
-        message: discord.Message | None = None,
         moderator_service=None,
     ):
         self.alias = None
-        self.alias_name: str
+        self.__alias_name: str
         self.__bot = bot
+        self.__cap_service = cap_service
+        self.__content = content
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
@@ -54,107 +56,95 @@ class AliasContext:
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.args = []
-        self.expires_in = None
-        self.kwargs: Dict[str, Tuple[int, str]] = {}
-        self.source_kwargs: Dict[str, int] = {}
-        self.message = message
-        self.reason = "No reason provided"
-        self.target_channel_snowflake: int
-        self.target_member_snowflake: int
-        self.target_role_snowflake: int
-        self.source_guild_snowflake: int
-        self.source_channel_snowflake = message.channel.id
-        self.source_guild_snowflake = message.guild.id
-        self.source_member_snowflake = message.author.id
-        self.record = None
-        self.__cap_service = cap_service
-        self.__duration_service = duration_service
+        self.__d_ctx = default_ctx
         self.__moderator_service = moderator_service
+        self.__args = []
+        self.__kwargs: dict[str, tuple] = {}
+        self.category: str | None = None
+        self.channel: discord.abc.GuildChannel | None = None
+        self.guild: discord.Guild | None = None
+        self.member: discord.Member | None = None
+        self.role: discord.Role | None = None
+        self.expires_in: datetime | None = None
+        self.duration_value: str | None = None
+        self.reason = "No reason provided"
+        self.record = None
 
     async def setup(self):
-        self.build_source_kwargs()
-        self.message_to_args()
-        self.alias_name_from_args()
-        await self.populate_alias()
-        self.fill_map()
-        await self.convert_args_to_values()
+        self._message_to_args()
+        self._alias_name_from_args()
+        await self._populate_alias()
+        self._fill_map()
+        await self._convert_args_to_values()
 
-    def build_source_kwargs(self):
-        self.source_kwargs = {
-            "channel_snowflake": self.source_channel_snowflake,
-            "guild_snowflake": self.source_guild_snowflake,
-            "member_snowflake": self.source_member_snowflake,
-        }
-
-    def message_to_args(self) -> None:
-        self.args = (
-            self.message.content[len(self.__bot.config["discord_command_prefix"]) :]
+    def _message_to_args(self) -> None:
+        self.__args = (
+            self.__content[len(self.__bot.config["discord_command_prefix"]) :]
             .strip()
             .split()
         )
 
-    def fill_map(self) -> None:
+    def _fill_map(self) -> None:
         map = self.alias.ARGS_MAP
         sorted_args = sorted(map.items(), key=lambda x: x[1])
         for i, (key, pos) in enumerate(sorted_args):
             if i == len(sorted_args) - 1:
                 value = (
-                    " ".join(str(a) for a in self.args[pos - 1 :])
-                    if len(self.args) >= pos
+                    " ".join(str(a) for a in self.__args[pos - 1 :])
+                    if len(self.__args) >= pos
                     else ""
                 )
             else:
-                value = str(self.args[pos - 1]) if len(self.args) >= pos else ""
-            self.kwargs[key] = (pos, value)
+                value = str(self.__args[pos - 1]) if len(self.__args) >= pos else ""
+            self.__kwargs[key] = (pos, value)
 
-    def alias_name_from_args(self):
-        if not self.args:
+    def _alias_name_from_args(self):
+        if not self.__args:
             return
-        self.alias_name = self.args[0]
+        self.__alias_name = self.__args[0]
 
-    async def populate_alias(self):
+    async def _populate_alias(self):
         alias_entry = await self.__database_factory.select(
-            alias_name=self.alias_name,
-            guild_snowflake=self.source_guild_snowflake,
+            alias_name=self.__alias_name,
+            guild_snowflake=self.__d_ctx.guild.id,
             singular=True,
         )
         if not alias_entry:
             return
-        self.target_channel_snowflake = int(alias_entry.channel_snowflake)
+        self.guild = self.__bot.get_guild(int(alias_entry.guild_snowflake))
+        self.channel = self.guild.get_channel(int(alias_entry.channel_snowflake))
         if getattr(alias_entry, "role_snowflake"):
-            self.target_role_snowflake = int(alias_entry.role_snowflake)
+            self.role = self.guild.get_role(int(alias_entry.role_snowflake))
         alias = self.__alias_service.alias_category_to_alias(
             alias_category=alias_entry.category
         )
         self.alias = alias
+        self.category = alias_entry.category
         self.record = alias.record
 
-    async def convert_args_to_values(self):
-        for field, tuple in self.kwargs.items():
+    async def _convert_args_to_values(self):
+        for field, tuple in self.__kwargs.items():
             value = tuple[1]
             if field == "duration":
                 if not value:
-                    duration = self.__duration_service.parse("8h")
+                    self.duration_value = "8h"
                 else:
-                    duration = self.__duration_service.parse(value)
-                if await self.__cap_service.assert_duration_exceeds_cap(
-                    duration=duration,
-                    source_kwargs=self.source_kwargs,
-                    category=self.alias.category,
+                    self.duration_value = value
+                if await self.__cap_service.assertion(
+                    ctx=self,
+                    default_ctx=self.__d_ctx,
                 ):
                     await self.__moderator_service.check(
-                        channel_snowflake=self.target_channel_snowflake,
-                        guild_snowflake=self.source_guild_snowflake,
-                        member_snowflake=self.target_member_snowflake,
+                        channel_snowflake=self.channel.id,
+                        guild_snowflake=self.guild.id,
+                        member_snowflake=self.member.id,
                         lowest_role="Coordinator",
                     )
-                self.expires_in = (
-                    None
-                    if duration.number == 0
-                    else self.__duration_service.to_expires_in(duration)
-                )
+
             elif field == "member":
-                self.target_member_snowflake = int(value)
+                self.member = self.guild.get_member(int(value))
             elif field == "reason":
-                self.reason = value
+                if not value:
+                    self.reason = "No reason provided."
+                else:
+                    self.reason = value

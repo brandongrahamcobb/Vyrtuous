@@ -33,7 +33,7 @@ class DataView(discord.ui.View):
         *,
         bot=None,
         ban_service=None,
-        duration_service=None,
+        duration_builder=None,
         flag_service=None,
         interaction: discord.Interaction = None,
         moderator_service=None,
@@ -59,7 +59,7 @@ class DataView(discord.ui.View):
             self.__voice_mute_service.MODEL,
         ]
         self.__state = state
-        self.__duration_service = duration_service
+        self.__duration_builder = duration_builder
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -223,8 +223,11 @@ class DataView(discord.ui.View):
             values.append(self.__information["infraction"].identifier)
         if "duration" in self.__information:
             conditions.append(f"created_at >= ${len(values) + 1}")
-            duration = self.__duration_service.parse(self.__information["duration"])
-            values.append(self.__duration_service.to_expires_in(duration=duration))
+            values.append(
+                self.__duration_builder.parse(
+                    self.__information["duration"]
+                ).to_expires_in()
+            )
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(

@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from copy import copy
-from dataclasses import dataclass, field
 import importlib.util
 import inspect
+from copy import copy
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Union
 

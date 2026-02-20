@@ -76,7 +76,7 @@ class DurationService:
         number, unit = self._largest_unit(total_seconds)
         return self.parse(f"{prefix}{number}{unit}")
 
-    def from_expires_in(self, expires_in: datetime):
+    def from_timestamp(self, expires_in: datetime):
         if expires_in is None:
             return Duration(number=0, unit="h", prefix="", sign=1)
         now = datetime.now(timezone.utc)
@@ -84,15 +84,6 @@ class DurationService:
         total_seconds = max(0, int(remaining.total_seconds()))
         number, unit = self._largest_unit(total_seconds)
         return self.parse(f"+{number}{unit}")
-
-    def from_expires_in_to_str(self, expires_in: datetime) -> str:
-        if expires_in is None:
-            return "+0h"
-        now = datetime.now(timezone.utc)
-        remaining = expires_in - now
-        total_seconds = max(0, int(remaining.total_seconds()))
-        number, unit = self._largest_unit(total_seconds)
-        return f"+{number}{unit}"
 
     def from_seconds(self, seconds: int):
         return self.parse(f"{seconds}s")
@@ -123,6 +114,8 @@ class DurationService:
         return base + self.to_timedelta(duration=duration)
 
     def parse(self, value):
+        if not value:
+            return Duration(number=0, unit="", prefix="", sign=1)
         s = value.lower().strip()
         if s == "0":
             number = 0

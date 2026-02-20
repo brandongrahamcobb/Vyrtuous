@@ -29,11 +29,11 @@ from vyrtuous.utils.data import Data
 
 class DataService:
     def __init__(
-        self, *, database_factory=None, duration_service=None, moderator_service=None
+        self, *, database_factory=None, duration_builder=None, moderator_service=None
     ):
         self.__data = Data()
         self.__database_factory = database_factory
-        self.__duration_service = duration_service
+        self.__duration_builder = duration_builder
         self.__moderator_service = moderator_service
 
     def set_counts(
@@ -111,12 +111,14 @@ class DataService:
         channel: discord.abc.GuildChannel,
         identifier: str,
         member: discord.Member,
-        duration: str | None = None,
+        duration_value: str | None = None,
         is_modification: bool = False,
         reason: str = "No reason provided",
     ):
-        if duration is not None:
-            expires_at = self.__duration_service.to_expires_in(duration=duration)
+        if duration_value is not None:
+            expires_at = self.__duration_builder.parse(
+                value=duration_value
+            ).to_expires_in()
         else:
             expires_at = None
         current_channel_members = len(channel.members)

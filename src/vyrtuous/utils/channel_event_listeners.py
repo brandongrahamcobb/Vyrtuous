@@ -28,7 +28,7 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
@@ -53,7 +53,7 @@ class ChannelEventListeners(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__moderator_service = ModeratorService(
             author_service=self.__author_service,
@@ -72,6 +72,7 @@ class ChannelEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
@@ -87,7 +88,7 @@ class ChannelEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
@@ -96,7 +97,7 @@ class ChannelEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -111,7 +112,7 @@ class ChannelEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -140,7 +141,7 @@ class ChannelEventListeners(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__server_mute_service = ServerMuteService(
@@ -232,8 +233,7 @@ class ChannelEventListeners(commands.Cog):
         await self.__video_room_service.update_video_room_tasks(
             after=after, before=before, member=member
         )
-        expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-        duration = self.__duration_service.from_expires_in(expires_in)
+        duration_value = "1h"
         if member.id in self.__hero_service.invincible_members:
             embed = discord.Embed(
                 title=f"\u1f4aB {member.display_name} is a hero!",
@@ -253,7 +253,10 @@ class ChannelEventListeners(commands.Cog):
         ):
             target = "room"
             await self.__voice_mute_service.mute(
-                channel=after.channel, duration=duration, member=member, target=target
+                channel=after.channel,
+                duration_value=duration_value,
+                member=member,
+                target=target,
             )
         elif await self.__voice_mute_service.is_voice_muted(
             channel=after.channel, member=member
@@ -266,7 +269,7 @@ class ChannelEventListeners(commands.Cog):
             else:
                 await self.__voice_mute_service.mute(
                     channel=after.channel,
-                    duration=duration,
+                    duration_value=duration_value,
                     member=member,
                     target=target,
                 )

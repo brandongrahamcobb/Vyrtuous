@@ -24,64 +24,69 @@ import discord
 
 class DurationModal(discord.ui.Modal):
     def __init__(
-        self, ctx, state, *, cap_service=None, duration=None, duration_service=None
+        self,
+        *,
+        ctx=None,
+        state=None,
+        cap_service=None,
+        default_ctx=None,
+        duration_builder=None,
     ):
         super().__init__(title="Duration")
-        self.ctx = ctx
-        self.channel_snowflake = ctx.target_channel_snowflake
-        self.guild_snowflake = ctx.source_channel_snowflake
-        self.member_snowflake = ctx.target_member_snowflake
-        self.record_snowflakes = {
-            "channel_snowflake": self.channel_snowflake,
-            "guild_snowflake": self.guild_snowflake,
-            "member_snowflake": self.member_snowflake,
+        self.__ctx = ctx
+        self.__channel_snowflake = ctx.channel.id
+        self.__guild_snowflake = ctx.source_channel_snowflake
+        self.__member_snowflake = ctx.member.id
+        self.__record_snowflakes = {
+            "channel_snowflake": self.__channel_snowflake,
+            "guild_snowflake": self.__guild_snowflake,
+            "member_snowflake": self.__member_snowflake,
         }
-        self.state = state
-        self.__duration = duration
-        self.__duration_service = duration_service
+        self.__state = state
+        self.__duration_builder = duration_builder
         self.__cap_service = cap_service
+        self.__d_ctx = default_ctx
 
     async def setup(self):
         self.duration_selection = discord.ui.TextInput(
             label="Type the duration",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=self.__duration_service.from_expires_in_to_str(
-                self.ctx.record.expires_in
-            )
+            default=self.__duration_builder.from_timestamp(
+                self.__ctx.record.expires_in
+            ).build(as_str=True)
             or "",
         )
         self.add_item(self.duration_selection)
 
     async def on_submit(self, interaction):
         await interaction.response.defer()
-        self.state.interaction = interaction
-        self.duration = self.__duration_service.parse(self.duration_selection.value)
-        self.ctx.expires_in = (
-            datetime.now(timezone.utc)
-            + self.__duration_service.to_timedelta(duration=self.duration)
-            if self.duration.number != 0
-            else None
-        )
-        if await self.__cap_service.assert_duration_exceeds_cap(
-            category=self.ctx.record.identifier,
-            duration=self.duration,
-            source_kwargs=self.ctx.source_kwargs,
-        ):
+        self.__state.interaction = interaction
+        duration_str = self.__duration_builder.parse(
+            self.duration_selection.value
+        ).build(as_str=True)
+        self.__ctx.duration = self.__duration_builder.parse(
+            self.duration_selection.value
+        ).build()
+        self.__ctx.expires_in = self.__duration_builder.parse(
+            self.duration_selection.value
+        ).to_expires_in()
+        if await self.__cap_service.assertion(ctx=self.__ctx, default_ctx=self.__d_ctx):
             return await interaction.response.send_message(
-                content="Duration exceeds the channel cap.", ephemeral=True
+                content=f"Duration {duration_str} exceeds the channel cap.",
+                ephemeral=True,
             )
-        if self.ctx.record:
-            set_kwargs = {"expires_in": self.ctx.expires_in}
-            await self.ctx.record.__class__.update(
-                where_kwargs=self.record_snowflakes, set_kwargs=set_kwargs
+        if self.__ctx.record:
+            set_kwargs = {"expires_in": self.__ctx.expires_in}
+            await self.__ctx.record.__class__.update(
+                where_kwargs=self.__record_snowflakes, set_kwargs=set_kwargs
             )
-            await self.state.end(
-                success=f"Duration has been updated to {self.duration}."
+            await self.__state.end(
+                success=f"Duration has been updated to {duration_str}."
             )
         # else:
         #     for service in RecordService.__subclasses__():
-        #         if isinstance(self.ctx.record, service.model):
+        #         if isinstance(self.__ctx.record, service.model):
         #             await service.enforce(
-        #                 ctx=self.ctx, source=interaction, state=self.state
+        #                 ctx=self.__ctx, source=interaction, state=self.__state
         #             )

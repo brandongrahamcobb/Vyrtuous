@@ -24,7 +24,7 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.database import Database
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
@@ -47,7 +47,7 @@ class ScheduledTasks(commands.Cog):
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__moderator_service = ModeratorService(
@@ -62,13 +62,14 @@ class ScheduledTasks(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
         )
         self.__ban_service = BanService(
@@ -76,7 +77,7 @@ class ScheduledTasks(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -85,7 +86,7 @@ class ScheduledTasks(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -94,7 +95,7 @@ class ScheduledTasks(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,

@@ -31,7 +31,7 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator import Moderator
@@ -65,12 +65,12 @@ class ModeratorTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__cap_service = CapService(
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__sysadmin_service = SysadminService(
@@ -99,7 +99,7 @@ class ModeratorTextCommands(commands.Cog):
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
         )
         self.__paginator_service = PaginatorService(bot=self.__bot)
@@ -107,6 +107,7 @@ class ModeratorTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
@@ -116,7 +117,7 @@ class ModeratorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
@@ -156,7 +157,7 @@ class ModeratorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__flag_service = FlagService(
@@ -179,7 +180,7 @@ class ModeratorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__guild_owner_service = GuildOwnerService(
@@ -535,6 +536,12 @@ class ModeratorTextCommands(commands.Cog):
         channel = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         member_dict = self.__discord_object_service.to_dict(obj=member)
+        await self.__moderator_service.check_minimum_role(
+            channel_snowflake=channel_dict.get("id", None),
+            guild_snowflake=ctx.guild,
+            member_snowflake=ctx.author,
+            lowest_role="Moderator",
+        )
         msg = await self.__stage_service.toggle_stage_mute(
             channel_dict=channel_dict,
             context=context,
@@ -567,7 +574,7 @@ class ModeratorTextCommands(commands.Cog):
         services.append(self.__ban_service)
         services.append(self.__flag_service)
         services.append(self.__text_mute_service)
-        services.append(self.__text_mute_service)
+        services.append(self.__voice_mute_service)
         for service in services:
             summary_pages = await service.build_pages(
                 object_dict=member_dict, is_at_home=is_at_home

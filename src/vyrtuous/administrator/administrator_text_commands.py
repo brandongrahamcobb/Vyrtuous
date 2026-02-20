@@ -36,7 +36,7 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.field.category import Category
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.inc.helpers import PATH_LOG
@@ -75,7 +75,7 @@ class AdminTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__alias_service = AliasService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -100,7 +100,7 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
         )
@@ -141,7 +141,7 @@ class AdminTextCommands(commands.Cog):
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
         )
         self.__administrator_role_service = AdministratorRoleService(
@@ -154,7 +154,7 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
@@ -170,6 +170,7 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             paginator_service=self.__paginator_service,
         )
@@ -184,7 +185,7 @@ class AdminTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             data_service=self.__data_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
@@ -209,7 +210,7 @@ class AdminTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -218,7 +219,7 @@ class AdminTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )

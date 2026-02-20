@@ -26,19 +26,21 @@ class InfractionView(discord.ui.View):
         *,
         cap_service=None,
         ctx=None,
-        duration_service=None,
+        default_ctx=None,
+        duration_builder=None,
         modal=None,
         state=None,
     ):
         super().__init__(timeout=120)
         self.__cap_service = cap_service
         self.__ctx = ctx
-        self.__duration_service = duration_service
+        self.__duration_builder = duration_builder
         self.__modal = modal
+        self.__d_ctx = default_ctx
         self.__state = state
 
     async def interaction_check(self, interaction):
-        return interaction.user.id == self.__ctx.source_member_snowflake
+        return interaction.user.id == self.__d_ctx.author.id
 
     async def setup(self):
         channel_options = await self._build_channel_options()
@@ -71,7 +73,7 @@ class InfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.__ctx.target_channel_snowflake = channel.id
+        self.__ctx.channel.id = channel.id
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -83,12 +85,7 @@ class InfractionView(discord.ui.View):
     async def duration_select(self, interaction, select):
         duration_name = select.values[0]
         self.__duration_select.placeholder = duration_name
-        self.__duration = self.__duration_service.parse(duration=duration_name)
-        self.__ctx.expires_in = (
-            self.__duration_service.to_expires_in(duration=self.__duration)
-            if self.__duration.number != 0
-            else None
-        )
+        self.__ctx.duration_value = duration_name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -98,10 +95,9 @@ class InfractionView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
-        if await self.__cap_duration.assert_duration_exceeds_cap(
-            category=self.__ctx.infraction.identifier,
-            duration=self.__duration,
-            source_kwargs=self.__ctx.source_kwargs,
+        if await self.__cap_duration.assertion(
+            ctx=self.__ctx,
+            default_ctx=self.__d_ctx,
         ):
             return await interaction.response.send_message(
                 content="Duration exceeds the channel cap.", ephemeral=True
@@ -120,6 +116,6 @@ class InfractionView(discord.ui.View):
         return await self.__state.end(success="Cancelled action.")
 
     def has_the_user_selected_all_fields(self):
-        if not self.__ctx.expires_in or not self.__ctx.target_channel_snowflake:
+        if not self.__ctx.expires_in or not self.__ctx.channel.id:
             return False
         return True

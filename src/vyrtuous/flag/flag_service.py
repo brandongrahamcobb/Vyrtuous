@@ -64,19 +64,24 @@ class FlagService:
     async def enforce_or_undo(
         self,
         ctx,
+        default_ctx,
         source: Union[commands.Context, discord.Interaction, discord.Message],
         state,
     ):
         obj = await self.__database_factory.select(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
             singular=True,
         )
         if obj:
-            await self.undo(ctx=ctx, source=source, state=state)
+            await self.undo(
+                ctx=ctx, default_ctx=default_ctx, source=source, state=state
+            )
         else:
-            await self.enforce(ctx=ctx, source=source, state=state)
+            await self.enforce(
+                ctx=ctx, default_ctx=default_ctx, source=source, state=state
+            )
 
     async def build_dictionary(self, where_kwargs):
         dictionary = {}
@@ -163,21 +168,20 @@ class FlagService:
             pages[0].description = f"**({flag_n})**"
         return pages
 
-    async def enforce(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.source_member_snowflake)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+    async def enforce(self, ctx, default_ctx, source, state):
+        guild = self.__bot.get_guild(ctx.guild.id)
+        channel = guild.get_channel(ctx.channel.id)
+        member = guild.get_member(ctx.member.id)
         flag = self.MODEL(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
             reason=ctx.reason,
         )
         await self.__database_factory.create(flag)
         self.__flags.append(flag)
         await self.__stream_service.send_log(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
             identifier="flag",
             member=member,
@@ -185,7 +189,7 @@ class FlagService:
             reason=ctx.reason,
         )
         await self.__data_service.save_data(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
             identifier="flag",
             reason=ctx.reason,
@@ -194,22 +198,21 @@ class FlagService:
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.source_member_snowflake)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+    async def undo(self, ctx, default_ctx, source, state):
+        guild = self.__bot.get_guild(ctx.guild.id)
+        channel = guild.get_channel(ctx.channel.id)
+        member = guild.get_member(ctx.member.id)
         await self.__database_factory.delete(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
         )
         for flag in self.__flags:
-            if flag.channel_snowflake == ctx.target_channel_snowflake:
+            if flag.channel_snowflake == ctx.channel.id:
                 self.__flags.remove(flag)
                 break
         await self.__stream_service.send_log(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
             identifier="unflag",
             is_modification=True,
@@ -217,7 +220,7 @@ class FlagService:
             source=source,
         )
         await self.__data_service.save_data(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
             identifier="uflag",
             is_modification=True,
@@ -228,9 +231,9 @@ class FlagService:
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        channel = guild.get_channel(ctx.channel.id)
+        member = guild.get_member(ctx.member.id)
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been flagged",
             description=(
@@ -244,9 +247,9 @@ class FlagService:
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        channel = guild.get_channel(ctx.channel.id)
+        member = guild.get_member(ctx.member.id)
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been unflagged",
             description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),

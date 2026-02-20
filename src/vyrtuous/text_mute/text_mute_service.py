@@ -48,7 +48,7 @@ class TextMuteService:
         database_factory=None,
         data_service=None,
         dictionary_service=None,
-        duration_service=None,
+        duration_builder=None,
         emoji=None,
         stream_service=None,
     ):
@@ -57,26 +57,31 @@ class TextMuteService:
         self.__database_factory.model = self.MODEL
         self.__data_service = data_service
         self.__dictionary_service = dictionary_service
-        self.__duration_service = duration_service
+        self.__duration_builder = duration_builder
         self.__emoji = emoji
         self.__stream_service = stream_service
 
     async def enforce_or_undo(
         self,
         ctx,
+        default_ctx,
         source: Union[commands.Context, discord.Interaction, discord.Message],
         state,
     ):
         obj = await self.__database_factory.select(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
             singular=True,
         )
         if obj:
-            await self.undo(ctx=ctx, source=source, state=state)
+            await self.undo(
+                ctx=ctx, default_ctx=default_ctx, source=source, state=state
+            )
         else:
-            await self.enforce(ctx=ctx, source=source, state=state)
+            await self.enforce(
+                ctx=ctx, default_ctx=default_ctx, source=source, state=state
+            )
 
     async def clean_expired(self):
         expired_text_mutes = await self.__database_factory.select(expired=True)
@@ -182,12 +187,7 @@ class TextMuteService:
             dictionary[text_mute.guild_snowflake]["members"][
                 text_mute.member_snowflake
             ]["text_mutes"][text_mute.channel_snowflake].update(
-                {
-                    "reason": text_mute.reason,
-                    "expires_in": self.__duration_service.from_expires_in(
-                        text_mute.expires_in
-                    ),
-                }
+                {"reason": text_mute.reason, "expires_in": text_mute.expires_in}
             )
         return dictionary
 
@@ -264,19 +264,18 @@ class TextMuteService:
             pages[0].description = f"**({tmute_n})**"
         return pages
 
-    async def enforce(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.source_member_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+    async def enforce(self, ctx, default_ctx, source, state):
+        guild = self.__bot.get_guild(ctx.guild.id)
+        member = guild.get_member(ctx.member.id)
         text_mute = self.MODEL(
-            channel_snowflake=ctx.target_channel_snowflake,
+            channel_snowflake=ctx.channel.id,
             expires_in=ctx.expires_in,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
             reason=ctx.reason,
         )
         await self.__database_factory.create(text_mute)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
+        channel = guild.get_channel(ctx.channel.id)
         if channel:
             try:
                 await channel.set_permissions(
@@ -289,35 +288,34 @@ class TextMuteService:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_log(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
-            duration=self.__duration_service.from_expires_in(ctx.expires_in),
+            duration_value=ctx.duration_value,
             identifier="tmute",
             member=member,
             source=source,
             reason=ctx.reason,
         )
         await self.__data_service.save_data(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
             identifier="tmute",
-            duration=self.__duration_service.from_expires_in(ctx.expires_in),
+            duration_value=ctx.duration_value,
             reason=ctx.reason,
             member=member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        author = guild.get_member(ctx.source_member_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+    async def undo(self, ctx, default_ctx, source, state):
+        guild = self.__bot.get_guild(ctx.guild.id)
+        member = guild.get_member(ctx.member.id)
         await self.__database_factory.delete(
-            channel_snowflake=ctx.target_channel_snowflake,
-            guild_snowflake=ctx.source_guild_snowflake,
-            member_snowflake=ctx.target_member_snowflake,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
         )
-        channel = guild.get_channel(ctx.target_channel_snowflake)
+        channel = guild.get_channel(ctx.channel.id)
         if channel:
             try:
                 await channel.set_permissions(
@@ -330,6 +328,7 @@ class TextMuteService:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await self.__stream_service.send_log(
+            author=default_ctx.author,
             channel=channel,
             identifier="untmute",
             is_modification=True,
@@ -338,7 +337,7 @@ class TextMuteService:
             reason=ctx.reason,
         )
         await self.__data_service.save_data(
-            author=author,
+            author=default_ctx.author,
             channel=channel,
             identifier="untmute",
             is_modification=True,
@@ -349,15 +348,15 @@ class TextMuteService:
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        channel = guild.get_channel(ctx.channel.id)
+        member = guild.get_member(ctx.member.id)
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been Text-Muted",
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {self.__duration_service.from_expires_in(ctx.expires_in)}\n"
+                f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unix_ts()}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
@@ -366,9 +365,9 @@ class TextMuteService:
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.source_guild_snowflake)
-        channel = guild.get_channel(ctx.target_channel_snowflake)
-        member = guild.get_member(ctx.target_member_snowflake)
+        guild = self.__bot.get_guild(ctx.guild.id)
+        channel = guild.get_channel(ctx.channel.id)
+        member = guild.get_member(ctx.member.id)
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been Unmuted",
             description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),

@@ -40,9 +40,9 @@ class ReasonModal(discord.ui.Modal):
         ]
         super().__init__(title="Reason")
         self.ctx = ctx
-        self.channel_snowflake = ctx.target_channel_snowflake
+        self.channel_snowflake = ctx.channel.id
         self.guild_snowflake = ctx.source_channel_snowflake
-        self.member_snowflake = ctx.target_member_snowflake
+        self.member_snowflake = ctx.member.id
         self.record_snowflakes = {
             "channel_snowflake": self.channel_snowflake,
             "guild_snowflake": self.guild_snowflake,

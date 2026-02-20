@@ -67,9 +67,9 @@ class ModifyInfractionView(discord.ui.View):
         for infraction_service in self.__infraction_services.values():
             self.__database_factory.model = infraction_service.MODEL
             record = await self.__database_factory.select(
-                channel_snowflake=self.__ctx.target_channel_snowflake,
-                guild_snowflake=self.__ctx.source_guild_snowflake,
-                member_snowflake=self.__ctx.target_member_snowflake,
+                channel_snowflake=self.__ctx.channel.id,
+                guild_snowflake=self.__ctx.guild.id,
+                member_snowflake=self.__ctx.member.id,
                 singular=True,
             )
             if record:
@@ -86,7 +86,7 @@ class ModifyInfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.__ctx.target_channel_snowflake = channel.id
+        self.__ctx.channel.id = channel.id
         self.channel_select.placeholder = channel.name
         infraction_options = await self._build_infraction_options()
         self.infraction_select.options = infraction_options
@@ -101,8 +101,8 @@ class ModifyInfractionView(discord.ui.View):
     )
     async def infraction_select(self, interaction, select):
         key = select.values[0]
-        self.__ctx.infraction = self.__record_map[key]
-        self.infraction_select.placeholder = self.__ctx.infraction.identifier
+        self.__ctx.category = self.__record_map[key].identifier
+        self.infraction_select.placeholder = self.__ctx.category
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -125,6 +125,6 @@ class ModifyInfractionView(discord.ui.View):
         return await self.__state.end(success="Cancelled action.")
 
     def has_the_user_selected_all_fields(self):
-        if not self.__ctx.target_channel_snowflake or not self.__ctx.infraction:
+        if not self.__ctx.channel.id or not self.__ctx.infraction:
             return False
         return True

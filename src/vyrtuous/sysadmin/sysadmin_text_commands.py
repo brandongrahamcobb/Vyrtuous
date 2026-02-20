@@ -29,11 +29,11 @@ from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.sysadmin.sysadmin import Sysadmin
 from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.utils.default_context import DefaultContext
 
 
 class SysadminTextCommands(commands.Cog):

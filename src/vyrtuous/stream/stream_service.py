@@ -38,8 +38,17 @@ class StreamDictionary:
 
 
 class StreamEmbed(discord.Embed):
-    def __init__(self, *, color=None, description=None, title=None, url=None):
+    def __init__(
+        self,
+        *,
+        color=None,
+        description=None,
+        duration_builder=None,
+        title=None,
+        url=None,
+    ):
         self.__action = None
+        self.__duration_builder = duration_builder
         self.__timestamp = datetime.now(timezone.utc)
         super().__init__(
             color=color,
@@ -118,10 +127,10 @@ class StreamEmbed(discord.Embed):
         self.add_field(name="📱 Message Context", value=field, inline=True)
         return self
 
-    def set_action(self, *, duration) -> Self:
-        if duration is not None:
+    def set_action(self, *, duration_value) -> Self:
+        expiration = f"{self.__duration_builder.parse(duration_value).to_unix_ts()}"
+        if duration_value is not None:
             dt = "⏱️ Temporary"
-            expiration = f"{duration}"
         else:
             dt = "♾️ Permanent"
             expiration = "Never"
@@ -167,6 +176,7 @@ class StreamService:
         bot=None,
         database_factory=None,
         dictionary_service=None,
+        duration_builder=None,
         emoji=None,
         moderator_service=None,
         paginator_service=None,
@@ -175,6 +185,7 @@ class StreamService:
         self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__database_factory.model = self.MODEL
+        self.__duration_builder = duration_builder
         self.__emoji = emoji
         self.__paginator_service = paginator_service
         self.__moderator_service = moderator_service
@@ -185,7 +196,7 @@ class StreamService:
         identifier: str,
         member: discord.Member,
         author: discord.Member | None = None,
-        duration: str | None = None,
+        duration_value: str | None = None,
         is_channel_scope: bool = False,
         is_modification: bool = False,
         reason: str = "No reason provided",
@@ -210,12 +221,12 @@ class StreamService:
             member_snowflake=int(member.id),
         )
         embed = (
-            StreamEmbed()
+            StreamEmbed(duration_builder=self.__duration_builder)
             .set_title(identifier=identifier, is_modification=is_modification)
             .set_description(channel=channel, target=member)
             .set_target(target=member, highest_role=target_role)
             .set_executor(author=author, highest_role=executor_role)
-            .set_action(duration=duration)
+            .set_action(duration_value=duration_value)
             .set_message_ctx(identifier=identifier, message=message)
             .set_channel_ctx(channel=channel, is_channel_scope=is_channel_scope)
             .set_reference(

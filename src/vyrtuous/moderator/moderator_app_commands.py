@@ -32,7 +32,7 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal
@@ -70,7 +70,7 @@ class ModeratorAppCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__emoji = Emojis()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
-        self.__duration_service = DurationService()
+        self.__duration_builder = DurationBuilder()
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -119,6 +119,7 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
@@ -127,7 +128,7 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
@@ -136,7 +137,7 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__flag_service = FlagService(
@@ -150,7 +151,7 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
@@ -158,7 +159,7 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
@@ -198,7 +199,7 @@ class ModeratorAppCommands(commands.Cog):
         view = DataView(
             bot=self.__bot,
             ban_service=self.__ban_service,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             flag_service=self.__flag_service,
             interaction=interaction,
             moderator_service=self.__moderator_service,
@@ -310,7 +311,7 @@ class ModeratorAppCommands(commands.Cog):
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             modal=ReasonModal,
             state=state,
         )
@@ -346,7 +347,7 @@ class ModeratorAppCommands(commands.Cog):
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             modal=ReasonModal,
             state=state,
         )
@@ -382,7 +383,7 @@ class ModeratorAppCommands(commands.Cog):
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
-            duration_service=self.__duration_service,
+            duration_builder=self.__duration_builder,
             modal=ReasonModal,
             state=state,
         )
