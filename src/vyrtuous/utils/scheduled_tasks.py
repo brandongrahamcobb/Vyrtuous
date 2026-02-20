@@ -36,8 +36,8 @@ from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
-from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 from vyrtuous.utils.message_service import PaginatorService
+from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
 class ScheduledTasks(commands.Cog):

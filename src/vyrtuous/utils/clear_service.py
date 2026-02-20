@@ -45,14 +45,14 @@ class ClearService:
                         continue
                     if getattr(cls, "__skip_db_discovery__", False):
                         continue
-                    if attr in getattr(cls, "__annotations__", {}):
+                    if attr in getattr(cls, "__annotations__", {}) or not attr:
                         classes.append(cls)
         return classes
 
     async def clear(
         self,
         category,
-        default_kwargs,
+        context,
         object_dict,
         target,
         view,
@@ -60,11 +60,9 @@ class ClearService:
     ):
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous"))
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(object_dict.get("columns", None))
         if isinstance(object_dict.get("object", None), discord.Member):
             await self.__moderator_service.has_equal_or_lower_role(
-                **default_kwargs,
+                **context.to_dict(),
                 target_member_snowflake=object_dict.get("id", None),
             )
             if view.result:
@@ -79,7 +77,7 @@ class ClearService:
                         msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
             await self.__moderator_service.check(
-                **updated_kwargs, lowest_role="Guild Owner"
+                **object_dict.get("columns", None), lowest_role="Guild Owner"
             )
             if view.result:
                 for obj in self.dir_to_classes(
@@ -93,7 +91,7 @@ class ClearService:
                         msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
         elif isinstance(object_dict.get("object", None), discord.Guild):
             await self.__moderator_service.check(
-                **updated_kwargs, lowest_role="Developer"
+                **object_dict.get("columns", None), lowest_role="Developer"
             )
             if view.result:
                 attributes = [
@@ -114,10 +112,10 @@ class ClearService:
                         await self.__database_factory.delete_by_cls(obj, **where_kwargs)
                         msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
         elif target == "all" and await self.__sysadmin_service.is_sysadmin(
-            member_snowflake=default_kwargs.get("member_snowflake")
+            member_snowflake=context.to_dict().get("member_snowflake")
         ):
             if view.result:
-                for obj in self.dir_to_classes(dir_paths=dir_paths):
+                for obj in self.dir_to_classes(dir_paths=dir_paths, attr=None):
                     await self.__database_factory.delete_by_cls(obj, **where_kwargs)
                     msg = "Deleted all database entries."
         else:

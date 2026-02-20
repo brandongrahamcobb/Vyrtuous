@@ -29,13 +29,11 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
-from vyrtuous.moderator.help_text_command import (
-    skip_text_command_help_discovery,
-)
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.flag.flag_service import FlagService
+from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
@@ -46,6 +44,7 @@ from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.data_service import DataService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
@@ -448,15 +447,9 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__temporary_room_service.migrate_temporary_room(
             channel_dict=channel_dict,
-            default_kwargs=default_kwargs,
             old_name=old_name,
         )
         return await state.end(success=msg)
@@ -539,20 +532,13 @@ class ModeratorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
+        context = DefaultContext(ctx=ctx)
         channel = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         member_dict = self.__discord_object_service.to_dict(obj=member)
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
-        updated_kwargs.update(member_dict.get("columns", None))
         msg = await self.__stage_service.toggle_stage_mute(
             channel_dict=channel_dict,
-            default_kwargs=default_kwargs,
+            context=context,
             member_dict=member_dict,
         )
         return await state.end(success=msg)

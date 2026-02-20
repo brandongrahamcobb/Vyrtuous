@@ -153,18 +153,16 @@ class StageService:
             pages[0].description = f"**({stage_n})**"
         return pages
 
-    async def toggle_stage(self, channel_dict, default_kwargs, duration):
-        updated_kwargs = default_kwargs.copy()
+    async def toggle_stage(self, channel_dict, context, duration):
         failed, pages, skipped, succeeded = [], [], [], []
-        updated_kwargs.update(channel_dict.get("columns", None))
-        stage_kwargs = updated_kwargs.copy()
-        del stage_kwargs["member_snowflake"]
-        stage = await self.__database_factory.select(**stage_kwargs, singular=True)
+        stage = await self.__database_factory.select(
+            **channel_dict.get("columns", None), singular=True
+        )
         if stage:
             title = f"{self.__emoji.get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
-            await self.__database_factory.delete(**updated_kwargs)
+            await self.__database_factory.delete(**channel_dict.get("columns", None))
             failed, succeeded = await self.__voice_mute_service.off_stage(
-                channel_dict=channel_dict, updated_kwargs=updated_kwargs
+                channel_dict=channel_dict
             )
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
@@ -180,14 +178,14 @@ class StageService:
             pages.append(embed)
         else:
             stage = self.MODEL(
-                **stage_kwargs,
+                **channel_dict.get("columns", None),
                 expires_in=self.__duration_service.to_expires_in(duration),
             )
             await self.__database_factory.create(stage)
             failed, skipped, succeeded = await self.__voice_mute_service.on_stage(
                 channel_dict=channel_dict,
+                context=context,
                 duration=duration,
-                updated_kwargs=updated_kwargs,
             )
             description_lines = [
                 f"**Channel:** {channel_dict.get('mention', None)}",
@@ -205,14 +203,14 @@ class StageService:
             pages.append(embed)
         return pages
 
-    async def toggle_stage_mute(self, channel_dict, default_kwargs, member_dict):
+    async def toggle_stage_mute(self, channel_dict, context, member_dict):
         await self.__moderator_service.has_equal_or_lower_role(
-            **default_kwargs,
+            **context.to_dict(),
             target_member_snowflake=member_dict.get("id", None),
         )
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
-        stage = await self.__database_factory.select(singular=True, **updated_kwargs)
+        stage = await self.__database_factory.select(
+            singular=True, **channel_dict.get("columns", None)
+        )
         if stage:
             await member_dict.get("object", None).edit(
                 mute=not member_dict.get("object", None).voice.mute
@@ -250,8 +248,8 @@ class StageService:
                 )
             self.__bot.logger.info("Cleaned up expired stages.")
 
-    async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        self.__database_factory.update(**kwargs)
 
     async def enforce(self, after, member):
         should_be_muted = False
@@ -261,14 +259,13 @@ class StageService:
             await self.send_stage_ask_to_speak_message(
                 join_log=self.__join_log, member=member, stage=stage
             )
-            default_kwargs = {
+            kwargs = {
                 "channel_snowflake": after.channel.id,
                 "guild_snowflake": after.channel.guild.id,
                 "member_snowflake": member.id,
             }
-            updated_kwargs = default_kwargs.copy()
             highest_role = await self.__moderator_service.resolve_highest_role(
-                updated_kwargs=updated_kwargs
+                kwargs=kwargs
             )
             if highest_role == "Everyone":
                 should_be_muted = True

@@ -148,6 +148,7 @@ class ChannelEventListeners(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
         )
         self.__hero_service = HeroService(
             bot=self.__bot,
@@ -193,9 +194,8 @@ class ChannelEventListeners(commands.Cog):
             "id": channel.id,
             "name": name,
         }
-        default_kwargs = {"guild_snowflake": guild.id}
         await self.__temporary_room_service.migrate_temporary_room(
-            channel_dict=channel_dict, default_kwargs=default_kwargs, old_name=room.name
+            channel_dict=channel_dict, old_name=room.name
         )
 
     @commands.Cog.listener()

@@ -198,10 +198,10 @@ class AdministratorService:
             return administrators
         return []
 
-    async def administrator_existing(self, updated_kwargs: dict[str, int]):
-        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
-        member_snowflake = updated_kwargs.get("member_snowflake", None)
-        role_snowflake = updated_kwargs.get("role_snowflake", None)
+    async def administrator_existing(self, kwargs: dict[str, int]):
+        guild_snowflake = kwargs.get("guild_snowflake", None)
+        member_snowflake = kwargs.get("member_snowflake", None)
+        role_snowflake = kwargs.get("role_snowflake", None)
         administrator = await self.__database_factory.select(
             guild_snowflake=int(guild_snowflake),
             member_snowflake=int(member_snowflake),
@@ -213,14 +213,12 @@ class AdministratorService:
             return administrator
         return None
 
-    async def added_role(self, updated_kwargs):
+    async def added_role(self, kwargs):
         administrator_role_snowflakes = []
-        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
-        member_snowflake = updated_kwargs.get("member_snowflake", None)
-        role_snowflake = updated_kwargs.get("role_snowflake", None)
-        administrator_existing = await self.administrator_existing(
-            updated_kwargs=updated_kwargs
-        )
+        guild_snowflake = kwargs.get("guild_snowflake", None)
+        member_snowflake = kwargs.get("member_snowflake", None)
+        role_snowflake = kwargs.get("role_snowflake", None)
+        administrator_existing = await self.administrator_existing(kwargs=kwargs)
         if not administrator_existing:
             administrator = Administrator(
                 guild_snowflake=int(guild_snowflake),
@@ -243,11 +241,11 @@ class AdministratorService:
             f"Granted administrator to member ({member_snowflake}) in guild ({guild_snowflake})."
         )
 
-    async def removed_role(self, updated_kwargs):
+    async def removed_role(self, kwargs):
         administrator_role_snowflakes = []
-        guild_snowflake = updated_kwargs.get("guild_snowflake", None)
-        member_snowflake = updated_kwargs.get("member_snowflake", None)
-        role_snowflake = updated_kwargs.get("role_snowflake", None)
+        guild_snowflake = kwargs.get("guild_snowflake", None)
+        member_snowflake = kwargs.get("member_snowflake", None)
+        role_snowflake = kwargs.get("role_snowflake", None)
         where_kwargs = {
             "guild_snowflake": int(guild_snowflake),
             "role_snowflake": int(role_snowflake),
@@ -370,12 +368,11 @@ class AdministratorRoleService:
             pages[0].description = f"**({admin_role_n})**"
         return pages
 
-    async def toggle_administrator_role(self, updated_kwargs, role_dict):
-        guild_snowflake = updated_kwargs.get("guild_snowflake")
+    async def toggle_administrator_role(self, role_dict):
+        guild_snowflake = role_dict.get("columns", None).get("guild_snowflake")
         guild = self.__bot.get_guild(guild_snowflake)
         title = f"{self.__emoji.get_random_emoji()} Administrators and Roles"
         role_id = role_dict.get("id")
-        kwargs = role_dict.get("columns")
         administrators = await self.__administrator_service.administrators_by_role(
             role_snowflake=role_id
         )
@@ -385,7 +382,7 @@ class AdministratorRoleService:
         if administrator_roles:
             action = "revoked"
             if administrator_roles:
-                await self.__database_factory.delete(**kwargs)
+                await self.__database_factory.delete(**role_dict.get("columns", None))
             revoked_members = {}
             for administrator in administrators:
                 member = guild.get_member(administrator.member_snowflake)
@@ -404,7 +401,7 @@ class AdministratorRoleService:
             action = "granted"
             granted_members = {}
             granted_members.setdefault(guild_snowflake, {})[role_id] = []
-            administrator_role = AdministratorRole(**kwargs)
+            administrator_role = AdministratorRole(**role_dict.get("columns", None))
             await self.__database_factory.create(administrator_role)
             for member in role_dict.get("object").members:
                 await self.__administrator_service.added_role(

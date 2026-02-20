@@ -17,7 +17,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
+from typing import Dict, List
+
 import discord
+
+
+@dataclass(frozen=True)
+class PermissionDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, List[str]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guild: List[discord.Embed] = field(default_factory=list)
 
 
 class PermissionService:
@@ -36,9 +48,8 @@ class PermissionService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    async def build_clean_dictionary(self, channel_objs, is_at_home, me):
+    def build_dictionary(self, channel_objs, me):
         dictionary = {}
-        pages = []
         for channel in channel_objs:
             permissions = channel.permissions_for(me)
             missing = []
@@ -52,42 +63,20 @@ class PermissionService:
             dictionary[channel.guild.id]["channels"][channel.id].update(
                 {"permissions": missing}
             )
-        skipped_channels = self.__dictionary_service.generate_skipped_channels(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        if is_at_home:
-            if skipped_channels:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_dict_pages(
-                        skipped=skipped_channels,
-                        title="Skipped Channels in Server",
-                    )
-                )
-            if skipped_guilds:
-                pages.extend(
-                    self.__dictionary_service.generate_skipped_set_pages(
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                )
-        return cleaned_dictionary
+        return dictionary
 
-    async def build_pages(self, is_at_home, channel_objs, default_kwargs):
+    async def build_pages(self, channel_objs, context, is_at_home):
         lines, pages = []
-        channel_snowflake = default_kwargs.get("channel_snowflake", None)
-        guild_snowflake = default_kwargs.get("guild_snowflake", None)
-        guild = self.__bot.get_guild(guild_snowflake)
+        guild = self.__bot.get_guild(context.guild.id)
         title = f"{self.__emoji.get_random_emoji()} {self.__bot.user.display_name} Missing Permissions"
 
-        dictionary = await self.build_clean_dictionary(
-            channel_objs=channel_objs, is_at_home=is_at_home, me=guild.me
+        dictionary = self.build_dictionary(channel_objs=channel_objs, me=guild.me)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=PermissionDictionary, dictionary=dictionary
         )
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
 
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0

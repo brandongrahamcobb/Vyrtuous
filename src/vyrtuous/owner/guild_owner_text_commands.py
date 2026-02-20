@@ -27,12 +27,10 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.moderator.help_text_command import (
-    skip_text_command_help_discovery,
-)
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.flag.flag_service import FlagService
+from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner import GuildOwner
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
@@ -45,10 +43,10 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.hero_service import HeroService
+from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.utils.home import at_home
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -190,16 +188,9 @@ class GuildOwnerTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
         role_dict = self.__discord_object_service.to_dict(obj=role)
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(role_dict.get("columns", None))
         pages = await self.__administrator_role_service.toggle_administrator_role(
-            role_dict=role_dict, updated_kwargs=updated_kwargs
+            role_dict=role_dict,
         )
         return await state.end(success=pages)
 
@@ -285,17 +276,11 @@ class GuildOwnerTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": ctx.channel.id,
-            "guild_snowflake": ctx.guild.id,
-            "member_snowflake": ctx.author.id,
-        }
         is_at_home = at_home(source=ctx)
         obj = target or "all"
         object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__hero_service.build_pages(
             is_at_home=is_at_home,
-            default_kwargs=default_kwargs,
             object_dict=object_dict,
         )
         return await state.end(success=pages)

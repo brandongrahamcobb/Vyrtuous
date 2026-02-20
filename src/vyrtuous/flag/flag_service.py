@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import time
 from copy import copy
 from dataclasses import dataclass, field
 from typing import Dict, List
-import time
 
 import discord
 
@@ -235,8 +235,8 @@ class FlagService:
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        self.__database_factory.update(**kwargs)
 
     async def load_flags_into_memory(self):
         self.__flags = await self.__database_factory.select()

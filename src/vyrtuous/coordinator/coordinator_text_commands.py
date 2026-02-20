@@ -26,26 +26,25 @@ from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
-from vyrtuous.moderator.help_text_command import (
-    skip_text_command_help_discovery,
-)
 from vyrtuous.coordinator.coordinator import Coordinator
 from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoordinator
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_service import DurationService
+from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
+from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.data_service import DataService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.state_service import StateService
-from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.utils.message_service import PaginatorService
+from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.utils.data_service import DataService
-from vyrtuous.duration.duration_service import DurationService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -178,22 +177,16 @@ class CoordinatorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
-        updated_kwargs = default_kwargs.copy()
+        context = DefaultContext(ctx=ctx)
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         member_dict = self.__discord_object_service.to_dict(obj=member)
-        updated_kwargs.update(channel_dict.get("columns", None))
-        # await PermissionService.has_equal_or_lower_role(
-        #     target_member_snowflake=int(member.get("id", None)),
-        #     **updated_kwargs,
-        # )
+        await self.__moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(member_dict.get("id", None)),
+            member_snowflake=context.author.id,
+            **channel_dict.get("columns", None),
+        )
         msg = await self.__moderator_service.toggle_moderator(
             channel_dict=channel_dict,
-            default_kwargs=default_kwargs,
             member_dict=member_dict,
         )
         return await state.end(success=msg)
@@ -221,17 +214,13 @@ class CoordinatorTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
+        context = DefaultContext(ctx=ctx)
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
         duration_obj = self.__duration_service.parse(duration)
         pages = await self.__stage_service.toggle_stage(
             channel_dict=channel_dict,
-            default_kwargs=default_kwargs,
+            context=context,
             duration=duration_obj,
         )
         return await state.end(success=pages)

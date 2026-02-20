@@ -198,18 +198,16 @@ class CoordinatorService:
             pages[0].description = f"**({coord_n})**"
         return pages
 
-    async def toggle_coordinator(self, channel_dict, default_kwargs, member_dict):
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
-        updated_kwargs.update(member_dict.get("columns", None))
-        coordinator = await self.__database_factory.select(
-            singular=True, **updated_kwargs
-        )
+    async def toggle_coordinator(self, channel_dict, member_dict):
+        kwargs = {}
+        kwargs.update(channel_dict.get("columns", None))
+        kwargs.update(member_dict.get("columns", None))
+        coordinator = await self.__database_factory.select(singular=True, **kwargs)
         if coordinator:
-            await self.__database_factory.delete(**updated_kwargs)
+            await self.__database_factory.delete(**kwargs)
             action = "revoked"
         else:
-            coordinator = self.MODEL(**updated_kwargs)
+            coordinator = self.MODEL(**kwargs)
             await self.__database_factory.create(coordinator)
             action = "granted"
         return (
@@ -217,5 +215,5 @@ class CoordinatorService:
             f"in {channel_dict.get('mention', None)}."
         )
 
-    async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        self.__database_factory.update(**kwargs)

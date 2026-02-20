@@ -215,16 +215,18 @@ class VoiceMuteService:
             pages[0].description = f"**({vmute_n})**"
         return pages
 
-    async def room_mute(self, channel_dict, default_kwargs, reason):
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
+    async def room_mute(self, channel_dict, reason):
         muted_members, pages, skipped_members, failed_members = [], [], [], []
-        guild = self.__bot.get_guild(updated_kwargs.get("guild_snowflake", None))
+        guild = self.__bot.get_guild(
+            channel_dict.get("columns", None).get("guild_snowflake", None)
+        )
         for member in channel_dict.get("object", None).members:
-            if member.id == updated_kwargs.get("member_snowflake", None):
+            if member.id == channel_dict.get("columns", None).get(
+                "member_snowflake", None
+            ):
                 continue
             voice_mute = await self.__database_factory.select(
-                **updated_kwargs, target="user", singular=True
+                **channel_dict.get("columns", None), target="user", singular=True
             )
             if voice_mute:
                 skipped_members.append(member)
@@ -248,7 +250,7 @@ class VoiceMuteService:
                 member_snowflake=member.id,
                 reason=reason,
                 target="user",
-                **updated_kwargs,
+                **channel_dict.get("columns", None),
             )
             await self.__database_factory.create(voice_mute)
             muted_members.append(member)
@@ -268,7 +270,6 @@ class VoiceMuteService:
             color=discord.Color.blurple(),
         )
         pages.append(embed)
-        print(pages)
         return pages
 
     async def room_unmute(self, channel_dict, guild_snowflake):
@@ -475,18 +476,19 @@ class VoiceMuteService:
                     f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.id}), skipping undo voice-mute."
                 )
 
-    async def off_stage(self, channel_dict, updated_kwargs):
+    async def off_stage(self, channel_dict):
         failed, succeeded = [], []
-        kwargs = channel_dict.get("columns", None)
-        guild = self.__bot.get_guild(kwargs.get("guild_snowflake", None))
+        guild = self.__bot.get_guild(
+            channel_dict.get("columns", None).get("guild_snowflake", None)
+        )
         for member in channel_dict.get("object", None).members:
             await self.__database_factory.delete(
-                **updated_kwargs,
+                **channel_dict.get("columns", None),
                 member_snowflake=member.id,
                 target="room",
             )
             voice_mute = await self.__database_factory.select(
-                **updated_kwargs,
+                **channel_dict.get("columns", None),
                 member_snowflake=member.id,
                 target="user",
                 singular=True,
@@ -509,19 +511,23 @@ class VoiceMuteService:
                     failed.append(member)
         return failed, succeeded
 
-    async def on_stage(self, channel_dict, duration, updated_kwargs):
+    async def on_stage(self, channel_dict, context, duration):
         failed, skipped, succeeded = [], [], []
-        kwargs = channel_dict.get("columns", None)
-        guild = self.__bot.get_guild(kwargs.get("guild_snowflake", None))
+        guild = self.__bot.get_guild(
+            channel_dict.get("columns", None).get("guild_snowflake", None)
+        )
         for member in channel_dict.get("object", None).members:
-            if await self.__moderator_service.check(
-                **updated_kwargs,
-                lowest_role="Coordinator",
-            ) or member.id == updated_kwargs.get("member_snowflake", None):
+            if (
+                await self.__moderator_service.check(
+                    **channel_dict.get("columns", None),
+                    lowest_role="Coordinator",
+                )
+                or member.id == context.author.id
+            ):
                 skipped.append(member)
                 continue
             voice_mute = self.MODEL(
-                **updated_kwargs,
+                **channel_dict.get("columns", None),
                 expires_in=duration.expires_in,
                 member_snowflake=member.id,
                 target="room",
@@ -545,8 +551,8 @@ class VoiceMuteService:
                 failed.append(member)
         return failed, skipped, succeeded
 
-    async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        self.__database_factory.update(**kwargs)
 
     async def is_voice_muted(self, channel, member):
         voice_mute = await self.__database_factory.select(

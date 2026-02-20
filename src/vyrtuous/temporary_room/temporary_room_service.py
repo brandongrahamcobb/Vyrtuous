@@ -73,7 +73,6 @@ class TemporaryRoomService:
         self.deleted_rooms = {}
 
     async def build_dictionary(self, where_kwargs):
-        pages = []
         dictionary = {}
         temporary_rooms = await self.__database_factory.select(
             singular=False, **where_kwargs
@@ -154,8 +153,8 @@ class TemporaryRoomService:
             pages[0].description = f"**({temp_n})**"
         return pages
 
-    async def migrate_temporary_room(self, channel_dict, default_kwargs, old_name):
-        guild_snowflake = default_kwargs.get("guild_snowflake", None)
+    async def migrate_temporary_room(self, channel_dict, old_name):
+        guild_snowflake = channel_dict.get("columns", None).get("guild_snowflake", None)
         old_room = await self.__database_factory.select(
             guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
         )

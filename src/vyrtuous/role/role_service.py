@@ -153,7 +153,6 @@ class RoleService:
             return
 
     async def build_dictionary(self, where_kwargs):
-        pages = []
         dictionary = {}
         roles = await Role.select(singular=False, **where_kwargs)
         for role in roles:

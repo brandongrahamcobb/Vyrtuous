@@ -38,13 +38,20 @@ class ServerMuteService:
     MODEL = ServerMute
 
     def __init__(
-        self, *, bot=None, database_factory=None, dictionary_service=None, emoji=None
+        self,
+        *,
+        bot=None,
+        database_factory=None,
+        dictionary_service=None,
+        emoji=None,
+        moderator_service=None,
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
+        self.__moderator_service = moderator_service
 
     async def build_dictionary(self, where_kwargs):
         dictionary = {}
@@ -117,29 +124,26 @@ class ServerMuteService:
             pages[0].description = f"**({smute_n})**"
         return pages
 
-    async def toggle_server_mute(self, default_kwargs, member_dict, reason):
-        updated_kwargs = default_kwargs.copy()
-        guild_snowflake = default_kwargs.get("guild_snowflake", None)
+    async def toggle_server_mute(self, context, member_dict, reason):
+        guild_snowflake = context.guild.id
         guild = self.__bot.get_guild(guild_snowflake)
-        # await PermissionService.has_equal_or_lower_role(
-        #     **default_kwargs,
-        #     target_member_snowflake=member_dict.get("id", None),
-        # )
-        updated_kwargs.update(member_dict.get("columns", None))
-        del updated_kwargs["channel_snowflake"]
+        await self.__moderator_service.has_equal_or_lower_role(
+            **context.to_dict(),
+            target_member_snowflake=member_dict.get("id", None),
+        )
         server_mute = await self.__database_factory.select(
-            singular=True, **updated_kwargs
+            singular=True, **member_dict.get("columns", None)
         )
         if not server_mute:
             server_mute = self.MODEL(
-                **updated_kwargs,
+                **member_dict.get("columns", None),
                 reason=reason,
             )
             await self.__database_factory.create(server_mute)
             action = "muted"
             should_be_muted = True
         else:
-            await self.__database_factory.delete(**updated_kwargs)
+            await self.__database_factory.delete(**member_dict.get("columns", None))
             action = "unmuted"
             should_be_muted = False
 

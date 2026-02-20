@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
 from copy import copy
+from dataclasses import dataclass, field
 from typing import Dict, List, Union
 
 import discord
@@ -137,7 +137,9 @@ class AliasService:
             pages = []
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
-            embed.description = guild.name
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
             for channel_snowflake, channel_dictionary in guild_data.get(
                 "channels", {}
             ).items():
@@ -175,8 +177,8 @@ class AliasService:
             pages[0].description = f"**({alias_n})**"
         return pages
 
-    async def delete_alias(self, alias_name, default_kwargs):
-        guild_snowflake = default_kwargs.get("guild_snowflake", None)
+    async def delete_alias(self, alias_name, context):
+        guild_snowflake = context.guild.id
         where_kwargs = {
             "alias_name": alias_name,
             "guild_snowflake": int(guild_snowflake),

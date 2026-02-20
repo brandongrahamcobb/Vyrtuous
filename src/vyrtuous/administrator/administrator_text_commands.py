@@ -34,15 +34,13 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
-from vyrtuous.moderator.help_text_command import (
-    skip_text_command_help_discovery,
-)
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_service import DurationService
 from vyrtuous.field.category import Category
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
@@ -54,6 +52,7 @@ from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.data_service import DataService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
@@ -164,6 +163,7 @@ class AdminTextCommands(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
         )
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
@@ -400,11 +400,15 @@ class AdminTextCommands(commands.Cog):
             "flag`, `mod`, `troom`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vroom`.",
         ),
     ):
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        context = DefaultContext(ctx=ctx)
         object_dict = self.__discord_object_service.to_dict(obj=target)
         where_kwargs = object_dict.get("columns", None)
         view = VerifyView(
@@ -414,7 +418,7 @@ class AdminTextCommands(commands.Cog):
             **where_kwargs,
         )
         embed = view.build_embed()
-        await ctx.reply(embed=embed, view=view)
+        await state.end(embed=embed, view=view)
         await view.wait()
         state = StateService(
             author_service=self.__author_service,
@@ -426,7 +430,7 @@ class AdminTextCommands(commands.Cog):
         )
         msg = await self.__clear_service.clear(
             category=category,
-            default_kwargs=default_kwargs,
+            context=context,
             object_dict=object_dict,
             where_kwargs=where_kwargs,
             target=target,
@@ -455,22 +459,16 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
+        context = DefaultContext(ctx=ctx)
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         member_dict = self.__discord_object_service.to_dict(obj=member)
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
         await self.__moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(member_dict.get("id", None)),
-            **updated_kwargs,
+            member_snowflake=context.author.id,
+            **channel_dict.get("columns", None),
         )
         msg = await self.__coordinator_service.toggle_coordinator(
             channel_dict=channel_dict,
-            default_kwargs=default_kwargs,
             member_dict=member_dict,
         )
         return await state.end(success=msg)
@@ -505,49 +503,48 @@ class AdminTextCommands(commands.Cog):
             output = output[-1900:]
         return await state.end(success=f"```log\n{output}\n```")
 
-    # @commands.command(name="pc", help="View permissions.")
+    @commands.command(name="pc", help="View permissions.")
     @skip_text_command_help_discovery()
-    # async def list_permissions_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     target: str | None = commands.parameter(
-    #         default=None,
-    #         description="Specify one of: `all`, channel ID/mention or server ID.",
-    #     ),
-    # ):
-    #     state = StateService(ctx=ctx)
-    #     default_kwargs = {
-    #         "channel_snowflake": int(ctx.channel.id),
-    #         "guild_snowflake": int(ctx.guild.id),
-    #         "member_snowflake": int(ctx.author.id),
-    #     }
-    #     obj = target or int(ctx.channel.id)
-    #     object_dict = self.__discord_object_service.to_dict(obj=obj)
-    #     is_at_home = at_home(source=ctx)
-    #     updated_kwargs = default_kwargs.copy()
-    #     updated_kwargs.update(object_dict.get("columns", None))
-    #     if target and str(target).lower() == "all":
-    #         # await PermissionService.check(**updated_kwargs, lowest_role="Guild Owner")
-    #         channel_objs = [
-    #             channel_obj
-    #             for guild in self.bot.guilds
-    #             for channel_obj in guild.channels
-    #         ]
-    #     elif hasattr(object_dict.get("object", None), "channels"):
-    #         channel_objs = object_dict.get("object", None).channels
-    #     else:
-    #         channel_objs = [object_dict.get("object", None)]
-    #     pages = await PermissionService.build_pages(
-    #         channel_objs=channel_objs,
-    #         default_kwargs=default_kwargs,
-    #         is_at_home=is_at_home,
-    #     )
-    #     if pages:
-    #         return await state.end(warning=pages)
-    #     else:
-    #         return await state.end(
-    #             success=f"{self.bot.user.display_name} has all permissions for `{target}`."
-    #         )
+    async def list_permissions_text_command(
+        self,
+        ctx: commands.Context,
+        target: str | None = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: `all`, channel ID/mention or server ID.",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
+        context = DefaultContext(ctx=ctx)
+        obj = target or ctx.channel
+        object_dict = self.__discord_object_service.to_dict(obj=obj)
+        is_at_home = at_home(source=ctx)
+        if target and str(target).lower() == "all":
+            await self.__permission_service.check(
+                **object_dict.get("columns", None), lowest_role="Guild Owner"
+            )
+            channel_objs = [
+                channel_obj
+                for guild in self.bot.guilds
+                for channel_obj in guild.channels
+            ]
+        elif hasattr(object_dict.get("object", None), "channels"):
+            channel_objs = object_dict.get("object", None).channels
+        else:
+            channel_objs = [object_dict.get("object", None)]
+        pages = await self.__permission_service.build_pages(
+            channel_objs=channel_objs,
+            context=context,
+            is_at_home=is_at_home,
+        )
+        return await state.end(success=pages)
 
     @commands.command(name="rmute", help="Room mute (except yourself).")
     async def room_mute_text_command(
@@ -571,16 +568,10 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__voice_mute_service.room_mute(
             channel_dict=channel_dict,
-            default_kwargs=default_kwargs,
             reason=reason,
         )
         return await state.end(success=pages)
@@ -690,14 +681,10 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
+        context = DefaultContext(ctx=ctx)
         member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__server_mute_service.toggle_server_mute(
-            default_kwargs=default_kwargs, member_dict=member_dict, reason=reason
+            context=context, member_dict=member_dict, reason=reason
         )
         return await state.end(success=msg)
 
@@ -839,11 +826,6 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        # default_kwargs = {
-        #     "channel_snowflake": int(ctx.channel.id),
-        #     "guild_snowflake": int(ctx.guild.id),
-        #     "member_snowflake": int(ctx.author.id),
-        # }
         target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
         source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
         pages = await self.__stream_service.toggle_stream(
@@ -960,13 +942,9 @@ class AdminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
+        context = DefaultContext(ctx=ctx)
         msg = await self.__alias_service.delete_alias(
-            alias_name=alias_name, default_kwargs=default_kwargs
+            alias_name=alias_name, context=context
         )
         return await state.end(success=msg)
 

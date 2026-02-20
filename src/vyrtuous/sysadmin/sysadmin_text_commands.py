@@ -117,11 +117,6 @@ class SysadminTextCommands(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        default_kwargs = {
-            "channel_snowflake": int(ctx.channel.id),
-            "guild_snowflake": int(ctx.guild.id),
-            "member_snowflake": int(ctx.author.id),
-        }
         member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__developer_service.toggle_developer(
             member_dict=member_dict,

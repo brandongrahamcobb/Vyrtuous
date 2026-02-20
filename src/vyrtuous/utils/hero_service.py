@@ -17,9 +17,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Dict, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
 import discord
+
+
+@dataclass(frozen=True)
+class HeroDictionary:
+    data: Dict[int, Dict[str, Dict[int, bool]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
 class HeroService:
@@ -121,7 +129,7 @@ class HeroService:
         self.__state = not self.__state
         return self.__state
 
-    def build_clean_dictionary(self):
+    def build_dictionary(self):
         dictionary = {}
         for (
             guild_snowflake,
@@ -131,50 +139,22 @@ class HeroService:
                 continue
             dictionary.setdefault(guild_snowflake, {"members": {}})
             dictionary[guild_snowflake]["members"][member_snowflake] = True
-        skipped_channels = self.__dictionary_service.generate_skipped_members(
-            dictionary
-        )
-        skipped_guilds = self.__dictionary_service.generate_skipped_guilds(dictionary)
-        cleaned_dictionary = self.__dictionary_service.clean_dictionary(
-            dictionary=dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        # if is_at_home:
-        #     if skipped_channels:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_dict_pages(
-        #                 skipped=skipped_channels,
-        #                 title="Skipped Channels in Server",
-        #             )
-        #         )
-        #     if skipped_guilds:
-        #         pages.extend(
-        #             self.__dictionary_service.generate_skipped_set_pages(
-        #                 skipped=skipped_guilds,
-        #                 title="Skipped Servers",
-        #             )
-        #         )
-        return cleaned_dictionary
+        return dictionary
 
-    async def build_pages(
-        self, object_dict=None, is_at_home=False, default_kwargs=None
-    ):
+    async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
-        default_kwargs = default_kwargs or {}
-        title = f"{self.__emoji.get_random_emoji()} {self.__bot.user.display_name} Invincible Members"
-        if object_dict:
-            obj = object_dict.get("object", None)
-            name_str = (
-                f" for {object_dict.get('name', None)}"
-                if isinstance(obj, discord.Member)
-                else ""
-            )
-            title = f"{self.__emoji.get_random_emoji()} Moderator{name_str}"
-        where_kwargs = object_dict.get("columns") if object_dict else None
-        dictionary = self.build_clean_dictionary()
+        title = f"{self.__emoji.get_random_emoji()} Invincible Members {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+
+        dictionary = self.build_dictionary()
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=HeroDictionary, dictionary=dictionary
+        )
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
+
         hero_n = 0
-        for guild_snowflake, guild_data in dictionary.items():
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
             thumbnail_set = False
             guild = self.__bot.get_guild(guild_snowflake)
@@ -188,17 +168,18 @@ class HeroService:
                 if not member:
                     continue
                 hero_n += 1
-                if not object_dict or not isinstance(obj, discord.Member):
+                if not object_dict.get("columns", None).get("member_snowflake", None):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail_set:
-                    embed.set_thumbnail(url=obj.display_avatar.url)
+                    embed.set_thumbnail(url=member.display_avatar.url)
                     thumbnail_set = True
-
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
                 ).items():
-                    if not object_dict or not isinstance(obj, discord.abc.GuildChannel):
+                    if not object_dict.get("columns", None).get(
+                        "channel_snowflake", None
+                    ):
                         channel = guild.get_channel(channel_snowflake)
                         if not channel:
                             continue
@@ -213,7 +194,6 @@ class HeroService:
                         )
                         lines = []
                         field_count = 0
-
             if lines:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False

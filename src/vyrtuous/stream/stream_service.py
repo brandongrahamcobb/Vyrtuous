@@ -143,7 +143,7 @@ class StreamEmbed(discord.Embed):
         return self
 
     def set_reason(self, reason) -> Self:
-        self.add_field(name=f"📝 Reason", value=f"```{reason}```", inline=False)
+        self.add_field(name="📝 Reason", value=f"```{reason}```", inline=False)
         return self
 
     def set_description(self, *, channel, target) -> Self:

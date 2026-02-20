@@ -369,8 +369,8 @@ class BanService:
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    async def migrate(self, updated_kwargs):
-        await self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        await self.__database_factory.update(**kwargs)
 
     async def is_banned(
         self, channel: discord.abc.GuildChannel, member: discord.Member

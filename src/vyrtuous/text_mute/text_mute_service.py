@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from copy import copy
-from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import discord
@@ -358,8 +358,8 @@ class TextMuteService:
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        self.__database_factory.update(**kwargs)
 
     async def is_text_muted(
         self, channel: discord.abc.GuildChannel, member: discord.Member

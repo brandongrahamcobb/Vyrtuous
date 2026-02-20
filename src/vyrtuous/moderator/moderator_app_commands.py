@@ -196,11 +196,6 @@ class ModeratorAppCommands(commands.Cog):
             emoji=self.__emoji,
             interaction=interaction,
         )
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
         view = DataView(
             bot=self.__bot,
             ban_service=self.__ban_service,
@@ -265,11 +260,6 @@ class ModeratorAppCommands(commands.Cog):
             emoji=self.__emoji,
             interaction=interaction,
         )
-        default_kwargs = {
-            "channel_snowflake": int(interaction.channel.id),
-            "guild_snowflake": int(interaction.guild.id),
-            "member_snowflake": int(interaction.user.id),
-        }
         member_dict = self.__discord_object_service.to_dict(obj=member)
         ctx = ViewContext(
             ban_service=self.__ban_service,

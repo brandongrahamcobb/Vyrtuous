@@ -345,18 +345,16 @@ class ModeratorService:
             pages.append(embed)
         return pages
 
-    async def toggle_moderator(self, channel_dict, default_kwargs, member_dict):
-        updated_kwargs = default_kwargs.copy()
-        updated_kwargs.update(channel_dict.get("columns", None))
-        updated_kwargs.update(member_dict.get("columns", None))
-        moderator = await self.__database_factory.select(
-            singular=True, **updated_kwargs
-        )
+    async def toggle_moderator(self, channel_dict, member_dict):
+        kwargs = {}
+        kwargs.update(channel_dict.get("columns", None))
+        kwargs.update(member_dict.get("columns", None))
+        moderator = await self.__database_factory.select(singular=True, **kwargs)
         if moderator:
-            await self.__database_factory.delete(**updated_kwargs)
+            await self.__database_factory.delete(**kwargs)
             action = "revoked"
         else:
-            moderator = self.MODEL(**updated_kwargs)
+            moderator = self.MODEL(**kwargs)
             await self.__database_factory.create(moderator)
             action = "granted"
         return (
@@ -604,5 +602,5 @@ class ModeratorService:
             )
         return available_channels, available_guilds
 
-    async def migrate(self, updated_kwargs):
-        self.__database_factory.update(**updated_kwargs)
+    async def migrate(self, kwargs):
+        self.__database_factory.update(**kwargs)
