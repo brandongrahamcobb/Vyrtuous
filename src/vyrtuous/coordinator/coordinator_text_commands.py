@@ -45,6 +45,7 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.upload.upload_service import UploadService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -134,6 +135,9 @@ class CoordinatorTextCommands(commands.Cog):
             database_factory=self.__database_factory,
         )
         self.__discord_object_service = DiscordObjectService()
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(ctx: commands.Context):
@@ -175,6 +179,7 @@ class CoordinatorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
@@ -218,6 +223,7 @@ class CoordinatorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         obj = channel or ctx.channel

@@ -42,6 +42,7 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.upload.upload_service import UploadService
 
 
 class GenericEventListeners(commands.Cog):
@@ -110,6 +111,9 @@ class GenericEventListeners(commands.Cog):
             database_factory=self.__database_factory,
             duration_builder=self.__duration_builder,
             moderator_service=self.__moderator_service,
+        )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
         )
 
     @commands.Cog.listener()
@@ -189,6 +193,7 @@ class GenericEventListeners(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         logger.error(str(error))
         if isinstance(error, commands.BadArgument):

@@ -99,9 +99,6 @@ class TemporaryRoomService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=TemporaryRoomDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_channels)
-            pages.extend(processed_dictionary.skipped_guilds)
 
         temp_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -156,6 +153,9 @@ class TemporaryRoomService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({temp_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
         return pages
 
     async def migrate_temporary_room(self, channel_dict, old_name):

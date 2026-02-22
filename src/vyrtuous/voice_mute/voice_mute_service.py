@@ -177,9 +177,6 @@ class VoiceMuteService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=VoiceMuteDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
 
         vmute_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -238,6 +235,9 @@ class VoiceMuteService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({vmute_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages
 
     async def room_mute(self, channel_dict, reason):

@@ -217,9 +217,6 @@ class BanService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BanDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
 
         ban_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -272,6 +269,9 @@ class BanService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({ban_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages
 
     async def enforce(self, ctx, default_ctx, source, state):
@@ -423,15 +423,15 @@ class BanService:
                 and member.voice.channel.id == channel.id
             ):
                 await self.kick(channel=channel, member=member)
-        targets = []
-        for target, overwrite in channel.overwrites.items():
-            if any(value is not None for value in overwrite._values.values()):
-                if isinstance(target, discord.Member):
-                    targets.append(target)
-        if member not in targets:
-            await self.toggle_view_channel(
-                channel=channel, member=member, view_channel=False
-            )
+            targets = []
+            for target, overwrite in channel.overwrites.items():
+                if any(value is not None for value in overwrite._values.values()):
+                    if isinstance(target, discord.Member):
+                        targets.append(target)
+            if member not in targets:
+                await self.toggle_view_channel(
+                    channel=channel, member=member, view_channel=False
+                )
 
     async def toggle_view_channel(
         self,
@@ -442,7 +442,7 @@ class BanService:
         try:
             await channel.set_permissions(
                 member,
-                view_channel=False,
+                view_channel=view_channel,
                 reason=f"Toggled ban {'off' if not view_channel else 'on'}.",
             )
         except discord.Forbidden as e:

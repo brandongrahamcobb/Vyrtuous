@@ -33,7 +33,7 @@ from vyrtuous.utils.logger import logger, setup_logging
 async def main():
 
     config = Config().get_config()
-    if config["release_mode"] == "False":
+    if config["release_mode"] == "False" and config["logging_level"] == "DEBUG":
         debugpy.listen(("127.0.0.1", 5678))
         debugpy.wait_for_client()
 

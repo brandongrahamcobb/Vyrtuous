@@ -88,7 +88,7 @@ class DeveloperService:
         )
 
         embed = discord.Embed(
-            title=title, description="All guilds", color=discord.Color.blue()
+            title=title, description="Information", color=discord.Color.blue()
         )
         dev_n = 0
         for key, values in dictionary.items():
@@ -117,7 +117,7 @@ class DeveloperService:
                     embed = (
                         discord.Embed(
                             title=title,
-                            description="All guilds continued...",
+                            description=title,
                             color=discord.Color.blue(),
                         ),
                     )
@@ -131,7 +131,7 @@ class DeveloperService:
                 )
             pages.append(embed)
         if pages:
-            pages[0].description = f"All guilds **({dev_n})**"
+            pages[0].description = f"**({dev_n})**"
         return pages
 
     async def report_issue(self, message, reference, source, user):

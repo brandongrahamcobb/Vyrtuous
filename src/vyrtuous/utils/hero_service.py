@@ -158,9 +158,6 @@ class HeroService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=HeroDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
 
         hero_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -210,4 +207,7 @@ class HeroService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({hero_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages

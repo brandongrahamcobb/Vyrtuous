@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -48,6 +49,7 @@ class StateService:
         "\u27a1\ufe0f": 1,
         "\u2139\ufe0f": "info",
         "\U0001f4dd": "report",
+        "\U0001f4c4": "upload",
     }
 
     def __init__(
@@ -61,6 +63,7 @@ class StateService:
         ctx: commands.Context | None = None,
         interaction: discord.Interaction | None = None,
         message: discord.Message | None = None,
+        upload_service=None,
     ):
         if (ctx is None) == (interaction is None) == (message is None):
             raise commands.CheckFailure("Discord source not defined in StateService.")
@@ -70,6 +73,7 @@ class StateService:
         self.__bug_service = bug_service
         self.__developer_service = developer_service
         self.__emoji = emoji
+        self.__upload_service = upload_service
         self.counter = TimeToComplete()
         self._source = ctx or interaction or message
         self._reported_users = set()
@@ -207,6 +211,8 @@ class StateService:
         if paginated:
             await self.message.add_reaction("\u2b05\ufe0f")
             await self.message.add_reaction("\u27a1\ufe0f")
+        if not bool(self.__bot.config["release_mode"]):
+            await self.message.add_reaction("\U0001f4c4")
         await self.message.add_reaction("\u2139\ufe0f")
         if show_error_emoji:
             await self.message.add_reaction("\U0001f4dd")
@@ -244,6 +250,11 @@ class StateService:
             await self.show_info(user)
         elif action == "report":
             await self.report_issue(user)
+        elif action == "upload":
+            await self.upload_picture()
+
+    async def upload_picture(self):
+        await self.__upload_service.request_upload(source=self._source)
 
     async def show_info(self, user):
         color = self.COLOR_MAP.get(self.health_type, "0xED4245")

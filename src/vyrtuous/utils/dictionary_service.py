@@ -42,29 +42,29 @@ class DictionaryService:
             skipped_messages=skipped_messages,
             skipped_roles=skipped_roles,
         )
-        if hasattr(cls, "skipped_channels") and cls.skipped_channels:
+        if hasattr(cls(), "skipped_channels"):
             skipped_pages["skipped_channels"] = self.generate_skipped_dict_pages(
-                skipped=cls.skipped_channels,
+                skipped=skipped_channels,
                 title="Skipped Channels in Server",
             )
-        if hasattr(cls, "skipped_guilds") and cls.skipped_guilds:
+        if hasattr(cls(), "skipped_guilds"):
             skipped_pages["skipped_guilds"] = self.generate_skipped_set_pages(
-                skipped=cls.skipped_guilds,
+                skipped=skipped_guilds,
                 title="Skipped Servers",
             )
-        if hasattr(cls, "skipped_members") and cls.skipped_members:
+        if hasattr(cls(), "skipped_members"):
             skipped_pages["skipped_members"] = self.generate_skipped_dict_pages(
-                skipped=cls.skipped_members,
+                skipped=skipped_members,
                 title="Skipped Members in Server",
             )
-        if hasattr(cls, "skipped_messages") and cls.skipped_messages:
+        if hasattr(cls(), "skipped_messages"):
             skipped_pages["skipped_messages"] = self.generate_skipped_dict_pages(
-                skipped=cls.skipped_messages,
+                skipped=skipped_messages,
                 title="Skipped Messages in Server",
             )
-        if hasattr(cls, "skipped_roles") and cls.skipped_roles:
+        if hasattr(cls(), "skipped_roles"):
             skipped_pages["skipped_roles"] = self.generate_skipped_dict_pages(
-                skipped=cls.skipped_roles,
+                skipped=skipped_roles,
                 title="Skipped Roles in Server",
             )
         return cls(data=data, **skipped_pages)

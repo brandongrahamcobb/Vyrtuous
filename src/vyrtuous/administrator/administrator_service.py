@@ -129,15 +129,6 @@ class AdministratorService:
             cls=AdministratorDictionary,
             dictionary=dictionary,
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
-
-        embed = discord.Embed(
-            title=title, description="Default view", color=discord.Color.blue()
-        )
-        if not processed_dictionary:
-            pages = [embed]
 
         admin_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -192,6 +183,9 @@ class AdministratorService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({admin_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages
 
     async def administrators_by_role(self, role_snowflake: int):
@@ -345,9 +339,6 @@ class AdministratorRoleService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=AdministratorRoleDictionary, dictionary=full_dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_roles)
 
         admin_role_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -370,6 +361,9 @@ class AdministratorRoleService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({admin_role_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_roles)
         return pages
 
     async def toggle_administrator_role(self, role_dict):

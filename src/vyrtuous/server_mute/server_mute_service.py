@@ -80,9 +80,6 @@ class ServerMuteService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=ServerMuteDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
 
         smute_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -128,6 +125,9 @@ class ServerMuteService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({smute_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages
 
     async def toggle_server_mute(self, context, member_dict, reason):

@@ -29,7 +29,7 @@ class PermissionDictionary:
         default_factory=dict
     )
     skipped_channels: List[discord.Embed] = field(default_factory=list)
-    skipped_guild: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 class PermissionService:
@@ -66,7 +66,7 @@ class PermissionService:
         return dictionary
 
     async def build_pages(self, channel_objs, context, is_at_home):
-        lines, pages = []
+        lines, pages = [], []
         guild = self.__bot.get_guild(context.guild.id)
         title = f"{self.__emoji.get_random_emoji()} {self.__bot.user.display_name} Missing Permissions"
 
@@ -74,10 +74,8 @@ class PermissionService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=PermissionDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_channels)
-            pages.extend(processed_dictionary.skipped_guilds)
 
+        perm_n = 0
         for guild_snowflake, guild_data in dictionary.items():
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
@@ -93,6 +91,7 @@ class PermissionService:
                     for permission in permissions:
                         lines.append(f"  ↳ {permission}")
                 field_count += 1
+                perm_n += 1
                 if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(
                         name="Information",
@@ -110,4 +109,9 @@ class PermissionService:
                     inline=False,
                 )
             pages.append(embed)
+        if pages:
+            pages[0].description = f"**({perm_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
         return pages

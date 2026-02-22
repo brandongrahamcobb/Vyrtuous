@@ -192,9 +192,6 @@ class BugService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BugDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_messages)
 
         bug_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -246,6 +243,9 @@ class BugService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({bug_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_messages)
         return pages
 
     async def create_bug(self, message, reference):

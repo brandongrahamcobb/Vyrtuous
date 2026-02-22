@@ -210,7 +210,7 @@ class PaginatorService:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):
                 self.current_page = max(
-                    0, min(self.current_page + action, len(self.pages) - 1)
+                    0, min(self.current_page + action, len(pages) - 1)
                 )
                 await self.message.edit(
                     embed=self.get_current_embed(channel=channel, pages=pages)

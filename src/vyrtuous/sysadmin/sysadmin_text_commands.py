@@ -34,6 +34,7 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.upload.upload_service import UploadService
 
 
 class SysadminTextCommands(commands.Cog):
@@ -61,6 +62,9 @@ class SysadminTextCommands(commands.Cog):
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
+        )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
         )
 
     async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
@@ -92,6 +96,7 @@ class SysadminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
         embed = await self.__developer_service.assign_bug_to_developer(
@@ -115,6 +120,7 @@ class SysadminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__developer_service.toggle_developer(

@@ -285,9 +285,6 @@ class StreamService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=StreamDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_channels)
-            pages.extend(processed_dictionary.skipped_guilds)
 
         stream_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -334,6 +331,9 @@ class StreamService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({stream_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_channels)
+            pages.extend(processed_dictionary.skipped_guilds)
         return pages
 
     async def toggle_stream(

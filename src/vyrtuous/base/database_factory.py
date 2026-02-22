@@ -49,6 +49,36 @@ class DatabaseFactory(object):
             )
         self.__bot.logger.info(f"Created entry in {table_name}.")
 
+    async def upsert(self, obj):
+        table_name = getattr(obj.__class__, "__tablename__")
+        fields = list(obj.__class__.__annotations__.keys())
+        insert_fields = [
+            f for f in fields if hasattr(obj, f) and getattr(obj, f) is not None
+        ]
+        if not insert_fields:
+            raise ValueError("No fields available to insert")
+        self.model = obj.__class__
+        primary_keys = await self.primary_keys()
+        if not primary_keys:
+            raise ValueError("No primary key defined on table")
+        placeholders = ", ".join(f"${i + 1}" for i in range(len(insert_fields)))
+        update_fields = [f for f in insert_fields if f not in primary_keys]
+        if not update_fields:
+            raise ValueError("No updatable fields provided")
+        update_clause = ", ".join(f"{f}=EXCLUDED.{f}" for f in update_fields)
+        values = [getattr(obj, f) for f in insert_fields]
+        async with self.__bot.db_pool.acquire() as conn:
+            await conn.execute(
+                f"""
+                INSERT INTO {table_name} ({", ".join(insert_fields)})
+                VALUES ({placeholders})
+                ON CONFLICT ({", ".join(primary_keys)})
+                DO UPDATE SET {update_clause}
+                """,
+                *values,
+            )
+        self.__bot.logger.info(f"Upserted entry in {table_name}.")
+
     async def delete(self, **kwargs):
         fields = list(self.model.__annotations__.keys())
         table_name = getattr(self.model, "__tablename__")
@@ -155,7 +185,7 @@ class DatabaseFactory(object):
         self.__bot.logger.info(f"Updated entry from {table_name}.")
 
     async def primary_keys(self):
-        table_name = getattr(self.model, "TABLE_NAME")
+        table_name = getattr(self.model, "__tablename__")
         statement = """
             SELECT kcu.column_name
               FROM information_schema.table_constraints tc

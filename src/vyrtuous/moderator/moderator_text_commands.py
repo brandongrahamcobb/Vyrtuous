@@ -53,6 +53,7 @@ from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.upload.upload_service import UploadService
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -204,6 +205,9 @@ class ModeratorTextCommands(commands.Cog):
             vegan_service=self.__vegan_service,
             text_mute_service=self.__text_mute_service,
         )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
     async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
         async def predicate(ctx: commands.Context):
@@ -247,6 +251,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
@@ -275,6 +280,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -303,6 +309,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -331,6 +338,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -356,6 +364,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         try:
             msg = await ctx.channel.fetch_message(message)
@@ -386,6 +395,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -416,6 +426,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
@@ -446,6 +457,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__temporary_room_service.migrate_temporary_room(
@@ -473,6 +485,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -501,6 +514,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -531,6 +545,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         channel = channel or ctx.channel
@@ -565,6 +580,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         pages = []
         obj = member or int(ctx.member)
@@ -601,6 +617,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -628,6 +645,7 @@ class ModeratorTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or int(ctx.channel.id)
         is_at_home = at_home(source=ctx)

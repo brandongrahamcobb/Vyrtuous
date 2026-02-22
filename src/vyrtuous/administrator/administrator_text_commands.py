@@ -64,6 +64,8 @@ from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.video_room.video_room_service import VideoRoomService
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.utils.permission_service import PermissionService
+from vyrtuous.upload.upload_service import UploadService
 
 
 class AdminTextCommands(commands.Cog):
@@ -239,6 +241,14 @@ class AdminTextCommands(commands.Cog):
             vegan_service=self.__vegan_service,
             text_mute_service=self.__text_mute_service,
         )
+        self.__permission_service = PermissionService(
+            bot=self.__bot,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -290,6 +300,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         kwargs = {"alias_name": alias_name, "category": category, "channel": channel}
         if role:
@@ -318,6 +329,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.guild
         object_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -349,6 +361,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__cap_service.toggle_cap(
@@ -376,6 +389,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -409,6 +423,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         object_dict = self.__discord_object_service.to_dict(obj=target)
@@ -429,6 +444,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         msg = await self.__clear_service.clear(
             category=category,
@@ -460,6 +476,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
@@ -491,6 +508,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         if lines <= 0:
             return await state.end(warning="Lines must be greater than 0")
@@ -523,13 +541,14 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         obj = target or ctx.channel
         object_dict = self.__discord_object_service.to_dict(obj=obj)
         is_at_home = at_home(source=ctx)
         if target and str(target).lower() == "all":
-            await self.__permission_service.check(
+            await self.__moderator_service.check_minimum_role(
                 **object_dict.get("columns", None), lowest_role="Guild Owner"
             )
             channel_objs = [
@@ -569,6 +588,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -598,6 +618,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         failed, moved = [], []
         source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
@@ -652,6 +673,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
@@ -682,6 +704,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         member_dict = self.__discord_object_service.to_dict(obj=member)
@@ -709,6 +732,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.guild
         object_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -738,6 +762,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         object_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -766,6 +791,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__temporary_room_service.toggle_temporary_room(
@@ -796,6 +822,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -827,6 +854,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
         source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
@@ -857,6 +885,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
@@ -889,6 +918,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -921,6 +951,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or ctx.channel
         object_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -943,6 +974,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
         msg = await self.__alias_service.delete_alias(
@@ -967,6 +999,7 @@ class AdminTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
         channel_dict = self.__discord_object_service.to_dict(obj=obj)

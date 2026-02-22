@@ -47,6 +47,7 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.upload.upload_service import UploadService
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -152,6 +153,9 @@ class GuildOwnerTextCommands(commands.Cog):
             text_mute_service=self.__text_mute_service,
             voice_mute_service=self.__voice_mute_service,
         )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         async def predicate(
@@ -187,6 +191,7 @@ class GuildOwnerTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         role_dict = self.__discord_object_service.to_dict(obj=role)
         pages = await self.__administrator_role_service.toggle_administrator_role(
@@ -211,6 +216,7 @@ class GuildOwnerTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
         where_kwargs = member_dict.get("columns", None)
@@ -251,6 +257,7 @@ class GuildOwnerTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         obj = target or "all"
         object_dict = self.__discord_object_service.to_dict(obj=obj)
@@ -275,6 +282,7 @@ class GuildOwnerTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         is_at_home = at_home(source=ctx)
         obj = target or "all"
@@ -300,6 +308,7 @@ class GuildOwnerTextCommands(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         synced = []
         if not guilds:

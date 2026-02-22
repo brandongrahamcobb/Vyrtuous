@@ -140,9 +140,6 @@ class CoordinatorService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=CoordinatorDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
 
         coord_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -198,6 +195,9 @@ class CoordinatorService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({coord_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages
 
     async def toggle_coordinator(self, channel_dict, member_dict):

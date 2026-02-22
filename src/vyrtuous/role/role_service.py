@@ -200,9 +200,6 @@ class RoleService:
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=RoleDictionary, dictionary=dictionary
         )
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
 
         role_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -253,6 +250,9 @@ class RoleService:
             pages.append(embed)
         if pages:
             pages[0].description = f"**({role_n})**"
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
         return pages
 
     async def enforce(self, ctx, source, state):
