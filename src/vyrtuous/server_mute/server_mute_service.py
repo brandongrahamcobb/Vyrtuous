@@ -34,7 +34,7 @@ class ServerMuteDictionary:
 
 
 class ServerMuteService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = ServerMute
 
     def __init__(

@@ -38,7 +38,7 @@ class FlagDictionary:
 
 
 class FlagService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Flag
 
     def __init__(

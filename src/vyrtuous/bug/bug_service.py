@@ -35,7 +35,7 @@ class BugDictionary:
 
 
 class BugService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Bug
 
     def __init__(

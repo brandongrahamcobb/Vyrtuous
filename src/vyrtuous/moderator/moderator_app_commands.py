@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Coroutine, Union
+from typing import Any, Coroutine
 
 import discord
 from discord import app_commands
@@ -37,7 +37,7 @@ from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal
 from vyrtuous.moderator.moderator import Moderator
-from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
+from vyrtuous.moderator.moderator_service import ModeratorService, NotAppModerator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
@@ -164,27 +164,23 @@ class ModeratorAppCommands(commands.Cog):
         )
         self.__discord_object_service = DiscordObjectService()
 
-    async def cog_check(self, interaction) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
+    async def cog_check(
+        self, interaction: discord.Interaction
+    ) -> Coroutine[Any, Any, bool]:
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+            self.__guild_owner_service.is_guild_owner_wrapper,
+            self.__administrator_service.is_administrator_wrapper,
+            self.__coordinator_service.is_coordinator_at_all_wrapper,
+            self.__moderator_service.is_moderator_at_all_wrapper,
         ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-                self.__coordinator_service.is_coordinator_at_all_wrapper,
-                self.__moderator_service.is_moderator_at_all_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except app_commands.CheckFailure:
-                    continue
-            raise NotModerator
-
-        predicate._permission_level = "Moderator"
-        return await predicate(interaction)
+            try:
+                if await verify(source):
+                    return True
+            except app_commands.CheckFailure:
+                continue
+        raise NotAppModerator
 
     @app_commands.command(name="data", description="Create a chart.")
     async def create_data_app_command(self, interaction: discord.Interaction):
@@ -213,6 +209,8 @@ class ModeratorAppCommands(commands.Cog):
             view=view,
             ephemeral=True,
         )
+
+    create_data_app_command._permission_level = "Moderator"
 
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="The ID or mention of the member.")
@@ -246,6 +244,8 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Select a channel and an infraction", view=view, ephemeral=True
         )
+
+    change_moderation_duration_app_command._permission_level = "Moderator"
 
     @app_commands.command(name="reason", description="Modify a reason.")
     @app_commands.describe(member="The ID or mention of the member.")
@@ -284,6 +284,8 @@ class ModeratorAppCommands(commands.Cog):
             content="Select a channel and an infraction", view=view, ephemeral=True
         )
 
+    change_moderation_reason_app_command._permission_level = "Moderator"
+
     @app_commands.command(name="vban", description="Create a ban.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def create_ban_app_command(
@@ -319,6 +321,8 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Select a channel and a duration", view=view, ephemeral=True
         )
+
+    create_ban_app_command._permission_level = "Moderator"
 
     @app_commands.command(name="vmute", description="Create a mute.")
     @app_commands.describe(member="The ID or mention of the member.")
@@ -356,6 +360,8 @@ class ModeratorAppCommands(commands.Cog):
             content="Select a channel and a duration", view=view, ephemeral=True
         )
 
+    create_voice_mute_app_command._permission_level = "Moderator"
+
     @app_commands.command(name="vtmute", description="Create a text-mute.")
     @app_commands.describe(member="The ID or mention of the member.")
     async def create_text_mute_app_command(
@@ -391,6 +397,8 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Select a channel and a duration", view=view, ephemeral=True
         )
+
+    create_text_mute_app_command._permission_level = "Moderator"
 
 
 async def setup(bot: DiscordBot):

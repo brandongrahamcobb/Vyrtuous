@@ -47,7 +47,7 @@ class AliasDictionary:
 
 
 class AliasService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Alias
     CATEGORY_TO_HELP = {
         "ban": [

@@ -43,7 +43,7 @@ class AdministratorDictionary:
 
 
 class AdministratorService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Administrator
 
     def __init__(
@@ -285,7 +285,7 @@ class AdministratorRoleDictionary:
 
 
 class AdministratorRoleService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = AdministratorRole
 
     def __init__(

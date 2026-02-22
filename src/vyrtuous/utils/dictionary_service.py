@@ -22,7 +22,7 @@ import discord
 
 
 class DictionaryService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
 
     def __init__(self, *, bot=None):
         self.__bot = bot

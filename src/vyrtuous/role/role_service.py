@@ -37,7 +37,7 @@ class RoleDictionary:
 
 
 class RoleService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Role
 
     def __init__(

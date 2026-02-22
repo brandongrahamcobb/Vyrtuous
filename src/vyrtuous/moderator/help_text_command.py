@@ -35,7 +35,9 @@ from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.permission_service import PermissionService
@@ -66,7 +68,6 @@ class HelpTextCommand(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.config = self.__bot.config
         self.permission_page_title_pairs = [
             ("Sysadmin", "`Sysadmin` inherits `Developer`."),
             ("Developer", "`Developer` inherits `Guild Owner`."),
@@ -119,28 +120,28 @@ class HelpTextCommand(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
-    async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
+    async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
+        context = DefaultContext(ctx=ctx)
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+            self.__guild_owner_service.is_guild_owner_wrapper,
+            self.__administrator_service.is_administrator_wrapper,
+            self.__coordinator_service.is_coordinator_at_all_wrapper,
+            self.__moderator_service.is_moderator_at_all_wrapper,
         ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-                self.__coordinator_service.is_coordinator_at_all_wrapper,
-                self.__moderator_service.is_moderator_at_all_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotModerator
+            try:
+                if await verify(context=context):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotModerator
 
-        predicate._permission_level = "Moderator"
-        return await predicate(ctx)
+    cog_check._permission_level = "Moderator"
 
     async def get_channel_alias_help(
         self, channel_snowflake: int, guild_snowflake: int
@@ -163,19 +164,27 @@ class HelpTextCommand(commands.Cog):
                         lines.append(f"• {line}")
         return lines
 
-    async def get_available_commands(self, all, bot, user_highest):
+    async def get_available_commands(self, bot, user_highest):
         available = []
         skipped = []
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
-                if self.__moderator_service.PERMISSION_TYPES.index(
+                user_index = self.__moderator_service.PERMISSION_TYPES.index(
                     user_highest
-                ) >= self.__moderator_service.PERMISSION_TYPES.index(perm_level):
-                    has_skip = any(
-                        hasattr(check, "_skip_text_command_help_discovery")
-                        for check in command.checks
-                    )
+                )
+                cmd_index = self.__moderator_service.PERMISSION_TYPES.index(perm_level)
+                if user_index >= cmd_index:
+                    has_skip = False
+                    if command.checks:
+                        has_skip = any(
+                            getattr(
+                                getattr(check, "__wrapped__", check),
+                                "_skip_text_command_help_discovery",
+                                False,
+                            )
+                            for check in command.checks
+                        )
                     if has_skip:
                         skipped.append(command)
                     else:
@@ -187,15 +196,17 @@ class HelpTextCommand(commands.Cog):
         return available, skipped
 
     async def get_command_permission_level(self, bot, command):
-        if not hasattr(command, "checks") or not command.checks:
-            return "Everyone"
-        for verify in command.checks:
-            if hasattr(verify, "__wrapped__"):
-                func = verify.__wrapped__
-            else:
-                func = verify
-            if hasattr(func, "_permission_level"):
-                return func._permission_level
+        if command.checks:
+            for verify in command.checks:
+                func = getattr(verify, "__wrapped__", verify)
+                level = getattr(func, "_permission_level", None)
+                if level:
+                    return level
+        if command.cog and hasattr(command.cog, "cog_check") and command.cog.cog_check:
+            func = getattr(command.cog.cog_check, "__wrapped__", command.cog.cog_check)
+            level = getattr(func, "_permission_level", None)
+            if level:
+                return level
         return "Everyone"
 
     def get_permission_color(self, perm_level):
@@ -237,7 +248,7 @@ class HelpTextCommand(commands.Cog):
         current_chunk, chunks = [], []
         current_length = 0
         for cmd in commands_list:
-            cmd_line = f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+            cmd_line = f"**{self.__bot.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
             cmd_length = len(cmd_line)
             if current_length + cmd_length > max_length and current_chunk:
                 chunks.append("\n".join(current_chunk))
@@ -272,14 +283,21 @@ class HelpTextCommand(commands.Cog):
                 for a in alias_list:
                     help_lines = self.__alias_service.CATEGORY_TO_HELP.get(category, [])
                     perm_alias_map[perm_level].append(
-                        f"**{self.config['discord_command_prefix']}{a.alias_name}**\n"
+                        f"**{self.__bot.config['discord_command_prefix']}{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
                     )
             return perm_alias_map
 
     @commands.command(name="help", help="List commands.")
     async def help_text_command(self, ctx, *, command_name: str | None = None):
-        state = StateService(ctx=ctx)
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+        )
         bot = ctx.bot
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
@@ -291,7 +309,7 @@ class HelpTextCommand(commands.Cog):
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
-                    title=f"{self.config['discord_command_prefix']}{cmd.name}",
+                    title=f"{self.__bot.config['discord_command_prefix']}{cmd.name}",
                     description=cmd.help or "No description provided.",
                     color=discord.Color.blue(),
                 )
@@ -306,7 +324,9 @@ class HelpTextCommand(commands.Cog):
                 if parameters and parameters[0][0] == "ctx":
                     parameters.pop(0)
                 if parameters:
-                    usage_parts = [f"{self.config['discord_command_prefix']}{cmd.name}"]
+                    usage_parts = [
+                        f"{self.__bot.config['discord_command_prefix']}{cmd.name}"
+                    ]
                     for name, param in parameters:
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
@@ -337,7 +357,7 @@ class HelpTextCommand(commands.Cog):
                         warning=f"No help available for `{alias.alias_name}`."
                     )
                 embed = discord.Embed(
-                    title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
+                    title=f"{self.__bot.config['discord_command_prefix']}{alias.alias_name}",
                     description=f"Alias for **{alias.category}**",
                     color=discord.Color.green(),
                 )
@@ -350,11 +370,11 @@ class HelpTextCommand(commands.Cog):
         all = False
         if command_name and command_name == "all":
             all = True
-        user_highest = await PermissionService.resolve_highest_role_at_all(
+        user_highest = await self.__moderator_service.resolve_highest_role_at_all(
             member_snowflake=ctx.author.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(
-            all=all, bot=bot, user_highest=user_highest
+            bot=bot, user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
@@ -362,7 +382,7 @@ class HelpTextCommand(commands.Cog):
         skipped_permission_groups = await self.group_commands_by_permission(
             bot, ctx, skipped_commands
         )
-        aliases = await self.__datbase_factory.select(
+        aliases = await self.__database_factory.select(
             channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id
         )
         perm_alias_map = defaultdict(list)
@@ -377,7 +397,7 @@ class HelpTextCommand(commands.Cog):
                     )
                 )
                 perm_alias_map[perm_level_for_alias].append(
-                    f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
+                    f"**{self.__bot.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
                 )
         user_index = self.__moderator_service.PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
@@ -393,7 +413,7 @@ class HelpTextCommand(commands.Cog):
             )
             if commands_in_level:
                 command_lines = [
-                    f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+                    f"**{self.__bot.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
                     for cmd in commands_in_level
                 ]
                 command_text = "\n".join(command_lines)
@@ -417,7 +437,7 @@ class HelpTextCommand(commands.Cog):
                 )
                 if skipped_in_level:
                     skipped_lines = [
-                        f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+                        f"**{self.__bot.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
                         for cmd in skipped_in_level
                     ]
                     skipped_text = "\n".join(skipped_lines)

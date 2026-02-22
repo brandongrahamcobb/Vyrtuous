@@ -34,6 +34,7 @@ from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.default_context import DefaultContext
@@ -42,7 +43,6 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.upload.upload_service import UploadService
 
 
 class GenericEventListeners(commands.Cog):

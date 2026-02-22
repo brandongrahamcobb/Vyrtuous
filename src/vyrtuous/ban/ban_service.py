@@ -38,7 +38,7 @@ class BanDictionary:
 
 
 class BanService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Ban
 
     def __init__(

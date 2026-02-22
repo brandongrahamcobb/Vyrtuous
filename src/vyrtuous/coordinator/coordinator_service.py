@@ -45,7 +45,7 @@ class CoordinatorDictionary:
 
 
 class CoordinatorService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Coordinator
 
     def __init__(

@@ -31,7 +31,7 @@ class NotDeveloper(commands.CheckFailure):
 
 
 class DeveloperService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Developer
 
     def __init__(

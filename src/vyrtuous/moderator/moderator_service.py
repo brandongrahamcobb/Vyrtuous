@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Union
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.administrator.administrator_service import (
@@ -36,6 +37,14 @@ from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
 
 
 class NotModerator(commands.CheckFailure):
+    def __init__(
+        self,
+        message="Member is not a moderator in this channel.",
+    ):
+        super().__init__(message)
+
+
+class NotAppModerator(app_commands.CheckFailure):
     def __init__(
         self,
         message="Member is not a moderator in this channel.",
@@ -60,7 +69,7 @@ class ModeratorDictionary:
 
 
 class ModeratorService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Moderator
     PERMISSION_TYPES = [
         "Everyone",

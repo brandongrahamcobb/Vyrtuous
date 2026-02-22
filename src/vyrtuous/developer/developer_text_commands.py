@@ -31,6 +31,7 @@ from vyrtuous.developer.developer import Developer
 from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
@@ -40,7 +41,6 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.upload.upload_service import UploadService
 
 
 class DevTextCommands(commands.Cog):
@@ -76,21 +76,19 @@ class DevTextCommands(commands.Cog):
         )
 
     async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
-        async def predicate(ctx: commands.Context):
-            context = DefaultContext(ctx=ctx)
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-            ):
-                try:
-                    if await verify(context=context):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotDeveloper
+        context = DefaultContext(ctx=ctx)
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+        ):
+            try:
+                if await verify(context=context):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotDeveloper
 
-        predicate._permission_level = "Developer"
-        return await predicate(ctx=ctx)
+    cog_check._permission_level = "Developer"
 
     @commands.command(name="backup", help="DB backup.")
     async def backup_text_command(self, ctx: commands.Context):

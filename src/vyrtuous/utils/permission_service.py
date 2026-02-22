@@ -33,7 +33,7 @@ class PermissionDictionary:
 
 
 class PermissionService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     __TARGET_PERMISSIONS = (
         "add_reactions",
         "manage_messages",

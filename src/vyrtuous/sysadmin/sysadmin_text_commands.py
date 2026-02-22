@@ -28,13 +28,13 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.sysadmin.sysadmin import Sysadmin
 from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.state_service import StateService
-from vyrtuous.upload.upload_service import UploadService
 
 
 class SysadminTextCommands(commands.Cog):
@@ -68,14 +68,12 @@ class SysadminTextCommands(commands.Cog):
         )
 
     async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
-        async def predicate(ctx: commands.Context):
-            context = DefaultContext(ctx=ctx)
-            if await self.__sysadmin_service.is_sysadmin_wrapper(context=context):
-                return True
-            raise NotSysadmin
+        context = DefaultContext(ctx=ctx)
+        if await self.__sysadmin_service.is_sysadmin_wrapper(context=context):
+            return True
+        raise NotSysadmin
 
-        predicate._permission_level = "Sysadmin"
-        return await predicate(ctx=ctx)
+    cog_check._permission_level = "Sysadmin"
 
     @commands.command(name="assign", help="Assign developer.")
     async def assign_bug_to_developer_text_command(

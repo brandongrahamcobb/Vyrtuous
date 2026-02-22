@@ -34,7 +34,7 @@ class VeganDictionary:
 
 
 class VeganService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Vegan
 
     def __init__(

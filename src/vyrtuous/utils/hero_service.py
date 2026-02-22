@@ -32,7 +32,7 @@ class HeroDictionary:
 
 class HeroService:
     _invincible_members: Dict[Tuple[int, int], bool] = {}
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     state = False
 
     def __init__(

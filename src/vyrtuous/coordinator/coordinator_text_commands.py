@@ -36,6 +36,7 @@ from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.default_context import DefaultContext
@@ -45,7 +46,6 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.upload.upload_service import UploadService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -140,24 +140,22 @@ class CoordinatorTextCommands(commands.Cog):
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
-        async def predicate(ctx: commands.Context):
-            context = DefaultContext(ctx=ctx)
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-                self.__coordinator_service.is_coordinator_at_all_wrapper,
-            ):
-                try:
-                    if await verify(context=context):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotCoordinator
+        context = DefaultContext(ctx=ctx)
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+            self.__guild_owner_service.is_guild_owner_wrapper,
+            self.__administrator_service.is_administrator_wrapper,
+            self.__coordinator_service.is_coordinator_at_all_wrapper,
+        ):
+            try:
+                if await verify(context=context):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotCoordinator
 
-        predicate._permission_level = "Coordinator"
-        return await predicate(ctx=ctx)
+    cog_check._permission_level = "Coordinator"
 
     @commands.command(name="mod", help="Grant/revoke mods.")
     async def toggle_moderator_text_command(

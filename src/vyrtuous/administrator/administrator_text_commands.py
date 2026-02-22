@@ -49,6 +49,7 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.clear_service import ClearService
 from vyrtuous.utils.data_service import DataService
@@ -59,13 +60,12 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
+from vyrtuous.utils.permission_service import PermissionService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.video_room.video_room_service import VideoRoomService
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.utils.permission_service import PermissionService
-from vyrtuous.upload.upload_service import UploadService
 
 
 class AdminTextCommands(commands.Cog):
@@ -251,25 +251,21 @@ class AdminTextCommands(commands.Cog):
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            ctx: commands.Context,
+        context = DefaultContext(ctx=ctx)
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+            self.__guild_owner_service.is_guild_owner_wrapper,
+            self.__administrator_service.is_administrator_wrapper,
         ):
-            context = DefaultContext(ctx=ctx)
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-            ):
-                try:
-                    if await verify(context=context):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotAdministrator
+            try:
+                if await verify(context=context):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotAdministrator
 
-        predicate._permission_level = "Administrator"
-        return await predicate(ctx)
+    cog_check._permission_level = "Administrator"
 
     @commands.command(
         name="alias",

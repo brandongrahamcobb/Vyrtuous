@@ -42,6 +42,7 @@ from vyrtuous.stream.stream_service import StreamService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.default_context import DefaultContext
@@ -53,7 +54,6 @@ from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.upload.upload_service import UploadService
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -210,25 +210,23 @@ class ModeratorTextCommands(commands.Cog):
         )
 
     async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
-        async def predicate(ctx: commands.Context):
-            context = DefaultContext(ctx=ctx)
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-                self.__coordinator_service.is_coordinator_at_all_wrapper,
-                self.__moderator_service.is_moderator_at_all_wrapper,
-            ):
-                try:
-                    if await verify(context=context):
-                        return True
-                except commands.CheckFailure:
-                    continue
-            raise NotModerator
+        context = DefaultContext(ctx=ctx)
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+            self.__guild_owner_service.is_guild_owner_wrapper,
+            self.__administrator_service.is_administrator_wrapper,
+            self.__coordinator_service.is_coordinator_at_all_wrapper,
+            self.__moderator_service.is_moderator_at_all_wrapper,
+        ):
+            try:
+                if await verify(context=context):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotModerator
 
-        predicate._permission_level = "Moderator"
-        return await predicate(ctx=ctx)
+    cog_check._permission_level = "Moderator"
 
     @commands.command(name="admins", help="Lists admins.")
     @skip_text_command_help_discovery()

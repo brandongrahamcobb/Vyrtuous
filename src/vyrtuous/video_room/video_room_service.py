@@ -36,7 +36,7 @@ class VideoRoomDictionary:
 
 
 class VideoRoomService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     __COOLDOWN = timedelta(minutes=30)
     MODEL = VideoRoom
 

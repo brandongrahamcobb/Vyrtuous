@@ -38,7 +38,7 @@ class StageDictionary:
 
 
 class StageService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Stage
 
     def __init__(

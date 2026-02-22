@@ -38,7 +38,7 @@ class TextMuteDictionary:
 
 
 class TextMuteService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = TextMute
 
     def __init__(

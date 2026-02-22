@@ -167,7 +167,7 @@ class StreamEmbed(discord.Embed):
 
 
 class StreamService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Stream
 
     def __init__(

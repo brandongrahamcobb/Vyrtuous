@@ -34,7 +34,7 @@ class TemporaryRoomDictionary:
 
 
 class TemporaryRoomService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = TemporaryRoom
 
     def __init__(

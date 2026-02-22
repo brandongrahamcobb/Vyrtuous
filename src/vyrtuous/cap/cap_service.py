@@ -36,7 +36,7 @@ class CapDictionary:
 
 
 class CapService:
-    __CHUNK_SIZE = 7
+    __CHUNK_SIZE = 12
     MODEL = Cap
 
     def __init__(

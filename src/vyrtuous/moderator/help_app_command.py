@@ -1,7 +1,7 @@
 """!/bin/python3
 help_command.py A discord.py cog containing a custom help command for the Vyrtuous bot.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2025  https://{ithub.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,10 +30,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
-from vyrtuous.moderator.moderator_service import ModeratorService, NotModerator
+from vyrtuous.moderator.moderator_service import ModeratorService, NotAppModerator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
+from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
+from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.state_service import StateService
@@ -54,7 +56,6 @@ class HelpAppCommand(commands.Cog):
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__author_service = AuthorService()
-        self.config = self.__bot.config
         self.permission_page_title_pairs = [
             ("Sysadmin", "`Sysadmin` inherits `Developer`."),
             ("Developer", "`Developer` inherits `Guild Owner`."),
@@ -107,42 +108,50 @@ class HelpAppCommand(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__upload_service = UploadService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
     async def cog_check(self, interaction) -> Coroutine[Any, Any, bool]:
-        async def predicate(
-            source: Union[commands.Context, discord.Interaction, discord.Message],
+        context = DefaultContext(interaction=interaction)
+        for verify in (
+            self.__sysadmin_service.is_sysadmin_wrapper,
+            self.__developer_service.is_developer_wrapper,
+            self.__guild_owner_service.is_guild_owner_wrapper,
+            self.__administrator_service.is_administrator_wrapper,
+            self.__coordinator_service.is_coordinator_at_all_wrapper,
+            self.__moderator_service.is_moderator_at_all_wrapper,
         ):
-            for verify in (
-                self.__sysadmin_service.is_sysadmin_wrapper,
-                self.__developer_service.is_developer_wrapper,
-                self.__guild_owner_service.is_guild_owner_wrapper,
-                self.__administrator_service.is_administrator_wrapper,
-                self.__coordinator_service.is_coordinator_at_all_wrapper,
-                self.__moderator_service.is_moderator_at_all_wrapper,
-            ):
-                try:
-                    if await verify(source):
-                        return True
-                except app_commands.CheckFailure:
-                    continue
-            raise NotModerator
+            try:
+                if await verify(context=context):
+                    return True
+            except app_commands.CheckFailure:
+                continue
+        raise NotAppModerator
 
-        predicate._permission_level = "Moderator"
-        return await predicate(interaction)
+    cog_check._permission_level = "Moderator"
 
-    async def get_available_commands(self, all, bot, user_highest):
+    async def get_available_commands(self, bot, user_highest):
         available = []
         skipped = []
-        for command in bot.commands:
+        for command in bot.tree.get_commands():
             try:
-                perm_level = await self.get_command_permission_level(bot, command)
-                if self.__moderator_service.PERMISSION_TYPES.index(
+                perm_level = await self.get_command_permission_level(command)
+                user_index = self.__moderator_service.PERMISSION_TYPES.index(
                     user_highest
-                ) >= self.__moderator_service.PERMISSION_TYPES.index(perm_level):
-                    has_skip = any(
-                        hasattr(check, "_skip_app_command_help_discovery")
-                        for check in command.checks
-                    )
+                )
+                cmd_index = self.__moderator_service.PERMISSION_TYPES.index(perm_level)
+                if user_index >= cmd_index:
+                    has_skip = False
+                    if command.checks:
+                        has_skip = any(
+                            getattr(
+                                getattr(check, "__wrapped__", check),
+                                "_skip_text_command_help_discovery",
+                                False,
+                            )
+                            for check in command.checks
+                        )
                     if has_skip:
                         skipped.append(command)
                     else:
@@ -153,17 +162,8 @@ class HelpAppCommand(commands.Cog):
                 )
         return available, skipped
 
-    async def get_command_permission_level(self, bot, command):
-        if not hasattr(command, "checks") or not command.checks:
-            return "Everyone"
-        for verify in command.checks:
-            if hasattr(verify, "__wrapped__"):
-                func = verify.__wrapped__
-            else:
-                func = verify
-            if hasattr(func, "_permission_level"):
-                return func._permission_level
-        return "Everyone"
+    async def get_command_permission_level(self, command):
+        return getattr(command, "_permission_level", "Everyone")
 
     def get_permission_color(self, perm_level):
         colors = {
@@ -182,7 +182,7 @@ class HelpAppCommand(commands.Cog):
             level: [] for level in self.__moderator_service.PERMISSION_TYPES
         }
         for command in commands_list:
-            perm_level = await self.get_command_permission_level(bot, command)
+            perm_level = await self.get_command_permission_level(command)
             if perm_level in permission_groups:
                 permission_groups[perm_level].append(command)
             else:
@@ -199,7 +199,7 @@ class HelpAppCommand(commands.Cog):
         current_chunk, chunks = [], []
         current_length = 0
         for cmd in commands_list:
-            cmd_line = f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+            cmd_line = f"**/{cmd.name}** – {cmd.description or 'No description'}"
             cmd_length = len(cmd_line)
             if current_length + cmd_length > max_length and current_chunk:
                 chunks.append("\n".join(current_chunk))
@@ -229,6 +229,7 @@ class HelpAppCommand(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
             interaction=interaction,
+            upload_service=self.__upload_service,
         )
         bot = interaction.client
         pages, param_details, parameters = [], [], []
@@ -239,8 +240,8 @@ class HelpAppCommand(commands.Cog):
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
-                    title=f"{self.config['discord_command_prefix']}{cmd.name}",
-                    description=cmd.help or "No description provided.",
+                    title=f"/{cmd.name}",
+                    description=cmd.description or "No description provided.",
                     color=discord.Color.blue(),
                 )
                 callback = self.unwrap_callback(cmd.callback)
@@ -254,7 +255,7 @@ class HelpAppCommand(commands.Cog):
                 if parameters and parameters[0][0] == "ctx":
                     parameters.pop(0)
                 if parameters:
-                    usage_parts = [f"{self.config['discord_command_prefix']}{cmd.name}"]
+                    usage_parts = [f"/{cmd.name}"]
                     for name, param in parameters:
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
@@ -283,7 +284,7 @@ class HelpAppCommand(commands.Cog):
             member_snowflake=interaction.user.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(
-            all=all, bot=bot, user_highest=user_highest
+            bot=bot, user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
@@ -305,7 +306,7 @@ class HelpAppCommand(commands.Cog):
             )
             if commands_in_level:
                 command_lines = [
-                    f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+                    f"**/{cmd.name}** – {cmd.description or 'No description'}"
                     for cmd in commands_in_level
                 ]
                 command_text = "\n".join(command_lines)
@@ -326,7 +327,7 @@ class HelpAppCommand(commands.Cog):
                 )
                 if skipped_in_level:
                     skipped_lines = [
-                        f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
+                        f"**/{cmd.name}** – {cmd.description or 'No description'}"
                         for cmd in skipped_in_level
                     ]
                     skipped_text = "\n".join(skipped_lines)
@@ -348,6 +349,8 @@ class HelpAppCommand(commands.Cog):
                 warning="\U000026a0\U0000fe0f No commands available to you."
             )
         return await state.end(success=pages)
+
+    help_app_command._permission_level = "Moderator"
 
 
 async def setup(bot: DiscordBot):
