@@ -693,7 +693,7 @@ class VoiceMuteService:
                 log["channel_snowflake"],
                 log["target_snowflake"],
             )
-            if log["identifier"] == "ban" and key not in object_lookup:
+            if log["identifier"] == "vmute" and key not in object_lookup:
                 guild = self.__bot.get_guild(log["guild_snowflake"])
                 if not guild:
                     continue
@@ -702,6 +702,6 @@ class VoiceMuteService:
                 if channel and member:
                     self.__data_service.save_data(
                         channel=channel,
-                        identifier="unban",
+                        identifier="unvmute",
                         member=member,
                     )
