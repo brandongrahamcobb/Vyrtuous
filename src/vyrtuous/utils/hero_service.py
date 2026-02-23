@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import copy
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
@@ -33,7 +34,7 @@ class HeroDictionary:
 class HeroService:
     _invincible_members: Dict[Tuple[int, int], bool] = {}
     __CHUNK_SIZE = 12
-    state = False
+    __state = False
 
     def __init__(
         self,
@@ -48,7 +49,7 @@ class HeroService:
         voice_mute_service=None,
     ):
         self.__bot = bot
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__infractions = [
@@ -66,7 +67,8 @@ class HeroService:
             "member_snowflake": member_snowflake,
         }
         for infraction in self.__infractions:
-            objects = self.__database_factory.model = infraction
+            self.__database_factory.model = infraction
+            objects = await self.__database_factory.select(**kwargs)
             if objects:
                 match infraction.identifier:
                     case "ban":
@@ -103,7 +105,7 @@ class HeroService:
                                     self.__bot.logger.warning(
                                         f"Unable to unmute {member.name} ({member.id}) in {channel.name} ({channel.id})."
                                     )
-                self.__database_factory.delete(**kwargs)
+                await self.__database_factory.delete(**kwargs)
 
     def __add__(self, pair):
         guild_snowflake, member_snowflake = pair
@@ -144,7 +146,7 @@ class HeroService:
     async def build_pages(self, object_dict, is_at_home):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
+        obj = object_dict.get("object", None)
         obj_name = "All Servers"
         if isinstance(obj, discord.Guild):
             obj_name = obj.name
@@ -159,9 +161,10 @@ class HeroService:
             cls=HeroDictionary, dictionary=dictionary
         )
 
-        hero_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            hero_n = 0
             field_count = 0
+            lines = []
             thumbnail_set = False
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -180,33 +183,23 @@ class HeroService:
                 elif not thumbnail_set:
                     embed.set_thumbnail(url=member.display_avatar.url)
                     thumbnail_set = True
-                for channel_snowflake, channel_dictionary in member_dictionary.get(
-                    "moderators", {}
-                ).items():
-                    if not object_dict.get("columns", None).get(
-                        "channel_snowflake", None
-                    ):
-                        channel = guild.get_channel(channel_snowflake)
-                        if not channel:
-                            continue
-                        lines.append(f"**Channel:** {channel.mention}")
-                    field_count += 1
-                    if field_count >= self.__CHUNK_SIZE:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed = self.__dictionary_service.flush_page(
-                            embed, pages, title, guild.name
-                        )
-                        lines = []
-                        field_count = 0
+                field_count += 1
+                if field_count >= self.__CHUNK_SIZE:
+                    embed.add_field(
+                        name="Information", value="\n".join(lines), inline=False
+                    )
+                    embed = self.__dictionary_service.flush_page(
+                        embed, pages, title, guild.name
+                    )
+                    lines = []
+                    field_count = 0
             if lines:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({hero_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({hero_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)

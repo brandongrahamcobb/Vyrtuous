@@ -151,6 +151,7 @@ class GenericEventListeners(commands.Cog):
                 message=message,
                 developer_service=self.__developer_service,
                 emoji=self.__emoji,
+                upload_service=self.__upload_service,
             )
             d_ctx = DefaultContext(message=message)
             ctx = AliasContext(
@@ -195,6 +196,7 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
+        traceback.print_exc()
         logger.error(str(error))
         if isinstance(error, commands.BadArgument):
             return await state.end(error=str(error))

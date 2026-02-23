@@ -48,6 +48,7 @@ class RoleService:
         dictionary_service=None,
         emoji=None,
         stream_service=None,
+        **kwargs,
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
@@ -63,13 +64,9 @@ class RoleService:
         source: Union[commands.Context, discord.Interaction, discord.Message],
         state,
     ):
-        obj = await self.__database_factory.select(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
-            singular=True,
-        )
-        if obj:
+        role = ctx.role
+        member = ctx.member
+        if role in member.roles:
             await self.undo(
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
             )
@@ -177,7 +174,7 @@ class RoleService:
 
     async def build_dictionary(self, where_kwargs):
         dictionary = {}
-        roles = await Role.select(singular=False, **where_kwargs)
+        roles = await self.__database_factory.select(singular=False, **where_kwargs)
         for role in roles:
             dictionary.setdefault(role.guild_snowflake, {"members": {}})
             dictionary[role.guild_snowflake]["members"].setdefault(
@@ -201,9 +198,10 @@ class RoleService:
             cls=RoleDictionary, dictionary=dictionary
         )
 
-        role_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            role_n = 0
             field_count = 0
+            lines = []
             thumbnail = False
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -247,17 +245,24 @@ class RoleService:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({role_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({role_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def enforce(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
+    async def enforce_log(self, ctx, default_ctx, source):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="role",
+            member=ctx.member,
+            source=source,
+        )
+
+    async def enforce(self, ctx, default_ctx, source, state):
         added_role = self.MODEL(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -265,44 +270,39 @@ class RoleService:
             role_snowflake=ctx.role.id,
         )
         await self.__database_factory.create(added_role)
-        role = guild.get_role(ctx.role.id)
-        if role:
+        if ctx.role:
             await self.administer_role(
                 guild_snowflake=ctx.guild.id,
                 member_snowflake=ctx.member.id,
                 role_snowflake=ctx.role.id,
             )
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.channel.id,
-            identifier="role",
-            member=member,
-            source=source,
-        )
+        await self.enforce_log(ctx=ctx, default_ctx=default_ctx, source=source)
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
+    async def undo_log(self, ctx, default_ctx, source):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="unrole",
+            is_modification=True,
+            member=ctx.member,
+            source=source,
+        )
+
+    async def undo(self, ctx, default_ctx, source, state):
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member.id,
             role_snowflake=ctx.role.id,
         )
-        role = guild.get_role(ctx.role.id)
-        if role:
+        if ctx.role:
             await self.revoke_role(
                 guild_snowflake=ctx.guild.id,
                 member_snowflake=ctx.member.id,
                 role_snowflake=ctx.role.id,
             )
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.channel.id,
-            identifier="unrole",
-            is_modification=True,
-            member=member,
-            source=source,
-        )
+        await self.undo_log(ctx=ctx, default_ctx=default_ctx, source=source)
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)

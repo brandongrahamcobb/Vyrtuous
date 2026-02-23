@@ -318,7 +318,7 @@ class DevTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         try:
-            await self.__bot.reload_extension(module)
+            await self.__bot.unload_extension(module)
         except commands.ExtensionError as e:
             return await state.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"

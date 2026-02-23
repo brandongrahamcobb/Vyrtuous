@@ -20,10 +20,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import AdministratorRoleService
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.owner.guild_owner import GuildOwner
+from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.logger import logger
@@ -31,12 +32,14 @@ from vyrtuous.utils.logger import logger
 
 class GuildEventListeners(commands.Cog):
     def __init__(self, *, bot: DiscordBot):
+        self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__database_factory.model = GuildOwner
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__administrator_role_service = AdministratorRoleService(
+        self.__administrator_service = AdministratorService(
+            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -74,12 +77,12 @@ class GuildEventListeners(commands.Cog):
         if added_roles:
             for added_role in added_roles:
                 kwargs.update({"role_snowflake": int(added_role)})
-                await self.__administrator_role_service.added_role(kwargs=kwargs)
+                await self.__administrator_service.added_role(kwargs=kwargs)
                 logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             for removed_role in removed_roles:
                 kwargs.update({"role_snowflake": int(removed_role)})
-            await self.__administrator_role_service.removed_role(kwargs=kwargs)
+            await self.__administrator_service_role_service.removed_role(kwargs=kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
@@ -90,7 +93,7 @@ class GuildEventListeners(commands.Cog):
             "role_snowflake": str(role.id),
         }
         for member in role.members:
-            await self.__administrator_role_service.removed_role(kwargs=kwargs)
+            await self.__administrator_service.removed_role(kwargs=kwargs)
             logger.info(f"Removed role ({role.id}) from server ({role.guild.name}).")
 
 

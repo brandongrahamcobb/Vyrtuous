@@ -286,9 +286,10 @@ class StreamService:
             cls=StreamDictionary, dictionary=dictionary
         )
 
-        stream_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            stream_n = 0
             field_count = 0
+            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -328,9 +329,9 @@ class StreamService:
                     value="\n".join(lines),
                     inline=False,
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({stream_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({stream_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)

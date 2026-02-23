@@ -52,7 +52,7 @@ def skip_app_command_help_discovery():
 class HelpAppCommand(commands.Cog):
     def __init__(self, *, bot: DiscordBot | None = None):
         self.__bot = bot
-        self.__database_factory = DatabaseFactory()
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__author_service = AuthorService()
@@ -228,6 +228,7 @@ class HelpAppCommand(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=False,
             interaction=interaction,
             upload_service=self.__upload_service,
         )
@@ -252,7 +253,7 @@ class HelpAppCommand(commands.Cog):
                     parameters.append((name, param))
                 if parameters and parameters[0][0] == "self":
                     parameters.pop(0)
-                if parameters and parameters[0][0] == "ctx":
+                if parameters and parameters[0][0] == "interaction":
                     parameters.pop(0)
                 if parameters:
                     usage_parts = [f"/{cmd.name}"]

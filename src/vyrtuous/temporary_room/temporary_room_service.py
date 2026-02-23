@@ -100,9 +100,10 @@ class TemporaryRoomService:
             cls=TemporaryRoomDictionary, dictionary=dictionary
         )
 
-        temp_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            temp_n = 0
             field_count = 0
+            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -150,9 +151,9 @@ class TemporaryRoomService:
                     value="\n".join(lines),
                     inline=False,
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({temp_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({temp_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)

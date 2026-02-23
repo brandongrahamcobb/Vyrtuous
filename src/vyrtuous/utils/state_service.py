@@ -60,6 +60,7 @@ class StateService:
         bug_service=None,
         developer_service=None,
         emoji=None,
+        ephemeral=False,
         ctx: commands.Context | None = None,
         interaction: discord.Interaction | None = None,
         message: discord.Message | None = None,
@@ -67,9 +68,7 @@ class StateService:
     ):
         if (ctx is None) == (interaction is None) == (message is None):
             raise commands.CheckFailure("Discord source not defined in StateService.")
-        self.__author_service = author_service
         self.__bot = bot
-        self.__config = self.__bot.config
         self.__bug_service = bug_service
         self.__developer_service = developer_service
         self.__emoji = emoji
@@ -77,11 +76,12 @@ class StateService:
         self.counter = TimeToComplete()
         self._source = ctx or interaction or message
         self._reported_users = set()
-        self.is_ephemeral = False
+        self.ephemeral = ephemeral
         self.start_time = self._get_start_time(self._source)
         self.message = discord.Message | None
         self.__paginator = None
-        self.submitter_id = self.__author_service.resolve_author(self._source).id
+        self.submitter_id = author_service.resolve_author(self._source).id
+        self.__view = None
 
     def _get_start_time(self, source):
         if isinstance(source, commands.Context):
@@ -101,6 +101,7 @@ class StateService:
         error=None,
         message_obj=None,
         allowed_mentions=discord.AllowedMentions.none(),
+        view=None,
     ):
         if success is not None:
             message_obj = success
@@ -165,6 +166,7 @@ class StateService:
             embed=embed,
             file=file,
             paginated=False,
+            view=view,
             allowed_mentions=allowed_mentions,
         )
         cache[self.message.id] = {
@@ -182,6 +184,7 @@ class StateService:
         embed=None,
         file=None,
         paginated=False,
+        view=None,
         allowed_mentions=discord.AllowedMentions.none(),
     ):
         kwargs = {
@@ -189,24 +192,23 @@ class StateService:
             "embed": embed,
             "allowed_mentions": allowed_mentions,
         }
+        if view:
+            kwargs.update({"view": view})
         if file is not None:
             kwargs["file"] = file
         if isinstance(self._source, discord.Interaction) and not paginated:
             if not self._source.response.is_done():
-                await self._source.response.defer(ephemeral=True)
-                self.is_ephemeral = True
+                await self._source.response.defer(ephemeral=self.ephemeral)
             return await self._source.followup.send(**kwargs)
         elif isinstance(self._source, discord.Interaction) and paginated:
             if not self._source.response.is_done():
-                await self._source.response.defer(ephemeral=True)
+                await self._source.response.defer(ephemeral=self.ephemeral)
             return await self._source.followup.send(**kwargs)
         else:
             return await self._source.channel.send(**kwargs)
 
     async def _add_reactions(self, show_error_emoji: bool, paginated: bool):
-        if not self.message or self.is_ephemeral:
-            return
-        if self.message and self.message.webhook_id is not None:
+        if not self.message or self.ephemeral:
             return
         if paginated:
             await self.message.add_reaction("\u2b05\ufe0f")
@@ -295,10 +297,3 @@ class StateService:
         await self.__developer_service.report_issue(
             message=self.message, reference=reference, source=self._source, user=user
         )
-
-    @classmethod
-    async def send_pages(cls, title, pages, state):
-        if pages:
-            return await state.end(success=pages)
-        else:
-            return await state.end(success=f"No {title.lower()} found.")

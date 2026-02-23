@@ -78,6 +78,7 @@ class VideoRoomService:
         vr_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
+            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -127,7 +128,8 @@ class VideoRoomService:
                 )
             pages.append(embed)
         if pages:
-            pages[0].description = f"**({vr_n})**"
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({vr_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)

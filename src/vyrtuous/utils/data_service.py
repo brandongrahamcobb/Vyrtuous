@@ -107,10 +107,10 @@ class DataService:
 
     async def save_data(
         self,
-        author: discord.Member,
         channel: discord.abc.GuildChannel,
         identifier: str,
         member: discord.Member,
+        author: discord.Member | None = None,
         duration_value: str | None = None,
         is_modification: bool = False,
         reason: str = "No reason provided",
@@ -141,11 +141,14 @@ class DataService:
             .set_counts(total_voice_members=total_voice_members) \
             .set_snowflakes(channel_snowflake=int(channel.id)) \
             .set_snowflakes(guild_snowflake=int(channel.guild.id)) \
-            .set_snowflakes(author_snowflake=int(author.id)) \
             .set_snowflakes(target_snowflake=int(member.id)) \
             .set_expires_at(expires_at=expires_at) \
             .set_identifier(identifier=identifier) \
             .set_is_modification(is_modification=is_modification) \
             .set_reason(reason=reason)
         # fmt: on
+        if author:
+            self.set_snowflakes(author_snowflake=int(author.id))
+        else:
+            self.set_snowflakes(author_snowflake=0)
         await self.__database_factory.create(self.__data)

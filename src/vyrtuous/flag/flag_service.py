@@ -50,6 +50,7 @@ class FlagService:
         dictionary_service=None,
         emoji=None,
         stream_service=None,
+        **kwargs,
     ):
         self.__bot = bot
         self.__database_factory = copy(database_factory)
@@ -123,9 +124,10 @@ class FlagService:
             cls=FlagDictionary, dictionary=dictionary
         )
 
-        flag_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            flag_n = 0
             field_count = 0
+            lines = []
             thumbnail = False
             guild = bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -168,18 +170,25 @@ class FlagService:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({flag_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({flag_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
+    async def enforce_log(self, ctx, default_ctx, source):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="flag",
+            member=ctx.member,
+            source=source,
+            reason=ctx.reason,
+        )
+
     async def enforce(self, ctx, default_ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
         flag = self.MODEL(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -188,23 +197,26 @@ class FlagService:
         )
         await self.__database_factory.create(flag)
         self.__flags.append(flag)
-        await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=channel,
-            identifier="flag",
-            member=member,
-            source=source,
-            reason=ctx.reason,
-        )
+        await self.enforce_log(ctx=ctx, default_ctx=default_ctx, source=source)
+        embed = await self.act_embed(ctx=ctx)
         await self.__data_service.save_data(
             author=default_ctx.author,
-            channel=channel,
+            channel=ctx.channel,
             identifier="flag",
             reason=ctx.reason,
-            member=member,
+            member=ctx.member,
         )
-        embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
+
+    async def undo_log(self, ctx, default_ctx, source):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="unflag",
+            is_modification=True,
+            member=ctx.member,
+            source=source,
+        )
 
     async def undo(self, ctx, default_ctx, source, state):
         guild = self.__bot.get_guild(ctx.guild.id)
@@ -219,23 +231,16 @@ class FlagService:
             if flag.channel_snowflake == ctx.channel.id:
                 self.__flags.remove(flag)
                 break
-        await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=channel,
-            identifier="unflag",
-            is_modification=True,
-            member=member,
-            source=source,
-        )
+        await self.undo_log(ctx=ctx, default_ctx=default_ctx, source=source)
+        embed = await self.undo_embed(ctx=ctx)
         await self.__data_service.save_data(
             author=default_ctx.author,
-            channel=channel,
+            channel=ctx.channel,
             identifier="uflag",
             is_modification=True,
             reason=ctx.reason,
-            member=member,
+            member=ctx.member,
         )
-        embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):

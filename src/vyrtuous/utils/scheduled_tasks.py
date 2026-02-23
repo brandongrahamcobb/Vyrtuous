@@ -35,15 +35,12 @@ from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 
 
 class ScheduledTasks(commands.Cog):
     def __init__(self, bot: DiscordBot):
-        self.__bot = bot
-        self.config = bot.config
         self.__author_service = AuthorService()
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
@@ -144,16 +141,25 @@ class ScheduledTasks(commands.Cog):
             self.check_sysadmin.start()
         if not self.temporarily_cleanup_overwrites.is_running():
             self.temporarily_cleanup_overwrites.start()
+        if not self.match_moderation_logs.is_running():
+            self.match_moderation_logs.start()
+
+    @tasks.loop(minutes=5)
+    async def match_moderation_logs(self):
+        await self.__ban_service.match()
+        await self.__text_mute_service.match()
+        await self.__voice_mute_service.match()
+        self.__bot.logger.info("Matched deleted entries to moderation logs")
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
         await self.__ban_service.clean_expired()
-        logger.info("Cleaned up expired bans.")
+        self.__bot.logger.info("Cleaned up expired bans.")
 
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
         await self.__voice_mute_service.clean_expired()
-        logger.info("Cleaned up expired voice-mutes.")
+        self.__bot.logger.info("Cleaned up expired voice-mutes.")
 
     @tasks.loop(minutes=1)
     async def check_expired_stages(self):
@@ -190,9 +196,11 @@ class ScheduledTasks(commands.Cog):
             db = Database(config=self.__bot.config)
             db.create_backup_directory()
             db.execute_backup()
-            logger.info("Backup completed successfully.")
+            self.__bot.logger.info("Backup completed successfully.")
         except Exception as e:
-            logger.error(f"Error during database backup: {str(e).capitalize()}")
+            self.__bot.logger.error(
+                f"Error during database backup: {str(e).capitalize()}"
+            )
 
     @backup_database.before_loop
     async def before_backup(self):
@@ -224,6 +232,10 @@ class ScheduledTasks(commands.Cog):
 
     @temporarily_cleanup_overwrites.before_loop
     async def before_temporarily_cleanup_overwrites(self):
+        await self.__bot.wait_until_ready()
+
+    @match_moderation_logs.before_loop
+    async def before_match_moderation_logs(self):
         await self.__bot.wait_until_ready()
 
 

@@ -297,6 +297,7 @@ class HelpTextCommand(commands.Cog):
             ctx=ctx,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            upload_service=self.__upload_service,
         )
         bot = ctx.bot
         pages, param_details, parameters = [], [], []

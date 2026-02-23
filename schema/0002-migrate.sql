@@ -23,9 +23,10 @@ ALTER TABLE moderation_logs RENAME COLUMN executor_member_snowflake TO author_sn
 ALTER TABLE moderation_logs RENAME COLUMN target_member_snowflake TO target_snowflake;
 CREATE TABLE uploads (
     command_name TEXT NOT NULL,
-    arguments TEXT NOT NULL,
     file_bytes BYTEA NOT NULL,
     filename TEXT NOT NULL,
+    tag TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (command_name, arguments)
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (command_name, tag)
 );

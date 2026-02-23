@@ -154,11 +154,11 @@ class PaginatorService:
         self.message = None
         self._reaction_lock = asyncio.Lock()
 
-    async def start(self, channel, pages, *, timeout=60):
+    async def start(self, channel, pages, *, ephemeral=False, timeout=60):
         embed = self.get_current_embed(channel=channel, pages=pages)
         if isinstance(channel, discord.Interaction):
             if not channel.response.is_done():
-                await channel.response.send_message(embed=embed)
+                await channel.response.send_message(embed=embed, ephemeral=ephemeral)
             self.message = await channel.original_response()
         elif isinstance(channel, discord.Message):
             self.message = await channel.reply(embed=embed)

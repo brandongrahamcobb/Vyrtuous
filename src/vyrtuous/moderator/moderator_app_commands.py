@@ -190,6 +190,7 @@ class ModeratorAppCommands(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=True,
             interaction=interaction,
         )
         view = DataView(
@@ -223,6 +224,7 @@ class ModeratorAppCommands(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=True,
             interaction=interaction,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
@@ -258,6 +260,7 @@ class ModeratorAppCommands(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=True,
             interaction=interaction,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
@@ -297,6 +300,7 @@ class ModeratorAppCommands(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=True,
             interaction=interaction,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
@@ -335,6 +339,7 @@ class ModeratorAppCommands(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=True,
             interaction=interaction,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)
@@ -373,6 +378,7 @@ class ModeratorAppCommands(commands.Cog):
             bug_service=self.__bug_service,
             developer_service=self.__developer_service,
             emoji=self.__emoji,
+            ephemeral=True,
             interaction=interaction,
         )
         member_dict = self.__discord_object_service.to_dict(obj=member)

@@ -193,9 +193,10 @@ class BugService:
             cls=BugDictionary, dictionary=dictionary
         )
 
-        bug_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            bug_n = 0
             field_count = 0
+            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -240,9 +241,9 @@ class BugService:
                     value="\n".join(lines),
                     inline=False,
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({bug_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({bug_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_messages)

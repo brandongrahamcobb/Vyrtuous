@@ -81,9 +81,10 @@ class ServerMuteService:
             cls=ServerMuteDictionary, dictionary=dictionary
         )
 
-        smute_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            smute_n = 0
             field_count = 0
+            lines = []
             thumbnail = False
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -122,9 +123,9 @@ class ServerMuteService:
                     value="\n".join(lines),
                     inline=False,
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({smute_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({smute_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)

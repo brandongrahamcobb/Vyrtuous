@@ -132,8 +132,8 @@ class AliasService:
             cls=AliasDictionary, dictionary=dictionary
         )
 
-        alias_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            alias_n = 0
             pages = []
             field_count = 0
             guild = self.__bot.get_guild(guild_snowflake)
@@ -172,9 +172,9 @@ class AliasService:
                     value="\n".join(lines),
                     inline=False,
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({alias_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({alias_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)

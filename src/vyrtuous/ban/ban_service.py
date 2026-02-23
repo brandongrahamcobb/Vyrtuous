@@ -218,9 +218,10 @@ class BanService:
             cls=BanDictionary, dictionary=dictionary
         )
 
-        ban_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            ban_n = 0
             field_count = 0
+            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -266,17 +267,27 @@ class BanService:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({ban_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({ban_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
+    async def enforce_log(self, ctx, default_ctx, source, is_channel_scope=None):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            duration_value=ctx.duration_value,
+            identifier="ban",
+            is_channel_scope=is_channel_scope,
+            member=ctx.member,
+            source=source,
+            reason=ctx.reason,
+        )
+
     async def enforce(self, ctx, default_ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
         ban = self.MODEL(
             channel_snowflake=ctx.channel.id,
             expires_in=ctx.expires_in,
@@ -286,21 +297,20 @@ class BanService:
         )
         await self.__database_factory.create(ban)
         is_channel_scope = False
-        channel = guild.get_channel(ctx.channel.id)
-        if channel:
+        if ctx.channel:
             try:
-                await channel.set_permissions(
-                    member,
+                await ctx.channel.set_permissions(
+                    ctx.member,
                     view_channel=False,
                     reason=ctx.reason,
                 )
                 if (
-                    member.voice
-                    and member.voice.channel
-                    and member.voice.channel.id == channel.id
+                    ctx.member.voice
+                    and ctx.member.voice.channel
+                    and ctx.member.voice.channel.id == ctx.channel.id
                 ):
                     is_channel_scope = True
-                    await member.move_to(None, reason=ctx.reason)
+                    await ctx.member.move_to(None, reason=ctx.reason)
                     where_kwargs = {
                         "channel_snowflake": ctx.channel.id,
                         "guild_snowflake": ctx.guild.id,
@@ -314,61 +324,56 @@ class BanService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=channel,
-            duration_value=ctx.duration_value,
-            identifier="ban",
+        await self.enforce_log(
+            ctx=ctx,
+            default_ctx=default_ctx,
             is_channel_scope=is_channel_scope,
-            member=member,
             source=source,
-            reason=ctx.reason,
         )
         await self.__data_service.save_data(
             author=default_ctx.author,
-            channel=channel,
+            channel=ctx.channel,
             identifier="ban",
             duration_value=ctx.duration_value,
             reason=ctx.reason,
-            member=member,
+            member=ctx.member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
+    async def undo_log(self, ctx, default_ctx, source):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="unban",
+            is_modification=True,
+            member=ctx.member,
+            source=source,
+            reason=ctx.reason,
+        )
+
     async def undo(self, ctx, default_ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        author = guild.get_member(default_ctx.author.id)
-        member = guild.get_member(ctx.member.id)
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member.id,
         )
-        channel = guild.get_channel(ctx.channel.id)
-        if channel:
+        if ctx.channel:
             try:
-                await channel.set_permissions(member, view_channel=None)
+                await ctx.channel.set_permissions(ctx.member, view_channel=None)
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_log(
-            author=author,
-            channel=channel,
-            identifier="unban",
-            is_modification=True,
-            member=member,
-            source=source,
-            reason=ctx.reason,
-        )
-        await self.__data_service.save_data(
-            author=author,
-            channel=channel,
-            identifier="unban",
-            is_modification=True,
-            reason=ctx.reason,
-            member=member,
-        )
+        await self.undo_log(ctx=ctx, default_ctx=default_ctx, source=source)
         embed = await self.undo_embed(ctx=ctx)
+        await self.__data_service.save_data(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="unban",
+            is_modification=True,
+            reason=ctx.reason,
+            member=ctx.member,
+        )
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
@@ -380,7 +385,7 @@ class BanService:
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unit_ts()}\n"
+                f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unix_ts()}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
@@ -470,3 +475,44 @@ class BanService:
         self.__bot.logger.info(
             f"Updated last_kicked record for {member.display_name} in {channel.name}."
         )
+
+    async def match(self):
+        objects = await self.__database_factory.select()
+        object_lookup = {
+            (obj.guild_snowflake, obj.channel_snowflake, obj.member_snowflake)
+            for obj in objects
+        }
+        async with self.__bot.db_pool.acquire() as conn:
+            logs = await conn.fetch("""
+                SELECT DISTINCT ON (guild_snowflake, channel_snowflake, target_snowflake)
+                    guild_snowflake,
+                    channel_snowflake,
+                    target_snowflake,
+                    identifier,
+                    created_at
+                FROM moderation_logs
+                WHERE identifier IN ('ban', 'unban')
+                ORDER BY
+                    guild_snowflake,
+                    channel_snowflake,
+                    target_snowflake,
+                    created_at DESC
+            """)
+        for log in logs:
+            key = (
+                log["guild_snowflake"],
+                log["channel_snowflake"],
+                log["target_snowflake"],
+            )
+            if log["identifier"] == "ban" and key not in object_lookup:
+                guild = self.__bot.get_guild(log["guild_snowflake"])
+                if not guild:
+                    continue
+                channel = guild.get_channel(log["channel_snowflake"])
+                member = guild.get_member(log["target_snowflake"])
+                if channel and member:
+                    self.__data_service.save_data(
+                        channel=channel,
+                        identifier="unban",
+                        member=member,
+                    )

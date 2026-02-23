@@ -421,7 +421,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        context = DefaultContext(ctx=ctx)
+        default_ctx = DefaultContext(ctx=ctx)
         object_dict = self.__discord_object_service.to_dict(obj=target)
         where_kwargs = object_dict.get("columns", None)
         view = VerifyView(
@@ -431,7 +431,7 @@ class AdminTextCommands(commands.Cog):
             **where_kwargs,
         )
         embed = view.build_embed()
-        await state.end(embed=embed, view=view)
+        await state.end(success=embed, view=view)
         await view.wait()
         state = StateService(
             author_service=self.__author_service,
@@ -444,7 +444,7 @@ class AdminTextCommands(commands.Cog):
         )
         msg = await self.__clear_service.clear(
             category=category,
-            context=context,
+            default_ctx=default_ctx,
             object_dict=object_dict,
             where_kwargs=where_kwargs,
             target=target,

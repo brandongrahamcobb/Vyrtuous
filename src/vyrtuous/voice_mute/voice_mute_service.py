@@ -181,6 +181,7 @@ class VoiceMuteService:
         vmute_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
+            lines = []
             thumbnail = False
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
@@ -234,7 +235,8 @@ class VoiceMuteService:
                 )
             pages.append(embed)
         if pages:
-            pages[0].description = f"**({vmute_n})**"
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({vmute_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
@@ -343,10 +345,19 @@ class VoiceMuteService:
         pages.append(embed)
         return pages
 
+    async def enforce_log(self, ctx, default_ctx, source, is_channel_scope):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            duration_value=ctx.duration_value,
+            identifier="vmute",
+            is_channel_scope=is_channel_scope,
+            member=ctx.member,
+            source=source,
+            reason=ctx.reason,
+        )
+
     async def enforce(self, ctx, default_ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
         voice_mute = self.MODEL(
             channel_snowflake=ctx.channel.id,
             expires_in=ctx.expires_in,
@@ -357,67 +368,68 @@ class VoiceMuteService:
         )
         await self.__database_factory.create(voice_mute)
         is_channel_scope = False
-        if member.voice and member.voice.channel:
-            if member.voice.channel.id == ctx.channel.id:
+        if ctx.member.voice and ctx.member.voice.channel:
+            if ctx.member.voice.channel.id == ctx.channel.id:
                 is_channel_scope = True
                 try:
-                    await member.edit(mute=True, reason=ctx.reason)
+                    await ctx.member.edit(mute=True, reason=ctx.reason)
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=channel,
-            duration_value=ctx.duration_value,
-            identifier="vmute",
+        await self.enforce_log(
+            ctx=ctx,
+            default_ctx=default_ctx,
             is_channel_scope=is_channel_scope,
-            member=member,
             source=source,
-            reason=ctx.reason,
         )
         await self.__data_service.save_data(
             author=default_ctx.author,
-            channel=channel,
+            channel=ctx.channel,
             identifier="vmute",
             duration_value=ctx.duration_value,
             reason=ctx.reason,
-            member=member,
+            member=ctx.member,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
+    async def undo_log(self, ctx, default_ctx, source, is_channel_scope=None):
+        await self.__stream_service.send_log(
+            author=default_ctx.author,
+            channel=ctx.channel,
+            identifier="unvmute",
+            is_channel_scope=is_channel_scope,
+            is_modification=True,
+            member=ctx.member,
+            source=source,
+            reason=ctx.reason,
+        )
+
     async def undo(self, ctx, default_ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member.id,
         )
         is_channel_scope = False
-        if member.voice and member.voice.channel:
+        if ctx.member.voice and ctx.member.voice.channel:
             try:
                 is_channel_scope = True
-                await member.edit(mute=False)
+                await ctx.member.edit(mute=False)
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
-        await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=channel,
-            identifier="unvmute",
+        await self.undo_log(
+            ctx=ctx,
+            default_ctx=default_ctx,
             is_channel_scope=is_channel_scope,
-            is_modification=True,
-            member=member,
             source=source,
-            reason=ctx.reason,
         )
         await self.__data_service.save_data(
             author=default_ctx.author,
-            channel=channel,
+            channel=ctx.channel,
             identifier="unvmute",
             is_modification=True,
             reason=ctx.reason,
-            member=member,
+            member=ctx.member,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -431,7 +443,7 @@ class VoiceMuteService:
             description=(
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unit_ts()}\n"
+                f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unix_ts()}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
@@ -652,3 +664,44 @@ class VoiceMuteService:
             self.__bot.logger.warning(
                 f"Failed to edit mute for {member.display_name}: {str(e).capitalize()}"
             )
+
+    async def match(self):
+        objects = await self.__database_factory.select()
+        object_lookup = {
+            (obj.guild_snowflake, obj.channel_snowflake, obj.member_snowflake)
+            for obj in objects
+        }
+        async with self.__bot.db_pool.acquire() as conn:
+            logs = await conn.fetch("""
+                SELECT DISTINCT ON (guild_snowflake, channel_snowflake, target_snowflake)
+                    guild_snowflake,
+                    channel_snowflake,
+                    target_snowflake,
+                    identifier,
+                    created_at
+                FROM moderation_logs
+                WHERE identifier IN ('vmute', 'unvmute')
+                ORDER BY
+                    guild_snowflake,
+                    channel_snowflake,
+                    target_snowflake,
+                    created_at DESC
+            """)
+        for log in logs:
+            key = (
+                log["guild_snowflake"],
+                log["channel_snowflake"],
+                log["target_snowflake"],
+            )
+            if log["identifier"] == "ban" and key not in object_lookup:
+                guild = self.__bot.get_guild(log["guild_snowflake"])
+                if not guild:
+                    continue
+                channel = guild.get_channel(log["channel_snowflake"])
+                member = guild.get_member(log["target_snowflake"])
+                if channel and member:
+                    self.__data_service.save_data(
+                        channel=channel,
+                        identifier="unban",
+                        member=member,
+                    )

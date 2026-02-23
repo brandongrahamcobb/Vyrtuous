@@ -129,9 +129,9 @@ class DeveloperService:
                     value="\n".join(lines),
                     inline=False,
                 )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({dev_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({dev_n})**"
         return pages
 
     async def report_issue(self, message, reference, source, user):

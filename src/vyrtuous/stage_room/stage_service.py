@@ -111,9 +111,10 @@ class StageService:
             cls=StageDictionary, dictionary=dictionary
         )
 
-        stage_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
+            stage_n = 0
             field_count = 0
+            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -146,9 +147,9 @@ class StageService:
                         value="\n".join(lines),
                         inline=False,
                     )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description}** **({stage_n})**"
             pages.append(embed)
-        if pages:
-            pages[0].description = f"**({stage_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)

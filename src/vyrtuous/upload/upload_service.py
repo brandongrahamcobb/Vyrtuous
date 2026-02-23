@@ -1,3 +1,5 @@
+from copy import copy
+
 import discord
 from discord.ext import commands
 
@@ -5,6 +7,8 @@ from vyrtuous.upload.upload import Upload
 
 
 class UploadService:
+    MODEL = Upload
+
     def __init__(
         self,
         *,
@@ -13,24 +17,28 @@ class UploadService:
     ):
         self.__bot = bot
         self.__source = None
-        self.__database_factory = database_factory
+        self.__database_factory = copy(database_factory)
+        self.__database_factory.model = self.MODEL
 
     def __extract_command_and_args(self):
         if isinstance(self.__source, discord.Interaction):
-            command_name = self.__source.command.name if self.__source.command else None
-            arguments = " ".join(
-                str(value)
-                for value in getattr(self.__source, "namespace", {}).values()
-                if value is not None
+            command_name = getattr(
+                getattr(self.__source, "command", None), "name", None
             )
+            namespace = getattr(self.__source, "namespace", None)
+            arguments = ""
+            if namespace:
+                arguments = " ".join(
+                    str(value)
+                    for value in vars(namespace).values()
+                    if value is not None
+                )
             return command_name, arguments
-        if isinstance(self.__source, commands.Context):
+        elif isinstance(self.__source, commands.Context):
             command_name = self.__source.command.name if self.__source.command else None
-            arguments = " ".join(
-                map(str, self.__source.args[1:])
-            )  # skip command itself
+            arguments = " ".join(map(str, self.__source.args[1:]))
             return command_name, arguments
-        if isinstance(self.__source, discord.Message):
+        elif isinstance(self.__source, discord.Message):
             prefix = self.__bot.config["discord_command_prefix"]
             content = self.__source.content.strip()
             if content.startswith(prefix):
@@ -45,15 +53,16 @@ class UploadService:
 
     async def __send_prompt(self):
         if isinstance(self.__source, discord.Interaction):
-            await self.__source.response.send_message(
+            await self.__source.followup.send(
                 "Upload a file in your next message.",
-                ephemeral=True,
+                ephemeral=False,
             )
             return self.__source.channel, self.__source.user
-        elif isinstance(self.__source, discord.Message) or isinstance(
-            self.__source, commands.Context
-        ):
+        elif isinstance(self.__source, commands.Context):
             await self.__source.send("Upload a file in your next message.")
+            return self.__source.channel, self.__source.author
+        elif isinstance(self.__source, discord.Message):
+            await self.__source.channel.send("Upload a file in your next message.")
             return self.__source.channel, self.__source.author
         return None, None
 
@@ -63,13 +72,13 @@ class UploadService:
 
         return await self.__bot.wait_for("message", timeout=300, check=check)
 
-    async def __save_upload(self, attachment, command_name, arguments):
+    async def __save_upload(self, attachment, command_name, tag):
         file_bytes = await attachment.read()
         obj = Upload(
             command_name=command_name,
-            arguments=arguments,
             file_bytes=file_bytes,
             filename=attachment.filename,
+            tag=tag,
         )
         await self.__database_factory.upsert(obj)
 
@@ -88,8 +97,9 @@ class UploadService:
         except Exception:
             return False
         attachment = message.attachments[0]
+        tag = message.content
         try:
-            await self.__save_upload(attachment, command_name, arguments)
+            await self.__save_upload(attachment, command_name, tag)
         except Exception:
             return False
         return True
