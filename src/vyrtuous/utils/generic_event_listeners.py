@@ -69,6 +69,7 @@ class GenericEventListeners(commands.Cog):
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
@@ -196,7 +197,6 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        traceback.print_exc()
         logger.error(str(error))
         if isinstance(error, commands.BadArgument):
             return await state.end(error=str(error))

@@ -319,7 +319,7 @@ ALTER TABLE public.roles OWNER TO vyrtuous;
 CREATE TABLE public.streaming (
     target_channel_snowflake bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    source_channel_snowflake bigint DEFAULT NULL,
+    source_channel_snowflake bigint DEFAULT,
     guild_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );

@@ -74,85 +74,77 @@ class ClearService:
                 target_member_snowflake=object_dict.get("id", None),
             )
             if view.result:
-                for obj in self.dir_to_classes(
+                for cls in self.dir_to_classes(
                     dir_paths=dir_paths, attr="member_snowflake"
                 ):
                     if str(category) == "all":
                         msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
-                    elif str(category).lower() == obj.identifier:
+                    elif str(category).lower() == cls.identifier:
                         msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
-                    if obj.__class__.__name__ == "Ban":
+                    if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "Flag":
+                    elif cls.__name__ == "Flag":
                         await self.__flag_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "TextMute":
+                    elif cls.__name__ == "TextMute":
                         await self.__text_mute_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "VoiceMute":
+                    elif cls.__name__ == "VoiceMute":
                         await self.__voice_mute_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
                     else:
-                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        await self.__database_factory.delete_by_cls(cls, **where_kwargs)
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
             await self.__moderator_service.has_equal_or_lower_role(
                 **object_dict.get("columns", None), lowest_role="Guild Owner"
             )
             if view.result:
-                for obj in self.dir_to_classes(
+                for cls in self.dir_to_classes(
                     dir_paths=dir_paths, attr="channel_snowflake"
                 ):
                     if category == "all":
                         msg = f"Deleted all database information for {object_dict.get('mention')}."
-                    elif str(category).lower() == obj.identifier:
+                    elif str(category).lower() == cls.identifier:
                         msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
-                    if obj.__class__.__name__ == "Ban":
+                    if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "Flag":
+                    elif cls.__name__ == "Flag":
                         await self.__flag_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "TextMute":
+                    elif cls.__name__ == "TextMute":
                         await self.__text_mute_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "VoiceMute":
+                    elif cls.__name__ == "VoiceMute":
                         await self.__voice_mute_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
                     else:
-                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        await self.__database_factory.delete_by_cls(cls, **where_kwargs)
         elif isinstance(object_dict.get("object", None), discord.Guild):
             await self.__moderator_service.has_equal_or_lower_role(
                 **object_dict.get("columns", None), lowest_role="Developer"
@@ -163,69 +155,65 @@ class ClearService:
                     "guild_snowflake",
                     "member_snowflake",
                 ]
-                objects = [
-                    obj
+                classes = [
+                    cls
                     for attr in attributes
-                    for obj in self.dir_to_classes(dir_paths=dir_paths, attr=attr)
+                    for cls in self.dir_to_classes(dir_paths=dir_paths, attr=attr)
                 ]
-                for obj in objects:
+                for cls in classes:
                     if str(category).lower() == "all":
                         msg = f"Deleted all database information for {object_dict.get('name')}."
                     elif str(category).lower() == obj.identifier:
                         msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
-                    if obj.__class__.__name__ == "Ban":
+                    if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "Flag":
+                    elif cls.__name__ == "Flag":
                         await self.__flag_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "TextMute":
+                    elif cls.__name__ == "TextMute":
                         await self.__text_mute_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
-                    elif obj.__class__.__name__ == "VoiceMute":
+                    elif cls.__name__ == "VoiceMute":
                         await self.__voice_mute_service.delete(
                             author=default_ctx.author,
                             kwargs=where_kwargs,
-                            reason="Clear command",
                             source=source,
                         )
                     else:
-                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        await self.__database_factory.delete_by_cls(cls, **where_kwargs)
         elif target == "all" and await self.__sysadmin_service.is_sysadmin(
             member_snowflake=default_ctx.to_dict().get("member_snowflake")
         ):
             if view.result:
-                for obj in self.dir_to_classes(dir_paths=dir_paths, attr=None):
-                    if obj.__class__.__name__ == "Ban":
+                for cls in self.dir_to_classes(dir_paths=dir_paths, attr=None):
+                    if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author, **where_kwargs
                         )
-                    elif obj.__class__.__name__ == "Flag":
+                    elif cls.__name__ == "Flag":
                         await self.__flag_service.delete(
                             author=default_ctx.author, **where_kwargs
                         )
-                    elif obj.__class__.__name__ == "TextMute":
+                    elif cls.__name__ == "TextMute":
                         await self.__text_mute_service.delete(
                             author=default_ctx.author, **where_kwargs
                         )
-                    elif obj.__class__.__name__ == "VoiceMute":
+                    elif cls.__name__ == "VoiceMute":
                         await self.__voice_mute_service.delete(
                             author=default_ctx.author, **where_kwargs
                         )
                     else:
-                        await self.__database_factory.delete_by_cls(obj, **where_kwargs)
+                        await self.__database_factory.delete_by_cls(cls, **where_kwargs)
                     msg = "Deleted all database entries."
 
         else:

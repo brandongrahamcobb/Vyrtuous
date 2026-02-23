@@ -345,7 +345,7 @@ class VoiceMuteService:
         pages.append(embed)
         return pages
 
-    async def delete(self, author, kwargs, reason, source):
+    async def delete(self, author, kwargs, source):
         objects = await self.__database_factory.select(**kwargs)
         for obj in objects:
             await self.__database_factory.delete_by_cls(obj, **kwargs)
@@ -364,7 +364,6 @@ class VoiceMuteService:
                 channel=channel,
                 is_channel_scope=is_channel_scope,
                 member=member,
-                reason=reason,
                 source=source,
             )
 
@@ -430,14 +429,12 @@ class VoiceMuteService:
             is_modification=True,
             member=member,
             source=source,
-            reason=reason,
         )
         await self.__data_service.save_data(
             author=author,
             channel=channel,
             identifier="unvmute",
             is_modification=True,
-            reason=reason,
             member=member,
         )
 

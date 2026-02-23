@@ -164,12 +164,12 @@ class HelpTextCommand(commands.Cog):
                         lines.append(f"• {line}")
         return lines
 
-    async def get_available_commands(self, bot, user_highest):
+    async def get_available_commands(self, user_highest):
         available = []
         skipped = []
-        for command in bot.commands:
+        for command in self.__bot.commands:
             try:
-                perm_level = await self.get_command_permission_level(bot, command)
+                perm_level = await self.get_command_permission_level(command)
                 user_index = self.__moderator_service.PERMISSION_TYPES.index(
                     user_highest
                 )
@@ -195,7 +195,7 @@ class HelpTextCommand(commands.Cog):
                 )
         return available, skipped
 
-    async def get_command_permission_level(self, bot, command):
+    async def get_command_permission_level(self, command):
         if command.checks:
             for verify in command.checks:
                 func = getattr(verify, "__wrapped__", verify)
@@ -221,12 +221,12 @@ class HelpTextCommand(commands.Cog):
         }
         return colors.get(perm_level, discord.Color.greyple())
 
-    async def group_commands_by_permission(self, bot, source, commands_list):
+    async def group_commands_by_permission(self, source, commands_list):
         permission_groups = {
             level: [] for level in self.__moderator_service.PERMISSION_TYPES
         }
         for command in commands_list:
-            perm_level = await self.get_command_permission_level(bot, command)
+            perm_level = await self.get_command_permission_level(command)
             if perm_level in permission_groups:
                 permission_groups[perm_level].append(command)
             else:
@@ -234,7 +234,7 @@ class HelpTextCommand(commands.Cog):
         return permission_groups
 
     async def resolve_command_or_alias(self, source, name: str):
-        cmd = self.bot.get_command(name.lower())
+        cmd = self.__bot.get_command(name.lower())
         if cmd:
             return ("command", cmd)
         alias = await self.__database_factory.select(
@@ -299,7 +299,6 @@ class HelpTextCommand(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        bot = ctx.bot
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)
@@ -375,13 +374,11 @@ class HelpTextCommand(commands.Cog):
             member_snowflake=ctx.author.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(
-            bot=bot, user_highest=user_highest
+            user_highest=user_highest
         )
-        permission_groups = await self.group_commands_by_permission(
-            bot, ctx, all_commands
-        )
+        permission_groups = await self.group_commands_by_permission(ctx, all_commands)
         skipped_permission_groups = await self.group_commands_by_permission(
-            bot, ctx, skipped_commands
+            ctx, skipped_commands
         )
         aliases = await self.__database_factory.select(
             channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id

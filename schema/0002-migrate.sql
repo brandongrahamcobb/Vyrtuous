@@ -30,3 +30,5 @@ CREATE TABLE uploads (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (command_name, tag)
 );
+ALTER TABLE streaming
+ALTER COLUMN source_channel_snowflake DROP NOT NULL;

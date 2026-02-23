@@ -243,7 +243,6 @@ class FlagService:
             identifier="uflag",
             is_modification=True,
             member=member,
-            reason=reason,
         )
 
     async def undo(self, ctx, default_ctx, source, state):

@@ -131,10 +131,10 @@ class HelpAppCommand(commands.Cog):
 
     cog_check._permission_level = "Moderator"
 
-    async def get_available_commands(self, bot, user_highest):
+    async def get_available_commands(self, user_highest):
         available = []
         skipped = []
-        for command in bot.tree.get_commands():
+        for command in self.__bot.tree.get_commands():
             try:
                 perm_level = await self.get_command_permission_level(command)
                 user_index = self.__moderator_service.PERMISSION_TYPES.index(
@@ -177,7 +177,7 @@ class HelpAppCommand(commands.Cog):
         }
         return colors.get(perm_level, discord.Color.greyple())
 
-    async def group_commands_by_permission(self, bot, source, commands_list):
+    async def group_commands_by_permission(self, source, commands_list):
         permission_groups = {
             level: [] for level in self.__moderator_service.PERMISSION_TYPES
         }
@@ -190,7 +190,7 @@ class HelpAppCommand(commands.Cog):
         return permission_groups
 
     async def resolve_app_command(self, source, name: str):
-        command = self.bot.tree.get_command(name.lower(), guild=source.guild)
+        command = self.__bot.tree.get_command(name.lower(), guild=source.guild)
         if command:
             return ("command", command)
         return (None, None)
@@ -232,7 +232,6 @@ class HelpAppCommand(commands.Cog):
             interaction=interaction,
             upload_service=self.__upload_service,
         )
-        bot = interaction.client
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
             kind, obj = await self.resolve_app_command(interaction, command_name)
@@ -285,13 +284,13 @@ class HelpAppCommand(commands.Cog):
             member_snowflake=interaction.user.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(
-            bot=bot, user_highest=user_highest
+            user_highest=user_highest
         )
         permission_groups = await self.group_commands_by_permission(
-            bot, interaction, all_commands
+            interaction, all_commands
         )
         skipped_permission_groups = await self.group_commands_by_permission(
-            bot, interaction, skipped_commands
+            interaction, skipped_commands
         )
         user_index = self.__moderator_service.PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:

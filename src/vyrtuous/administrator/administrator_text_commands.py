@@ -97,7 +97,6 @@ class AdminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-
         self.__stage_service = StageService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -169,6 +168,7 @@ class AdminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
         self.__video_room_service = VideoRoomService(
@@ -839,13 +839,13 @@ class AdminTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+            converter=commands.TextChannelConverter,
             description="Tag a channel or include its ID.",
         ),
-        source_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        source: Union[str, discord.abc.GuildChannel] = commands.parameter(
+            converter=MultiConverter,
             default=None,
-            description="Tag a channel or include its ID.",
+            description="`All` or tag a channel/include its ID.",
         ),
     ):
         state = StateService(
@@ -858,9 +858,9 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
-        source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
+        source_dict = self.__discord_object_service.to_dict(obj=source)
         pages = await self.__stream_service.toggle_stream(
-            source_channel_dict=source_channel_dict,
+            source_dict=source_dict,
             target_channel_dict=target_channel_dict,
         )
         return await state.end(success=pages)
@@ -891,14 +891,9 @@ class AdminTextCommands(commands.Cog):
         obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         object_dict = self.__discord_object_service.to_dict(obj=obj)
-        try:
-            pages = await self.__stream_service.build_pages(
-                object_dict=object_dict, is_at_home=is_at_home
-            )
-        except:
-            import traceback
-
-            traceback.print_exc()
+        pages = await self.__stream_service.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")

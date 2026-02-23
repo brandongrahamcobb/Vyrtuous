@@ -68,25 +68,21 @@ class StreamEmbed(discord.Embed):
                 self.title = "🔄 User Unbanned"
             else:
                 self.title = "🔨 User Banned"
-            self.__action = "banned"
         elif identifier in ("flag", "unflag"):
             if is_modification:
                 self.title = "🔄 User Unflagged"
             else:
                 self.title = "🚩 User Flaged"
-            self.__action = "flagged"
         elif identifier in ("tmute", "untmute"):
             if is_modification:
                 self.title = "🔄 User Unmuted"
             else:
                 self.title = "📝 User Text Muted"
-            self.__action = "text muted"
         elif identifier in ("vmute", "unvmute"):
             if is_modification:
                 self.title = "🔄 User Unmuted"
             else:
                 self.title = "🎙️ User Voice Muted"
-            self.__action = "voice muted"
         return self
 
     def set_thumbnail(self, *, url):
@@ -109,7 +105,7 @@ class StreamEmbed(discord.Embed):
         fields = []
         fields.append(f"**Display Name:** {target.display_name}")
         fields.append(f"**Username:** @{target.name}")
-        fields.append(f"**User ID:** `{target.id}")
+        fields.append(f"**User ID:** `{target.id}`")
         fields.append(f"**Account Age:** <t:{int(target.created_at.timestamp())}:R>")
         fields.append(f"**Server Join:** <t:{int(target.joined_at.timestamp())}:R>")
         fields.append(f"**Top Role:** {highest_role}")
@@ -136,7 +132,6 @@ class StreamEmbed(discord.Embed):
             expiration = "Never"
         fields = []
         fields.append(f"**Expires:** {expiration}")
-        fields.append(f"**Alias:** {self.__action}")
         self.add_field(name=f"**Type:** {dt}", value="\n".join(fields), inline=False)
         return self
 
@@ -161,7 +156,7 @@ class StreamEmbed(discord.Embed):
 
     def set_description(self, *, channel, target) -> Self:
         self.description = (
-            f"**Target:** {target.mention} {self.__action} in {channel.mention}"
+            f"**Target:** {target.mention} moderated in {channel.mention}"
         )
         return self
 
@@ -222,6 +217,7 @@ class StreamService:
         )
         embed = (
             StreamEmbed(duration_builder=self.__duration_builder)
+            .set_thumbnail(url=member.display_avatar.url)
             .set_title(identifier=identifier, is_modification=is_modification)
             .set_description(channel=channel, target=member)
             .set_target(target=member, highest_role=target_role)
@@ -242,12 +238,13 @@ class StreamService:
 
         streaming = await self.__database_factory.select(singular=False)
         for stream in streaming:
-            channel_obj = self.__bot.get_channel(stream.channel_snowflake)
+            channel_obj = self.__bot.get_channel(stream.target_channel_snowflake)
             if channel_obj:
                 perms = channel_obj.permissions_for(channel_obj.guild.me)
                 if perms.send_messages and not channel_obj.guild.me.is_timed_out():
-                    paginator = self.__paginator_service(self.__bot, channel_obj, pages)
-                    await paginator.start()
+                    await self.__paginator_service.start(
+                        channel=channel_obj, pages=pages
+                    )
         return
 
     async def build_dictionary(self, kwargs):
@@ -339,19 +336,17 @@ class StreamService:
 
     async def toggle_stream(
         self,
-        source_channel_dict,
+        source_dict,
         target_channel_dict,
     ):
+        target_columns = target_channel_dict.get("columns") or {}
         where_kwargs = {
-            "guild_snowflake": target_channel_dict.get("columns", None).get(
-                "guild_snowflake"
-            ),
-            "target_channel_snowflake": target_channel_dict.get("id", None),
+            "guild_snowflake": target_columns.get("guild_snowflake"),
+            "target_channel_snowflake": target_channel_dict.get("id"),
         }
-        if source_channel_dict:
-            where_kwargs.update(
-                {"source_channel_snowflake": source_channel_dict.get("id", None)}
-            )
+        source_is_all = source_dict and source_dict.get("columns") is None
+        if source_dict and not source_is_all:
+            where_kwargs.update({"source_channel_snowflake": source_dict.get("id")})
         stream = await self.__database_factory.select(singular=True, **where_kwargs)
         if stream:
             await self.__database_factory.delete(**where_kwargs)
@@ -360,9 +355,15 @@ class StreamService:
             stream = self.MODEL(**where_kwargs)
             await self.__database_factory.create(obj=stream)
             action = "created"
+        if source_dict:
+            if source_is_all:
+                source_text = "from all channels "
+            else:
+                source_text = f"from {source_dict.get('mention')} "
+        else:
+            source_text = ""
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} {f'from {source_channel_dict.get('mention', None)}' if source_channel_dict else ''} to {target_channel_dict.get('mention', None)}",
+            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} {source_text}to {target_channel_dict.get('mention')}",
             color=0x00FF00,
         )
-
         return [embed]
