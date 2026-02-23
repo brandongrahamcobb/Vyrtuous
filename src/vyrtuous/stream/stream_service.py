@@ -87,6 +87,7 @@ class StreamEmbed(discord.Embed):
 
     def set_thumbnail(self, *, url):
         self.set_thumbnail(url=url)
+        return self
 
     def set_executor(self, *, author, highest_role) -> Self:
         fields = []
@@ -217,7 +218,7 @@ class StreamService:
         )
         embed = (
             StreamEmbed(duration_builder=self.__duration_builder)
-            .set_thumbnail(url=member.display_avatar.url)
+            .set_thumbnail(url=author.display_avatar.url)
             .set_title(identifier=identifier, is_modification=is_modification)
             .set_description(channel=channel, target=member)
             .set_target(target=member, highest_role=target_role)
