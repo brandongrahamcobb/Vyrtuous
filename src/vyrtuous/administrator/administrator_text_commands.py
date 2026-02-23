@@ -136,11 +136,6 @@ class AdminTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
-        self.__clear_service = ClearService(
-            database_factory=self.__database_factory,
-            moderator_service=self.__moderator_service,
-            sysadmin_service=self.__sysadmin_service,
-        )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
             duration_builder=self.__duration_builder,
@@ -248,6 +243,15 @@ class AdminTextCommands(commands.Cog):
         )
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory
+        )
+        self.__clear_service = ClearService(
+            ban_service=self.__ban_service,
+            database_factory=self.__database_factory,
+            flag_service=self.__flag_service,
+            moderator_service=self.__moderator_service,
+            sysadmin_service=self.__sysadmin_service,
+            text_mute_service=self.__text_mute_service,
+            voice_mute_service=self.__voice_mute_service,
         )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
@@ -449,6 +453,7 @@ class AdminTextCommands(commands.Cog):
             where_kwargs=where_kwargs,
             target=target,
             view=view,
+            source=ctx,
         )
         return await state.end(success=msg)
 

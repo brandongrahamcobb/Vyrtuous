@@ -345,16 +345,49 @@ class VoiceMuteService:
         pages.append(embed)
         return pages
 
-    async def enforce_log(self, ctx, default_ctx, source, is_channel_scope):
+    async def delete(self, author, kwargs, reason, source):
+        objects = await self.__database_factory.select(**kwargs)
+        for obj in objects:
+            await self.__database_factory.delete_by_cls(obj, **kwargs)
+            guild = self.__bot.get_guild(obj.guild_snowflake)
+            channel = guild.get_channel(obj.channel_snowflake)
+            member = guild.get_member(obj.member_snowflake)
+            is_channel_scope = False
+            if (
+                member.voice
+                and member.voice.channel
+                and member.voice.channel.id == channel.id
+            ):
+                is_channel_scope = True
+            await self.undo_log(
+                author=author,
+                channel=channel,
+                is_channel_scope=is_channel_scope,
+                member=member,
+                reason=reason,
+                source=source,
+            )
+
+    async def enforce_log(
+        self, author, channel, duration_value, is_channel_scope, member, source, reason
+    ):
         await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=ctx.channel,
-            duration_value=ctx.duration_value,
+            author=author,
+            channel=channel,
+            duration_value=duration_value,
             identifier="vmute",
             is_channel_scope=is_channel_scope,
-            member=ctx.member,
+            member=member,
             source=source,
-            reason=ctx.reason,
+            reason=reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="vmute",
+            duration_value=duration_value,
+            reason=reason,
+            member=member,
         )
 
     async def enforce(self, ctx, default_ctx, source, state):
@@ -376,32 +409,36 @@ class VoiceMuteService:
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
         await self.enforce_log(
-            ctx=ctx,
-            default_ctx=default_ctx,
-            is_channel_scope=is_channel_scope,
-            source=source,
-        )
-        await self.__data_service.save_data(
             author=default_ctx.author,
             channel=ctx.channel,
-            identifier="vmute",
             duration_value=ctx.duration_value,
-            reason=ctx.reason,
+            is_channel_scope=is_channel_scope,
             member=ctx.member,
+            source=source,
+            reason=ctx.reason,
         )
+
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo_log(self, ctx, default_ctx, source, is_channel_scope=None):
+    async def undo_log(self, author, channel, is_channel_scope, member, source, reason):
         await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=ctx.channel,
+            author=author,
+            channel=channel,
             identifier="unvmute",
             is_channel_scope=is_channel_scope,
             is_modification=True,
-            member=ctx.member,
+            member=member,
             source=source,
-            reason=ctx.reason,
+            reason=reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="unvmute",
+            is_modification=True,
+            reason=reason,
+            member=member,
         )
 
     async def undo(self, ctx, default_ctx, source, state):
@@ -418,18 +455,12 @@ class VoiceMuteService:
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
         await self.undo_log(
-            ctx=ctx,
-            default_ctx=default_ctx,
-            is_channel_scope=is_channel_scope,
-            source=source,
-        )
-        await self.__data_service.save_data(
             author=default_ctx.author,
             channel=ctx.channel,
-            identifier="unvmute",
-            is_modification=True,
-            reason=ctx.reason,
+            is_channel_scope=is_channel_scope,
             member=ctx.member,
+            source=source,
+            reason=ctx.reason,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)

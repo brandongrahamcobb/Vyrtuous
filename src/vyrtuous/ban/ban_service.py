@@ -275,16 +275,41 @@ class BanService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def enforce_log(self, ctx, default_ctx, source, is_channel_scope=None):
+    async def delete(self, author, kwargs, reason, source):
+        objects = await self.__database_factory.select(**kwargs)
+        for obj in objects:
+            await self.__database_factory.delete_by_cls(obj, **kwargs)
+            guild = self.__bot.get_guild(obj.guild_snowflake)
+            channel = guild.get_channel(obj.channel_snowflake)
+            member = guild.get_member(obj.member_snowflake)
+            await self.undo_log(
+                author=author,
+                channel=channel,
+                member=member,
+                reason=reason,
+                source=source,
+            )
+
+    async def enforce_log(
+        self, author, channel, duration_value, is_channel_scope, member, reason, source
+    ):
         await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=ctx.channel,
-            duration_value=ctx.duration_value,
+            author=author,
+            channel=channel,
+            duration_value=duration_value,
             identifier="ban",
             is_channel_scope=is_channel_scope,
-            member=ctx.member,
+            member=member,
+            reason=reason,
             source=source,
-            reason=ctx.reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="ban",
+            duration_value=duration_value,
+            reason=reason,
+            member=member,
         )
 
     async def enforce(self, ctx, default_ctx, source, state):
@@ -325,31 +350,34 @@ class BanService:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await self.enforce_log(
-            ctx=ctx,
-            default_ctx=default_ctx,
-            is_channel_scope=is_channel_scope,
-            source=source,
-        )
-        await self.__data_service.save_data(
             author=default_ctx.author,
             channel=ctx.channel,
-            identifier="ban",
             duration_value=ctx.duration_value,
-            reason=ctx.reason,
+            is_channel_scope=is_channel_scope,
             member=ctx.member,
+            reason=ctx.reason,
+            source=source,
         )
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo_log(self, ctx, default_ctx, source):
+    async def undo_log(self, author, channel, member, reason, source):
         await self.__stream_service.send_log(
-            author=default_ctx.author,
-            channel=ctx.channel,
+            author=author,
+            channel=channel,
             identifier="unban",
             is_modification=True,
-            member=ctx.member,
+            member=member,
+            reason=reason,
             source=source,
-            reason=ctx.reason,
+        )
+        await self.__data_service.save_data(
+            author=author,
+            channel=channel,
+            identifier="unban",
+            is_modification=True,
+            member=member,
+            reason=reason,
         )
 
     async def undo(self, ctx, default_ctx, source, state):
@@ -364,16 +392,14 @@ class BanService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
-        await self.undo_log(ctx=ctx, default_ctx=default_ctx, source=source)
-        embed = await self.undo_embed(ctx=ctx)
-        await self.__data_service.save_data(
+        await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,
-            identifier="unban",
-            is_modification=True,
-            reason=ctx.reason,
             member=ctx.member,
+            reason=ctx.reason,
+            source=source,
         )
+        embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
