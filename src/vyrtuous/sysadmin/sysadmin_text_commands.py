@@ -55,6 +55,7 @@ class SysadminTextCommands(commands.Cog):
         self.__discord_object_service = DiscordObjectService()
         self.__developer_service = DeveloperService(
             bot=self.__bot,
+            bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             emoji=self.__emoji,
         )

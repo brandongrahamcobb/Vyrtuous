@@ -90,7 +90,7 @@ class BugService:
             for bug in bugs:
                 channel_snowflake = int(bug.channel_snowflake)
                 guild_snowflake = int(bug.guild_snowflake)
-                member_snowflakes = int(bug.member_snowflakes)
+                member_snowflakes = bug.member_snowflakes
                 message_snowflake = int(bug.message_snowflake)
                 reference = bug.id
                 if bug.created_at < now - timedelta(weeks=1):
@@ -214,7 +214,7 @@ class BugService:
                     f"**Resolved:** {'\u2705' if entry.get('resolved') else '\u274c'}"
                 )
                 lines.append(f"**Message:** {msg.jump_url}")
-                if where_kwargs.get("id", None) == str(entry["id"]):
+                if kwargs.get("id", None) == str(entry["id"]):
                     lines.append(
                         f"**Notes:** {entry['notes'] if entry.get('notes') is not None else None}"
                     )
@@ -268,27 +268,33 @@ class BugService:
         bug = await self.__database_factory.select(
             id=reference, resolved=False, singular=True
         )
-        if not bug:
-            return f"Unresolved issue not found for reference: {reference}."
-        member_snowflakes = bug.member_snowflakes
-        where_kwargs = {"id": bug.id}
-        member_snowflakes = bug.member_snowflakes
-        if developer.member_snowflake in bug.member_snowflakes:
-            member_snowflakes.remove(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="unassigned",
-                member_snowflake=developer.member_snowflake,
-            )
-            return embed
-        else:
-            member_snowflakes.append(developer.member_snowflake)
-            set_kwargs = {"member_snowflakes": member_snowflakes}
-            await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(
-                action="assigned",
-                member_snowflake=developer.member_snowflake,
-            )
-            await member_dict.get("object", None).send(embed=embed)
-            return embed
+        self.__bot.logger.info(bug)
+        if bug:
+            member_snowflakes = bug.member_snowflakes
+            where_kwargs = {"id": bug.id}
+            member_snowflakes = bug.member_snowflakes
+            if developer.member_snowflake in bug.member_snowflakes:
+                member_snowflakes.remove(developer.member_snowflake)
+                set_kwargs = {"member_snowflakes": member_snowflakes}
+                await self.__database_factory.update(
+                    set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                )
+                embed = await self.create_embed(
+                    action="unassigned",
+                    bug=bug,
+                    member_snowflake=developer.member_snowflake,
+                )
+                return embed
+            else:
+                member_snowflakes.append(developer.member_snowflake)
+                set_kwargs = {"member_snowflakes": member_snowflakes}
+                await self.__database_factory.update(
+                    set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                )
+                embed = await self.create_embed(
+                    action="assigned",
+                    bug=bug,
+                    member_snowflake=developer.member_snowflake,
+                )
+                await member_dict.get("object", None).send(embed=embed)
+                return embed

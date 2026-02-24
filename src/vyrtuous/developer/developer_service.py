@@ -136,7 +136,7 @@ class DeveloperService:
 
     async def report_issue(self, message, reference, source, user):
         online_developer_mentions = []
-        member = self.__bot.get_user(self.__config["discord_owner_id"])
+        member = self.__bot.get_user(self.__bot.config["discord_owner_id"])
         online_developer_mentions.append(member.mention)
         if source.guild:
             developers = await self.__database_factory.select(
@@ -213,10 +213,9 @@ class DeveloperService:
     async def assign_bug_to_developer(self, member_dict, reference):
         where_kwargs = member_dict.get("columns", None)
         developer = await self.__database_factory.select(singular=True, **where_kwargs)
-        if not developer:
-            return (
-                f"Developer not found for target ({member_dict.get('mention', None)})."
-            )
-        await self.__bug_service.assign_bug_to_developer(
-            member_dict=member_dict, reference=reference, where_kwargs=where_kwargs
+        return await self.__bug_service.assign_bug_to_developer(
+            developer=developer,
+            member_dict=member_dict,
+            reference=reference,
+            where_kwargs=where_kwargs,
         )

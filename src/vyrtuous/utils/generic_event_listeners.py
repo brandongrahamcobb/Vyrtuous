@@ -40,15 +40,12 @@ from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 
 
 class GenericEventListeners(commands.Cog):
     def __init__(self, bot: DiscordBot):
-        self.bot = bot
-        self.config = bot.config
         self._ready_done = False
         self.__bot = bot
         self.__author_service = AuthorService()
@@ -130,30 +127,30 @@ class GenericEventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        if (
+            not message.guild
+            or self.__bot.config["release_mode"]
+            and message.author.id == self.bot.user.id
+        ):
+            return
+        await self.__ban_service.is_banned_then_kick_and_reset_cooldown(
+            channel=message.channel, member=message.author
+        )
+        await self.__text_mute_service.is_text_muted_then_mute_and_reset_cooldown(
+            channel=message.channel, member=message.author
+        )
+        if not message.content.startswith(self.__bot.config["discord_command_prefix"]):
+            return
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            message=message,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
         try:
-            if (
-                not message.guild
-                or self.config["release_mode"]
-                and message.author.id == self.bot.user.id
-            ):
-                return
-            await self.__ban_service.is_banned_then_kick_and_reset_cooldown(
-                channel=message.channel, member=message.author
-            )
-            await self.__text_mute_service.is_text_muted_then_mute_and_reset_cooldown(
-                channel=message.channel, member=message.author
-            )
-            if not message.content.startswith(self.config["discord_command_prefix"]):
-                return
-            state = StateService(
-                author_service=self.__author_service,
-                bot=self.__bot,
-                bug_service=self.__bug_service,
-                message=message,
-                developer_service=self.__developer_service,
-                emoji=self.__emoji,
-                upload_service=self.__upload_service,
-            )
             d_ctx = DefaultContext(message=message)
             ctx = AliasContext(
                 bot=self.__bot,
@@ -183,8 +180,16 @@ class GenericEventListeners(commands.Cog):
             await service.enforce_or_undo(
                 ctx=ctx, default_ctx=d_ctx, source=message, state=state
             )
-        except:
-            traceback.print_exc()
+        except (
+            commands.BadArgument,
+            commands.CheckFailure,
+            commands.MissingRequiredArgument,
+        ) as e:
+            if isinstance(e, commands.MissingRequiredArgument):
+                missing = e.param.name
+                return await state.end(error=f"Missing required argument: `{missing}`")
+            else:
+                return await state.end(error=str(e))
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -197,10 +202,11 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        logger.error(str(error))
         if isinstance(error, commands.BadArgument):
             return await state.end(error=str(error))
         elif isinstance(error, commands.CheckFailure):
+            return await state.end(error=str(error))
+        elif isinstance(error, commands.CommandInvokeError):
             return await state.end(error=str(error))
         elif isinstance(error, commands.MissingRequiredArgument):
             missing = error.param.name
@@ -216,7 +222,6 @@ class GenericEventListeners(commands.Cog):
             developer_service=self.__developer_service,
             emoji=self.__emoji,
         )
-        logger.error(str(error))
         if isinstance(error, app_commands.CheckFailure):
             return await state.end(error=str(error))
 
@@ -225,8 +230,8 @@ class GenericEventListeners(commands.Cog):
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True
-        method_names = [cmd.callback.__name__ for cmd in self.bot.commands]
-        logger.info(method_names)
+        method_names = [cmd.callback.__name__ for cmd in self.__bot.commands]
+        self.__bot.logger.info(method_names)
 
 
 async def setup(bot: DiscordBot):

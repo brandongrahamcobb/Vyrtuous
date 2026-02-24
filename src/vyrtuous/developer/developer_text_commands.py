@@ -168,10 +168,10 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        msg = self.__bug_service.interact_with_bug(
+        msg = await self.__bug_service.interact_with_bug(
             action=action, notes=notes, reference=reference
         )
-        return await state.end(success=f"{self.__emoji.get_random_emoji()} {msg}.")
+        return await state.end(success=msg)
 
     @commands.command(name="bugs", help="List issues.")
     async def list_bugs_text_command(

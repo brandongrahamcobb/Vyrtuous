@@ -59,7 +59,7 @@ class ClearService:
                         continue
                     if getattr(cls, "__skip_db_discovery__", False):
                         continue
-                    if attr in getattr(cls, "__annotations__", {}) or not attr:
+                    if hasattr(cls, attr) or not attr:
                         classes.append(cls)
         return classes
 
@@ -69,6 +69,11 @@ class ClearService:
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous"))
         if isinstance(object_dict.get("object", None), discord.Member):
+            await self.__moderator_service.check_minimum_role_at_all(
+                **object_dict.get("columns", None),
+                member_snowflake=default_ctx.author.id,
+                lowest_role="Administrator",
+            )
             await self.__moderator_service.has_equal_or_lower_role(
                 **default_ctx.to_dict(),
                 target_member_snowflake=object_dict.get("id", None),
@@ -108,8 +113,10 @@ class ClearService:
                     else:
                         await self.__database_factory.delete_by_cls(cls, **where_kwargs)
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
-            await self.__moderator_service.has_equal_or_lower_role(
-                **object_dict.get("columns", None), lowest_role="Guild Owner"
+            await self.__moderator_service.check_minimum_role(
+                **object_dict.get("columns", None),
+                member_snowflake=default_ctx.author.id,
+                lowest_role="Guild Owner",
             )
             if view.result:
                 for cls in self.dir_to_classes(
@@ -146,8 +153,10 @@ class ClearService:
                     else:
                         await self.__database_factory.delete_by_cls(cls, **where_kwargs)
         elif isinstance(object_dict.get("object", None), discord.Guild):
-            await self.__moderator_service.has_equal_or_lower_role(
-                **object_dict.get("columns", None), lowest_role="Developer"
+            await self.__moderator_service.check_minimum_role_at_all(
+                **object_dict.get("columns", None),
+                member_snowflake=default_ctx.author.id,
+                lowest_role="Developer",
             )
             if view.result:
                 attributes = [
@@ -195,22 +204,32 @@ class ClearService:
             member_snowflake=default_ctx.to_dict().get("member_snowflake")
         ):
             if view.result:
-                for cls in self.dir_to_classes(dir_paths=dir_paths, attr=None):
+                for cls in self.dir_to_classes(
+                    dir_paths=dir_paths, attr="__tablename__"
+                ):
                     if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
-                            author=default_ctx.author, **where_kwargs
+                            author=default_ctx.author,
+                            kwargs=where_kwargs,
+                            source=source,
                         )
                     elif cls.__name__ == "Flag":
                         await self.__flag_service.delete(
-                            author=default_ctx.author, **where_kwargs
+                            author=default_ctx.author,
+                            kwargs=where_kwargs,
+                            source=source,
                         )
                     elif cls.__name__ == "TextMute":
                         await self.__text_mute_service.delete(
-                            author=default_ctx.author, **where_kwargs
+                            author=default_ctx.author,
+                            kwargs=where_kwargs,
+                            source=source,
                         )
                     elif cls.__name__ == "VoiceMute":
                         await self.__voice_mute_service.delete(
-                            author=default_ctx.author, **where_kwargs
+                            author=default_ctx.author,
+                            kwargs=where_kwargs,
+                            source=source,
                         )
                     else:
                         await self.__database_factory.delete_by_cls(cls, **where_kwargs)

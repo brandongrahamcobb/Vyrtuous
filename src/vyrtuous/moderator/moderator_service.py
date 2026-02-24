@@ -416,6 +416,39 @@ class ModeratorService:
                 passed_lowest = True
         return "Everyone"
 
+    async def check_minimum_role_at_all(
+        self,
+        guild_snowflake,
+        member_snowflake,
+        lowest_role: str,
+    ) -> str:
+        verifications = (
+            ("Sysadmin", self.__sysadmin_service.is_sysadmin),
+            ("Developer", self.__developer_service.is_developer),
+            ("Guild Owner", self.__guild_owner_service.is_guild_owner),
+            ("Administrator", self.__administrator_service.is_administrator),
+            ("Coordinator", self.__coordinator_service.is_coordinator_at_all),
+            ("Moderator", self.is_moderatorat_all),
+        )
+        passed_lowest = False
+        for role_name, verify in verifications:
+            try:
+                if role_name in ("Sysadmin", "Developer"):
+                    if await verify(member_snowflake=int(member_snowflake)):
+                        return role_name
+                else:
+                    if await verify(
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
+            except commands.CheckFailure:
+                if lowest_role is not None and passed_lowest:
+                    raise
+            if role_name == lowest_role:
+                passed_lowest = True
+        return "Everyone"
+
     async def has_equal_or_lower_role(
         self,
         channel_snowflake: int,
