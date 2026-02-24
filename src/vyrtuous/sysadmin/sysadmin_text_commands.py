@@ -26,6 +26,7 @@ from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.sysadmin.sysadmin import Sysadmin
 from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
 from vyrtuous.upload.upload_service import UploadService
@@ -46,6 +47,7 @@ class SysadminTextCommands(commands.Cog):
         self.__author_service = AuthorService()
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__duration_builder = DurationBuilder()
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -57,6 +59,7 @@ class SysadminTextCommands(commands.Cog):
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__sysadmin_service = SysadminService(

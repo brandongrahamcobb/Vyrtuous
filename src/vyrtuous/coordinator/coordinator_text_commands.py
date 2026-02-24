@@ -58,19 +58,56 @@ class CoordinatorTextCommands(commands.Cog):
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__duration_builder = DurationBuilder()
-        self.__moderator_service = ModeratorService(
+        self.__paginator_service = PaginatorService(bot=self.__bot)
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__administrator_service = AdministratorService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.__data_service = DataService(
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            bot=self.__bot,
+            bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             duration_builder=self.__duration_builder,
-            moderator_service=self.__moderator_service,
+            emoji=self.__emoji,
         )
-        self.__paginator_service = PaginatorService(bot=self.__bot)
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__moderator_service = ModeratorService(
+            administrator_service=self.__administrator_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            coordinator_service=self.__coordinator_service,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            guild_owner_service=self.__guild_owner_service,
+            sysadmin_service=self.__sysadmin_service,
+        )
         self.__stream_service = StreamService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -78,6 +115,11 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
+        )
+        self.__data_service = DataService(
+            database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
+            moderator_service=self.__moderator_service,
         )
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
@@ -97,42 +139,6 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
-        )
-        self.__bug_service = BugService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__developer_service = DeveloperService(
-            bot=self.__bot,
-            bug_service=self.__bug_service,
-            database_factory=self.__database_factory,
-            emoji=self.__emoji,
-        )
-        self.__guild_owner_service = GuildOwnerService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
-        self.__administrator_service = AdministratorService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__coordinator_service = CoordinatorService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__sysadmin_service = SysadminService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
         )
         self.__discord_object_service = DiscordObjectService()
         self.__upload_service = UploadService(

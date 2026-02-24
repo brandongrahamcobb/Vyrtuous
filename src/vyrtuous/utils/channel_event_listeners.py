@@ -22,18 +22,23 @@ from datetime import datetime, timedelta, timezone
 import discord
 from discord.ext import commands
 
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bug.bug_service import BugService
 from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
+from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.moderator.moderator_service import ModeratorService
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.server_mute.server_mute_service import ServerMuteService
 from vyrtuous.stage_room.stage_service import StageService
 from vyrtuous.stream.stream_service import StreamService
+from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.temporary_room.temporary_room_service import TemporaryRoomService
 from vyrtuous.text_mute.text_mute_service import TextMuteService
 from vyrtuous.utils.author_service import AuthorService
@@ -55,12 +60,54 @@ class ChannelEventListeners(commands.Cog):
         self.__emoji = Emojis()
         self.__duration_builder = DurationBuilder()
         self.__paginator_service = PaginatorService(bot=self.__bot)
-        self.__moderator_service = ModeratorService(
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__administrator_service = AdministratorService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__moderator_service = ModeratorService(
+            administrator_service=self.__administrator_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            coordinator_service=self.__coordinator_service,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            guild_owner_service=self.__guild_owner_service,
+            sysadmin_service=self.__sysadmin_service,
         )
         self.__video_room_service = VideoRoomService(
             bot=self.__bot,

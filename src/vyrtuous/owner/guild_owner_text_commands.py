@@ -49,6 +49,8 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.administrator.administrator_service import AdministratorService
+from vyrtuous.coordinator.coordinator_service import CoordinatorService
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -67,17 +69,49 @@ class GuildOwnerTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__administrator_service = AdministratorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
         self.__developer_service = DeveloperService(
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
-        self.__moderator_service = ModeratorService(
+        self.__guild_owner_service = GuildOwnerService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+
+        self.__moderator_service = ModeratorService(
+            administrator_service=self.__administrator_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            coordinator_service=self.__coordinator_service,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            developer_service=self.__developer_service,
             emoji=self.__emoji,
+            guild_owner_service=self.__guild_owner_service,
+            sysadmin_service=self.__sysadmin_service,
         )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
@@ -99,17 +133,6 @@ class GuildOwnerTextCommands(commands.Cog):
             paginator_service=self.__paginator_service,
         )
         self.__discord_object_service = DiscordObjectService()
-        self.__administrator_role_service = AdministratorRoleService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__sysadmin_service = SysadminService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,

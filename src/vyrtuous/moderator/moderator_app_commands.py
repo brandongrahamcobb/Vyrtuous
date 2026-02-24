@@ -77,24 +77,6 @@ class ModeratorAppCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.__sysadmin_service = SysadminService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
-        self.__developer_service = DeveloperService(
-            bug_service=self.__bug_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            emoji=self.__emoji,
-        )
-        self.__moderator_service = ModeratorService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
         self.__coordinator_service = CoordinatorService(
             author_service=self.__author_service,
             bot=self.__bot,
@@ -114,6 +96,30 @@ class ModeratorAppCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__developer_service = DeveloperService(
+            bug_service=self.__bug_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            emoji=self.__emoji,
+        )
+        self.__moderator_service = ModeratorService(
+            administrator_service=self.__administrator_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            coordinator_service=self.__coordinator_service,
+            database_factory=self.__database_factory,
+            developer_service=self.__developer_service,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            guild_owner_service=self.__guild_owner_service,
+            sysadmin_service=self.__sysadmin_service,
+        )
+
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
             bot=self.__bot,

@@ -53,7 +53,7 @@ class BugService:
         self.__database_factory.model = self.MODEL
         self.__developer_service = developer_service
 
-    async def interact_with_bug(self, action, notes, reference):
+    async def update_bug(self, action, notes, reference):
         message = "You successfully "
         bug = await self.__database_factory.select(
             id=reference, resolved=False, singular=True
@@ -125,10 +125,9 @@ class BugService:
                                 f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), deleting developer log. {str(e).capitalize()}"
                             )
                             return await self.__database_factory.delete(id=reference)
-                        self.__developer_service.clean_expired(
+                        self.__developer_service.ping_about_expired_bug(
                             channel=channel,
                             embed=embed,
-                            guild_snowflake=guild_snowflake,
                             member=member,
                             member_snowflakes=bug.member_snowflakes,
                             msg=msg,
@@ -136,31 +135,33 @@ class BugService:
                             updated_at=bug.updated_at,
                         )
 
-    async def create_embed(self, action, bug, member_snowflake):
+    async def create_embed(self, action, bug, member_dict):
+        current_developer_mentions = []
         guild = self.__bot.get_guild(bug.guild_snowflake)
+        for current_developer_snowflake in bug.member_snowflakes:
+            current_developer = guild.get_member(current_developer_snowflake)
+            current_developer_mentions.append(current_developer.mention)
         channel = guild.get_channel(bug.channel_snowflake)
+        toggled_developer = guild.get_member(member_dict.get("id", None))
         try:
             msg = await channel.fetch_message(bug.message_snowflake)
         except discord.NotFound:
             self.__bot.logger.warning(
                 f"Message reference not found ({bug.message_snowflake})."
             )
-        member = guild.get_member(member_snowflake)
-        user_mentions = []
-        for member_snowflake in bug.member_snowflakes:
-            user_mentions.append(member.mention)
-        embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been {action}",
-            description=(
-                f"**Guild:** {guild.name}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Message:** {msg.jump_url}\n"
-                f"**Assigned devs:** {', '.join(user_mentions)}"
-            ),
-            color=discord.Color.blue(),
-        )
-        embed.set_thumbnail(url=member.display_avatar.url)
-        return embed
+        else:
+            embed = discord.Embed(
+                title=f"{self.__emoji.get_random_emoji()} {toggled_developer.display_name} has been {action}",
+                description=(
+                    f"**Guild:** {guild.name}\n"
+                    f"**Channel:** {channel.mention}\n"
+                    f"**Message:** {msg.jump_url}\n"
+                    f"**Assigned devs:** {', '.join(current_developer_mentions)}"
+                ),
+                color=discord.Color.blue(),
+            )
+            embed.set_thumbnail(url=toggled_developer.display_avatar.url)
+            return embed
 
     async def build_dictionary(self, kwargs):
         dictionary = {}
@@ -262,39 +263,27 @@ class BugService:
         except discord.Forbidden as e:
             self.__bot.logger.info(str(e).capitalize())
 
-    async def assign_bug_to_developer(
-        self, developer, member_dict, reference, where_kwargs
-    ):
-        bug = await self.__database_factory.select(
-            id=reference, resolved=False, singular=True
-        )
-        self.__bot.logger.info(bug)
-        if bug:
-            member_snowflakes = bug.member_snowflakes
-            where_kwargs = {"id": bug.id}
-            member_snowflakes = bug.member_snowflakes
-            if developer.member_snowflake in bug.member_snowflakes:
-                member_snowflakes.remove(developer.member_snowflake)
-                set_kwargs = {"member_snowflakes": member_snowflakes}
-                await self.__database_factory.update(
-                    set_kwargs=set_kwargs, where_kwargs=where_kwargs
-                )
-                embed = await self.create_embed(
-                    action="unassigned",
-                    bug=bug,
-                    member_snowflake=developer.member_snowflake,
-                )
-                return embed
-            else:
-                member_snowflakes.append(developer.member_snowflake)
-                set_kwargs = {"member_snowflakes": member_snowflakes}
-                await self.__database_factory.update(
-                    set_kwargs=set_kwargs, where_kwargs=where_kwargs
-                )
-                embed = await self.create_embed(
-                    action="assigned",
-                    bug=bug,
-                    member_snowflake=developer.member_snowflake,
-                )
-                await member_dict.get("object", None).send(embed=embed)
-                return embed
+    async def bugs(self):
+        bugs = await self.__database_factory.select()
+        return bugs
+
+    async def handle_bug_assignment(self, developer, reference):
+        state = None
+        for bug in await self.bugs():
+            if bug.id == reference and not bug.resolved:
+                where_kwargs = {"id": bug.id}
+                member_snowflakes = bug.member_snowflakes
+                if developer.member_snowflake in bug.member_snowflakes:
+                    member_snowflakes.remove(developer.member_snowflake)
+                    set_kwargs = {"member_snowflakes": member_snowflakes}
+                    await self.__database_factory.update(
+                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                    )
+                    state = False
+                else:
+                    member_snowflakes.append(developer.member_snowflake)
+                    set_kwargs = {"member_snowflakes": member_snowflakes}
+                    await self.__database_factory.update(
+                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                    )
+                return bug, state

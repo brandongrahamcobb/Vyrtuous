@@ -29,6 +29,7 @@ from vyrtuous.bug.bug_service import BugService
 from vyrtuous.database import Database
 from vyrtuous.developer.developer import Developer
 from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
 from vyrtuous.upload.upload_service import UploadService
@@ -52,6 +53,7 @@ class DevTextCommands(commands.Cog):
         self.__author_service = AuthorService()
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__duration_builder = DurationBuilder()
         self.__emoji = Emojis()
         self.__bug_service = BugService(
             bot=self.__bot,
@@ -68,6 +70,7 @@ class DevTextCommands(commands.Cog):
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
         self.__discord_object_service = DiscordObjectService()
@@ -168,7 +171,7 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        msg = await self.__bug_service.interact_with_bug(
+        msg = await self.__bug_service.update_bug(
             action=action, notes=notes, reference=reference
         )
         return await state.end(success=msg)

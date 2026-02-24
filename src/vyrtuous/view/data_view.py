@@ -219,13 +219,13 @@ class DataView(discord.ui.View):
             conditions.append(f"guild_snowflake=${len(values) + 1}")
             values.append(self.__information["guild_snowflake"])
         if "infraction" in self.__information:
-            conditions.append(f"infraction_type=${len(values) + 1}")
+            conditions.append(f"identifier=${len(values) + 1}")
             values.append(self.__information["infraction"].identifier)
         if "duration" in self.__information:
             conditions.append(f"created_at >= ${len(values) + 1}")
             values.append(
                 self.__duration_builder.parse(
-                    self.__information["duration"]
+                    f"-{self.__information['duration']}"
                 ).to_expires_in()
             )
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""

@@ -30,6 +30,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
+from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.moderator.moderator_service import ModeratorService, NotAppModerator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.sysadmin.sysadmin_service import SysadminService
@@ -54,6 +55,7 @@ class HelpAppCommand(commands.Cog):
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__duration_builder = DurationBuilder()
         self.__emoji = Emojis()
         self.__author_service = AuthorService()
         self.permission_page_title_pairs = [
@@ -65,32 +67,7 @@ class HelpAppCommand(commands.Cog):
             ("Moderator", "`Moderator` inherits `Everyone`."),
             ("Everyone", "Commands available to everyone."),
         ]
-        self.__sysadmin_service = SysadminService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
         self.__bug_service = BugService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__moderator_service = ModeratorService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__developer_service = DeveloperService(
-            bot=self.__bot,
-            bug_service=self.__bug_service,
-            database_factory=self.__database_factory,
-            emoji=self.__emoji,
-        )
-        self.__coordinator_service = CoordinatorService(
-            author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -103,10 +80,41 @@ class HelpAppCommand(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
         self.__guild_owner_service = GuildOwnerService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__moderator_service = ModeratorService(
+            administrator_service=self.__administrator_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            coordinator_service=self.__coordinator_service,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            guild_owner_service=self.__guild_owner_service,
+            sysadmin_service=self.__sysadmin_service,
         )
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory

@@ -33,6 +33,7 @@ from vyrtuous.coordinator.coordinator_service import CoordinatorService, NotCoor
 from vyrtuous.developer.developer_service import DeveloperService, NotDeveloper
 from vyrtuous.moderator.moderator import Moderator
 from vyrtuous.owner.guild_owner_service import GuildOwnerService, NotGuildOwner
+from vyrtuous.sysadmin import sysadmin
 from vyrtuous.sysadmin.sysadmin_service import NotSysadmin, SysadminService
 
 
@@ -84,42 +85,28 @@ class ModeratorService:
     def __init__(
         self,
         *,
+        administrator_service=None,
         author_service=None,
         bot=None,
+        coordinator_service=None,
         database_factory=None,
         dictionary_service=None,
+        developer_service=None,
         emoji=None,
+        guild_owner_service=None,
+        sysadmin_service=None,
     ):
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
-        self.__dictionary_service = dictionary_service
         self.__database_factory.model = self.MODEL
+        self.__dictionary_service = dictionary_service
         self.__emoji = emoji
-        self.__sysadmin_service = SysadminService(
-            author_service=author_service,
-            bot=bot,
-            database_factory=self.__database_factory,
-        )
-        self.__developer_service = DeveloperService(
-            bot=bot, database_factory=database_factory
-        )
-        self.__guild_owner_service = GuildOwnerService(
-            author_service=author_service, bot=bot, database_factory=database_factory
-        )
-        self.__administrator_service = AdministratorService(
-            author_service=author_service,
-            bot=bot,
-            database_factory=database_factory,
-            dictionary_service=dictionary_service,
-        )
-        self.__coordinator_service = CoordinatorService(
-            author_service=author_service,
-            bot=bot,
-            database_factory=database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=emoji,
-        )
+        self.__sysadmin_service = sysadmin_service
+        self.__developer_service = developer_service
+        self.__guild_owner_service = guild_owner_service
+        self.__administrator_service = administrator_service
+        self.__coordinator_service = coordinator_service
 
     async def is_moderator_wrapper(self, context):
         return await self.is_moderator(

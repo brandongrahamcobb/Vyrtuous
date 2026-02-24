@@ -19,11 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from discord.ext import commands, tasks
 
+from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
+from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.database import Database
+from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.moderator.moderator_service import ModeratorService
 from vyrtuous.owner.guild_owner_service import GuildOwnerService
@@ -47,12 +50,54 @@ class ScheduledTasks(commands.Cog):
         self.__duration_builder = DurationBuilder()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
-        self.__moderator_service = ModeratorService(
+        self.__bug_service = BugService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__administrator_service = AdministratorService(
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
+        )
+        self.__coordinator_service = CoordinatorService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
+        self.__developer_service = DeveloperService(
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            database_factory=self.__database_factory,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
+        self.__guild_owner_service = GuildOwnerService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__sysadmin_service = SysadminService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
+        self.__moderator_service = ModeratorService(
+            administrator_service=self.__administrator_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            coordinator_service=self.__coordinator_service,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            guild_owner_service=self.__guild_owner_service,
+            sysadmin_service=self.__sysadmin_service,
         )
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
@@ -104,22 +149,6 @@ class ScheduledTasks(commands.Cog):
             emoji=self.__emoji,
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
-        )
-        self.__guild_owner_service = GuildOwnerService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-        )
-        self.__bug_service = BugService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-        )
-        self.__sysadmin_service = SysadminService(
-            author_service=self.__author_service,
-            bot=self.__bot,
-            database_factory=self.__database_factory,
         )
 
     async def cog_load(self):
