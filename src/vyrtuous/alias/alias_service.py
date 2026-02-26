@@ -101,33 +101,42 @@ class AliasService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, obj):
+        aliases = []
         dictionary = {}
-        aliases = await self.__database_factory.select(singular=False, **where_kwargs)
-        for alias in aliases:
-            dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
-            dictionary[alias.guild_snowflake]["channels"].setdefault(
-                alias.channel_snowflake, {"aliases": {}}
-            )
-            dictionary[alias.guild_snowflake]["channels"][alias.channel_snowflake][
-                "aliases"
-            ].setdefault(alias.category, {})[alias.alias_name] = []
-            if alias.category == "role":
-                guild = self.__bot.get_guild(alias.guild_snowflake)
-                if guild:
-                    role = guild.get_role(alias.role_snowflake)
-                    dictionary[alias.guild_snowflake]["channels"][
-                        alias.channel_snowflake
-                    ]["aliases"][alias.category][alias.alias_name] = role.mention
+        if isinstance(obj, discord.Guild):
+            aliases = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            aliases = await self.__database_factory.select(channel_snowflake=obj.id)
+        else:
+            aliases = await self.__database_factory.select()
+        if aliases:
+            for alias in aliases:
+                dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
+                dictionary[alias.guild_snowflake]["channels"].setdefault(
+                    alias.channel_snowflake, {"aliases": {}}
+                )
+                dictionary[alias.guild_snowflake]["channels"][alias.channel_snowflake][
+                    "aliases"
+                ].setdefault(alias.category, {})[alias.alias_name] = []
+                if alias.category == "role":
+                    guild = self.__bot.get_guild(alias.guild_snowflake)
+                    if guild:
+                        role = guild.get_role(alias.role_snowflake)
+                        dictionary[alias.guild_snowflake]["channels"][
+                            alias.channel_snowflake
+                        ]["aliases"][alias.category][alias.alias_name] = role.mention
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Command Aliases"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj_name = "All Servers"
+        if obj and not isinstance(obj, str):
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Command Aliases in {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=AliasDictionary, dictionary=dictionary
         )

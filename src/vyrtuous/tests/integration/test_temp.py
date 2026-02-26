@@ -71,7 +71,7 @@ async def test_temp(bot, command: str, channel, permission_role):
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured
+        assert captured == ["success"]
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

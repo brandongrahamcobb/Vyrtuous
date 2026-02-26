@@ -41,7 +41,6 @@ from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
@@ -140,7 +139,6 @@ class CoordinatorTextCommands(commands.Cog):
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
         )
-        self.__discord_object_service = DiscordObjectService()
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory
         )
@@ -186,22 +184,21 @@ class CoordinatorTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
-        channel_dict = self.__discord_object_service.to_dict(obj=channel)
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         await self.__moderator_service.check_minimum_role(
-            channel_snowflake=channel_dict.get("id", None),
+            channel_snowflake=channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
             lowest_role="Coordinator",
         )
         await self.__moderator_service.has_equal_or_lower_role(
-            target_member_snowflake=int(member_dict.get("id", None)),
+            target_member_snowflake=int(member.id),
             member_snowflake=context.author.id,
-            **channel_dict.get("columns", None),
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
         )
         msg = await self.__moderator_service.toggle_moderator(
-            channel_dict=channel_dict,
-            member_dict=member_dict,
+            channel=channel,
+            member=member,
         )
         return await state.end(success=msg)
 
@@ -212,6 +209,7 @@ class CoordinatorTextCommands(commands.Cog):
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
             converter=commands.VoiceChannelConverter,
+            default=None,
             description="Tag a channel or include its ID.",
         ),
         *,
@@ -230,16 +228,15 @@ class CoordinatorTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
-        obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.to_dict(obj=obj)
+        resolved_channel = channel or ctx.channel
         await self.__moderator_service.check_minimum_role(
-            channel_snowflake=channel_dict.get("id", None),
+            channel_snowflake=resolved_channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
             lowest_role="Coordinator",
         )
         pages = await self.__stage_service.toggle_stage(
-            channel_dict=channel_dict, context=context, duration_value=duration
+            channel=resolved_channel, context=context, duration_value=duration
         )
         return await state.end(success=pages)
 

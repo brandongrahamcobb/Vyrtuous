@@ -94,37 +94,41 @@ class AdministratorService:
             raise NotAdministrator
         return True
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        administrators = []
         dictionary = {}
-        administrators = await self.__database_factory.select(singular=False, **kwargs)
-        for administrator in administrators:
-            dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
-            dictionary[administrator.guild_snowflake]["members"].setdefault(
-                administrator.member_snowflake, {"administrators": {}}
+        if isinstance(obj, discord.Guild):
+            administrators = await self.__database_factory.select(
+                guild_snowflake=obj.id
             )
+        elif isinstance(obj, discord.Member):
+            administrators = await self.__database_factory.select(
+                member_snowflake=obj.id
+            )
+        else:
+            administrators = await self.__database_factory.select()
+        if administrators:
+            for administrator in administrators:
+                dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
+                dictionary[administrator.guild_snowflake]["members"].setdefault(
+                    administrator.member_snowflake, {"administrators": {}}
+                )
 
-            for role_snowflake in administrator.role_snowflakes:
-                dictionary[administrator.guild_snowflake]["members"][
-                    administrator.member_snowflake
-                ]["administrators"].update({role_snowflake: True})
+                for role_snowflake in administrator.role_snowflakes:
+                    dictionary[administrator.guild_snowflake]["members"][
+                        administrator.member_snowflake
+                    ]["administrators"].update({role_snowflake: True})
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Administrators for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=AdministratorDictionary,
             dictionary=dictionary,
@@ -150,12 +154,8 @@ class AdministratorService:
                     for role_snowflake in processed_dictionary.get("administrators", {})
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and isinstance(
-                    object_dict.get("object", None), discord.Member
-                ):
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                if not thumbnail and isinstance(obj, discord.Member):
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 else:
                     member_line = f"**User:** {member.display_name} {member.mention}"
@@ -318,25 +318,32 @@ class AdministratorRoleService:
             return False
         return True
 
-    async def build_full_dictionary(self, where_kwargs):
+    async def build_full_dictionary(self, obj):
+        administrator_roles = []
         dictionary = {}
-        administrator_roles = await self.__database_factory.select(
-            singular=False, **where_kwargs
-        )
-        for administrator_role in administrator_roles:
-            dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
-            dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
-                administrator_role.role_snowflake, {}
+        if isinstance(obj, discord.Guild):
+            administrator_roles = await self.__database_factory.select(
+                guild_snowflake=obj.id
             )
+        else:
+            administrator_roles = await self.__database_factory.select()
+        if administrator_roles:
+            for administrator_role in administrator_roles:
+                dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
+                dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
+                    administrator_role.role_snowflake, {}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         pages = []
-        title = f"{self.__emoji.get_random_emoji()} Administrator Roles"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj_name = "All Servers"
+        if obj:
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Administrator Roles in {obj_name}"
 
-        full_dictionary = await self.build_full_dictionary(where_kwargs=where_kwargs)
+        full_dictionary = await self.build_full_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=AdministratorRoleDictionary, dictionary=full_dictionary
         )
@@ -344,7 +351,6 @@ class AdministratorRoleService:
         admin_role_n = 0
         for guild_snowflake, guild_data in processed_dictionary.data.items():
             field_count = 0
-            lines = []
             guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
@@ -369,59 +375,58 @@ class AdministratorRoleService:
             pages.extend(processed_dictionary.skipped_roles)
         return pages
 
-    async def toggle_administrator_role(self, role_dict):
-        guild_snowflake = role_dict.get("columns", None).get("guild_snowflake")
-        guild = self.__bot.get_guild(guild_snowflake)
+    async def toggle_administrator_role(self, role):
         title = f"{self.__emoji.get_random_emoji()} Administrators and Roles"
-        role_id = role_dict.get("id")
         administrators = await self.__administrator_service.administrators_by_role(
-            role_snowflake=role_id
+            role_snowflake=role.id
         )
         administrator_roles = await self.is_added_role_administrator(
-            guild_snowflake=guild_snowflake, role_snowflake=role_id
+            guild_snowflake=role.guild.id, role_snowflake=role.id
         )
         if administrator_roles:
             action = "revoked"
             if administrator_roles:
-                await self.__database_factory.delete(**role_dict.get("columns", None))
+                await self.__database_factory.delete(role_snowflake=role.id)
             revoked_members = {}
             for administrator in administrators:
-                member = guild.get_member(administrator.member_snowflake)
+                member = role.guild.get_member(administrator.member_snowflake)
                 await self.__administrator_service.removed_role(
                     {
-                        "guild_snowflake": guild_snowflake,
+                        "guild_snowflake": role.guild.id,
                         "member_snowflake": administrator.member_snowflake,
-                        "role_snowflake": role_id,
+                        "role_snowflake": role.id,
                     }
                 )
-                revoked_members.setdefault(guild_snowflake, {}).setdefault(
-                    role_id, []
+                revoked_members.setdefault(role.guild.id, {}).setdefault(
+                    role.id, []
                 ).append(member)
-            members = revoked_members.get(guild_snowflake, {}).get(role_id, [])
+            members = revoked_members.get(role.guild.id, {}).get(role.id, [])
         else:
             action = "granted"
             granted_members = {}
-            granted_members.setdefault(guild_snowflake, {})[role_id] = []
-            administrator_role = AdministratorRole(**role_dict.get("columns", None))
+            granted_members.setdefault(role.guild.id, {})[role.id] = []
+            administrator_role = AdministratorRole(
+                guild_snowflake=role.guild.id, role_snowflake=role.id
+            )
             await self.__database_factory.create(administrator_role)
-            for member in role_dict.get("object").members:
+            for member in role.members:
                 await self.__administrator_service.added_role(
                     {
-                        "guild_snowflake": guild_snowflake,
+                        "guild_snowflake": role.guild.id,
                         "member_snowflake": member.id,
-                        "role_snowflake": role_id,
+                        "role_snowflake": role.id,
                     }
                 )
-                granted_members[guild_snowflake][role_id].append(member)
-            members = granted_members.get(guild_snowflake, {}).get(role_id, [])
+                granted_members[role.guild.id][role.id].append(member)
+            members = granted_members.get(role.guild.id, {}).get(role.id, [])
 
         embed = discord.Embed(
             title=title,
-            description=f"`{role_dict.get('name')}` was `{action}`.",
+            description=f"`{role.name}` was `{action}`.",
             color=discord.Color.red() if action == "revoked" else discord.Color.green(),
         )
-        embed.add_field(name="Role ID", value=str(role_id), inline=False)
-        embed.add_field(name="Guild", value=guild.name, inline=False)
+        embed.add_field(name="Role ID", value=str(role.id), inline=False)
+        embed.add_field(name="Guild", value=str(role.guild.name), inline=False)
 
         chunks = []
         chunk = []

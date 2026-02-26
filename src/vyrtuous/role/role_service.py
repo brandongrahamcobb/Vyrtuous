@@ -172,28 +172,36 @@ class RoleService:
         else:
             return
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, obj):
+        roles = []
         dictionary = {}
-        roles = await self.__database_factory.select(singular=False, **where_kwargs)
-        for role in roles:
-            dictionary.setdefault(role.guild_snowflake, {"members": {}})
-            dictionary[role.guild_snowflake]["members"].setdefault(
-                role.member_snowflake, {"roles": {}}
-            )
-            dictionary[role.guild_snowflake]["members"][role.member_snowflake][
-                "roles"
-            ].setdefault(role.channel_snowflake, {})
-            dictionary[role.guild_snowflake]["members"][role.member_snowflake]["roles"][
-                role.channel_snowflake
-            ] = {"role": role.role_snowflake}
+        if isinstance(obj, discord.Guild):
+            roles = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            roles = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            roles = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            roles = await self.__database_factory.select()
+        if roles:
+            for role in roles:
+                dictionary.setdefault(role.guild_snowflake, {"members": {}})
+                dictionary[role.guild_snowflake]["members"].setdefault(
+                    role.member_snowflake, {"roles": {}}
+                )
+                dictionary[role.guild_snowflake]["members"][role.member_snowflake][
+                    "roles"
+                ].setdefault(role.channel_snowflake, {})
+                dictionary[role.guild_snowflake]["members"][role.member_snowflake][
+                    "roles"
+                ][role.channel_snowflake] = {"role": role.role_snowflake}
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = []
-        title = f"{self.__emoji.get_random_emoji()} Role {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get('object', None), discord.Member) else ''}"
+        title = f"{self.__emoji.get_random_emoji()} Role {f'for {obj.name}' if isinstance(obj, discord.Member) else ''}"
 
-        where_kwargs = object_dict.get("columns", None)
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=RoleDictionary, dictionary=dictionary
         )
@@ -203,7 +211,7 @@ class RoleService:
             field_count = 0
             lines = []
             thumbnail = False
-            guild = self.bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -211,21 +219,17 @@ class RoleService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in role_dictionary.get(
                     "roles"
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
                     role = channel_dictionary.get("role", None)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Role:** {role.mention}")
                     role_n += 1

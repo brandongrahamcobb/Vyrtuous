@@ -103,40 +103,44 @@ class CoordinatorService:
             member_snowflake=int(context.member.id),
         )
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        coordinators = []
         dictionary = {}
-        coordinators = await self.__database_factory.select(singular=False, **kwargs)
-        for coordinator in coordinators:
-            dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
-            dictionary[coordinator.guild_snowflake]["members"].setdefault(
-                coordinator.member_snowflake, {"coordinators": {}}
+        if isinstance(obj, discord.Guild):
+            coordinators = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            coordinators = await self.__database_factory.select(
+                channel_snowflake=obj.id
             )
-            dictionary[coordinator.guild_snowflake]["members"][
-                coordinator.member_snowflake
-            ]["coordinators"].setdefault(coordinator.channel_snowflake, {})
-            dictionary[coordinator.guild_snowflake]["members"][
-                coordinator.member_snowflake
-            ]["coordinators"][coordinator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
+        elif isinstance(obj, discord.Member):
+            coordinators = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            coordinators = await self.__database_factory.select()
+        if coordinators:
+            for coordinator in coordinators:
+                dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
+                dictionary[coordinator.guild_snowflake]["members"].setdefault(
+                    coordinator.member_snowflake, {"coordinators": {}}
+                )
+                dictionary[coordinator.guild_snowflake]["members"][
+                    coordinator.member_snowflake
+                ]["coordinators"].setdefault(coordinator.channel_snowflake, {})
+                dictionary[coordinator.guild_snowflake]["members"][
+                    coordinator.member_snowflake
+                ]["coordinators"][coordinator.channel_snowflake].update(
+                    {"placeholder": "placeholder"}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Coordinators for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=CoordinatorDictionary, dictionary=dictionary
         )
@@ -157,20 +161,16 @@ class CoordinatorService:
                 if not member:
                     continue
                 coord_n += 1
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
                     "coordinators"
                 ).items():
-                    if not isinstance(
-                        object_dict.get("object", None), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         channel = guild.get_channel(channel_snowflake)
                         if not channel:
                             continue
@@ -201,21 +201,26 @@ class CoordinatorService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def toggle_coordinator(self, channel_dict, member_dict):
-        kwargs = {}
-        kwargs.update(channel_dict.get("columns", None))
-        kwargs.update(member_dict.get("columns", None))
-        coordinator = await self.__database_factory.select(singular=True, **kwargs)
+    async def toggle_coordinator(self, channel, member):
+        coordinator = await self.__database_factory.select(
+            singular=True, channel_snowflake=channel.id, member_snowflake=member.id
+        )
         if coordinator:
-            await self.__database_factory.delete(**kwargs)
+            await self.__database_factory.delete(
+                channel_snowflake=channel.id, member_snowflake=member.id
+            )
             action = "revoked"
         else:
-            coordinator = self.MODEL(**kwargs)
+            coordinator = self.MODEL(
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
+                member_snowflake=member.id,
+            )
             await self.__database_factory.create(coordinator)
             action = "granted"
         return (
-            f"Coordinator access has been {action} for {member_dict.get('mention', None)} "
-            f"in {channel_dict.get('mention', None)}."
+            f"Coordinator access has been {action} for {member.mention} "
+            f"in {channel.mention}."
         )
 
     async def migrate(self, kwargs):

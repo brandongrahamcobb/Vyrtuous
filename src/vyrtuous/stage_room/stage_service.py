@@ -77,36 +77,38 @@ class StageService:
             embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
             await self.__bot.get_channel(stage.channel_snowflake).send(embed=embed)
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        stages = []
         dictionary = {}
-        stages = await self.__database_factory.select(singular=False, **kwargs)
-        for stage in stages:
-            dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
-            dictionary[stage.guild_snowflake]["channels"].setdefault(
-                stage.channel_snowflake, {}
-            )
-            dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ].setdefault("stages", {})
-            dictionary[stage.guild_snowflake]["channels"][stage.channel_snowflake][
-                "stages"
-            ].update({"expires_in": stage.expires_in})
+        if isinstance(obj, discord.Guild):
+            stages = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            stages = await self.__database_factory.select(channel_snowflake=obj.id)
+        else:
+            stages = await self.__database_factory.select()
+        if stages:
+            for stage in stages:
+                dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
+                dictionary[stage.guild_snowflake]["channels"].setdefault(
+                    stage.channel_snowflake, {}
+                )
+                dictionary[stage.guild_snowflake]["channels"][
+                    stage.channel_snowflake
+                ].setdefault("stages", {})
+                dictionary[stage.guild_snowflake]["channels"][stage.channel_snowflake][
+                    "stages"
+                ].update({"expires_in": stage.expires_in})
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
-            obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
+        if obj:
             obj_name = obj.name
         title = f"{self.__emoji.get_random_emoji()} Stages for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=StageDictionary, dictionary=dictionary
         )
@@ -155,19 +157,21 @@ class StageService:
             pages.extend(processed_dictionary.skipped_guilds)
         return pages
 
-    async def toggle_stage(self, channel_dict, context, duration_value):
+    async def toggle_stage(self, channel, context, duration_value):
         failed, pages, skipped, succeeded = [], [], [], []
         stage = await self.__database_factory.select(
-            **channel_dict.get("columns", None), singular=True
+            channel_snowflake=channel.id, singular=True
         )
         if stage:
-            title = f"{self.__emoji.get_random_emoji()} Stage Ended in {channel_dict.get('mention', None)}"
-            await self.__database_factory.delete(**channel_dict.get("columns", None))
+            title = (
+                f"{self.__emoji.get_random_emoji()} Stage Ended in {channel.mention}"
+            )
+            await self.__database_factory.delete(channel_snowflake=channel.id)
             failed, succeeded = await self.__voice_mute_service.off_stage(
-                channel_dict=channel_dict
+                channel=channel
             )
             description_lines = [
-                f"**Channel:** {channel_dict.get('mention', None)}",
+                f"**Channel:** {channel.mention}",
                 f"**Unmuted:** {len(succeeded)} users",
             ]
             if failed:
@@ -180,19 +184,20 @@ class StageService:
             pages.append(embed)
         else:
             stage = self.MODEL(
-                **channel_dict.get("columns", None),
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
                 expires_in=self.__duration_builder.parse(
                     value=duration_value
                 ).to_expires_in(),
             )
             await self.__database_factory.create(stage)
             failed, skipped, succeeded = await self.__voice_mute_service.on_stage(
-                channel_dict=channel_dict,
+                channel=channel,
                 context=context,
                 duration_value=duration_value,
             )
             description_lines = [
-                f"**Channel:** {channel_dict.get('mention', None)}",
+                f"**Channel:** {channel.mention}",
                 f"**Expires:** {self.__duration_builder.parse(value=duration_value).to_unix_ts()}",
                 f"**Muted:** {len(succeeded)} users",
                 f"**Skipped:** {len(skipped)}",
@@ -201,25 +206,25 @@ class StageService:
                 description_lines.append(f"**Failed:** {len(failed)}")
             embed = discord.Embed(
                 description="\n".join(description_lines),
-                title=f"{self.__emoji.get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
+                title=f"{self.__emoji.get_random_emoji()} Stage Created in {channel.name}",
                 color=discord.Color.blurple(),
             )
             pages.append(embed)
         return pages
 
-    async def toggle_stage_mute(self, channel_dict, context, member_dict):
+    async def toggle_stage_mute(self, channel, context, member):
         await self.__moderator_service.has_equal_or_lower_role(
             **context.to_dict(),
-            target_member_snowflake=member_dict.get("id", None),
+            target_member_snowflake=member.id,
         )
         stage = await self.__database_factory.select(
-            singular=True, **channel_dict.get("columns", None)
+            singular=True,
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
         )
         if stage:
-            await member_dict.get("object", None).edit(
-                mute=not member_dict.get("object", None).voice.mute
-            )
-            return f"Successfully toggled the mute for {member_dict.get('mention', None)} in {channel_dict.get('mention', None)}."
+            await member.edit(mute=not member.voice.mute)
+            return f"Successfully toggled the mute for {member.mention} in {channel.mention}."
 
     async def clean_expired(self):
         expired_stages = await self.__database_factory.select(expired=True)

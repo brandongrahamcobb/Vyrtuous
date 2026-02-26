@@ -147,40 +147,42 @@ class ModeratorService:
             raise NotModerator
         return True
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        moderators = []
         dictionary = {}
-        moderators = await self.__database_factory.select(singular=False, **kwargs)
-        for moderator in moderators:
-            dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
-            dictionary[moderator.guild_snowflake]["members"].setdefault(
-                moderator.member_snowflake, {"moderators": {}}
-            )
-            dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"].setdefault(moderator.channel_snowflake, {})
-            dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"][moderator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
+        if isinstance(obj, discord.Guild):
+            moderators = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            moderators = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            moderators = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            moderators = await self.__database_factory.select()
+        if moderators:
+            for moderator in moderators:
+                dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
+                dictionary[moderator.guild_snowflake]["members"].setdefault(
+                    moderator.member_snowflake, {"moderators": {}}
+                )
+                dictionary[moderator.guild_snowflake]["members"][
+                    moderator.member_snowflake
+                ]["moderators"].setdefault(moderator.channel_snowflake, {})
+                dictionary[moderator.guild_snowflake]["members"][
+                    moderator.member_snowflake
+                ]["moderators"][moderator.channel_snowflake].update(
+                    {"placeholder": "placeholder"}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Moderators for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=ModeratorDictionary, dictionary=dictionary
         )
@@ -188,7 +190,6 @@ class ModeratorService:
         for guild_snowflake, guild_data in processed_dictionary.data.items():
             mod_n = 0
             field_count = 0
-            lines = []
             lines = []
             thumbnail = False
             guild = self.__bot.get_guild(guild_snowflake)
@@ -202,20 +203,16 @@ class ModeratorService:
                 if not member:
                     continue
                 mod_n += 1
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
                 ).items():
-                    if not isinstance(
-                        object_dict.get("object", None), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         channel = guild.get_channel(channel_snowflake)
                         if not channel:
                             continue
@@ -246,7 +243,7 @@ class ModeratorService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def survey(self, channel_dict, guild_snowflake):
+    async def survey(self, channel):
 
         chunk_size, pages = 7, []
         (
@@ -258,41 +255,49 @@ class ModeratorService:
             moderators,
         ) = ([], [], [], [], [], [])
 
-        for member in channel_dict.get("object", None).members:
+        for member in channel.members:
             try:
-                if await self.__sysadmin_service.is_sysadmin(member.id):
+                if await self.__sysadmin_service.is_sysadmin(
+                    member_snowflake=member.id
+                ):
                     sysadmins.append(member)
             except commands.CheckFailure as e:
                 self.__bot.logger.warning(str(e).capitalize())
             try:
-                if await self.__developer_service.is_developer(member.id):
+                if await self.__developer_service.is_developer(
+                    member_snowflake=member.id
+                ):
                     developers.append(member)
             except commands.CheckFailure as e:
                 self.__bot.logger.warning(str(e).capitalize())
             try:
                 if await self.__guild_owner_service.is_guild_owner(
-                    guild_snowflake, member.id
+                    guild_snowflake=channel.guild.id, member_snowflake=member.id
                 ):
                     guild_owners.append(member)
             except commands.CheckFailure as e:
                 self.__bot.logger.warning(str(e).capitalize())
             try:
                 if await self.__administrator_service.is_administrator(
-                    guild_snowflake, member.id
+                    guild_snowflake=channel.guild.id, member_snowflake=member.id
                 ):
                     administrators.append(member)
             except commands.CheckFailure as e:
                 self.__bot.logger.warning(str(e).capitalize())
             try:
                 if await self.__coordinator_service.is_coordinator(
-                    channel_dict.get("id", None), guild_snowflake, member.id
+                    channel_snowflake=channel.id,
+                    guild_snowflake=channel.guild.id,
+                    member_snowflake=member.id,
                 ):
                     coordinators.append(member)
             except commands.CheckFailure as e:
                 self.__bot.logger.warning(str(e).capitalize())
             try:
                 if await self.is_moderator(
-                    channel_dict.get("id", None), guild_snowflake, member.id
+                    channel_snowflake=channel.id,
+                    guild_snowflake=channel.guild.id,
+                    member_snowflake=member.id,
                 ):
                     moderators.append(member)
             except commands.CheckFailure as e:
@@ -331,8 +336,8 @@ class ModeratorService:
         max_pages = max(len(c[2]) for c in roles_chunks)
         for page in range(max_pages):
             embed = discord.Embed(
-                title=f"{self.__emoji.get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
-                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
+                title=f"{self.__emoji.get_random_emoji()} Survey results for {channel.name}",
+                description=f"Total surveyed: {len(channel.members)}",
                 color=discord.Color.blurple(),
             )
             for role_name, role_list, chunks in roles_chunks:
@@ -345,21 +350,28 @@ class ModeratorService:
             pages.append(embed)
         return pages
 
-    async def toggle_moderator(self, channel_dict, member_dict):
-        kwargs = {}
-        kwargs.update(channel_dict.get("columns", None))
-        kwargs.update(member_dict.get("columns", None))
-        moderator = await self.__database_factory.select(singular=True, **kwargs)
+    async def toggle_moderator(self, channel, member):
+        moderator = await self.__database_factory.select(
+            channel_snowflake=int(channel.id),
+            member_snowflake=int(member.id),
+            singular=True,
+        )
         if moderator:
-            await self.__database_factory.delete(**kwargs)
+            await self.__database_factory.delete(
+                channel_snowflake=int(channel.id), member_snowflake=int(member.id)
+            )
             action = "revoked"
         else:
-            moderator = self.MODEL(**kwargs)
+            moderator = self.MODEL(
+                channel_snowflake=int(channel.id),
+                guild_snowflake=int(channel.guild.id),
+                member_snowflake=int(member.id),
+            )
             await self.__database_factory.create(moderator)
             action = "granted"
         return (
-            f"Moderator access for {member_dict.get('mention', None)} has been "
-            f"{action} in {channel_dict.get('mention', None)}."
+            f"Moderator access for {member.mention} has been "
+            f"{action} in {channel.mention}."
         )
 
     async def check_minimum_role(
@@ -415,7 +427,7 @@ class ModeratorService:
             ("Guild Owner", self.__guild_owner_service.is_guild_owner),
             ("Administrator", self.__administrator_service.is_administrator),
             ("Coordinator", self.__coordinator_service.is_coordinator_at_all),
-            ("Moderator", self.is_moderatorat_all),
+            ("Moderator", self.is_moderator_at_all),
         )
         passed_lowest = False
         for role_name, verify in verifications:

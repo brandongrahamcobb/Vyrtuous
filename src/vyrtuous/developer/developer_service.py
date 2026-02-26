@@ -61,33 +61,35 @@ class DeveloperService:
     async def is_developer_wrapper(self, context):
         return await self.is_developer(member_snowflake=int(context.author.id))
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        developers = []
         dictionary = {}
-        developers = await self.__database_factory.select(singular=False, **kwargs)
-        for developer in developers:
-            dictionary.setdefault("members", {})
-            dictionary["members"].setdefault(
-                developer.member_snowflake, {"developers": {}}
-            )
-            dictionary["members"][developer.member_snowflake]["developers"].update(
-                {"placeholder": "placeholder"}
-            )
+        if isinstance(obj, discord.Guild):
+            developers = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            developers = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            developers = await self.__database_factory.select()
+        if developers:
+            for developer in developers:
+                dictionary.setdefault("members", {})
+                dictionary["members"].setdefault(
+                    developer.member_snowflake, {"developers": {}}
+                )
+                dictionary["members"][developer.member_snowflake]["developers"].update(
+                    {"placeholder": "placeholder"}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict):
+    async def build_pages(self, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Developers for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
 
         embed = discord.Embed(
             title=title, description="Information", color=discord.Color.blue()
@@ -100,13 +102,11 @@ class DeveloperService:
                 user = self.__bot.get_user(member_snowflake)
                 if not user:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {user.display_name} {user.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 dev_n += 1
                 if field_count >= self.__CHUNK_SIZE:
@@ -158,20 +158,18 @@ class DeveloperService:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
         await author.send(message)
 
-    async def toggle_developer(self, member_dict):
-        kwargs = member_dict.get("columns", None)
-        del kwargs["guild_snowflake"]
+    async def toggle_developer(self, member):
         found = False
         for developer in await self.developers():
-            if developer.member_snowflake == member_dict.get("id", None):
-                await self.__database_factory.delete(**kwargs)
+            if developer.member_snowflake == member.id:
+                await self.__database_factory.delete(member_snowflake=member.id)
                 found = True
                 action = "revoked"
         if not found:
-            new_developer = self.MODEL(**kwargs)
+            new_developer = self.MODEL(member_snowflake=member.id)
             await self.__database_factory.create(new_developer)
             action = "granted"
-        return f"Developer access for {member_dict.get('mention', None)} has been {action} globally."
+        return f"Developer access for {member.mention} has been {action} globally."
 
     async def ping_about_expired_bugs(
         self,
@@ -213,9 +211,9 @@ class DeveloperService:
         developers = await self.__database_factory.select()
         return developers
 
-    async def handle_developer_assignment(self, member_dict, reference):
+    async def handle_developer_assignment(self, member, reference):
         for developer in await self.developers():
-            if developer.member_snowflake == member_dict.get("id", None):
+            if developer.member_snowflake == member.id:
                 bug, state = self.__bug_service.handle_bug_assignment(
                     developer=developer, reference=reference
                 )
@@ -226,5 +224,5 @@ class DeveloperService:
                 return await self.__bug_service.create_embed(
                     action=action,
                     bug=bug,
-                    member_dict=member_dict,
+                    member=member,
                 )

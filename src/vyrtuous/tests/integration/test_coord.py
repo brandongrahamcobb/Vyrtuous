@@ -76,7 +76,7 @@ async def test_coord(bot, command: str, member, channel, permission_role):
     full = f"{command} {m} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured
+        assert captured == ["success"]
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

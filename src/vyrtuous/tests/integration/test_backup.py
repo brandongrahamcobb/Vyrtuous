@@ -56,7 +56,7 @@
 #     """
 #     if os.environ["TEST_MODE"].lower() == "integration":
 #         captured = await send_message(bot=bot, content=command)
-#         assert captured
+#         assert captured == ["success"]
 #     elif os.environ["TEST_MODE"].lower() == "unit":
 #         objects = setup(bot)
 #         msg = build_message(

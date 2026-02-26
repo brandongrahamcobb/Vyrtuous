@@ -1,0 +1,720 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  24 FEB 2026 16:24
+entering extended mode
+ restricted \write18 enabled.
+ file:line:error style messages enabled.
+ %&-line parsing enabled.
+**/Users/spawd/git/sandbox/python/Vyrtuous/src/uploads.tex
+(/Users/spawd/git/sandbox/python/Vyrtuous/src/uploads.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count196
+\c@section=\count197
+\c@subsection=\count198
+\c@subsubsection=\count199
+\c@paragraph=\count266
+\c@subparagraph=\count267
+\c@figure=\count268
+\c@table=\count269
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen141
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks17
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 106.
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2024/04/13 v1.2c Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen142
+\Gin@req@width=\dimen143
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count270
+\float@exts=\toks18
+\float@box=\box52
+\@float@everytoks=\toks19
+\@floatcapt=\box53
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/geometry/geometry.sty
+Package: geometry 2020/01/02 v5.9 Page Geometry
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/iftex/ifvtex.sty
+Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2024/12/12 v1.0g TeX engine tests
+))
+\Gm@cnth=\count271
+\Gm@cntv=\count272
+\c@Gm@tempcnt=\count273
+\Gm@bindingoffset=\dimen144
+\Gm@wd@mp=\dimen145
+\Gm@odd@mp=\dimen146
+\Gm@even@mp=\dimen147
+\Gm@layoutwidth=\dimen148
+\Gm@layoutheight=\dimen149
+\Gm@layouthoffset=\dimen150
+\Gm@layoutvoffset=\dimen151
+\Gm@dimlist=\toks20
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/hyperref/hyperref.sty
+Package: hyperref 2024-11-05 v7.01l Hypertext links for LaTeX
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
+) (/usr/local/texlive/2025/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+) (/usr/local/texlive/2025/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
+) (/usr/local/texlive/2025/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/infwarerr/infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)) (/usr/local/texlive/2025/texmf-dist/tex/latex/hycolor/hycolor.sty
+Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/hyperref/nameref.sty
+Package: nameref 2023-11-26 v2.56 Cross-referencing by name of section
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/refcount/refcount.sty
+Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
+) (/usr/local/texlive/2025/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
+))
+\c@section@level=\count274
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+Package: etoolbox 2025/02/11 v2.5l e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count275
+) (/usr/local/texlive/2025/texmf-dist/tex/generic/stringenc/stringenc.sty
+Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO)
+)
+\@linkdim=\dimen152
+\Hy@linkcounter=\count276
+\Hy@pagecounter=\count277
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/hyperref/pd1enc.def
+File: pd1enc.def 2024-11-05 v7.01l Hyperref: PDFDocEncoding definition (HO)
+Now handling font encoding PD1 ...
+... no UTF-8 mapping file for font encoding PD1
+) (/usr/local/texlive/2025/texmf-dist/tex/generic/intcalc/intcalc.sty
+Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
+)
+\Hy@SavedSpaceFactor=\count278
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/hyperref/puenc.def
+File: puenc.def 2024-11-05 v7.01l Hyperref: PDF Unicode definition (HO)
+Now handling font encoding PU ...
+... no UTF-8 mapping file for font encoding PU
+)
+Package hyperref Info: Hyper figures OFF on input line 4157.
+Package hyperref Info: Link nesting OFF on input line 4162.
+Package hyperref Info: Hyper index ON on input line 4165.
+Package hyperref Info: Plain pages OFF on input line 4172.
+Package hyperref Info: Backreferencing OFF on input line 4177.
+Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
+Package hyperref Info: Bookmarks ON on input line 4424.
+\c@Hy@tempcnt=\count279
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip17
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+LaTeX Info: Redefining \url on input line 4763.
+\XeTeXLinkMargin=\dimen153
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/bitset/bitset.sty
+Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
+))
+\Fld@menulength=\count280
+\Field@Width=\dimen154
+\Fld@charsize=\dimen155
+Package hyperref Info: Hyper figures OFF on input line 6042.
+Package hyperref Info: Link nesting OFF on input line 6047.
+Package hyperref Info: Hyper index ON on input line 6050.
+Package hyperref Info: backreferencing OFF on input line 6057.
+Package hyperref Info: Link coloring OFF on input line 6062.
+Package hyperref Info: Link coloring with OCG OFF on input line 6067.
+Package hyperref Info: PDF/A mode OFF on input line 6072.
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/base/atbegshi-ltx.sty
+Package: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi
+package with kernel methods
+)
+\Hy@abspage=\count281
+\c@Item=\count282
+\c@Hfootnote=\count283
+)
+Package hyperref Info: Driver (autodetected): hpdftex.
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/hyperref/hpdftex.def
+File: hpdftex.def 2024-11-05 v7.01l Hyperref driver for pdfTeX
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/base/atveryend-ltx.sty
+Package: atveryend-ltx 2020/08/19 v1.0a Emulation of the original atveryend package
+with kernel methods
+)
+\Fld@listcount=\count284
+\c@bookmark@seq@number=\count285
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+Package: rerunfilecheck 2022-07-10 v1.10 Rerun checks for auxiliary files (HO)
+ (/usr/local/texlive/2025/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
+Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
+)
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 285.
+)
+\Hy@SectionHShift=\skip51
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+File: l3backend-pdftex.def 2024-05-08 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count286
+\l__pdf_internal_box=\box54
+) (%OUTDIR%/uploads.aux)
+\openout1 = `uploads.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 1.
+LaTeX Font Info:    ... okay on input line 1.
+ (/usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count287
+\scratchdimen=\dimen156
+\scratchbox=\box55
+\nofMPsegments=\count288
+\nofMParguments=\count289
+\everyMPshowfont=\toks21
+\MPscratchCnt=\count290
+\MPscratchDim=\dimen157
+\MPnumerator=\count291
+\makeMPintoPDFobject=\count292
+\everyMPtoPDFconversion=\toks22
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+ (/usr/local/texlive/2025/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
+))
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: <default>
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: 
+* h-part:(L,W,R)=(72.26999pt, 469.75502pt, 72.26999pt)
+* v-part:(T,H,B)=(72.26999pt, 650.43001pt, 72.26999pt)
+* \paperwidth=614.295pt
+* \paperheight=794.96999pt
+* \textwidth=469.75502pt
+* \textheight=650.43001pt
+* \oddsidemargin=0.0pt
+* \evensidemargin=0.0pt
+* \topmargin=-37.0pt
+* \headheight=12.0pt
+* \headsep=25.0pt
+* \topskip=10.0pt
+* \footskip=30.0pt
+* \marginparwidth=65.0pt
+* \marginparsep=11.0pt
+* \columnsep=10.0pt
+* \skip\footins=9.0pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+Package hyperref Info: Link coloring OFF on input line 1.
+(%OUTDIR%/uploads.out) (%OUTDIR%/uploads.out)
+\@outlinefile=\write3
+\openout3 = `uploads.out'.
+
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <12> on input line 1.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <8> on input line 1.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 1.
+
+
+LaTeX Warning: No \author given.
+
+(%OUTDIR%/uploads.toc
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <7> on input line 2.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 2.
+
+
+[1
+
+{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+
+[2])
+\tf@toc=\write4
+\openout4 = `uploads.toc'.
+
+
+
+[3]
+<images/admin__Screenshot_2026-02-22_at_8.33.56_PM.png, id=400, 428.60126pt x 542.025pt>
+File: images/admin__Screenshot_2026-02-22_at_8.33.56_PM.png Graphic file (type png)
+<use images/admin__Screenshot_2026-02-22_at_8.33.56_PM.png>
+Package pdftex.def Info: images/admin__Screenshot_2026-02-22_at_8.33.56_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 594.0707pt.
+
+
+[4]
+
+[5 <./images/admin__Screenshot_2026-02-22_at_8.33.56_PM.png>]
+<images/alias__Screenshot_2026-02-22_at_10.31.40_PM.png, id=411, 779.91376pt x 173.64874pt>
+File: images/alias__Screenshot_2026-02-22_at_10.31.40_PM.png Graphic file (type png)
+<use images/alias__Screenshot_2026-02-22_at_10.31.40_PM.png>
+Package pdftex.def Info: images/alias__Screenshot_2026-02-22_at_10.31.40_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 104.59013pt.
+
+
+[6
+
+ <./images/alias__Screenshot_2026-02-22_at_10.31.40_PM.png>]
+<images/assign__Screenshot_2026-02-23_at_5.15.46_PM.png, id=417, 600.2425pt x 293.095pt>
+File: images/assign__Screenshot_2026-02-23_at_5.15.46_PM.png Graphic file (type png)
+<use images/assign__Screenshot_2026-02-23_at_5.15.46_PM.png>
+Package pdftex.def Info: images/assign__Screenshot_2026-02-23_at_5.15.46_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 229.38687pt.
+
+
+[7
+
+ <./images/assign__Screenshot_2026-02-23_at_5.15.46_PM.png>]
+<images/bug__Screenshot_2026-02-23_at_4.35.35_PM.png, id=424, 777.90625pt x 175.65625pt>
+File: images/bug__Screenshot_2026-02-23_at_4.35.35_PM.png Graphic file (type png)
+<use images/bug__Screenshot_2026-02-23_at_4.35.35_PM.png>
+Package pdftex.def Info: images/bug__Screenshot_2026-02-23_at_4.35.35_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 106.07535pt.
+
+
+[8
+
+ <./images/bug__Screenshot_2026-02-23_at_4.35.35_PM.png>]
+<images/bugs__Screenshot_2026-02-23_at_4.30.13_PM.png, id=430, 480.79625pt x 391.4625pt>
+File: images/bugs__Screenshot_2026-02-23_at_4.30.13_PM.png Graphic file (type png)
+<use images/bugs__Screenshot_2026-02-23_at_4.30.13_PM.png>
+Package pdftex.def Info: images/bugs__Screenshot_2026-02-23_at_4.30.13_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 382.47778pt.
+
+
+[9
+
+ <./images/bugs__Screenshot_2026-02-23_at_4.30.13_PM.png>]
+<images/clear__Screenshot_2026-02-22_at_9.11.24_PM.png, id=436, 467.7475pt x 170.6375pt>
+File: images/clear__Screenshot_2026-02-22_at_9.11.24_PM.png Graphic file (type png)
+<use images/clear__Screenshot_2026-02-22_at_9.11.24_PM.png>
+Package pdftex.def Info: images/clear__Screenshot_2026-02-22_at_9.11.24_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 171.37912pt.
+
+
+[10
+
+ <./images/clear__Screenshot_2026-02-22_at_9.11.24_PM.png>]
+<images/cmds_all_Screenshot_2026-02-22_at_8.25.31_PM.png, id=442, 332.24126pt x 406.51875pt>
+File: images/cmds_all_Screenshot_2026-02-22_at_8.25.31_PM.png Graphic file (type png)
+<use images/cmds_all_Screenshot_2026-02-22_at_8.25.31_PM.png>
+Package pdftex.def Info: images/cmds_all_Screenshot_2026-02-22_at_8.25.31_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 574.81047pt.
+
+
+[11
+
+]
+<images/cmds_channel_Screenshot_2026-02-22_at_8.25.58_PM.png, id=447, 332.24126pt x 406.51875pt>
+File: images/cmds_channel_Screenshot_2026-02-22_at_8.25.58_PM.png Graphic file (type png)
+<use images/cmds_channel_Screenshot_2026-02-22_at_8.25.58_PM.png>
+Package pdftex.def Info: images/cmds_channel_Screenshot_2026-02-22_at_8.25.58_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 574.81047pt.
+
+
+[12 <./images/cmds_all_Screenshot_2026-02-22_at_8.25.31_PM.png>]
+
+[13 <./images/cmds_channel_Screenshot_2026-02-22_at_8.25.58_PM.png>]
+<images/cogs__Screenshot_2026-02-22_at_10.13.13_PM.png, id=459, 439.6425pt x 568.1225pt>
+File: images/cogs__Screenshot_2026-02-22_at_10.13.13_PM.png Graphic file (type png)
+<use images/cogs__Screenshot_2026-02-22_at_10.13.13_PM.png>
+Package pdftex.def Info: images/cogs__Screenshot_2026-02-22_at_10.13.13_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 607.05284pt.
+
+
+[14
+
+]
+
+[15 <./images/cogs__Screenshot_2026-02-22_at_10.13.13_PM.png>]
+<images/coord__Screenshot_2026-02-22_at_8.27.42_PM.png, id=469, 654.445pt x 331.2375pt>
+File: images/coord__Screenshot_2026-02-22_at_8.27.42_PM.png Graphic file (type png)
+<use images/coord__Screenshot_2026-02-22_at_8.27.42_PM.png>
+Package pdftex.def Info: images/coord__Screenshot_2026-02-22_at_8.27.42_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 237.75793pt.
+
+
+[16
+
+ <./images/coord__Screenshot_2026-02-22_at_8.27.42_PM.png>]
+<images/coords_all_Screenshot_2026-02-22_at_8.17.20_PM.png, id=475, 340.27126pt x 355.3275pt>
+File: images/coords_all_Screenshot_2026-02-22_at_8.17.20_PM.png Graphic file (type png)
+<use images/coords_all_Screenshot_2026-02-22_at_8.17.20_PM.png>
+Package pdftex.def Info: images/coords_all_Screenshot_2026-02-22_at_8.17.20_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 490.56934pt.
+<images/coords_channel_Screenshot_2026-02-22_at_8.18.49_PM.png, id=476, 364.36125pt x 323.2075pt>
+File: images/coords_channel_Screenshot_2026-02-22_at_8.18.49_PM.png Graphic file (type png)
+<use images/coords_channel_Screenshot_2026-02-22_at_8.18.49_PM.png>
+Package pdftex.def Info: images/coords_channel_Screenshot_2026-02-22_at_8.18.49_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 416.71255pt.
+
+
+[17
+
+ <./images/coords_all_Screenshot_2026-02-22_at_8.17.20_PM.png>]
+<images/coords_member_Screenshot_2026-02-22_at_8.19.20_PM.png, id=483, 440.64626pt x 298.11375pt>
+File: images/coords_member_Screenshot_2026-02-22_at_8.19.20_PM.png Graphic file (type png)
+<use images/coords_member_Screenshot_2026-02-22_at_8.19.20_PM.png>
+Package pdftex.def Info: images/coords_member_Screenshot_2026-02-22_at_8.19.20_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 317.8186pt.
+
+
+[18 <./images/coords_channel_Screenshot_2026-02-22_at_8.18.49_PM.png>]
+
+[19 <./images/coords_member_Screenshot_2026-02-22_at_8.19.20_PM.png>]
+<images/dev__Screenshot_2026-02-22_at_8.26.41_PM.png, id=495, 530.98375pt x 331.2375pt>
+File: images/dev__Screenshot_2026-02-22_at_8.26.41_PM.png Graphic file (type png)
+<use images/dev__Screenshot_2026-02-22_at_8.26.41_PM.png>
+Package pdftex.def Info: images/dev__Screenshot_2026-02-22_at_8.26.41_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 293.0466pt.
+
+
+[20
+
+ <./images/dev__Screenshot_2026-02-22_at_8.26.41_PM.png>]
+<images/devs__Screenshot_2026-02-22_at_8.23.58_PM.png, id=501, 332.24126pt x 312.16624pt>
+File: images/devs__Screenshot_2026-02-22_at_8.23.58_PM.png Graphic file (type png)
+<use images/devs__Screenshot_2026-02-22_at_8.23.58_PM.png>
+Package pdftex.def Info: images/devs__Screenshot_2026-02-22_at_8.23.58_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 441.39767pt.
+
+
+[21
+
+ <./images/devs__Screenshot_2026-02-22_at_8.23.58_PM.png>]
+<images/help_app_moderator_Screenshot_2026-02-22_at_3.02.34_PM.png, id=507, 344.28625pt x 369.38pt>
+File: images/help_app_moderator_Screenshot_2026-02-22_at_3.02.34_PM.png Graphic file (type png)
+<use images/help_app_moderator_Screenshot_2026-02-22_at_3.02.34_PM.png>
+Package pdftex.def Info: images/help_app_moderator_Screenshot_2026-02-22_at_3.02.34_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 503.99594pt.
+<images/help_sysadmin_Screenshot_2026-02-22_at_6.37.44_PM.png, id=508, 344.28625pt x 304.13625pt>
+File: images/help_sysadmin_Screenshot_2026-02-22_at_6.37.44_PM.png Graphic file (type png)
+<use images/help_sysadmin_Screenshot_2026-02-22_at_6.37.44_PM.png>
+Package pdftex.def Info: images/help_sysadmin_Screenshot_2026-02-22_at_6.37.44_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 414.97491pt.
+
+
+[22
+
+ <./images/help_app_moderator_Screenshot_2026-02-22_at_3.02.34_PM.png>]
+<images/help_developer_Screenshot_2026-02-22_at_6.58.40_PM.png, id=514, 484.81125pt x 440.64626pt>
+File: images/help_developer_Screenshot_2026-02-22_at_6.58.40_PM.png Graphic file (type png)
+<use images/help_developer_Screenshot_2026-02-22_at_6.58.40_PM.png>
+Package pdftex.def Info: images/help_developer_Screenshot_2026-02-22_at_6.58.40_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 426.98259pt.
+
+
+[23 <./images/help_sysadmin_Screenshot_2026-02-22_at_6.37.44_PM.png>]
+<images/help_guild_owner_image.png, id=520, 718.685pt x 710.655pt>
+File: images/help_guild_owner_image.png Graphic file (type png)
+<use images/help_guild_owner_image.png>
+Package pdftex.def Info: images/help_guild_owner_image.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 464.52277pt.
+
+
+[24 <./images/help_developer_Screenshot_2026-02-22_at_6.58.40_PM.png>]
+<images/help_administrator_Screenshot_2026-02-22_at_7.00.57_PM.png, id=526, 398.48875pt x 458.71375pt>
+File: images/help_administrator_Screenshot_2026-02-22_at_7.00.57_PM.png Graphic file (type png)
+<use images/help_administrator_Screenshot_2026-02-22_at_7.00.57_PM.png>
+Package pdftex.def Info: images/help_administrator_Screenshot_2026-02-22_at_7.00.57_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 540.77357pt.
+
+
+[25 <./images/help_guild_owner_image.png (PNG copy)>]
+<images/help_coordinator_Screenshot_2026-02-22_at_7.01.37_PM.png, id=532, 341.275pt x 304.13625pt>
+File: images/help_coordinator_Screenshot_2026-02-22_at_7.01.37_PM.png Graphic file (type png)
+<use images/help_coordinator_Screenshot_2026-02-22_at_7.01.37_PM.png>
+Package pdftex.def Info: images/help_coordinator_Screenshot_2026-02-22_at_7.01.37_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 418.65965pt.
+
+
+[26 <./images/help_administrator_Screenshot_2026-02-22_at_7.00.57_PM.png>]
+<images/help_moderator_Screenshot_2026-02-22_at_7.02.07_PM.png, id=538, 341.275pt x 443.6575pt>
+File: images/help_moderator_Screenshot_2026-02-22_at_7.02.07_PM.png Graphic file (type png)
+<use images/help_moderator_Screenshot_2026-02-22_at_7.02.07_PM.png>
+Package pdftex.def Info: images/help_moderator_Screenshot_2026-02-22_at_7.02.07_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 610.71805pt.
+
+
+[27 <./images/help_coordinator_Screenshot_2026-02-22_at_7.01.37_PM.png>]
+
+[28 <./images/help_moderator_Screenshot_2026-02-22_at_7.02.07_PM.png>]
+<images/hero__Screenshot_2026-02-22_at_8.39.32_PM.png, id=549, 741.77126pt x 341.275pt>
+File: images/hero__Screenshot_2026-02-22_at_8.39.32_PM.png Graphic file (type png)
+<use images/hero__Screenshot_2026-02-22_at_8.39.32_PM.png>
+Package pdftex.def Info: images/hero__Screenshot_2026-02-22_at_8.39.32_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 216.12918pt.
+
+
+[29
+
+ <./images/hero__Screenshot_2026-02-22_at_8.39.32_PM.png>]
+<images/heroes__Screenshot_2026-02-22_at_8.45.22_PM.png, id=555, 333.245pt x 293.095pt>
+File: images/heroes__Screenshot_2026-02-22_at_8.45.22_PM.png Graphic file (type png)
+<use images/heroes__Screenshot_2026-02-22_at_8.45.22_PM.png>
+Package pdftex.def Info: images/heroes__Screenshot_2026-02-22_at_8.45.22_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 413.18796pt.
+
+
+[30
+
+ <./images/heroes__Screenshot_2026-02-22_at_8.45.22_PM.png>]
+<images/load__Screenshot_2026-02-22_at_8.49.42_PM.png, id=561, 593.21625pt x 170.6375pt>
+File: images/load__Screenshot_2026-02-22_at_8.49.42_PM.png Graphic file (type png)
+<use images/load__Screenshot_2026-02-22_at_8.49.42_PM.png>
+Package pdftex.def Info: images/load__Screenshot_2026-02-22_at_8.49.42_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 135.1302pt.
+
+
+[31
+
+ <./images/load__Screenshot_2026-02-22_at_8.49.42_PM.png>]
+<images/mod__Screenshot_2026-02-22_at_8.28.11_PM.png, id=568, 654.445pt x 331.2375pt>
+File: images/mod__Screenshot_2026-02-22_at_8.28.11_PM.png Graphic file (type png)
+<use images/mod__Screenshot_2026-02-22_at_8.28.11_PM.png>
+Package pdftex.def Info: images/mod__Screenshot_2026-02-22_at_8.28.11_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 237.75793pt.
+
+
+[32
+
+ <./images/mod__Screenshot_2026-02-22_at_8.28.11_PM.png>]
+<images/mods_all_Screenshot_2026-02-22_at_8.11.07_PM.png, id=574, 351.3125pt x 352.31625pt>
+File: images/mods_all_Screenshot_2026-02-22_at_8.11.07_PM.png Graphic file (type png)
+<use images/mods_all_Screenshot_2026-02-22_at_8.11.07_PM.png>
+Package pdftex.def Info: images/mods_all_Screenshot_2026-02-22_at_8.11.07_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 471.13365pt.
+<images/mods_channel_Screenshot_2026-02-22_at_8.11.35_PM.png, id=575, 351.3125pt x 310.15875pt>
+File: images/mods_channel_Screenshot_2026-02-22_at_8.11.35_PM.png Graphic file (type png)
+<use images/mods_channel_Screenshot_2026-02-22_at_8.11.35_PM.png>
+Package pdftex.def Info: images/mods_channel_Screenshot_2026-02-22_at_8.11.35_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 414.75868pt.
+
+
+[33
+
+ <./images/mods_all_Screenshot_2026-02-22_at_8.11.07_PM.png>]
+<images/mods_member_Screenshot_2026-02-22_at_8.12.02_PM.png, id=581, 420.57124pt x 310.15875pt>
+File: images/mods_member_Screenshot_2026-02-22_at_8.12.02_PM.png Graphic file (type png)
+<use images/mods_member_Screenshot_2026-02-22_at_8.12.02_PM.png>
+Package pdftex.def Info: images/mods_member_Screenshot_2026-02-22_at_8.12.02_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 346.43362pt.
+
+
+[34 <./images/mods_channel_Screenshot_2026-02-22_at_8.11.35_PM.png>]
+
+[35 <./images/mods_member_Screenshot_2026-02-22_at_8.12.02_PM.png>]
+<images/mute__Screenshot_2026-02-22_at_10.30.31_PM.png, id=592, 491.8375pt x 538.01pt>
+File: images/mute__Screenshot_2026-02-22_at_10.30.31_PM.png Graphic file (type png)
+<use images/mute__Screenshot_2026-02-22_at_10.30.31_PM.png>
+Package pdftex.def Info: images/mute__Screenshot_2026-02-22_at_10.30.31_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 513.87315pt.
+
+
+[36
+
+ <./images/mute__Screenshot_2026-02-22_at_10.30.31_PM.png>]
+<images/ping__image.png, id=598, 475.7775pt x 341.275pt>
+File: images/ping__image.png Graphic file (type png)
+<use images/ping__image.png>
+Package pdftex.def Info: images/ping__image.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 336.97281pt.
+
+
+[37
+
+ <./images/ping__image.png (PNG copy)>]
+<images/reload__Screenshot_2026-02-22_at_8.47.19_PM.png, id=604, 593.21625pt x 170.6375pt>
+File: images/reload__Screenshot_2026-02-22_at_8.47.19_PM.png Graphic file (type png)
+<use images/reload__Screenshot_2026-02-22_at_8.47.19_PM.png>
+Package pdftex.def Info: images/reload__Screenshot_2026-02-22_at_8.47.19_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 135.1302pt.
+
+
+[38
+
+ <./images/reload__Screenshot_2026-02-22_at_8.47.19_PM.png>]
+<images/rmute__Screenshot_2026-02-22_at_10.11.59_PM.png, id=610, 339.2675pt x 299.1175pt>
+File: images/rmute__Screenshot_2026-02-22_at_10.11.59_PM.png Graphic file (type png)
+<use images/rmute__Screenshot_2026-02-22_at_10.11.59_PM.png>
+Package pdftex.def Info: images/rmute__Screenshot_2026-02-22_at_10.11.59_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 414.17921pt.
+
+
+[39
+
+ <./images/rmute__Screenshot_2026-02-22_at_10.11.59_PM.png>]
+<images/rmv__Screenshot_2026-02-22_at_10.13.55_PM.png, id=617, 477.785pt x 272.01625pt>
+File: images/rmv__Screenshot_2026-02-22_at_10.13.55_PM.png Graphic file (type png)
+<use images/rmv__Screenshot_2026-02-22_at_10.13.55_PM.png>
+Package pdftex.def Info: images/rmv__Screenshot_2026-02-22_at_10.13.55_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 267.44572pt.
+
+
+[40
+
+ <./images/rmv__Screenshot_2026-02-22_at_10.13.55_PM.png>]
+<images/roleid__Screenshot_2026-02-22_at_8.30.43_PM.png, id=623, 428.60126pt x 174.6525pt>
+File: images/roleid__Screenshot_2026-02-22_at_8.30.43_PM.png Graphic file (type png)
+<use images/roleid__Screenshot_2026-02-22_at_8.30.43_PM.png>
+Package pdftex.def Info: images/roleid__Screenshot_2026-02-22_at_8.30.43_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 191.42278pt.
+
+
+[41
+
+ <./images/roleid__Screenshot_2026-02-22_at_8.30.43_PM.png>]
+<images/smute__Screenshot_2026-02-22_at_10.14.41_PM.png, id=629, 557.08125pt x 168.63pt>
+File: images/smute__Screenshot_2026-02-22_at_10.14.41_PM.png Graphic file (type png)
+<use images/smute__Screenshot_2026-02-22_at_10.14.41_PM.png>
+Package pdftex.def Info: images/smute__Screenshot_2026-02-22_at_10.14.41_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 142.19885pt.
+
+
+[42
+
+ <./images/smute__Screenshot_2026-02-22_at_10.14.41_PM.png>]
+<images/smutes__Screenshot_2026-02-22_at_10.15.59_PM.png, id=635, 365.365pt x 316.18124pt>
+File: images/smutes__Screenshot_2026-02-22_at_10.15.59_PM.png Graphic file (type png)
+<use images/smutes__Screenshot_2026-02-22_at_10.15.59_PM.png>
+Package pdftex.def Info: images/smutes__Screenshot_2026-02-22_at_10.15.59_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 406.5391pt.
+
+
+[43
+
+ <./images/smutes__Screenshot_2026-02-22_at_10.15.59_PM.png>]
+<images/unload__Screenshot_2026-02-22_at_8.47.44_PM.png, id=642, 593.21625pt x 170.6375pt>
+File: images/unload__Screenshot_2026-02-22_at_8.47.44_PM.png Graphic file (type png)
+<use images/unload__Screenshot_2026-02-22_at_8.47.44_PM.png>
+Package pdftex.def Info: images/unload__Screenshot_2026-02-22_at_8.47.44_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 135.1302pt.
+
+
+[44
+
+ <./images/unload__Screenshot_2026-02-22_at_8.47.44_PM.png>]
+<images/vban__Screenshot_2026-02-22_at_10.29.19_PM.png, id=648, 443.6575pt x 538.01pt>
+File: images/vban__Screenshot_2026-02-22_at_10.29.19_PM.png Graphic file (type png)
+<use images/vban__Screenshot_2026-02-22_at_10.29.19_PM.png>
+Package pdftex.def Info: images/vban__Screenshot_2026-02-22_at_10.29.19_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 569.65576pt.
+
+
+[45
+
+]
+
+[46 <./images/vban__Screenshot_2026-02-22_at_10.29.19_PM.png>]
+<images/vflag__Screenshot_2026-02-22_at_10.23.38_PM.png, id=658, 443.6575pt x 528.97626pt>
+File: images/vflag__Screenshot_2026-02-22_at_10.23.38_PM.png Graphic file (type png)
+<use images/vflag__Screenshot_2026-02-22_at_10.23.38_PM.png>
+Package pdftex.def Info: images/vflag__Screenshot_2026-02-22_at_10.23.38_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 560.09065pt.
+
+
+[47
+
+ <./images/vflag__Screenshot_2026-02-22_at_10.23.38_PM.png>]
+<images/vtmute__Screenshot_2026-02-22_at_10.32.17_PM.png, id=664, 449.68pt x 537.00626pt>
+File: images/vtmute__Screenshot_2026-02-22_at_10.32.17_PM.png Graphic file (type png)
+<use images/vtmute__Screenshot_2026-02-22_at_10.32.17_PM.png>
+Package pdftex.def Info: images/vtmute__Screenshot_2026-02-22_at_10.32.17_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 561.0053pt.
+
+
+[48
+
+ <./images/vtmute__Screenshot_2026-02-22_at_10.32.17_PM.png>]
+<images/vvrole__Screenshot_2026-02-22_at_10.55.49_PM.png, id=670, 480.79625pt x 537.00626pt>
+File: images/vvrole__Screenshot_2026-02-22_at_10.55.49_PM.png Graphic file (type png)
+<use images/vvrole__Screenshot_2026-02-22_at_10.55.49_PM.png>
+Package pdftex.def Info: images/vvrole__Screenshot_2026-02-22_at_10.55.49_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 524.68109pt.
+
+
+[49
+
+ <./images/vvrole__Screenshot_2026-02-22_at_10.55.49_PM.png>]
+<images/xrmute__Screenshot_2026-02-22_at_10.12.45_PM.png, id=677, 346.29375pt x 304.13625pt>
+File: images/xrmute__Screenshot_2026-02-22_at_10.12.45_PM.png Graphic file (type png)
+<use images/xrmute__Screenshot_2026-02-22_at_10.12.45_PM.png>
+Package pdftex.def Info: images/xrmute__Screenshot_2026-02-22_at_10.12.45_PM.png  used on input line 1.
+(pdftex.def)             Requested size: 469.75502pt x 412.58029pt.
+
+
+[50
+
+ <./images/xrmute__Screenshot_2026-02-22_at_10.12.45_PM.png>] (%OUTDIR%/uploads.aux)
+ ***********
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+ ***********
+Package rerunfilecheck Info: File `uploads.out' has not changed.
+(rerunfilecheck)             Checksum: 8F836F35056F20B60E27183509E3AF68;8063.
+ ) 
+Here is how much of TeX's memory you used:
+ 9504 strings out of 473190
+ 161082 string characters out of 5715801
+ 555935 words of memory out of 5000000
+ 32548 multiletter control sequences out of 15000+600000
+ 563092 words of font info for 50 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 75i,7n,79p,15101b,469s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb>
+Output written on %OUTDIR%/uploads.pdf (50 pages, 3949749 bytes).
+PDF statistics:
+ 738 PDF objects out of 1000 (max. 8388607)
+ 586 compressed objects within 6 object streams
+ 127 named destinations out of 1000 (max. 500000)
+ 816 words of extra memory for PDF output out of 10000 (max. 10000000)
+

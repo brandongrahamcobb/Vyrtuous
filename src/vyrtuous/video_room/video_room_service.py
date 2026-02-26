@@ -52,25 +52,32 @@ class VideoRoomService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    async def build_dictionary(self, where_kwargs):
+    async def build_dictionary(self, obj):
+        video_rooms = []
         dictionary = {}
-        video_rooms = await self.__database_factory.select(
-            singular=False, **where_kwargs
-        )
-        for video_room in video_rooms:
-            dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            dictionary[video_room.guild_snowflake]["channels"][
-                video_room.channel_snowflake
-            ] = True
+        if isinstance(obj, discord.Guild):
+            video_rooms = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            video_rooms = await self.__database_factory.select(channel_snowflake=obj.id)
+        else:
+            video_rooms = await self.__database_factory.select()
+        if video_rooms:
+            for video_room in video_rooms:
+                dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
+                dictionary[video_room.guild_snowflake]["channels"][
+                    video_room.channel_snowflake
+                ] = True
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Video Rooms"
 
-        where_kwargs = object_dict.get("columns", None)
+        obj_name = "All Servers"
+        if obj:
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Video Rooms in {obj_name}"
 
-        dictionary = await self.build_dictionary(where_kwargs=where_kwargs)
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=VideoRoomDictionary, dictionary=dictionary
         )
@@ -135,9 +142,10 @@ class VideoRoomService:
             pages.extend(processed_dictionary.skipped_guilds)
         return pages
 
-    async def toggle_video_room(self, channel_dict):
-        kwargs = channel_dict.get("columns", None)
-        video_room = await self.__database_factory.select(**kwargs, singular=True)
+    async def toggle_video_room(self, channel):
+        video_room = await self.__database_factory.select(
+            channel_snowflake=channel.id, singular=True
+        )
         if video_room:
             action = "removed"
             self.video_rooms = [
@@ -145,13 +153,15 @@ class VideoRoomService:
                 for vr in self.video_rooms
                 if vr.channel_snowflake != video_room.channel_snowflake
             ]
-            await self.__database_factory.delete(**kwargs)
+            await self.__database_factory.delete(channel_snowflake=channel.id)
         else:
-            video_room = self.MODEL(**kwargs)
+            video_room = self.MODEL(
+                channel_snowflake=channel.id, guild_snowflake=channel.guild.id
+            )
             await self.__database_factory.create(video_room)
             self.video_rooms.append(video_room)
             action = "created"
-        return f"Video-only room {action} in {channel_dict.get('mention', None)}."
+        return f"Video-only room {action} in {channel.mention}."
 
     async def load_video_rooms_into_memory(self):
         self.video_rooms = await self.__database_factory.select()

@@ -140,40 +140,42 @@ class VoiceMuteService:
                         f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                     )
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        voice_mutes = []
         dictionary = {}
-        voice_mutes = await self.__database_factory.select(target="user", **kwargs)
-        for voice_mute in voice_mutes:
-            dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
-            dictionary[voice_mute.guild_snowflake]["members"].setdefault(
-                voice_mute.member_snowflake, {"voice_mutes": {}}
-            )
-            dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
-            dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"][voice_mute.channel_snowflake].update(
-                {"reason": voice_mute.reason, "expires_in": voice_mute.expires_in}
-            )
+        if isinstance(obj, discord.Guild):
+            voice_mutes = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            voice_mutes = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            voice_mutes = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            voice_mutes = await self.__database_factory.select()
+        if voice_mutes:
+            for voice_mute in voice_mutes:
+                dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
+                dictionary[voice_mute.guild_snowflake]["members"].setdefault(
+                    voice_mute.member_snowflake, {"voice_mutes": {}}
+                )
+                dictionary[voice_mute.guild_snowflake]["members"][
+                    voice_mute.member_snowflake
+                ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
+                dictionary[voice_mute.guild_snowflake]["members"][
+                    voice_mute.member_snowflake
+                ]["voice_mutes"][voice_mute.channel_snowflake].update(
+                    {"reason": voice_mute.reason, "expires_in": voice_mute.expires_in}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.TextChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Voice Mutes for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=VoiceMuteDictionary, dictionary=dictionary
         )
@@ -193,23 +195,19 @@ class VoiceMuteService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                     "voice_mutes", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
+                    if isinstance(obj, discord.Member):
                         lines.append(
                             f"**Expires in:** {channel_dictionary['expires_in']}"
                         )
@@ -242,53 +240,50 @@ class VoiceMuteService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def room_mute(self, channel_dict, reason):
+    async def room_mute(self, author, channel, reason):
         muted_members, pages, skipped_members, failed_members = [], [], [], []
-        guild = self.__bot.get_guild(
-            channel_dict.get("columns", None).get("guild_snowflake", None)
-        )
-        for member in channel_dict.get("object", None).members:
-            if member.id == channel_dict.get("columns", None).get(
-                "member_snowflake", None
-            ):
+        for member in channel.members:
+            if member.id == author.id:
                 continue
             voice_mute = await self.__database_factory.select(
-                **channel_dict.get("columns", None), target="user", singular=True
+                channel_snowflake=channel.id,
+                member_snowflake=member.id,
+                target="user",
+                singular=True,
             )
             if voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict.get("id", None):
+                if member.voice.channel.id == channel.id:
                     try:
                         await member.edit(mute=True)
                     except Exception as e:
                         self.__bot.logger.warning(
                             f"Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
-                            f"{channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in guild "
-                            f"{guild.name} ({guild.id}). "
+                            f"{channel.name} ({channel.id}) in guild "
+                            f"{channel.guild.name} ({channel.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
             voice_mute = self.MODEL(
+                channel_snowflake=channel.id,
                 expires_in=expires_in,
+                guild_snowflake=channel.guild.id,
                 member_snowflake=member.id,
                 reason=reason,
                 target="user",
-                **channel_dict.get("columns", None),
             )
             await self.__database_factory.create(voice_mute)
             muted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_dict.get('mention', None)}",
+            f"**Channel:** {channel.mention}",
             f"**Muted:** {len(muted_members)} users",
             f"**Failed:** {len(failed_members)} users",
             f"**Skipped:** {
-                len(channel_dict.get('object', None).members)
-                - len(muted_members)
-                - len(failed_members)
+                len(channel.members) - len(muted_members) - len(failed_members)
             }",
         ]
         embed = discord.Embed(
@@ -299,42 +294,42 @@ class VoiceMuteService:
         pages.append(embed)
         return pages
 
-    async def room_unmute(self, channel_dict, guild_snowflake):
+    async def room_unmute(self, channel):
         unmuted_members, pages, skipped_members, failed_members = [], [], [], []
-        guild = self.__bot.get_guild(guild_snowflake)
-        where_kwargs = channel_dict.get("columns", None)
-
-        for member in channel_dict.get("object", None).members:
+        for member in channel.members:
             voice_mute = await self.__database_factory.select(
-                target="user", **where_kwargs, member_snowflake=member.id, singular=True
+                target="user",
+                channel_snowflake=channel.id,
+                member_snowflake=member.id,
+                singular=True,
             )
             if not voice_mute:
                 skipped_members.append(member)
                 continue
-            await self.__database_factory.delete(target="user", **where_kwargs)
+            await self.__database_factory.delete(
+                target="user", channel_snowflake=channel.id, member_snowflake=member.id
+            )
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict.get("id", None):
+                if member.voice.channel.id == channel.id:
                     try:
                         await member.edit(mute=False)
                     except Exception as e:
                         self.__bot.logger.warning(
                             f"Unable to undo voice-mute "
                             f"for member {member.display_name} ({member.id}) "
-                            f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
-                            f"in guild {guild.name} "
-                            f"({guild.id}). "
+                            f"in channel {channel.name} ({channel.id}) "
+                            f"in guild {channel.guild.name} "
+                            f"({channel.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             unmuted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_dict.get('mention', None)}",
+            f"**Channel:** {channel.mention}",
             f"**Unmuted:** {len(unmuted_members)} users",
             f"**Failed:** {len(failed_members)} users",
             f"**Skipped:** {
-                len(channel_dict.get('object', None).members)
-                - len(unmuted_members)
-                - len(failed_members)
+                len(channel.members) - len(unmuted_members) - len(failed_members)
             }",
         ]
         embed = discord.Embed(
@@ -541,19 +536,18 @@ class VoiceMuteService:
                     f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.id}), skipping undo voice-mute."
                 )
 
-    async def off_stage(self, channel_dict):
+    async def off_stage(self, channel):
         failed, succeeded = [], []
-        guild = self.__bot.get_guild(
-            channel_dict.get("columns", None).get("guild_snowflake", None)
-        )
-        for member in channel_dict.get("object", None).members:
+        for member in channel.members:
             await self.__database_factory.delete(
-                **channel_dict.get("columns", None),
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
                 member_snowflake=member.id,
                 target="room",
             )
             voice_mute = await self.__database_factory.select(
-                **channel_dict.get("columns", None),
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
                 member_snowflake=member.id,
                 target="user",
                 singular=True,
@@ -569,22 +563,20 @@ class VoiceMuteService:
                     self.__bot.logger.warning(
                         f"Unable to undo voice-mute "
                         f"for member {member.display_name} ({member.id}) in "
-                        f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
-                        f"guild {guild.name} ({guild.id}). "
+                        f"channel {channel.name} ({channel.id}) in "
+                        f"guild {channel.guild.name} ({channel.guild.id}). "
                         f"{str(e).capitalize()}"
                     )
                     failed.append(member)
         return failed, succeeded
 
-    async def on_stage(self, channel_dict, context, duration_value):
+    async def on_stage(self, channel, context, duration_value):
         failed, skipped, succeeded = [], [], []
-        guild = self.__bot.get_guild(
-            channel_dict.get("columns", None).get("guild_snowflake", None)
-        )
-        for member in channel_dict.get("object", None).members:
+        for member in channel.members:
             if (
                 await self.__moderator_service.check(
-                    **channel_dict.get("columns", None),
+                    channel_snowflake=channel.id,
+                    guild_snowflake=channel.guild.id,
                     lowest_role="Coordinator",
                 )
                 or member.id == context.author.id
@@ -592,27 +584,26 @@ class VoiceMuteService:
                 skipped.append(member)
                 continue
             voice_mute = self.MODEL(
-                **channel_dict.get("columns", None),
+                channel_snowflake=channel.id,
                 expires_in=self.__duration_builder.parse(
                     value=duration_value
                 ).to_expires_in(),
+                guild_snowflake=channel.guild.id,
                 member_snowflake=member.id,
                 target="room",
                 reason="Stage mute",
             )
             await self.__database_factory.create(voice_mute)
             try:
-                if member.voice and member.voice.channel.id == channel_dict.get(
-                    "id", None
-                ):
+                if member.voice and member.voice.channel.id == channel.id:
                     await member.edit(mute=True)
                 succeeded.append(member)
             except Exception as e:
                 self.__bot.logger.warning(
                     f"Unable to voice-mute "
                     f"member {member.display_name} ({member.id}) "
-                    f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
-                    f"in guild {guild.name} ({guild.id}). "
+                    f"in channel {channel.name} ({channel.id}) "
+                    f"in guild {channel.guild.name} ({channel.guild.id}). "
                     f"{str(e).capitalize()}"
                 )
                 failed.append(member)
@@ -630,7 +621,7 @@ class VoiceMuteService:
         return False
 
     async def mute(self, channel, duration_value, member, target):
-        expires_in = duration.to_expires_in()
+        expires_in = self.__duration_builder.parse(duration_value).to_expires_in()
         voice_mute = self.MODEL(
             channel_snowflake=channel.id,
             expires_in=expires_in,

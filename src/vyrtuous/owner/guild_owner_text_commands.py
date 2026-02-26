@@ -22,11 +22,15 @@ from typing import Any, Coroutine, Literal, Optional, Union
 import discord
 from discord.ext import commands
 
-from vyrtuous.administrator.administrator_service import AdministratorRoleService
+from vyrtuous.administrator.administrator_service import (
+    AdministratorRoleService,
+    AdministratorService,
+)
 from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
+from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_builder import DurationBuilder
 from vyrtuous.flag.flag_service import FlagService
@@ -49,8 +53,6 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
-from vyrtuous.administrator.administrator_service import AdministratorService
-from vyrtuous.coordinator.coordinator_service import CoordinatorService
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -100,7 +102,6 @@ class GuildOwnerTextCommands(commands.Cog):
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
-
         self.__moderator_service = ModeratorService(
             administrator_service=self.__administrator_service,
             author_service=self.__author_service,
@@ -180,6 +181,12 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory
         )
+        self.__administrator_role_service = AdministratorRoleService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         context = DefaultContext(ctx=ctx)
@@ -214,10 +221,14 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        role_dict = self.__discord_object_service.to_dict(obj=role)
-        pages = await self.__administrator_role_service.toggle_administrator_role(
-            role_dict=role_dict,
-        )
+        try:
+            pages = await self.__administrator_role_service.toggle_administrator_role(
+                role=role,
+            )
+        except:
+            import traceback
+
+            traceback.print_exc()
         return await state.end(success=pages)
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
@@ -239,25 +250,19 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
-        where_kwargs = member_dict.get("columns", None)
         enabled = self.__hero_service.toggle_enabled()
         if enabled:
-            self.__hero_service + (
-                where_kwargs.get("guild_snowflake", None),
-                where_kwargs.get("member_snowflake", None),
+            self.__hero_service + (member.guild.id, member.id)
+            await self.__hero_service.unrestrict(
+                guild_snowflake=member.guild.id, member_snowflake=member.id
             )
-            await self.__hero_service.unrestrict(**where_kwargs)
             msg = (
                 f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member_dict.get('mention', None)}."
+                f"and invincibility has been enabled for {member.mention}."
             )
         else:
-            self.__hero_service - (
-                where_kwargs.get("guild_snowflake", None),
-                where_kwargs.get("member_snowflake", None),
-            )
-            msg = f"Invincibility has been disabled for {member_dict.get('mention', None)}"
+            self.__hero_service - (member.guild.id, member.id)
+            msg = f"Invincibility has been disabled for {member.mention}"
         return await state.end(success=msg)
 
     @commands.command(name="devs", help="List devs.")
@@ -265,7 +270,7 @@ class GuildOwnerTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Union[str, discord.Member] = commands.parameter(
+        target: Union[str, discord.Member, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="'all', or user mention/ID",
@@ -280,9 +285,16 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or "all"
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__developer_service.build_pages(object_dict=object_dict)
+        if not target:
+            obj = None
+        else:
+            obj = target or ctx.guild
+        try:
+            pages = await self.__developer_service.build_pages(obj=obj)
+        except:
+            import traceback
+
+            traceback.print_exc()
         return await state.end(success=pages)
 
     @commands.command(name="heroes", help="List heroes.")
@@ -306,11 +318,9 @@ class GuildOwnerTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         is_at_home = at_home(source=ctx)
-        obj = target or "all"
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__hero_service.build_pages(
             is_at_home=is_at_home,
-            object_dict=object_dict,
+            obj=target,
         )
         return await state.end(success=pages)
 

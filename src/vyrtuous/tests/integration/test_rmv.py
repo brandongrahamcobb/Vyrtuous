@@ -75,7 +75,7 @@ async def test_rmv(bot, command: str, source_channel, target_channel, permission
     full = f"{command} {sc} {tc}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured
+        assert captured == ["success"]
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

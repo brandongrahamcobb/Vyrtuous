@@ -54,33 +54,35 @@ class CapService:
         self.__duration_builder = duration_builder
         self.__emoji = emoji
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        caps = []
         dictionary = {}
-        caps = await self.__database_factory.select(singular=False, **kwargs)
-        for cap in caps:
-            dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
-            dictionary[cap.guild_snowflake]["channels"].setdefault(
-                cap.channel_snowflake, {"caps": {}}
-            )
-            dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
-                cap.category
-            ] = cap.duration_seconds
+        if isinstance(obj, discord.Guild):
+            caps = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            caps = await self.__database_factory.select(channel_snowflake=obj.id)
+        else:
+            caps = await self.__database_factory.select()
+        if caps:
+            for cap in caps:
+                dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
+                dictionary[cap.guild_snowflake]["channels"].setdefault(
+                    cap.channel_snowflake, {"caps": {}}
+                )
+                dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
+                    "caps"
+                ][cap.category] = cap.duration_seconds
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
-            obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
+        if obj:
             obj_name = obj.name
         title = f"{self.__emoji.get_random_emoji()} Caps for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=CapDictionary, dictionary=dictionary
         )
@@ -131,30 +133,35 @@ class CapService:
             pages.extend(processed_dictionary.skipped_guilds)
         return pages
 
-    async def toggle_cap(self, category, channel_dict, hours):
+    async def toggle_cap(self, category, channel, hours):
         seconds = int(hours) * 3600
-        where_kwargs = channel_dict.get("columns", None)
-        where_kwargs.update({"category": category})
-        cap = await self.__database_factory.select(singular=True, **where_kwargs)
+        where_kwargs = {"channel_snowflake": channel.id, "category": category}
+        cap = await self.__database_factory.select(
+            singular=True, channel_snowflake=channel.id, category=category
+        )
         if cap and seconds:
             await self.__database_factory.update(
                 set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs
             )
-            return f"Cap `{category}` modified for {channel_dict.get('mention', None)}."
+            return f"Cap `{category}` modified for {channel.mention}."
         elif cap:
-            await self.__database_factory.delete(**where_kwargs)
+            await self.__database_factory.delete(
+                channel_snowflake=channel.id, category=category
+            )
             return (
                 f"Cap of type {category} "
-                f"and channel {channel_dict.get('mention', None)} deleted successfully."
+                f"and channel {channel.mention} deleted successfully."
             )
         else:
             where_kwargs.update({"duration_seconds": seconds})
-            cap = self.MODEL(**where_kwargs)
-            await self.__database_factory.create(cap)
-            return (
-                f"Cap `{category}` created for "
-                f"{channel_dict.get('mention', None)} successfully."
+            cap = self.MODEL(
+                channel_snowflake=channel.id,
+                category=category,
+                duration_seconds=seconds,
+                guild_snowflake=channel.guild.id,
             )
+            await self.__database_factory.create(cap)
+            return f"Cap `{category}` created for {channel.mention} successfully."
 
     async def assertion(self, ctx, default_ctx):
         duration_value = ctx.duration_value

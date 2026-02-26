@@ -53,30 +53,32 @@ class ServerMuteService:
         self.__emoji = emoji
         self.__moderator_service = moderator_service
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        server_mutes = []
         dictionary = {}
-        server_mutes = await self.__database_factory.select(singular=False, **kwargs)
-        for server_mute in server_mutes:
-            dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
-            dictionary[server_mute.guild_snowflake]["members"].setdefault(
-                server_mute.member_snowflake, {"server_mutes": {}}
-            )
+        if isinstance(obj, discord.Guild):
+            server_mutes = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            server_mutes = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            server_mutes = await self.__database_factory.select()
+        if server_mutes:
+            for server_mute in server_mutes:
+                dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
+                dictionary[server_mute.guild_snowflake]["members"].setdefault(
+                    server_mute.member_snowflake, {"server_mutes": {}}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Server Mutes for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=ServerMuteDictionary, dictionary=dictionary
         )
@@ -96,13 +98,11 @@ class ServerMuteService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 smute_n += 1
                 field_count += 1
@@ -131,35 +131,33 @@ class ServerMuteService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def toggle_server_mute(self, context, member_dict, reason):
-        guild_snowflake = context.guild.id
-        guild = self.__bot.get_guild(guild_snowflake)
+    async def toggle_server_mute(self, context, member, reason):
         await self.__moderator_service.has_equal_or_lower_role(
             **context.to_dict(),
-            target_member_snowflake=member_dict.get("id", None),
+            target_member_snowflake=member.id,
         )
         server_mute = await self.__database_factory.select(
-            singular=True, **member_dict.get("columns", None)
+            singular=True, guild_snowflake=context.guild.id, member_snowflake=member.id
         )
         if not server_mute:
             server_mute = self.MODEL(
-                **member_dict.get("columns", None),
+                guild_snowflake=context.guild.id,
+                member_snowflake=member.id,
                 reason=reason,
             )
             await self.__database_factory.create(server_mute)
             action = "muted"
             should_be_muted = True
         else:
-            await self.__database_factory.delete(**member_dict.get("columns", None))
+            await self.__database_factory.delete(
+                guild_snowflake=context.guild.id, member_snowflake=member.id
+            )
             action = "unmuted"
             should_be_muted = False
 
-        if (
-            member_dict.get("object", None).voice
-            and member_dict.get("object", None).voice.channel
-        ):
-            await member_dict.get("object", None).edit(mute=should_be_muted)
-        return f"Successfully server {action} {member_dict.get('mention', None)} in {guild.name}."
+        if member.voice and member.voice.channel:
+            await member.edit(mute=should_be_muted)
+        return f"Successfully server {action} {member.mention} in {context.guild.name}."
 
     async def enforce(self, after, member):
         server_mute = await self.__database_factory.select(

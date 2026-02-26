@@ -171,40 +171,42 @@ class TextMuteService:
                     set_kwargs=set_kwargs, where_kwargs=where_kwargs
                 )
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        text_mutes = []
         dictionary = {}
-        text_mutes = await self.__database_factory.select(singular=False, **kwargs)
-        for text_mute in text_mutes:
-            dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
-            dictionary[text_mute.guild_snowflake]["members"].setdefault(
-                text_mute.member_snowflake, {"text_mutes": {}}
-            )
-            dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"].setdefault(text_mute.channel_snowflake, {})
-            dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"][text_mute.channel_snowflake].update(
-                {"reason": text_mute.reason, "expires_in": text_mute.expires_in}
-            )
+        if isinstance(obj, discord.Guild):
+            text_mutes = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            text_mutes = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            text_mutes = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            text_mutes = await self.__database_factory.select()
+        if text_mutes:
+            for text_mute in text_mutes:
+                dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
+                dictionary[text_mute.guild_snowflake]["members"].setdefault(
+                    text_mute.member_snowflake, {"text_mutes": {}}
+                )
+                dictionary[text_mute.guild_snowflake]["members"][
+                    text_mute.member_snowflake
+                ]["text_mutes"].setdefault(text_mute.channel_snowflake, {})
+                dictionary[text_mute.guild_snowflake]["members"][
+                    text_mute.member_snowflake
+                ]["text_mutes"][text_mute.channel_snowflake].update(
+                    {"reason": text_mute.reason, "expires_in": text_mute.expires_in}
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Text Mutes for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=TextMuteDictionary, dictionary=dictionary
         )
@@ -224,23 +226,19 @@ class TextMuteService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
                     "text_mutes", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
+                    if isinstance(obj, discord.Member):
                         lines.append(
                             f"**Expires in:** {channel_dictionary['expires_in']}"
                         )

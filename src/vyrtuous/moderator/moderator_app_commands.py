@@ -233,7 +233,6 @@ class ModeratorAppCommands(commands.Cog):
             ephemeral=True,
             interaction=interaction,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         ctx = ViewContext(
             ban_service=self.__ban_service,
             flag_service=self.__flag_service,
@@ -242,7 +241,7 @@ class ModeratorAppCommands(commands.Cog):
             text_mute_service=self.__text_mute_service,
             voice_mute_service=self.__voice_mute_service,
         )
-        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
+        await ctx.setup(target_member_snowflake=member.id)
         view = ModifyInfractionView(
             ctx=ctx,
             modal=DurationModal,
@@ -269,7 +268,6 @@ class ModeratorAppCommands(commands.Cog):
             ephemeral=True,
             interaction=interaction,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         ctx = ViewContext(
             ban_service=self.__ban_service,
             flag_service=self.__flag_service,
@@ -278,7 +276,7 @@ class ModeratorAppCommands(commands.Cog):
             text_mute_service=self.__text_mute_service,
             voice_mute_service=self.__voice_mute_service,
         )
-        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
+        await ctx.setup(target_member_snowflake=member.id)
         view = ModifyInfractionView(
             ctx=ctx,
             modal=ReasonModal,
@@ -309,7 +307,6 @@ class ModeratorAppCommands(commands.Cog):
             ephemeral=True,
             interaction=interaction,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         ctx = ViewContext(
             ban_service=self.__ban_service,
             flag_service=self.__flag_service,
@@ -319,7 +316,7 @@ class ModeratorAppCommands(commands.Cog):
             voice_mute_service=self.__voice_mute_service,
         )
         ctx.infraction = Ban
-        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
+        await ctx.setup(target_member_snowflake=member.id)
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
@@ -348,7 +345,6 @@ class ModeratorAppCommands(commands.Cog):
             ephemeral=True,
             interaction=interaction,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         ctx = ViewContext(
             ban_service=self.__ban_service,
             flag_service=self.__flag_service,
@@ -358,7 +354,7 @@ class ModeratorAppCommands(commands.Cog):
             voice_mute_service=self.__voice_mute_service,
         )
         ctx.infraction = VoiceMute
-        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
+        await ctx.setup(target_member_snowflake=member.id)
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,
@@ -387,7 +383,6 @@ class ModeratorAppCommands(commands.Cog):
             ephemeral=True,
             interaction=interaction,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         ctx = ViewContext(
             ban_service=self.__ban_service,
             flag_service=self.__flag_service,
@@ -397,7 +392,7 @@ class ModeratorAppCommands(commands.Cog):
             voice_mute_service=self.__voice_mute_service,
         )
         ctx.infraction = TextMute
-        await ctx.setup(target_member_snowflake=member_dict.get("id", None))
+        await ctx.setup(target_member_snowflake=member.id)
         view = InfractionView(
             cap_service=self.__cap_service,
             ctx=ctx,

@@ -53,35 +53,37 @@ class VeganService:
         self.__emoji = emoji
         self.__stream_service = stream_service
 
-    async def build_clean_dictionary(self, kwargs):
+    async def build_clean_dictionary(self, obj):
+        vegans = []
         dictionary = {}
-        vegans = await self.__database_factory.select(singular=False, **kwargs)
-        for vegan in vegans:
-            dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-            dictionary[vegan.guild_snowflake]["members"].setdefault(
-                vegan.member_snowflake, {"vegans": {}}
-            )
-            dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
-                "vegans"
-            ].setdefault("placeholder", {})
+        if isinstance(obj, discord.Guild):
+            vegans = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            vegans = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            vegans = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            vegans = await self.__database_factory.select()
+        if vegans:
+            for vegan in vegans:
+                dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
+                dictionary[vegan.guild_snowflake]["members"].setdefault(
+                    vegan.member_snowflake, {"vegans": {}}
+                )
+                dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
+                    "vegans"
+                ].setdefault("placeholder", {})
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Vegans for {obj_name}"
 
-        dictionary = await self.__dictionary_service.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.__dictionary_service.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=VeganDictionary, dictionary=dictionary
         )
@@ -99,13 +101,11 @@ class VeganService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 else:
                     if not thumbnail:
-                        embed.set_thumbnail(
-                            url=object_dict.get("object", None).display_avatar.url
-                        )
+                        embed.set_thumbnail(url=obj.display_avatar.url)
                         thumbnail = True
                 vegan_n += 1
                 field_count += 1

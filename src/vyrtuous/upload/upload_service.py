@@ -103,3 +103,46 @@ class UploadService:
         except Exception:
             return False
         return True
+
+    async def build_latex_document(self):
+        import re
+
+        def escape_latex(text):
+            return re.sub(r"([&_#%$])", r"\\\1", str(text))
+
+        import os
+
+        os.makedirs("images", exist_ok=True)
+        async with self.__bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                "select command_name,file_bytes,filename,tag,created_at,updated_at from uploads order by command_name,created_at"
+            )
+        with open("uploads.tex", "w") as f:
+            f.write(
+                r"\documentclass{article}\usepackage{graphicx}\usepackage{float}\usepackage{geometry}\usepackage{hyperref}\geometry{margin=1in}\title{Uploads Archive}\date{\today}\begin{document}\maketitle\tableofcontents\newpage"
+            )
+            current_command = None
+            for row in rows:
+                command_name = row["command_name"]
+                tag = row["tag"]
+                filename = row["filename"]
+                created_at = row["created_at"]
+                updated_at = row["updated_at"]
+                file_bytes = row["file_bytes"]
+                if command_name != current_command:
+                    if current_command is not None:
+                        f.write(r"\clearpage")
+                    f.write(rf"\section{{Command: {escape_latex(command_name)}}}")
+                    current_command = command_name
+                f.write(rf"\subsection{{Tag: {escape_latex(tag)}}}")
+                f.write(rf"\textbf{{Filename:}} {escape_latex(filename)}\\")
+                f.write(rf"\textbf{{Created:}} {created_at}\\")
+                f.write(rf"\textbf{{Updated:}} {updated_at}")
+                image_path = f"images/{command_name}_{tag}_{filename}"
+                image_path = re.sub(r"\s+", "_", image_path)
+                with open(image_path, "wb") as img:
+                    img.write(file_bytes)
+                f.write(
+                    rf"\begin{{figure}}[H]\centering\includegraphics[width=\linewidth,height=0.50\textheight,keepaspectratio]{{{image_path}}}\end{{figure}}"
+                )
+            f.write(r"\end{document}")

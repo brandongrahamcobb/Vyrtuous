@@ -85,7 +85,7 @@ async def test_admins(bot, command: str, target, permission_role):
     full = f"{command} {t}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured
+        assert captured == ["success"]
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

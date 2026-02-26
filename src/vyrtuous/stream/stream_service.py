@@ -248,38 +248,35 @@ class StreamService:
                     )
         return
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        streaming = []
         dictionary = {}
-        streaming = await self.__database_factory.select(singular=False, **kwargs)
-        for stream in streaming:
-            dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            dictionary[stream.guild_snowflake]["channels"].setdefault(
-                stream.target_channel_snowflake, {"sources": []}
-            )
-            dictionary[stream.guild_snowflake]["channels"][
-                stream.target_channel_snowflake
-            ]["sources"].append(stream.source_channel_snowflake)
+        if isinstance(obj, discord.Guild):
+            streaming = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            streaming = await self.__database_factory.select(channel_snowflake=obj.id)
+        else:
+            streaming = await self.__database_factory.select()
+        if streaming:
+            for stream in streaming:
+                dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
+                dictionary[stream.guild_snowflake]["channels"].setdefault(
+                    stream.target_channel_snowflake, {"sources": []}
+                )
+                dictionary[stream.guild_snowflake]["channels"][
+                    stream.target_channel_snowflake
+                ]["sources"].append(stream.source_channel_snowflake)
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
-            obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
+        if obj:
             obj_name = obj.name
         title = f"{self.__emoji.get_random_emoji()} Streaming Routes for {obj_name}"
 
-        if object_dict.get("columns", None).get("channel_snowflake", None):
-            object_dict.get("columns", None)["target_channel_snowflake"] = (
-                object_dict.get("columns", None).pop("channel_snowflake")
-            )
-
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=StreamDictionary, dictionary=dictionary
         )
@@ -337,34 +334,41 @@ class StreamService:
 
     async def toggle_stream(
         self,
-        source_dict,
-        target_channel_dict,
+        source,
+        target_channel,
     ):
-        target_columns = target_channel_dict.get("columns") or {}
-        where_kwargs = {
-            "guild_snowflake": target_columns.get("guild_snowflake"),
-            "target_channel_snowflake": target_channel_dict.get("id"),
-        }
-        source_is_all = source_dict and source_dict.get("columns") is None
-        if source_dict and not source_is_all:
-            where_kwargs.update({"source_channel_snowflake": source_dict.get("id")})
-        stream = await self.__database_factory.select(singular=True, **where_kwargs)
+        if source:
+            stream = await self.__database_factory.select(
+                singular=True,
+                guild_snowflake=target_channel.guild.id,
+                source_channel_snowflake=source.id,
+                target_channel_snowflake=target_channel.id,
+            )
+            if stream:
+                await self.__database_factory.delete(
+                    guild_snowflake=target_channel.guild.id,
+                    source_channel_snowflake=source.id,
+                    target_channel_snowflake=target_channel.id,
+                )
+            source_text = f"from {source.mention}"
+        else:
+            stream = await self.__database_factory.select(
+                singular=True,
+                guild_snowflake=target_channel.guild.id,
+                target_channel_snowflake=target_channel.id,
+            )
+            if stream:
+                await self.__database_factory.delete(
+                    guild_snowflake=target_channel.guild.id,
+                    source_channel_snowflake=source.id,
+                )
+            source_text = "from all channels"
         if stream:
-            await self.__database_factory.delete(**where_kwargs)
             action = "deleted"
         else:
-            stream = self.MODEL(**where_kwargs)
-            await self.__database_factory.create(obj=stream)
             action = "created"
-        if source_dict:
-            if source_is_all:
-                source_text = "from all channels "
-            else:
-                source_text = f"from {source_dict.get('mention')} "
-        else:
-            source_text = ""
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} {source_text}to {target_channel_dict.get('mention')}",
+            title=f"{self.__emoji.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}",
             color=0x00FF00,
         )
         return [embed]

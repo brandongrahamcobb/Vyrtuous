@@ -337,11 +337,13 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.guild
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
         pages = await self.__administrator_role_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -369,9 +371,8 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__cap_service.toggle_cap(
-            category=category, channel_dict=channel_dict, hours=hours
+            category=category, channel=channel, hours=hours
         )
         return await state.end(success=msg)
 
@@ -397,12 +398,12 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__cap_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__cap_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(name="clear", help="Reset database.")
@@ -413,6 +414,7 @@ class AdminTextCommands(commands.Cog):
             str, discord.Guild, discord.abc.GuildChannel, discord.Member
         ] = commands.parameter(
             converter=MultiConverter,
+            default=None,
             description="Specify 'all', tag a channel/guild/member or include its ID",
         ),
         *,
@@ -432,13 +434,14 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         default_ctx = DefaultContext(ctx=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=target)
-        where_kwargs = object_dict.get("columns", None)
+        if target == "all":
+            obj = None
+        else:
+            obj = target
         view = VerifyView(
             category=str(category),
-            mention=object_dict.get("mention", "All"),
+            obj=obj,
             author_snowflake=ctx.author.id,
-            **where_kwargs,
         )
         embed = view.build_embed()
         await state.end(success=embed, view=view)
@@ -455,8 +458,7 @@ class AdminTextCommands(commands.Cog):
         msg = await self.__clear_service.clear(
             category=category,
             default_ctx=default_ctx,
-            object_dict=object_dict,
-            where_kwargs=where_kwargs,
+            obj=obj,
             target=target,
             view=view,
             source=ctx,
@@ -486,16 +488,15 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
-        channel_dict = self.__discord_object_service.to_dict(obj=channel)
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         await self.__moderator_service.has_equal_or_lower_role(
-            target_member_snowflake=int(member_dict.get("id", None)),
+            target_member_snowflake=int(member.id),
             member_snowflake=context.author.id,
-            **channel_dict.get("columns", None),
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
         )
         msg = await self.__coordinator_service.toggle_coordinator(
-            channel_dict=channel_dict,
-            member_dict=member_dict,
+            channel=channel,
+            member=member,
         )
         return await state.end(success=msg)
 
@@ -535,7 +536,7 @@ class AdminTextCommands(commands.Cog):
     async def list_permissions_text_command(
         self,
         ctx: commands.Context,
-        target: str | None = commands.parameter(
+        target: Union[str, discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="Specify one of: `all`, channel ID/mention or server ID.",
@@ -551,24 +552,13 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
-        obj = target or ctx.channel
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        is_at_home = at_home(source=ctx)
-        if target and str(target).lower() == "all":
-            await self.__moderator_service.check_minimum_role(
-                **object_dict.get("columns", None), lowest_role="Guild Owner"
-            )
-            channel_objs = [
-                channel_obj
-                for guild in self.bot.guilds
-                for channel_obj in guild.channels
-            ]
-        elif hasattr(object_dict.get("object", None), "channels"):
-            channel_objs = object_dict.get("object", None).channels
+        if target == "all":
+            obj = None
         else:
-            channel_objs = [object_dict.get("object", None)]
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
         pages = await self.__permission_service.build_pages(
-            channel_objs=channel_objs,
+            obj=obj,
             context=context,
             is_at_home=is_at_home,
         )
@@ -598,9 +588,9 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__voice_mute_service.room_mute(
-            channel_dict=channel_dict,
+            author=ctx.author,
+            channel=obj,
             reason=reason,
         )
         return await state.end(success=pages)
@@ -628,26 +618,24 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         failed, moved = [], []
-        source_channel_dict = self.__discord_object_service.to_dict(obj=source_channel)
-        target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
-        for member in source_channel_dict.get("object", None).members:
+        for member in source_channel.members:
             try:
-                await member.move_to(target_channel_dict.get("object", None))
+                await member.move_to(target_channel)
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(
                     f"Unable to move member "
                     f"{member.display_name} ({member.id}) from channel "
-                    f"{source_channel_dict.get('name', None)} ({source_channel}) to channel "
-                    f"{target_channel_dict.get('name', None)} ({target_channel}) in guild "
+                    f"{source_channel.name} ({source_channel.id}) to channel "
+                    f"{target_channel.name} ({target_channel.id}) in guild "
                     f"{ctx.guild.name} ({ctx.guild.id}). "
                     f"{str(e).capitalize()}"
                 )
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} "
-            f"Moved {source_channel_dict.get('mention', None)} to "
-            f"{target_channel_dict.get('mention', None)}",
+            f"Moved {source_channel.mention} to "
+            f"{target_channel.mention}",
             color=discord.Color.green(),
         )
         if moved:
@@ -665,8 +653,7 @@ class AdminTextCommands(commands.Cog):
                 inline=False,
             )
         embed.set_footer(
-            text=f"Moved from {source_channel_dict.get('name', None)} "
-            f"to {target_channel_dict.get('name', None)}"
+            text=f"Moved from {source_channel.name} to {target_channel.name}"
         )
         return await state.end(success=embed)
 
@@ -714,9 +701,8 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__server_mute_service.toggle_server_mute(
-            context=context, member_dict=member_dict, reason=reason
+            context=context, member=member, reason=reason
         )
         return await state.end(success=msg)
 
@@ -741,11 +727,13 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.guild
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
         pages = await self.__server_mute_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -771,12 +759,12 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        pages = await self.__stage_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__stage_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(
@@ -800,10 +788,7 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        channel_dict = self.__discord_object_service.to_dict(obj=channel)
-        msg = await self.__temporary_room_service.toggle_temporary_room(
-            channel_dict=channel_dict
-        )
+        msg = await self.__temporary_room_service.toggle_temporary_room(channel=channel)
         return await state.end(success=msg)
 
     @commands.command(
@@ -831,11 +816,13 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__temporary_room_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -863,12 +850,15 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        target_channel_dict = self.__discord_object_service.to_dict(obj=target_channel)
-        source_dict = self.__discord_object_service.to_dict(obj=source)
-        pages = await self.__stream_service.toggle_stream(
-            source_dict=source_dict,
-            target_channel_dict=target_channel_dict,
-        )
+        try:
+            pages = await self.__stream_service.toggle_stream(
+                source=source,
+                target_channel=target_channel,
+            )
+        except:
+            import traceback
+
+            traceback.print_exc()
         return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")
@@ -894,12 +884,12 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__stream_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__stream_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(name="vr", help="Start/stop video-only room.")
@@ -923,10 +913,7 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.to_dict(obj=obj)
-        msg = await self.__video_room_service.toggle_video_room(
-            channel_dict=channel_dict
-        )
+        msg = await self.__video_room_service.toggle_video_room(channel=obj)
         return await state.end(success=msg)
 
     @commands.command(
@@ -955,11 +942,13 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         pages = await self.__video_room_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -1004,10 +993,7 @@ class AdminTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__voice_mute_service.room_unmute(
-            channel_dict=channel_dict, guild_snowflake=ctx.guild.id
-        )
+        pages = await self.__voice_mute_service.room_unmute(channel=obj)
         return await state.end(success=pages)
 
 

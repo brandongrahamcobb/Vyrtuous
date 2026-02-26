@@ -26,10 +26,7 @@ class VerifyView(discord.ui.View):
         *,
         category=None,
         author_snowflake=None,
-        mention=None,
-        guild_snowflake=None,
-        channel_snowflake=None,
-        member_snowflake=None,
+        obj=None,
         timeout=60,
     ):
         super().__init__(timeout=timeout)
@@ -63,11 +60,17 @@ class VerifyView(discord.ui.View):
             case _:
                 raise ValueError("Invalid action type specified for confirmation view.")
         self.__author_snowflake = author_snowflake
-        self._guild_snowflake = guild_snowflake
-        self._channel_snowflake = channel_snowflake
-        self._member_snowflake = member_snowflake
+        if isinstance(obj, discord.Guild):
+            self._guild_snowflake = obj.id
+        elif isinstance(obj, discord.abc.GuildChannel):
+            self._channel_snowflake = obj.id
+        elif isinstance(obj, discord.Member):
+            self._member_snowflake = obj.id
         self._result = None
-        self.__mention = mention
+        if obj:
+            self.__mention = obj.mention
+        else:
+            self.__mention = "All"
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake

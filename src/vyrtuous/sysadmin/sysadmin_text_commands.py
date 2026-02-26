@@ -100,9 +100,9 @@ class SysadminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         embed = await self.__developer_service.assign_bug_to_developer(
-            reference=reference, member_dict=member_dict
+            member=member,
+            reference=reference,
         )
         return await state.end(success=embed)
 
@@ -124,11 +124,27 @@ class SysadminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        member_dict = self.__discord_object_service.to_dict(obj=member)
         msg = await self.__developer_service.toggle_developer(
-            member_dict=member_dict,
+            member=member,
         )
         return await state.end(success=msg)
+
+    @commands.command(name="upload", help="Create the upload document.")
+    async def uploads_text_command(
+        self,
+        ctx: commands.Context,
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
+        await self.__upload_service.build_latex_document()
+        return await state.end(success="Success!")
 
 
 async def setup(bot: DiscordBot):

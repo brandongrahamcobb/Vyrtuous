@@ -72,30 +72,36 @@ class TemporaryRoomService:
         self.__text_mute_service = text_mute_service
         self.deleted_rooms = {}
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        temporary_rooms = []
         dictionary = {}
-        temporary_rooms = await self.__database_factory.select(singular=False, **kwargs)
-        for temporary_room in temporary_rooms:
-            dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
-            dictionary[temporary_room.guild_snowflake]["channels"][
-                temporary_room.channel_snowflake
-            ] = True
+        if isinstance(obj, discord.Guild):
+            temporary_rooms = await self.__database_factory.select(
+                guild_snowflake=obj.id
+            )
+        elif isinstance(obj, discord.abc.GuildChannel):
+            temporary_rooms = await self.__database_factory.select(
+                channel_snowflake=obj.id
+            )
+        else:
+            temporary_rooms = await self.__database_factory.select()
+        if temporary_rooms:
+            for temporary_room in temporary_rooms:
+                dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
+                dictionary[temporary_room.guild_snowflake]["channels"][
+                    temporary_room.channel_snowflake
+                ] = True
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
-            obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
+        if obj:
             obj_name = obj.name
         title = f"{self.__emoji.get_random_emoji()} Temporary Rooms for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=TemporaryRoomDictionary, dictionary=dictionary
         )
@@ -159,22 +165,23 @@ class TemporaryRoomService:
             pages.extend(processed_dictionary.skipped_guilds)
         return pages
 
-    async def migrate_temporary_room(self, channel_dict, old_name):
-        guild_snowflake = channel_dict.get("columns", None).get("guild_snowflake", None)
+    async def migrate_temporary_room(self, channel, old_name):
         old_room = await self.__database_factory.select(
-            guild_snowflake=int(guild_snowflake), room_name=old_name, singular=True
+            guild_snowflake=int(channel.guild.id),
+            room_name=str(old_name),
+            singular=True,
         )
         if not old_room:
             return f"No temporary room found with the name {old_name}."
-        set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
+        set_kwargs = {"channel_snowflake": channel.id}
         temp_where_kwargs = {
-            "channel_snowflake": old_room.channel_snowflake,
-            "guild_snowflake": int(guild_snowflake),
-            "room_name": channel_dict.get("name", None),
+            "channel_snowflake": int(old_room.channel_snowflake),
+            "guild_snowflake": int(channel.guild.id),
+            "room_name": str(channel.name),
         }
         where_kwargs = {
-            "channel_snowflake": old_room.channel_snowflake,
-            "guild_snowflake": int(guild_snowflake),
+            "channel_snowflake": int(old_room.channel_snowflake),
+            "guild_snowflake": int(channel.guild.id),
         }
         kwargs = {
             "set_kwargs": set_kwargs,
@@ -194,23 +201,24 @@ class TemporaryRoomService:
         await self.__text_mute_service.migrate(kwargs)
         await self.__voice_mute_service.migrate(kwargs)
         await self.__vegan_service.migrate(kwargs)
-        return f"Temporary room `{old_name}` migrated to {channel_dict.get('mention', None)}."
+        return f"Temporary room `{old_name}` migrated to {channel.mention}."
 
-    async def toggle_temporary_room(self, channel_dict):
-        kwargs = {}
-        kwargs.update(channel_dict.get("columns", None))
-        temporary_room = await self.__database_factory.select(**kwargs, singular=True)
+    async def toggle_temporary_room(self, channel):
+        temporary_room = await self.__database_factory.select(
+            channel_snowflake=channel.id, singular=True
+        )
         if temporary_room:
-            await self.__database_factory.delete(**kwargs)
+            await self.__database_factory.delete(channel_snowflake=channel.id)
             action = "removed"
         else:
-            temporary_room = TemporaryRoom(
-                **kwargs,
-                room_name=channel_dict.get("name", None),
+            temporary_room = self.MODEL(
+                channel_snowflake=int(channel.id),
+                guild_snowflake=int(channel.guild.id),
+                room_name=str(channel.name),
             )
             await self.__database_factory.create(temporary_room)
             action = "created"
-        return f"Temporary room {action} in {channel_dict.get('mention', None)}."
+        return f"Temporary room {action} in {channel.mention}."
 
     async def add_deleted_room(self, channel):
         room = await self.__database_factory.select(

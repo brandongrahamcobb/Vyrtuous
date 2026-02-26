@@ -84,42 +84,44 @@ class FlagService:
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
             )
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        flags = []
         dictionary = {}
-        flags = await self.__database_factory.select(singular=False, **kwargs)
-        for flag in flags:
-            dictionary.setdefault(flag.guild_snowflake, {"members": {}})
-            dictionary[flag.guild_snowflake]["members"].setdefault(
-                flag.member_snowflake, {"flags": {}}
-            )
-            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
-                "flags"
-            ].setdefault(flag.channel_snowflake, {})
-            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake]["flags"][
-                flag.channel_snowflake
-            ].update(
-                {
-                    "reason": flag.reason,
-                }
-            )
+        if isinstance(obj, discord.Guild):
+            flags = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            flags = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            flags = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            flags = await self.__database_factory.select()
+        if flags:
+            for flag in flags:
+                dictionary.setdefault(flag.guild_snowflake, {"members": {}})
+                dictionary[flag.guild_snowflake]["members"].setdefault(
+                    flag.member_snowflake, {"flags": {}}
+                )
+                dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
+                    "flags"
+                ].setdefault(flag.channel_snowflake, {})
+                dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
+                    "flags"
+                ][flag.channel_snowflake].update(
+                    {
+                        "reason": flag.reason,
+                    }
+                )
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        if isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Flags for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=FlagDictionary, dictionary=dictionary
         )
@@ -129,7 +131,7 @@ class FlagService:
             field_count = 0
             lines = []
             thumbnail = False
-            guild = bot.get_guild(guild_snowflake)
+            guild = self.__bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -137,22 +139,18 @@ class FlagService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in flag_dictionary.get(
                     "flags", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
+                    if isinstance(obj, discord.Member):
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     flag_n += 1
                     field_count += 1
@@ -309,8 +307,8 @@ class FlagService:
                         )
                         embed.set_thumbnail(url=member.display_avatar.url)
                         embed.add_field(
-                            name=f"Channel: {channel.mention}",
-                            value=f"Reason: {flag.reason}",
+                            name=f"User: {member.mention}",
+                            value=f"Channel: {channel.mention}\nReason: {flag.reason}",
                             inline=False,
                         )
                         now = time.time()

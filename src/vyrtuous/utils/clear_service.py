@@ -59,33 +59,36 @@ class ClearService:
                         continue
                     if getattr(cls, "__skip_db_discovery__", False):
                         continue
-                    if hasattr(cls, attr) or not attr:
+                    if attr in cls.__dict__ or not attr:
+                        from vyrtuous.utils.logger import logger
+
+                        logger.info(cls.__name__)
                         classes.append(cls)
         return classes
 
     async def clear(
-        self, category, default_ctx, object_dict, target, view, where_kwargs, source
+        self, category, default_ctx, obj, target, view, where_kwargs, source
     ):
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous"))
-        if isinstance(object_dict.get("object", None), discord.Member):
+        if isinstance(obj, discord.Member):
             await self.__moderator_service.check_minimum_role_at_all(
-                **object_dict.get("columns", None),
+                guild_snowflake=obj.guild.id,
                 member_snowflake=default_ctx.author.id,
                 lowest_role="Administrator",
             )
             await self.__moderator_service.has_equal_or_lower_role(
                 **default_ctx.to_dict(),
-                target_member_snowflake=object_dict.get("id", None),
+                target_member_snowflake=obj.id,
             )
             if view.result:
                 for cls in self.dir_to_classes(
                     dir_paths=dir_paths, attr="member_snowflake"
                 ):
                     if str(category) == "all":
-                        msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
+                        msg = f"Deleted all associated database information for {obj.mention}."
                     elif str(category).lower() == cls.identifier:
-                        msg = f"Deleted all associated {category} records for {object_dict.get('mention', None)}."
+                        msg = f"Deleted all associated {category} records for {obj.mention}."
                     if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author,
@@ -112,9 +115,9 @@ class ClearService:
                         )
                     else:
                         await self.__database_factory.delete_by_cls(cls, **where_kwargs)
-        elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+        elif isinstance(obj, discord.abc.GuildChannel):
             await self.__moderator_service.check_minimum_role(
-                **object_dict.get("columns", None),
+                channel_snowflake=obj.id,
                 member_snowflake=default_ctx.author.id,
                 lowest_role="Guild Owner",
             )
@@ -123,9 +126,9 @@ class ClearService:
                     dir_paths=dir_paths, attr="channel_snowflake"
                 ):
                     if category == "all":
-                        msg = f"Deleted all database information for {object_dict.get('mention')}."
+                        msg = f"Deleted all database information for {obj.mention}."
                     elif str(category).lower() == cls.identifier:
-                        msg = f"Deleted all associated {category} records in {object_dict.get('mention', None)}."
+                        msg = f"Deleted all associated {category} records in {obj.mention}."
                     if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author,
@@ -152,9 +155,9 @@ class ClearService:
                         )
                     else:
                         await self.__database_factory.delete_by_cls(cls, **where_kwargs)
-        elif isinstance(object_dict.get("object", None), discord.Guild):
+        elif isinstance(obj, discord.Guild):
             await self.__moderator_service.check_minimum_role_at_all(
-                **object_dict.get("columns", None),
+                guild_snowflake=obj.id,
                 member_snowflake=default_ctx.author.id,
                 lowest_role="Developer",
             )
@@ -171,9 +174,9 @@ class ClearService:
                 ]
                 for cls in classes:
                     if str(category).lower() == "all":
-                        msg = f"Deleted all database information for {object_dict.get('name')}."
+                        msg = f"Deleted all database information for {obj.name}."
                     elif str(category).lower() == obj.identifier:
-                        msg = f"Deleted all associated {category} in {object_dict.get('name', None)}."
+                        msg = f"Deleted all associated {category} in {obj.name}."
                     if cls.__name__ == "Ban":
                         await self.__ban_service.delete(
                             author=default_ctx.author,
@@ -234,7 +237,6 @@ class ClearService:
                     else:
                         await self.__database_factory.delete_by_cls(cls, **where_kwargs)
                     msg = "Deleted all database entries."
-
         else:
             msg = f"Invalid target ({target})."
         return msg

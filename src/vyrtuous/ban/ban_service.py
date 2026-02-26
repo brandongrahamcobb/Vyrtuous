@@ -181,39 +181,44 @@ class BanService:
                     set_kwargs=set_kwargs, where_kwargs=where_kwargs
                 )
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj):
+        bans = []
         dictionary = {}
-        bans = await self.__database_factory.select(singular=False, **kwargs)
-        for ban in bans:
-            dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-            dictionary[ban.guild_snowflake]["members"].setdefault(
-                ban.member_snowflake, {"bans": {}}
-            )
-            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
-                "bans"
-            ].setdefault(ban.channel_snowflake, {})
-            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake]["bans"][
-                ban.channel_snowflake
-            ] = {"reason": ban.reason, "expires_in": ban.expires_in}
+        if isinstance(obj, discord.Guild):
+            bans = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            bans = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            bans = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            bans = await self.__database_factory.select()
+        if bans:
+            for ban in bans:
+                dictionary.setdefault(ban.guild_snowflake, {"members": {}})
+                dictionary[ban.guild_snowflake]["members"].setdefault(
+                    ban.member_snowflake, {"bans": {}}
+                )
+                dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+                    "bans"
+                ].setdefault(ban.channel_snowflake, {})
+                dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+                    "bans"
+                ][ban.channel_snowflake] = {
+                    "reason": ban.reason,
+                    "expires_in": ban.expires_in,
+                }
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
         thumbnail = False
 
-        obj = object_dict.get("object")
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.abc.GuildChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Bans for {obj_name}"
 
-        dictionary = await self.build_dictionary(
-            kwargs=object_dict.get("columns", None)
-        )
+        dictionary = await self.build_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BanDictionary, dictionary=dictionary
         )
@@ -230,22 +235,18 @@ class BanService:
                 member = guild.get_member(member_snowflake)
                 if not member:
                     continue
-                if not isinstance(object_dict.get("object", None), discord.Member):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
+                    embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
+                    if not isinstance(obj, discord.abc.GuildChannel):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
+                    if isinstance(obj, discord.Member):
                         lines.append(
                             f"**Expires in:** {self.__duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
                         )

@@ -256,11 +256,13 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.guild
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__administrator_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            is_at_home=is_at_home, obj=obj
         )
         return await state.end(success=pages)
 
@@ -285,12 +287,12 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__ban_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__ban_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(name="cmds", help="List aliases.")
@@ -314,12 +316,12 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__alias_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__alias_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(name="coords", help="Lists coords.")
@@ -343,11 +345,13 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__coordinator_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -400,12 +404,12 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__flag_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__flag_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(name="ls", help="List new vegans.")
@@ -431,12 +435,12 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.guild
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
-        pages = await self.__vegan_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
-        )
+        pages = await self.__vegan_service.build_pages(obj=obj, is_at_home=is_at_home)
         return await state.end(success=pages)
 
     @commands.command(
@@ -490,11 +494,13 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__moderator_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -519,11 +525,13 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.channel
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__voice_mute_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 
@@ -551,19 +559,17 @@ class ModeratorTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         context = DefaultContext(ctx=ctx)
-        channel = channel or ctx.channel
-        channel_dict = self.__discord_object_service.to_dict(obj=channel)
-        member_dict = self.__discord_object_service.to_dict(obj=member)
+        obj = channel or ctx.channel
         await self.__moderator_service.check_minimum_role(
-            channel_snowflake=channel_dict.get("id", None),
+            channel_snowflake=obj.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
             lowest_role="Moderator",
         )
         msg = await self.__stage_service.toggle_stage_mute(
-            channel_dict=channel_dict,
+            channel=obj,
             context=context,
-            member_dict=member_dict,
+            member=member,
         )
         return await state.end(success=msg)
 
@@ -623,9 +629,8 @@ class ModeratorTextCommands(commands.Cog):
             upload_service=self.__upload_service,
         )
         obj = channel or ctx.channel
-        channel_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__moderator_service.survey(
-            channel_dict=channel_dict, guild_snowflake=ctx.guild.id
+            channel=obj,
         )
         return await state.end(success=pages)
 
@@ -650,11 +655,13 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or int(ctx.channel.id)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         pages = await self.__text_mute_service.build_pages(
-            object_dict=object_dict, is_at_home=is_at_home
+            obj=obj, is_at_home=is_at_home
         )
         return await state.end(success=pages)
 

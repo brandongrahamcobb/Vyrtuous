@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Union
+from uuid import UUID
 
 import discord
 from discord import app_commands
@@ -106,7 +107,12 @@ class MultiConverter(commands.Converter):
 
     async def convert(self, ctx: commands.Context, argument: str):
         if argument and str(argument).lower() == "all":
-            return "all"
+            return None
+        try:
+            uuid = UUID(argument)
+            return uuid
+        except ValueError as e:
+            self.__bot.logger.warning(e)
         channel = commands.VoiceChannelConverter()
         guild = commands.GuildConverter()
         member = commands.MemberConverter()
@@ -131,7 +137,9 @@ class MultiConverter(commands.Converter):
             return role
         except commands.RoleNotFound as e:
             self.__bot.logger.warning(e)
-        raise commands.BadArgument("Argument is not a channel, member, guild, or role.")
+        raise commands.BadArgument(
+            "Argument is not a channel, member, guild, role or UUID."
+        )
 
 
 class DiscordInteractionObject(app_commands.Transformer):

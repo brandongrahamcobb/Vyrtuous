@@ -71,7 +71,7 @@ async def test_assign(bot, command: str, reference, action, notes, permission_ro
         full = f"{command} {ref} {action}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured
+        assert captured == ["success"]
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

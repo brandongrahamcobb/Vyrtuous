@@ -143,17 +143,12 @@ class HeroService:
             dictionary[guild_snowflake]["members"][member_snowflake] = True
         return dictionary
 
-    async def build_pages(self, object_dict, is_at_home):
+    async def build_pages(self, is_at_home, obj):
         lines, pages = [], []
 
-        obj = object_dict.get("object", None)
         obj_name = "All Servers"
-        if isinstance(obj, discord.Guild):
+        if obj:
             obj_name = obj.name
-        elif isinstance(obj, discord.TextChannel):
-            obj_name = obj.name
-        elif isinstance(obj, discord.Member):
-            obj_name = object_dict.get("name", None)
         title = f"{self.__emoji.get_random_emoji()} Heroes for {obj_name}"
 
         dictionary = self.build_dictionary()
@@ -177,7 +172,7 @@ class HeroService:
                 if not member:
                     continue
                 hero_n += 1
-                if not object_dict.get("columns", None).get("member_snowflake", None):
+                if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail_set:

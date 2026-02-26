@@ -200,17 +200,18 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = target or ctx.guild
+        if target == "all":
+            obj = None
+            reference = None
+        elif isinstance(target, discord.Guild):
+            obj = target
+            reference = None
+        else:
+            reference = target
+            obj = ctx.guild
         is_at_home = at_home(source=ctx)
-        try:
-            target_uuid = UUID(str(target))
-            kwargs = {"id": target_uuid}
-        except ValueError as e:
-            logger.warning(str(e).capitalize())
-            object_dict = self.__discord_object_service.to_dict(obj=obj)
-            kwargs = object_dict.get("columns", None)
         pages = await self.__bug_service.build_pages(
-            scope=scope, kwargs=kwargs, is_at_home=is_at_home
+            is_at_home=is_at_home, obj=obj, reference=reference, scope=scope
         )
         return await state.end(success=pages)
 
@@ -239,8 +240,10 @@ class DevTextCommands(commands.Cog):
     async def list_overwrites_text_command(
         self,
         ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify the ID or mention.",
         ),
@@ -254,24 +257,70 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        obj = channel or ctx.channel
-        object_dict = self.__discord_object_service.to_dict(obj=obj)
         member_count, role_count, total_count = 0, 0, 0
-        for target, overwrite in object_dict.get("object", None).overwrites.items():
-            if any(v is not None for v in overwrite):
-                total_count += 1
-                if isinstance(target, discord.Member):
-                    member_count += 1
-                else:
-                    role_count += 1
-        embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
-        embed.add_field(
-            name="Channel", value=object_dict.get("name", None), inline=False
-        )
-        embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
-        embed.add_field(name="Member overwrites", value=str(member_count), inline=False)
-        embed.add_field(name="Total overwrites", value=str(total_count), inline=False)
-        return await state.end(success=embed)
+        if target == "all":
+            for guild in self.__bot.guilds:
+                for channel in guild.channels:
+                    for target_obj, overwrite in channel.overwrites.items():
+                        if any(v is not None for v in overwrite):
+                            total_count += 1
+                            if isinstance(target_obj, discord.Member):
+                                member_count += 1
+                            else:
+                                role_count += 1
+            embed = discord.Embed(
+                title="All Servers Overwrites Summary", color=discord.Color.blue()
+            )
+            embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
+            embed.add_field(
+                name="Member overwrites", value=str(member_count), inline=False
+            )
+            embed.add_field(
+                name="Total overwrites", value=str(total_count), inline=False
+            )
+            return await state.end(success=embed)
+        elif isinstance(target, discord.Guild):
+            for channel in target.channels:
+                for target_obj, overwrite in channel.overwrites.items():
+                    if any(v is not None for v in overwrite):
+                        total_count += 1
+                        if isinstance(target_obj, discord.Member):
+                            member_count += 1
+                        else:
+                            role_count += 1
+            embed = discord.Embed(
+                title=f"Server {target.name} Overwrites Summary",
+                color=discord.Color.blue(),
+            )
+            embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
+            embed.add_field(
+                name="Member overwrites", value=str(member_count), inline=False
+            )
+            embed.add_field(
+                name="Total overwrites", value=str(total_count), inline=False
+            )
+            return await state.end(success=embed)
+        else:
+            obj = target or ctx.channel
+            for target_obj, overwrite in obj.overwrites.items():
+                if any(v is not None for v in overwrite):
+                    total_count += 1
+                    if isinstance(target_obj, discord.Member):
+                        member_count += 1
+                    else:
+                        role_count += 1
+            embed = discord.Embed(
+                title="Channel Overwrites", color=discord.Color.blue()
+            )
+            embed.add_field(name="Channel", value=obj.name, inline=False)
+            embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
+            embed.add_field(
+                name="Member overwrites", value=str(member_count), inline=False
+            )
+            embed.add_field(
+                name="Total overwrites", value=str(total_count), inline=False
+            )
+            return await state.end(success=embed)
 
     @commands.command(name="ping", help="Ping me!")
     async def ping_text_command(self, ctx: commands.Context):

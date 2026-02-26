@@ -21,6 +21,7 @@ from copy import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
+from uuid import UUID
 
 import discord
 
@@ -135,14 +136,14 @@ class BugService:
                             updated_at=bug.updated_at,
                         )
 
-    async def create_embed(self, action, bug, member_dict):
+    async def create_embed(self, action, bug, member):
         current_developer_mentions = []
         guild = self.__bot.get_guild(bug.guild_snowflake)
         for current_developer_snowflake in bug.member_snowflakes:
             current_developer = guild.get_member(current_developer_snowflake)
             current_developer_mentions.append(current_developer.mention)
         channel = guild.get_channel(bug.channel_snowflake)
-        toggled_developer = guild.get_member(member_dict.get("id", None))
+        toggled_developer = guild.get_member(member.id)
         try:
             msg = await channel.fetch_message(bug.message_snowflake)
         except discord.NotFound:
@@ -163,33 +164,46 @@ class BugService:
             embed.set_thumbnail(url=toggled_developer.display_avatar.url)
             return embed
 
-    async def build_dictionary(self, kwargs):
+    async def build_dictionary(self, obj, reference):
+        bugs = []
         dictionary = {}
-        bugs = await self.__database_factory.select(singular=False, **kwargs)
-        for bug in bugs:
-            dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
-            messages = dictionary[bug.guild_snowflake]["messages"]
-            messages.setdefault(
-                bug.message_snowflake,
-                {
-                    "channel_snowflake": bug.channel_snowflake,
-                    "developer_snowflakes": [],
-                    "id": bug.id,
-                    "notes": [],
-                    "resolved": bug.resolved,
-                },
+        if isinstance(obj, discord.Guild):
+            bugs = await self.__database_factory.select(
+                guild_snowflake=obj.id, reference=reference
             )
-            messages[bug.message_snowflake]["developer_snowflakes"].extend(
-                bug.member_snowflakes
-            )
-            messages[bug.message_snowflake]["notes"].append(bug.notes)
+        elif not obj and reference:
+            bugs = await self.__database_factory.select(reference=reference)
+        else:
+            bugs = await self.__database_factory.select()
+        if bugs:
+            for bug in bugs:
+                dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
+                messages = dictionary[bug.guild_snowflake]["messages"]
+                messages.setdefault(
+                    bug.message_snowflake,
+                    {
+                        "channel_snowflake": bug.channel_snowflake,
+                        "developer_snowflakes": [],
+                        "id": bug.id,
+                        "notes": [],
+                        "resolved": bug.resolved,
+                    },
+                )
+                messages[bug.message_snowflake]["developer_snowflakes"].extend(
+                    bug.member_snowflakes
+                )
+                messages[bug.message_snowflake]["notes"].append(bug.notes)
         return dictionary
 
-    async def build_pages(self, scope, kwargs, is_at_home):
+    async def build_pages(self, is_at_home, obj, reference, scope):
         lines, pages = [], []
-        title = f"{self.__emoji.get_random_emoji()} Developer Logs"
 
-        dictionary = await self.build_dictionary(kwargs=kwargs)
+        obj_name = "All Servers"
+        if obj:
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} Developer Logs in {obj_name}"
+
+        dictionary = await self.build_dictionary(obj=obj, reference=reference)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BugDictionary, dictionary=dictionary
         )
@@ -215,7 +229,7 @@ class BugService:
                     f"**Resolved:** {'\u2705' if entry.get('resolved') else '\u274c'}"
                 )
                 lines.append(f"**Message:** {msg.jump_url}")
-                if kwargs.get("id", None) == str(entry["id"]):
+                if reference == str(entry["id"]):
                     lines.append(
                         f"**Notes:** {entry['notes'] if entry.get('notes') is not None else None}"
                     )
@@ -236,12 +250,12 @@ class BugService:
                         embed, pages, title, guild.name
                     )
                     lines = []
-            if lines:
-                embed.add_field(
-                    name=f"**Channel:** {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
+                if lines:
+                    embed.add_field(
+                        name=f"**Channel:** {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
             original_description = embed.description or ""
             embed.description = f"**{original_description}** **({bug_n})**"
             pages.append(embed)

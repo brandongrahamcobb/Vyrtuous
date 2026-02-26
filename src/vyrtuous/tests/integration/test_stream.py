@@ -32,50 +32,50 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, source_channel, target",
+    "permission_role, command, target, source_channel",
     [
         (
             "Administrator",
             "!stream",
-            "{source_channel_snowflake}",
-            None,
-        ),
-        (
-            "Administrator",
-            "!stream",
-            "{source_channel_snowflake}",
             "{target_channel_snowflake}",
-        ),
-        ("Administrator", "!stream", "{source_channel_snowflake}", None),
-        (
-            "Administrator",
-            "!stream",
-            "<#{source_channel_snowflake}>",
             None,
         ),
         (
             "Administrator",
             "!stream",
-            "<#{source_channel_snowflake}>",
-            None,
-        ),
-        (
-            "Administrator",
-            "!stream",
-            "<#{source_channel_snowflake}>",
-            None,
-        ),
-        (
-            "Administrator",
-            "!stream",
-            "{source_channel_snowflake}",
             "{target_channel_snowflake}",
+            "{source_channel_snowflake}",
+        ),
+        ("Administrator", "!stream", "{target_channel_snowflake}", None),
+        (
+            "Administrator",
+            "!stream",
+            "<#{target_channel_snowflake}>",
+            None,
+        ),
+        (
+            "Administrator",
+            "!stream",
+            "<#{target_channel_snowflake}>",
+            None,
+        ),
+        (
+            "Administrator",
+            "!stream",
+            "<#{target_channel_snowflake}>",
+            None,
+        ),
+        (
+            "Administrator",
+            "!stream",
+            "{target_channel_snowflake}",
+            "{source_channel_snowflake}",
         ),
     ],
 )
@@ -104,17 +104,16 @@ async def test_stream(bot, command: str, source_channel, target, permission_role
     >>> !stream 10000000000000010 modify channel {channel_snowflake}
     [{emoji} Streaming Route modified for Channel1]
     """
-    snowflakes = None
-    sc = source_channel.format(source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-    full = f"{command} {sc}"
-    if target:
-        tc = target.format(
-            target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        )
-        full = f"{command} {sc} {tc}"
+    tc = target.format(
+        target_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+    )
+    full = f"{command} {tc}"
+    if source_channel:
+        sc = source_channel.format(source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+        full = f"{command} {tc} {sc}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
-        assert captured
+        assert captured == ["success"]
     elif os.environ["TEST_MODE"].lower() == "unit":
         objects = setup(bot)
         msg = build_message(

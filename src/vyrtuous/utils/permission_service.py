@@ -48,29 +48,42 @@ class PermissionService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
 
-    def build_dictionary(self, channel_objs, me):
+    def build_dictionary(self, obj, me):
+        channels = []
         dictionary = {}
-        for channel in channel_objs:
-            permissions = channel.permissions_for(me)
-            missing = []
-            for permission in self.__TARGET_PERMISSIONS:
-                if not getattr(permissions, permission):
-                    missing.append(permission)
-            if not missing:
-                continue
-            dictionary.setdefault(channel.guild.id, {"channels": {}})
-            dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
-            dictionary[channel.guild.id]["channels"][channel.id].update(
-                {"permissions": missing}
-            )
+        if isinstance(obj, discord.Guild):
+            channels = obj.channels
+        elif isinstance(obj, discord.abc.GuildChannel):
+            channels = [obj]
+        else:
+            channels = [
+                channel for guild in self.__bot.guilds for channel in guild.channels
+            ]
+        if channels:
+            for channel in channels:
+                permissions = channel.permissions_for(me)
+                missing = []
+                for permission in self.__TARGET_PERMISSIONS:
+                    if not getattr(permissions, permission):
+                        missing.append(permission)
+                if not missing:
+                    continue
+                dictionary.setdefault(channel.guild.id, {"channels": {}})
+                dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
+                dictionary[channel.guild.id]["channels"][channel.id].update(
+                    {"permissions": missing}
+                )
         return dictionary
 
-    async def build_pages(self, channel_objs, context, is_at_home):
+    async def build_pages(self, obj, context, is_at_home):
         lines, pages = [], []
         guild = self.__bot.get_guild(context.guild.id)
-        title = f"{self.__emoji.get_random_emoji()} {self.__bot.user.display_name} Missing Permissions"
+        obj_name = "All Servers"
+        if obj:
+            obj_name = obj.name
+        title = f"{self.__emoji.get_random_emoji()} {self.__bot.user.display_name} Missing Permissions in {obj_name}"
 
-        dictionary = self.build_dictionary(channel_objs=channel_objs, me=guild.me)
+        dictionary = self.build_dictionary(obj=obj, me=guild.me)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=PermissionDictionary, dictionary=dictionary
         )
