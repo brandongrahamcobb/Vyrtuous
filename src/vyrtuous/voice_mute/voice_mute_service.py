@@ -340,7 +340,22 @@ class VoiceMuteService:
         pages.append(embed)
         return pages
 
-    async def delete(self, author, kwargs, source):
+    async def delete(
+        self,
+        author,
+        source,
+        *,
+        guild_snowflake=None,
+        channel_snowflake=None,
+        member_snowflake=None,
+    ):
+        kwargs = {}
+        if channel_snowflake:
+            kwargs.update({"channel_snowflake": channel_snowflake})
+        if guild_snowflake:
+            kwargs.update({"guild_snowflake": guild_snowflake})
+        if member_snowflake:
+            kwargs.update({"member_snowflake": member_snowflake})
         objects = await self.__database_factory.select(**kwargs)
         for obj in objects:
             await self.__database_factory.delete_by_cls(obj, **kwargs)
@@ -348,12 +363,12 @@ class VoiceMuteService:
             channel = guild.get_channel(obj.channel_snowflake)
             member = guild.get_member(obj.member_snowflake)
             is_channel_scope = False
-            if (
-                member.voice
-                and member.voice.channel
-                and member.voice.channel.id == channel.id
-            ):
-                is_channel_scope = True
+            if member.voice and member.voice.channel:
+                try:
+                    is_channel_scope = True
+                    await member.edit(mute=False)
+                except discord.Forbidden as e:
+                    self.__bot.logger.info(str(e).capitalize())
             await self.undo_log(
                 author=author,
                 channel=channel,
@@ -401,6 +416,7 @@ class VoiceMuteService:
                 try:
                     await ctx.member.edit(mute=True, reason=ctx.reason)
                 except discord.Forbidden as e:
+                    self.__bot.logger.info(str(e).capitalize())
                     return await state.end(error=str(e).capitalize())
         await self.enforce_log(
             author=default_ctx.author,
@@ -411,11 +427,10 @@ class VoiceMuteService:
             source=source,
             reason=ctx.reason,
         )
-
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo_log(self, author, channel, is_channel_scope, member, source, reason):
+    async def undo_log(self, author, channel, is_channel_scope, member, source):
         await self.__stream_service.send_log(
             author=author,
             channel=channel,
@@ -445,6 +460,7 @@ class VoiceMuteService:
                 is_channel_scope = True
                 await ctx.member.edit(mute=False)
             except discord.Forbidden as e:
+                self.__bot.logger.info(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
         await self.undo_log(
             author=default_ctx.author,

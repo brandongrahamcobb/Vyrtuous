@@ -176,7 +176,22 @@ class FlagService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def delete(self, author, kwargs, source):
+    async def delete(
+        self,
+        author,
+        source,
+        *,
+        guild_snowflake=None,
+        channel_snowflake=None,
+        member_snowflake=None,
+    ):
+        kwargs = {}
+        if channel_snowflake:
+            kwargs.update({"channel_snowflake": channel_snowflake})
+        if guild_snowflake:
+            kwargs.update({"guild_snowflake": guild_snowflake})
+        if member_snowflake:
+            kwargs.update({"member_snowflake": member_snowflake})
         objects = await self.__database_factory.select(**kwargs)
         for obj in objects:
             await self.__database_factory.delete_by_cls(obj, **kwargs)

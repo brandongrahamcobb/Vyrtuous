@@ -850,15 +850,10 @@ class AdminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        try:
-            pages = await self.__stream_service.toggle_stream(
-                source=source,
-                target_channel=target_channel,
-            )
-        except:
-            import traceback
-
-            traceback.print_exc()
+        pages = await self.__stream_service.toggle_stream(
+            source=source,
+            target_channel=target_channel,
+        )
         return await state.end(success=pages)
 
     @commands.command(name="streams", help="List streaming routes.")

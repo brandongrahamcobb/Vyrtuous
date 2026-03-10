@@ -1,12 +1,14 @@
 ALTER TABLE public.streaming
-DROP COLUMN IF EXISTS channel_snowflake,
 DROP COLUMN IF EXISTS enabled,
 DROP COLUMN IF EXISTS entry_type,
 DROP COLUMN IF EXISTS snowflakes;
 
 ALTER TABLE public.streaming
-ADD COLUMN IF NOT EXISTS target_channel_snowflake bigint NOT NULL,
-ADD COLUMN IF NOT EXISTS source_channel_snowflake bigint NOT NULL;
+RENAME COLUMN channel_snowflake TO target_channel_snowflake;
+ALTER TABLE public.streaming
+ALTER COLUMN target_channel_snowflake SET NOT NULL;
+ALTER TABLE public.streaming
+ADD COLUMN IF NOT EXISTS source_channel_snowflake bigint;
 
 ALTER TABLE public.streaming
 DROP CONSTRAINT IF EXISTS streaming_pkey;

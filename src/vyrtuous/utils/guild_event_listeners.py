@@ -82,7 +82,7 @@ class GuildEventListeners(commands.Cog):
         elif removed_roles:
             for removed_role in removed_roles:
                 kwargs.update({"role_snowflake": int(removed_role)})
-            await self.__administrator_service_role_service.removed_role(kwargs=kwargs)
+            await self.__administrator_service.removed_role(kwargs=kwargs)
             logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()

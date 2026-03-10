@@ -243,7 +243,7 @@ class ChannelEventListeners(commands.Cog):
             "name": name,
         }
         await self.__temporary_room_service.migrate_temporary_room(
-            channel_dict=channel_dict, old_name=room.name
+            channel=channel, old_name=room.name
         )
 
     @commands.Cog.listener()
@@ -265,6 +265,8 @@ class ChannelEventListeners(commands.Cog):
     ):
         if member.bot:
             return
+        if not after.channel:
+            return
         if before.channel == after.channel:
             if before.mute == after.mute:
                 if before.self_mute == after.self_mute:
@@ -277,9 +279,10 @@ class ChannelEventListeners(commands.Cog):
             channel=after.channel, member=member
         ):
             return
-        await self.__video_room_service.update_video_room_tasks(
-            after=after, before=before, member=member
-        )
+        if self.__video_room_service.is_active_video_room(channel=after.channel):
+            await self.__video_room_service.update_video_room_tasks(
+                after=after, before=before, member=member
+            )
         duration_value = "1h"
         if member.id in self.__hero_service.invincible_members:
             embed = discord.Embed(
