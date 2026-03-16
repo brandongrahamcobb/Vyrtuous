@@ -129,7 +129,7 @@ class VeganService:
             pages.append(embed)
         if pages:
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({vegan_n})**"
+            embed.description = f"**{original_description} ({vegan_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)

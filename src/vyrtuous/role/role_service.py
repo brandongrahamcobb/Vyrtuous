@@ -250,7 +250,7 @@ class RoleService:
                     name="Information", value="\n".join(lines), inline=False
                 )
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({role_n})**"
+            embed.description = f"**{original_description} ({role_n})**"
             pages.append(embed)
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)

@@ -127,7 +127,7 @@ class CapService:
             pages.append(embed)
         if pages:
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({cap_n})**"
+            embed.description = f"**{original_description} ({cap_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)

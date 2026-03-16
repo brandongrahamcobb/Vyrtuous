@@ -594,16 +594,13 @@ class ModeratorTextCommands(commands.Cog):
         pages = []
         obj = member or int(ctx.member)
         is_at_home = at_home(source=ctx)
-        member_dict = self.__discord_object_service.to_dict(obj=obj)
         services = []
         services.append(self.__ban_service)
         services.append(self.__flag_service)
         services.append(self.__text_mute_service)
         services.append(self.__voice_mute_service)
         for service in services:
-            summary_pages = await service.build_pages(
-                object_dict=member_dict, is_at_home=is_at_home
-            )
+            summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
             if summary_pages:
                 pages.extend(summary_pages)
         return await state.end(success=pages)

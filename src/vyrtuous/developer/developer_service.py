@@ -132,7 +132,7 @@ class DeveloperService:
                     inline=False,
                 )
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({dev_n})**"
+            embed.description = f"**{original_description} ({dev_n})**"
             pages.append(embed)
         return pages
 

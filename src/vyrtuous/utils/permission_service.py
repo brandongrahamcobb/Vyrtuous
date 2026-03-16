@@ -122,7 +122,7 @@ class PermissionService:
                     inline=False,
                 )
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({perm_n})**"
+            embed.description = f"**{original_description} ({perm_n})**"
             pages.append(embed)
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)

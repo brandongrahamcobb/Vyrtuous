@@ -182,7 +182,7 @@ class AdministratorService:
                     inline=False,
                 )
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({admin_n})**"
+            embed.description = f"**{original_description} ({admin_n})**"
             pages.append(embed)
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
@@ -369,7 +369,7 @@ class AdministratorRoleService:
             pages.append(embed)
         if pages:
             original_description = embed.description or ""
-            embed.description = f"**{original_description}** **({admin_role_n})**"
+            embed.description = f"**{original_description} ({admin_role_n})**"
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_roles)
