@@ -18,11 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from copy import copy
+from enum import member
 from typing import Union
 
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
 from vyrtuous.owner.guild_owner import GuildOwner
 
 
@@ -36,13 +38,32 @@ class NotGuildOwner(commands.CheckFailure):
 
 class GuildOwnerService:
     MODEL = GuildOwner
+    guild_owners = {}
 
-    def __init__(self, *, author_service=None, bot=None, database_factory=None):
+    def __init__(
+        self,
+        *,
+        active_member_service=None,
+        author_service=None,
+        bot=None,
+        database_factory=None,
+    ):
+        self.__active_member_service = active_member_service
         self.__author_service = author_service
         self.__bot = bot
-
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+
+    async def populate(self):
+        guild_owners = await self.__database_factory.select()
+        for guild_owner in guild_owners:
+            guild = self.__bot.get_guild(guild_owner.guild_snowflake)
+            if not guild:
+                continue
+            self.guild_owners[guild_owner.member_snowflake] = {
+                "last_active": None,
+                "name": guild_owner.display_name,
+            }
 
     async def update_guild_owners(self):
         for guild in self.__bot.guilds:
@@ -59,9 +80,29 @@ class GuildOwnerService:
                     guild_snowflake=guild.id, member_snowflake=guild.owner_id
                 )
                 await self.__database_factory.create(guild_owner)
+                member = guild.get_member(guild.owner.id)
+                self.guild_owners.update(
+                    {guild.owner_id: {"name": member.display_name}}
+                )
                 self.__bot.logger.info(
                     f"Guild owner ({guild_owner.member_snowflake}) added to the db."
                 )
+
+    async def add_guild_owner(self, guild_snowflake, member_snowflake):
+        guild_owner = self.MODEL(
+            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+        )
+        await self.__database_factory.create(guild_owner)
+        member = guild.get_member(member_snowflake)
+        self.guild_owners.update({member_snowflake: {"name": member.display_name}})
+        self.__bot.logger.info(f"Guild owner ({member_snowflake}) added.")
+
+    async def remove_guild_owner(self, guild_snowflake, member_snowflake):
+        await self.__database_factory.delete(
+            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+        )
+        del self.guild_owners[member_snowflake]
+        self.__bot.logger.info(f"Guild owner ({member_snowflake}) removed.")
 
     async def is_guild_owner_wrapper(
         self,

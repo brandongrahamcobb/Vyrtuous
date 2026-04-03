@@ -22,6 +22,8 @@ from typing import Any, Coroutine, Literal, Optional, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import (
     AdministratorRoleService,
     AdministratorService,
@@ -65,6 +67,9 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__duration_builder = DurationBuilder()
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -145,6 +150,7 @@ class GuildOwnerTextCommands(commands.Cog):
             stream_service=self.__stream_service,
         )
         self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
@@ -221,14 +227,9 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        try:
-            pages = await self.__administrator_role_service.toggle_administrator_role(
-                role=role,
-            )
-        except:
-            import traceback
-
-            traceback.print_exc()
+        pages = await self.__administrator_role_service.toggle_administrator_role(
+            role=role,
+        )
         return await state.end(success=pages)
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")

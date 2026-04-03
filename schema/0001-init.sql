@@ -27,6 +27,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.active_bans (
     channel_snowflake bigint DEFAULT '-1'::integer NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     expires_in timestamp with time zone,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
@@ -64,6 +65,7 @@ ALTER TABLE public.active_caps OWNER TO vyrtuous;
 CREATE TABLE public.active_flags (
     channel_snowflake bigint DEFAULT '-1'::integer NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     expires_in timestamp with time zone,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
@@ -80,6 +82,7 @@ ALTER TABLE public.active_flags OWNER TO vyrtuous;
 
 CREATE TABLE public.active_server_voice_mutes (
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     expires_in timestamp with time zone,
     member_snowflake bigint NOT NULL,
@@ -113,6 +116,7 @@ ALTER TABLE public.active_stages OWNER TO vyrtuous;
 CREATE TABLE public.active_text_mutes (
     channel_snowflake bigint DEFAULT '-1'::integer NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     expires_in timestamp with time zone,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
@@ -134,6 +138,7 @@ ALTER TABLE public.active_text_mutes OWNER TO vyrtuous;
 CREATE TABLE public.active_voice_mutes (
     channel_snowflake bigint DEFAULT '-1'::integer NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     expires_in timestamp with time zone,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
@@ -166,6 +171,7 @@ ALTER TABLE public.administrator_roles OWNER TO vyrtuous;
 
 CREATE TABLE public.administrators (
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     role_snowflakes bigint[] NOT NULL,
@@ -220,6 +226,7 @@ ALTER TABLE public.command_aliases OWNER TO vyrtuous;
 CREATE TABLE public.coordinators (
     channel_snowflake bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
@@ -234,6 +241,7 @@ ALTER TABLE public.coordinators OWNER TO vyrtuous;
 
 CREATE TABLE public.developers (
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -247,6 +255,7 @@ ALTER TABLE public.developers OWNER TO vyrtuous;
 
 CREATE TABLE public.guild_owners (
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
@@ -288,6 +297,7 @@ ALTER TABLE public.moderation_logs OWNER TO vyrtuous;
 CREATE TABLE public.moderators (
     channel_snowflake bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
@@ -303,6 +313,7 @@ ALTER TABLE public.moderators OWNER TO vyrtuous;
 CREATE TABLE public.roles (
     created_at timestamp with time zone DEFAULT now(),
     channel_snowflake bigint NOT NULL,
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     role_snowflake bigint NOT NULL,
@@ -333,6 +344,7 @@ ALTER TABLE public.streaming OWNER TO vyrtuous;
 
 CREATE TABLE public.sysadmin (
     created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -361,6 +373,7 @@ ALTER TABLE public.temporary_rooms OWNER TO vyrtuous;
 
 CREATE TABLE public.vegans (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    display_name TEXT,
     guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
@@ -554,4 +567,10 @@ ALTER TABLE ONLY public.video_rooms
 --
 -- PostgreSQL database dump complete
 --
-
+CREATE TABLE active_members (
+    created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
+    last_active timestamp with time zone DEFAULT now(),
+    member_snowflake bigint NOT NULL,
+    updated_at timestamp with time zone DEFAULT now()
+);

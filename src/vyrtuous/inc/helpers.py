@@ -40,6 +40,7 @@ DISCORD_COGS = [
     "vyrtuous.moderator.help_text_command",
     "vyrtuous.moderator.moderator_app_commands",
     "vyrtuous.moderator.moderator_text_commands",
+    "vyrtuous.startup.startup",
     "vyrtuous.sysadmin.sysadmin_app_commands",
     "vyrtuous.sysadmin.sysadmin_text_commands",
     "vyrtuous.utils.channel_event_listeners",
@@ -66,6 +67,7 @@ DISCORD_COGS_CLASSES = [
     "ModeratorAppCommands",
     "ModeratorTextCommands",
     "ScheduledTasks",
+    "Startup",
     "SysadminAppCommands",
     "SysadminTextCommands",
 ]

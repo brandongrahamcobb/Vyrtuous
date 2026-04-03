@@ -24,6 +24,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.active_members.active_member_service import ActiveMemberService
+from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 
 
@@ -42,6 +44,7 @@ class TargetIsBot(commands.CheckFailure):
 
 
 class DiscordObjectService:
+
     def to_dict(
         self,
         obj: Union[
@@ -104,6 +107,10 @@ class DiscordObjectService:
 class MultiConverter(commands.Converter):
     def __init__(self):
         self.__bot = DiscordBot.get_instance()
+        self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
 
     async def convert(self, ctx: commands.Context, argument: str):
         if argument and str(argument).lower() == "all":
@@ -136,6 +143,12 @@ class MultiConverter(commands.Converter):
             role = await role.convert(ctx, argument)
             return role
         except commands.RoleNotFound as e:
+            self.__bot.logger.warning(e)
+        try:
+            member = self.__active_member_service.active_members.get(argument, None)
+            if member:
+                return argument
+        except commands.MemberNotFound as e:
             self.__bot.logger.warning(e)
         raise commands.BadArgument(
             "Argument is not a channel, member, guild, role or UUID."

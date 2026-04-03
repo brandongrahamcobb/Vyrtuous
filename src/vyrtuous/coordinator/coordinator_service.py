@@ -24,6 +24,7 @@ from typing import Dict, List, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
 from vyrtuous.coordinator.coordinator import Coordinator
 
 
@@ -47,16 +48,19 @@ class CoordinatorDictionary:
 class CoordinatorService:
     __CHUNK_SIZE = 12
     MODEL = Coordinator
+    coordinators = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         author_service=None,
         bot=None,
         database_factory=None,
         dictionary_service=None,
         emoji,
     ):
+        self.__active_member_service = active_member_service
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
@@ -102,6 +106,17 @@ class CoordinatorService:
             guild_snowflake=int(context.guild.id),
             member_snowflake=int(context.member.id),
         )
+
+    async def populate(self):
+        coordinators = await self.__database_factory.select()
+        for coordinator in coordinators:
+            guild = self.__bot.get_guild(coordinator.guild_snowflake)
+            if not guild:
+                continue
+            self.coordinators[coordinator.member_snowflake] = {
+                "last_active": None,
+                "name": coordinator.display_name,
+            }
 
     async def build_dictionary(self, obj):
         coordinators = []
@@ -201,25 +216,37 @@ class CoordinatorService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
-    async def toggle_coordinator(self, channel, member):
+    async def toggle_coordinator(self, channel, member_snowflake, display_name=None):
         coordinator = await self.__database_factory.select(
-            singular=True, channel_snowflake=channel.id, member_snowflake=member.id
+            singular=True,
+            channel_snowflake=channel.id,
+            member_snowflake=member_snowflake,
         )
         if coordinator:
             await self.__database_factory.delete(
-                channel_snowflake=channel.id, member_snowflake=member.id
+                channel_snowflake=channel.id, member_snowflake=member_snowflake
             )
+            del self.coordinators[member_snowflake]
             action = "revoked"
         else:
             coordinator = self.MODEL(
                 channel_snowflake=channel.id,
+                display_name=display_name,
                 guild_snowflake=channel.guild.id,
-                member_snowflake=member.id,
+                member_snowflake=member_snowflake,
             )
             await self.__database_factory.create(coordinator)
+            self.coordinators.update({member_snowflake: {"name": display_name}})
             action = "granted"
+        member = channel.guild.get_member(member_snowflake)
+        if member:
+            member_str = member.mention
+        else:
+            member_str = self.__active_member_service.active_members.get(
+                member_snowflake, None
+            ).get("name", None)
         return (
-            f"Coordinator access has been {action} for {member.mention} "
+            f"Coordinator access has been {action} for {member_str} "
             f"in {channel.mention}."
         )
 

@@ -23,6 +23,7 @@ from typing import Dict, List
 
 import discord
 
+from vyrtuous.active_members import active_member_service
 from vyrtuous.server_mute.server_mute import ServerMute
 
 
@@ -36,22 +37,36 @@ class ServerMuteDictionary:
 class ServerMuteService:
     __CHUNK_SIZE = 12
     MODEL = ServerMute
+    server_muted_members = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         bot=None,
         database_factory=None,
         dictionary_service=None,
         emoji=None,
         moderator_service=None,
     ):
+        self.__active_member_service = active_member_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__moderator_service = moderator_service
+
+    async def populate(self):
+        server_muted_members = await self.__database_factory.select()
+        for server_muted_member in server_muted_members:
+            guild = self.__bot.get_guild(server_muted_member.guild_snowflake)
+            if not guild:
+                continue
+            self.server_muted_members[server_muted_member.member_snowflake] = {
+                "last_active": None,
+                "name": server_muted_member.display_name,
+            }
 
     async def build_dictionary(self, obj):
         server_mutes = []

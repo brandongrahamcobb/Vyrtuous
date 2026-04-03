@@ -22,6 +22,7 @@ from typing import Any, Coroutine
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -45,6 +46,7 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.utils.discord_object_service import MultiConverter
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -55,6 +57,9 @@ class CoordinatorTextCommands(commands.Cog):
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__emoji = Emojis()
         self.__duration_builder = DurationBuilder()
         self.__paginator_service = PaginatorService(bot=self.__bot)
@@ -65,6 +70,7 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__administrator_service = AdministratorService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -72,6 +78,7 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__coordinator_service = CoordinatorService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -79,6 +86,7 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -86,16 +94,19 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__guild_owner_service = GuildOwnerService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
         self.__sysadmin_service = SysadminService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
         self.__moderator_service = ModeratorService(
+            active_member_service=self.__active_member_service,
             administrator_service=self.__administrator_service,
             author_service=self.__author_service,
             bot=self.__bot,
@@ -121,6 +132,7 @@ class CoordinatorTextCommands(commands.Cog):
             moderator_service=self.__moderator_service,
         )
         self.__voice_mute_service = VoiceMuteService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
@@ -165,8 +177,8 @@ class CoordinatorTextCommands(commands.Cog):
     async def toggle_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
         channel: discord.abc.GuildChannel = commands.parameter(
@@ -196,9 +208,16 @@ class CoordinatorTextCommands(commands.Cog):
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
         )
+        if isinstance(member, discord.Member):
+            display_name = member.display_name
+            member_snowflake = member.id
+        else:
+            display_name = None
+            member_snowflake = member
         msg = await self.__moderator_service.toggle_moderator(
             channel=channel,
-            member=member,
+            display_name=display_name,
+            member_snowflake=member_snowflake,
         )
         return await state.end(success=msg)
 

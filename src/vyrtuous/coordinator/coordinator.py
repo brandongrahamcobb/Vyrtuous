@@ -27,6 +27,7 @@ class Coordinator:
     identifier = "coord"
     channel_snowflake: int
     guild_snowflake: int
+    display_name: str
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

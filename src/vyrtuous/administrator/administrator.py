@@ -28,6 +28,7 @@ class Administrator(DatabaseFactory):
 
     __tablename__ = "administrators"
     identifier = "admin"
+    display_name: str
     guild_snowflake: int
     member_snowflake: int
     role_snowflakes: list[int | None] = field(default_factory=list)

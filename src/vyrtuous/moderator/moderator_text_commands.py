@@ -22,6 +22,7 @@ from typing import Any, Coroutine, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.alias.alias_service import AliasService
 from vyrtuous.ban.ban_service import BanService
@@ -67,6 +68,9 @@ class ModeratorTextCommands(commands.Cog):
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__duration_builder = DurationBuilder()
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__cap_service = CapService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -164,6 +168,7 @@ class ModeratorTextCommands(commands.Cog):
         )
         self.__discord_object_service = DiscordObjectService()
         self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             data_service=self.__data_service,

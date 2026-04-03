@@ -43,24 +43,39 @@ class AdministratorDictionary:
 
 
 class AdministratorService:
+
     __CHUNK_SIZE = 12
     MODEL = Administrator
+    administrators = []
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         author_service=None,
         bot=None,
         database_factory=None,
         dictionary_service=None,
         emoji=None,
     ):
+        self.__active_member_service = active_member_service
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
+
+    async def populate(self):
+        administrators = await self.__database_factory.select()
+        for administrator in administrators:
+            guild = self.__bot.get_guild(administrator.guild_snowflake)
+            if not guild:
+                continue
+            self.administrators[administrator.member_snowflake] = {
+                "last_active": None,
+                "name": administrator.display_name,
+            }
 
     async def is_administrator_wrapper(
         self,
@@ -225,6 +240,11 @@ class AdministratorService:
                 role_snowflakes=[int(role_snowflake)],
             )
             await self.__database_factory.create(administrator)
+            guild = self.__bot.get_guild(guild_snowflake)
+            member = guild.get_member(member_snowflake)
+            self.administrators.update(
+                {member_snowflake: {"name": member.display_name}}
+            )
             return
         administrator_role_snowflakes = administrator_existing.role_snowflakes
         administrator_role_snowflakes.append(role_snowflake)
@@ -264,6 +284,7 @@ class AdministratorService:
             await self.__database_factory.delete(
                 guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
             )
+            del self.adminstrators[member_snowflake]
         else:
             where_kwargs = {
                 "guild_snowflake": int(guild_snowflake),
@@ -419,7 +440,6 @@ class AdministratorRoleService:
                 )
                 granted_members[role.guild.id][role.id].append(member)
             members = granted_members.get(role.guild.id, {}).get(role.id, [])
-
         embed = discord.Embed(
             title=title,
             description=f"`{role.name}` was `{action}`.",

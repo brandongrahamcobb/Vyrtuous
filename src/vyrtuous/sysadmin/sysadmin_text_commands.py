@@ -22,6 +22,7 @@ from typing import Any, Coroutine
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
@@ -33,7 +34,7 @@ from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService
+from vyrtuous.utils.discord_object_service import MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.state_service import StateService
 
@@ -47,6 +48,9 @@ class SysadminTextCommands(commands.Cog):
         self.__author_service = AuthorService()
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__dictionary_service = DictionaryService(bot=self.__bot)
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__duration_builder = DurationBuilder()
         self.__bug_service = BugService(
             bot=self.__bot,
@@ -54,8 +58,8 @@ class SysadminTextCommands(commands.Cog):
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
-        self.__discord_object_service = DiscordObjectService()
         self.__developer_service = DeveloperService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -63,6 +67,7 @@ class SysadminTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__sysadmin_service = SysadminService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -110,8 +115,8 @@ class SysadminTextCommands(commands.Cog):
     async def toggle_developer_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
     ):
@@ -124,9 +129,21 @@ class SysadminTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        msg = await self.__developer_service.toggle_developer(
-            member=member,
-        )
+        if isinstance(member, discord.Member):
+            display_name = member.display_name
+            member_snowflake = member.id
+        else:
+            display_name = None
+            member_snowflake = member
+        try:
+            msg = await self.__developer_service.toggle_developer(
+                display_name=display_name,
+                member_snowflake=member_snowflake,
+            )
+        except:
+            import traceback
+
+            traceback.print_exc()
         return await state.end(success=msg)
 
     @commands.command(name="upload", help="Create the upload document.")

@@ -104,11 +104,16 @@ class StreamEmbed(discord.Embed):
 
     def set_target(self, *, target, highest_role) -> Self:
         fields = []
-        fields.append(f"**Display Name:** {target.display_name}")
-        fields.append(f"**Username:** @{target.name}")
-        fields.append(f"**User ID:** `{target.id}`")
-        fields.append(f"**Account Age:** <t:{int(target.created_at.timestamp())}:R>")
-        fields.append(f"**Server Join:** <t:{int(target.joined_at.timestamp())}:R>")
+        full_target = hasattr(target, "id")
+        if full_target:
+            fields.append(f"**Display Name:** {target.display_name}")
+            fields.append(f"**Username:** @{target.name}")
+            fields.append(f"**User ID:** `{target.id}`")
+            fields.append(f"**Account Age:** <t:{int(target.created_at.timestamp())}:R>")
+            fields.append(f"**Server Join:** <t:{int(target.joined_at.timestamp())}:R>")
+        else:
+            fields.append(f"**Display Name:** {target.get('name', None)}")
+            fields.append(f"**User ID:** `{target.get('id', None)}`")
         fields.append(f"**Top Role:** {highest_role}")
         field = "\n".join(fields)
         self.add_field(name="👤 Target User", value=field, inline=False)
@@ -137,7 +142,10 @@ class StreamEmbed(discord.Embed):
         return self
 
     def set_reference(self, *, channel, target, message, source) -> Self:
-        text = f"Ref: {target.id}-{channel.id} | Msg: {message.id if message else 'Hidden'}"
+        if hasattr(target, "id"):
+            text = f"Ref: {target.id}-{channel.id} | Msg: {message.id if message else 'Hidden'}"
+        else:
+            text = f"Ref: {target.get("id", None)}-{channel.id} | Msg: {message.id if message else 'Hidden'}"
         icon_url = source.guild.icon.url
         self.set_footer(text=text, icon_url=icon_url)
         return self
@@ -156,9 +164,14 @@ class StreamEmbed(discord.Embed):
         return self
 
     def set_description(self, *, channel, target) -> Self:
-        self.description = (
-            f"**Target:** {target.mention} moderated in {channel.mention}"
-        )
+        if hasattr(target, "id"):
+            self.description = (
+                f"**Target:** {target.mention} moderated in {channel.mention}"
+            )
+        else:
+            self.description = (
+                f"**Target:** {target.get("name")} moderated in {channel.mention}"
+            )
         return self
 
 
@@ -190,7 +203,7 @@ class StreamService:
         self,
         channel: discord.abc.GuildChannel,
         identifier: str,
-        member: discord.Member,
+        member,
         author: discord.Member | None = None,
         duration_value: str | None = None,
         is_channel_scope: bool = False,
@@ -213,8 +226,12 @@ class StreamService:
             if author
             else "Unknown"
         )
+        if hasattr(member, "id"):
+            member_snowflake = member.id
+        else:
+            member_snowflake = member.get("id", None)
         target_role = await self.__moderator_service.resolve_highest_role_at_all(
-            member_snowflake=int(member.id),
+            member_snowflake=int(member_snowflake),
         )
         embed = (
             StreamEmbed(duration_builder=self.__duration_builder)

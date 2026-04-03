@@ -21,6 +21,7 @@ from copy import copy
 
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
 from vyrtuous.sysadmin.sysadmin import Sysadmin
 
 
@@ -31,12 +32,29 @@ class NotSysadmin(commands.CheckFailure):
 
 class SysadminService:
     MODEL = Sysadmin
+    sysadmins = {}
 
-    def __init__(self, *, author_service=None, bot=None, database_factory=None):
+    def __init__(
+        self,
+        *,
+        active_member_service=None,
+        author_service=None,
+        bot=None,
+        database_factory=None,
+    ):
+        self.__active_member_service = active_member_service
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+
+    async def populate(self):
+        sysadmins = await self.__database_factory.select()
+        for sysadmin in sysadmins:
+            self.sysadmins[sysadmin.member_snowflake] = {
+                "last_active": None,
+                "name": sysadmin.display_name,
+            }
 
     async def update_sysadmin(self):
         member_snowflake = self.__bot.config.get("discord_owner_id", None)
@@ -46,6 +64,14 @@ class SysadminService:
         if not sysadmin:
             sysadmin = Sysadmin(member_snowflake=int(member_snowflake))
             await self.__database_factory.create(sysadmin)
+            member = self.__bot.get_user(member_snowflake)
+            if member:
+                member_display_name = member.display_name
+            else:
+                member_display_name = self.__active_member_service.active_members.get(
+                    member_snowflake, None
+                ).get("name", None)
+            self.sysadmins.update({member_snowflake: {"name": member_display_name}})
             self.__bot.logger.info(f"Sysadmin ({member_snowflake}) added to the db.")
         else:
             self.__bot.logger.info(f"Sysadmin ({member_snowflake}) already in the db.")

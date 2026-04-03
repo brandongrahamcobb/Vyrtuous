@@ -93,13 +93,17 @@ class DataService:
         self,
         *,
         author: discord.Member | None = None,
-        member: discord.Member | None = None,
-    ) -> Self:
+        member = None,
+    ):
         executor_role = await self.__moderator_service.resolve_highest_role_at_all(
             member_snowflake=int(author.id),
         )
+        if hasattr(member, "id"):
+            member_snowflake = member.id
+        else:
+            member_snowflake = member.get("id", None)
         target_role = await self.__moderator_service.resolve_highest_role_at_all(
-            member_snowflake=int(member.id),
+            member_snowflake=int(member_snowflake),
         )
         self.__data = replace(self.__data, executor_role=executor_role)
         self.__data = replace(self.__data, target_role=target_role)
@@ -109,12 +113,16 @@ class DataService:
         self,
         channel: discord.abc.GuildChannel,
         identifier: str,
-        member: discord.Member,
+        member,
         author: discord.Member | None = None,
         duration_value: str | None = None,
         is_modification: bool = False,
         reason: str = "No reason provided",
     ):
+        if hasattr(member, "id"):
+            member_snowflake = member.id
+        else:
+            member_snowflake = member.get("id", None)
         if duration_value is not None:
             expires_at = self.__duration_builder.parse(
                 value=duration_value
@@ -141,7 +149,7 @@ class DataService:
             .set_counts(total_voice_members=total_voice_members) \
             .set_snowflakes(channel_snowflake=int(channel.id)) \
             .set_snowflakes(guild_snowflake=int(channel.guild.id)) \
-            .set_snowflakes(target_snowflake=int(member.id)) \
+            .set_snowflakes(target_snowflake=int(member_snowflake)) \
             .set_expires_at(expires_at=expires_at) \
             .set_identifier(identifier=identifier) \
             .set_is_modification(is_modification=is_modification) \

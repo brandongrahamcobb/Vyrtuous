@@ -66,6 +66,7 @@ from vyrtuous.vegan.vegan_service import VeganService
 from vyrtuous.video_room.video_room_service import VideoRoomService
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 
 
 class AdminTextCommands(commands.Cog):
@@ -78,6 +79,9 @@ class AdminTextCommands(commands.Cog):
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__duration_builder = DurationBuilder()
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__alias_service = AliasService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -218,6 +222,7 @@ class AdminTextCommands(commands.Cog):
             stream_service=self.__stream_service,
         )
         self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
@@ -469,8 +474,8 @@ class AdminTextCommands(commands.Cog):
     async def toggle_coordinator_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
         channel: discord.abc.GuildChannel = commands.parameter(
@@ -494,9 +499,16 @@ class AdminTextCommands(commands.Cog):
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
         )
+        if isinstance(member, discord.Member):
+            display_name = member.display_name
+            member_snowflake = member.id
+        else:
+            display_name = None
+            member_snowflake = member
         msg = await self.__coordinator_service.toggle_coordinator(
             channel=channel,
-            member=member,
+            display_name=display_name,
+            member_snowflake=member_snowflake,
         )
         return await state.end(success=msg)
 

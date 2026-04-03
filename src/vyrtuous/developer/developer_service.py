@@ -31,18 +31,22 @@ class NotDeveloper(commands.CheckFailure):
 
 
 class DeveloperService:
+
     __CHUNK_SIZE = 12
     MODEL = Developer
+    developer_members = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         bot=None,
         bug_service=None,
         database_factory=None,
         duration_builder=None,
         emoji=None,
     ):
+        self.__active_member_service = active_member_service
         self.__bot = bot
         self.__bug_service = bug_service
         self.__database_factory = copy(database_factory)
@@ -60,6 +64,14 @@ class DeveloperService:
 
     async def is_developer_wrapper(self, context):
         return await self.is_developer(member_snowflake=int(context.author.id))
+
+    async def populate(self):
+        developers = await self.__database_factory.select()
+        for developer in developers:
+            self.developer_members[developer.member_snowflake] = {
+                "last_active": None,
+                "name": developer.display_name,
+            }
 
     async def build_dictionary(self, obj):
         developers = []
@@ -158,18 +170,29 @@ class DeveloperService:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
         await author.send(message)
 
-    async def toggle_developer(self, member):
+    async def toggle_developer(self, member_snowflake, display_name=None):
         found = False
         for developer in await self.developers():
-            if developer.member_snowflake == member.id:
-                await self.__database_factory.delete(member_snowflake=member.id)
+            if developer.member_snowflake == member_snowflake:
+                await self.__database_factory.delete(member_snowflake=member_snowflake)
                 found = True
+                del self.developer_members[member_snowflake]
                 action = "revoked"
         if not found:
-            new_developer = self.MODEL(member_snowflake=member.id)
+            new_developer = self.MODEL(
+                display_name=display_name, member_snowflake=member_snowflake
+            )
             await self.__database_factory.create(new_developer)
+            self.developer_members.update({member_snowflake: {"name": display_name}})
             action = "granted"
-        return f"Developer access for {member.mention} has been {action} globally."
+        member = self.__bot.get_user(member_snowflake)
+        if member:
+            member_str = member.mention
+        else:
+            member_str = self.__active_member_service.active_members.get(
+                member_snowflake, None
+            ).get("name", None)
+        return f"Developer access for {member_str} has been {action} globally."
 
     async def ping_about_expired_bugs(
         self,

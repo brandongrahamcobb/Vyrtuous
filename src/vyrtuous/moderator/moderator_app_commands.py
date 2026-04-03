@@ -23,6 +23,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.ban.ban import Ban
 from vyrtuous.ban.ban_service import BanService
@@ -71,6 +73,9 @@ class ModeratorAppCommands(commands.Cog):
         self.__emoji = Emojis()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__duration_builder = DurationBuilder()
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -140,6 +145,7 @@ class ModeratorAppCommands(commands.Cog):
             stream_service=self.__stream_service,
         )
         self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,

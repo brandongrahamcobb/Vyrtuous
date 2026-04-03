@@ -1,7 +1,7 @@
 {
     "folders": [{"path": "./"}],
     "settings": {
-        "python.defaultInterpreterPath": "/Users/spawd/git/python/sandbox/Vyrtuous/.venv//bin/python",
+        "python.defaultInterpreterPath": "/Users/spawd/git/production/discord_bot/Vyrtuous/.venv//bin/python",
         "files.exclude": {
             "**/backups": true,
             "**/*.env*": true,
@@ -25,7 +25,6 @@
             "**/*.svg": true,
             "**/README.md": true,
             "**/settings.json": true,
-            "**/test*": true,
             "**/.gitlab*": true,
             "**/docker-compose*": true,
             "**/Dockerfile*": true,

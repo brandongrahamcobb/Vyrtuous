@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class Sysadmin:
     __tablename__ = "sysadmin"
     identifier = "sysadmin"
+    display_name: str
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

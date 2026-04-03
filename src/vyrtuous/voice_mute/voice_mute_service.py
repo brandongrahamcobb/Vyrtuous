@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
 from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
@@ -40,10 +41,12 @@ class VoiceMuteDictionary:
 class VoiceMuteService:
     __CHUNK_SIZE = 12
     MODEL = VoiceMute
+    voice_muted_members = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         bot=None,
         database_factory=None,
         data_service=None,
@@ -53,6 +56,7 @@ class VoiceMuteService:
         moderator_service=None,
         stream_service=None,
     ):
+        self.__active_member_service = active_member_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
@@ -62,6 +66,17 @@ class VoiceMuteService:
         self.__emoji = emoji
         self.__moderator_service = moderator_service
         self.__stream_service = stream_service
+
+    async def populate(self):
+        voice_muted_members = await self.__database_factory.select()
+        for voice_muted_member in voice_muted_members:
+            guild = self.__bot.get_guild(voice_muted_member.guild_snowflake)
+            if not guild:
+                continue
+            self.text_muted_members[voice_muted_member.member_snowflake] = {
+                "last_active": None,
+                "name": voice_muted_member.display_name,
+            }
 
     async def enforce_or_undo(
         self,
@@ -76,6 +91,9 @@ class VoiceMuteService:
             member_snowflake=ctx.member.id,
             singular=True,
         )
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            await source.reply("Member is inactive or incorrectly specified.")
         if obj:
             await self.undo(
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
@@ -402,15 +420,17 @@ class VoiceMuteService:
     async def enforce(self, ctx, default_ctx, source, state):
         voice_mute = self.MODEL(
             channel_snowflake=ctx.channel.id,
+            display_name=ctx.display_name,
             expires_in=ctx.expires_in,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
             reason=ctx.reason,
             target="user",
         )
         await self.__database_factory.create(voice_mute)
         is_channel_scope = False
-        if ctx.member.voice and ctx.member.voice.channel:
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if ctx.member.voice and ctx.member.voice.channel and member:
             if ctx.member.voice.channel.id == ctx.channel.id:
                 is_channel_scope = True
                 try:
@@ -418,12 +438,19 @@ class VoiceMuteService:
                 except discord.Forbidden as e:
                     self.__bot.logger.info(str(e).capitalize())
                     return await state.end(error=str(e).capitalize())
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        self.voice_muted_members.update(
+            {ctx.member_snowflake: {"name": ctx.display_name}}
+        )
         await self.enforce_log(
             author=default_ctx.author,
             channel=ctx.channel,
             duration_value=ctx.duration_value,
             is_channel_scope=is_channel_scope,
-            member=ctx.member,
+            member=member,
             source=source,
             reason=ctx.reason,
         )
@@ -451,22 +478,29 @@ class VoiceMuteService:
     async def undo(self, ctx, default_ctx, source, state):
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
+            display_name=ctx.display_name,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
         )
+        member = ctx.guild.get_member(ctx.member_snowflake)
         is_channel_scope = False
-        if ctx.member.voice and ctx.member.voice.channel:
+        if ctx.member.voice and ctx.member.voice.channel and member:
             try:
                 is_channel_scope = True
                 await ctx.member.edit(mute=False)
             except discord.Forbidden as e:
                 self.__bot.logger.info(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        del self.voice_muted_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,
             is_channel_scope=is_channel_scope,
-            member=ctx.member,
+            member=member,
             source=source,
             reason=ctx.reason,
         )
@@ -474,34 +508,48 @@ class VoiceMuteService:
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been voice-muted",
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been voice-muted",
             description=(
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
+                f"**User:** {member_str}\n"
+                f"**Channel:** {ctx.channel.mention}\n"
                 f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unix_ts()}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been unmuted",
-            description=(
-                f"**User:** {member.mention}\n**Channel:** {channel.mention}\n"
-            ),
-            color=discord.Color.blue(),
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been unmuted",
+            description=(f"**User:** {member_str}\n**Channel:** {ctx.channel.mention}"),
+            color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def clean_expired_stage(self, channel, guild):

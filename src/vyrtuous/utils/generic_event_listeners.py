@@ -23,7 +23,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from vyrtuous import sysadmin
+from vyrtuous.active_members import active_member_service
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.alias.alias_context import AliasContext
 from vyrtuous.ban.ban_service import BanService
@@ -47,6 +47,7 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 
 
 class GenericEventListeners(commands.Cog):
@@ -59,6 +60,9 @@ class GenericEventListeners(commands.Cog):
         self.__emoji = Emojis()
         self.__duration_builder = DurationBuilder()
         self.__paginator_service = PaginatorService(bot=self.__bot)
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -66,6 +70,7 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
         )
         self.__administrator_service = AdministratorService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -73,6 +78,7 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
         )
         self.__coordinator_service = CoordinatorService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -80,6 +86,7 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
         )
         self.__developer_service = DeveloperService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
@@ -87,16 +94,19 @@ class GenericEventListeners(commands.Cog):
             emoji=self.__emoji,
         )
         self.__guild_owner_service = GuildOwnerService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
         self.__sysadmin_service = SysadminService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
         self.__moderator_service = ModeratorService(
+            active_member_service=self.__active_member_service,
             administrator_service=self.__administrator_service,
             author_service=self.__author_service,
             bot=self.__bot,
@@ -118,6 +128,7 @@ class GenericEventListeners(commands.Cog):
             paginator_service=self.__paginator_service,
         )
         self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -126,6 +137,7 @@ class GenericEventListeners(commands.Cog):
             stream_service=self.__stream_service,
         )
         self.__text_mute_service = TextMuteService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
@@ -162,10 +174,16 @@ class GenericEventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        if isinstance(message.channel, discord.VoiceChannel) or isinstance(
+            message.channel, discord.StageChannel
+        ):
+            await self.__active_member_service.update_active_member(
+                member_snowflake=message.author.id, name=message.author.display_name
+            )
         if (
             not message.guild
             or self.__bot.config["release_mode"]
-            and message.author.id == self.bot.user.id
+            and message.author.id == self.__bot.user.id
         ):
             return
         await self.__ban_service.is_banned_then_kick_and_reset_cooldown(
@@ -188,6 +206,7 @@ class GenericEventListeners(commands.Cog):
         try:
             d_ctx = DefaultContext(message=message)
             ctx = AliasContext(
+                active_member_service=self.__active_member_service,
                 bot=self.__bot,
                 cap_service=self.__cap_service,
                 content=message.content,
@@ -201,9 +220,10 @@ class GenericEventListeners(commands.Cog):
                 return
             await self.__moderator_service.has_equal_or_lower_role(
                 **d_ctx.to_dict(),
-                target_member_snowflake=ctx.member.id,
+                target_member_snowflake=ctx.member_snowflake,
             )
             service = ctx.alias.service(
+                active_member_service=self.__active_member_service,
                 bot=self.__bot,
                 database_factory=self.__database_factory,
                 data_service=self.__data_service,

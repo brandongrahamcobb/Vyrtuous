@@ -81,10 +81,12 @@ class ModeratorService:
         "Developer",
         "Sysadmin",
     ]
+    moderators = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         administrator_service=None,
         author_service=None,
         bot=None,
@@ -96,6 +98,7 @@ class ModeratorService:
         guild_owner_service=None,
         sysadmin_service=None,
     ):
+        self.__active_member_service = active_member_service
         self.__author_service = author_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
@@ -107,6 +110,17 @@ class ModeratorService:
         self.__guild_owner_service = guild_owner_service
         self.__administrator_service = administrator_service
         self.__coordinator_service = coordinator_service
+
+    async def populate(self):
+        moderators = await self.__database_factory.select()
+        for moderator in moderators:
+            guild = self.__bot.get_guild(moderator.guild_snowflake)
+            if not guild:
+                continue
+            self.moderator[moderator.member_snowflake] = {
+                "last_active": None,
+                "name": moderator.display_name,
+            }
 
     async def is_moderator_wrapper(self, context):
         return await self.is_moderator(
@@ -350,27 +364,38 @@ class ModeratorService:
             pages.append(embed)
         return pages
 
-    async def toggle_moderator(self, channel, member):
+    async def toggle_moderator(self, channel, member_snowflake, display_name=None):
         moderator = await self.__database_factory.select(
             channel_snowflake=int(channel.id),
-            member_snowflake=int(member.id),
+            member_snowflake=int(member_snowflake),
             singular=True,
         )
         if moderator:
             await self.__database_factory.delete(
-                channel_snowflake=int(channel.id), member_snowflake=int(member.id)
+                channel_snowflake=int(channel.id),
+                member_snowflake=int(member_snowflake),
             )
+            del self.moderators[member_snowflake]
             action = "revoked"
         else:
             moderator = self.MODEL(
                 channel_snowflake=int(channel.id),
+                display_name=str(display_name),
                 guild_snowflake=int(channel.guild.id),
-                member_snowflake=int(member.id),
+                member_snowflake=int(member_snowflake),
             )
             await self.__database_factory.create(moderator)
+            self.moderators.update({member_snowflake: {"name": display_name}})
             action = "granted"
+        member = channel.guild.get_member(member_snowflake)
+        if member:
+            member_str = member.mention
+        else:
+            member_str = self.__active_member_service.active_members.get(
+                member_snowflake, None
+            ).get("name", None)
         return (
-            f"Moderator access for {member.mention} has been "
+            f"Moderator access for {member_str} has been "
             f"{action} in {channel.mention}."
         )
 

@@ -1,5 +1,5 @@
 """!/bin/python3
-flag_alias.py The purpose of this program is to extend Alias to provide flag infraction alias.
+active_member.py The purpose of this program is to extend Infraction to provide the ban infraction.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -18,18 +18,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
-
-from vyrtuous.flag.flag import Flag
-from vyrtuous.flag.flag_service import FlagService
+from datetime import datetime, timezone
 
 
 @dataclass(frozen=True)
-class FlagAlias:
-    category = "flag"
+class ActiveMember:
+    __tablename__ = "active_members"
     display_name: str
-    record = Flag
-    service = FlagService
-    ARGS_MAP: Dict[str, int] = field(
-        default_factory=lambda: {"alias_name": 1, "member": 2, "reason": 3}
-    )
+    member_snowflake: int
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

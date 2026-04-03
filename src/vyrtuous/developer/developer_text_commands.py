@@ -23,6 +23,7 @@ from uuid import UUID
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
@@ -36,12 +37,12 @@ from vyrtuous.upload.upload_service import UploadService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
-from vyrtuous.utils.discord_object_service import DiscordObjectService, MultiConverter
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.home import at_home
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
+from vyrtuous.utils.discord_object_service import MultiConverter
 
 
 class DevTextCommands(commands.Cog):
@@ -52,6 +53,9 @@ class DevTextCommands(commands.Cog):
         self.message_service = MessageService(self.__bot)
         self.__author_service = AuthorService()
         self.__database_factory = DatabaseFactory(bot=self.__bot)
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__duration_builder = DurationBuilder()
         self.__emoji = Emojis()
@@ -62,18 +66,19 @@ class DevTextCommands(commands.Cog):
             emoji=self.__emoji,
         )
         self.__sysadmin_service = SysadminService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
         )
         self.__developer_service = DeveloperService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             bug_service=self.__bug_service,
             database_factory=self.__database_factory,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
-        self.__discord_object_service = DiscordObjectService()
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory
         )

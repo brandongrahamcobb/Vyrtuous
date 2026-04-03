@@ -25,6 +25,7 @@ from typing import Dict, List, Union
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members import active_member_service
 from vyrtuous.flag.flag import Flag
 
 
@@ -40,11 +41,13 @@ class FlagDictionary:
 class FlagService:
     __CHUNK_SIZE = 12
     MODEL = Flag
+    flagged_members = {}
 
     def __init__(
         self,
         *,
-        bot,
+        active_member_service=None,
+        bot=None,
         database_factory=None,
         data_service=None,
         dictionary_service=None,
@@ -52,6 +55,7 @@ class FlagService:
         stream_service=None,
         **kwargs,
     ):
+        self.__active_member_service = active_member_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
@@ -61,6 +65,17 @@ class FlagService:
         self.__flags = []
         self.__join_log = {}
         self.__stream_service = stream_service
+
+    async def populate(self):
+        flagged_members = await self.__database_factory.select()
+        for flagged_member in flagged_members:
+            guild = self.__bot.get_guild(flagged_member.guild_snowflake)
+            if not guild:
+                continue
+            self.flagged_members[flagged_member.member_snowflake] = {
+                "last_active": None,
+                "name": flagged_member.display_name,
+            }
 
     async def enforce_or_undo(
         self,
@@ -72,9 +87,12 @@ class FlagService:
         obj = await self.__database_factory.select(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
             singular=True,
         )
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            await source.reply("Member is inactive or incorrectly specified.")
         if obj:
             await self.undo(
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
@@ -225,16 +243,23 @@ class FlagService:
     async def enforce(self, ctx, default_ctx, source, state):
         flag = self.MODEL(
             channel_snowflake=ctx.channel.id,
+            display_name=ctx.display_name,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member.id,
             reason=ctx.reason,
         )
         await self.__database_factory.create(flag)
         self.__flags.append(flag)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        self.flagged_members.update({ctx.member_snowflake: {"name": ctx.display_name}})
         await self.enforce_log(
             author=default_ctx.author,
             channel=ctx.channel,
-            member=ctx.member,
+            member=member,
             reason=ctx.reason,
             source=source,
         )
@@ -268,41 +293,63 @@ class FlagService:
             if flag.channel_snowflake == ctx.channel.id:
                 self.__flags.remove(flag)
                 break
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        del self.flagged_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,
-            member=ctx.member,
+            member=member,
             source=source,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been flagged",
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been flagged",
             description=(
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
+                f"**User:** {member_str}\n"
+                f"**Channel:** {ctx.channel.mention}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been unflagged",
-            description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been unflagged",
+            description=(f"**User:** {member_str}\n**Channel:** {ctx.channel.mention}"),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def migrate(self, kwargs):

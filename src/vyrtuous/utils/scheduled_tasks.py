@@ -40,6 +40,9 @@ from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
+from vyrtuous.active_members.active_member_service import ActiveMemberService
+from vyrtuous.vegan.vegan_service import VeganService
+from vyrtuous.flag.flag_service import FlagService
 
 
 class ScheduledTasks(commands.Cog):
@@ -50,6 +53,9 @@ class ScheduledTasks(commands.Cog):
         self.__duration_builder = DurationBuilder()
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__bug_service = BugService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -115,6 +121,7 @@ class ScheduledTasks(commands.Cog):
             moderator_service=self.__moderator_service,
         )
         self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
@@ -150,6 +157,21 @@ class ScheduledTasks(commands.Cog):
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
         )
+        self.__vegan_service = VeganService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
+        self.__flag_service = FlagService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            data_service=self.__data_service,
+            dictionary_service=self.__dictionary_service,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
 
     async def cog_load(self):
         if not self.backup_database.is_running():
@@ -172,6 +194,12 @@ class ScheduledTasks(commands.Cog):
             self.temporarily_cleanup_overwrites.start()
         if not self.match_moderation_logs.is_running():
             self.match_moderation_logs.start()
+        if not self.save_active_members.is_running():
+            self.save_active_members.start()
+
+    @tasks.loop(minutes=1)
+    async def save_active_members(self):
+        await self.__active_member_service.save_active_members()
 
     @tasks.loop(minutes=5)
     async def match_moderation_logs(self):
@@ -265,6 +293,10 @@ class ScheduledTasks(commands.Cog):
 
     @match_moderation_logs.before_loop
     async def before_match_moderation_logs(self):
+        await self.__bot.wait_until_ready()
+
+    @save_active_members.before_loop
+    async def before_save_active_members(self):
         await self.__bot.wait_until_ready()
 
 

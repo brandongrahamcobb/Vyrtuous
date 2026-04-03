@@ -20,10 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 from discord.ext import commands
 
+from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.owner.guild_owner import GuildOwner
+from vyrtuous.owner.guild_owner_service import GuildOwnerService
 from vyrtuous.utils.author_service import AuthorService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
@@ -36,29 +38,34 @@ class GuildEventListeners(commands.Cog):
         self.__bot = bot
         self.__database_factory = DatabaseFactory(bot=self.__bot)
         self.__database_factory.model = GuildOwner
+        self.__active_member_service = ActiveMemberService(
+            bot=self.__bot, database_factory=self.__database_factory
+        )
         self.__dictionary_service = DictionaryService(bot=self.__bot)
         self.__emoji = Emojis()
         self.__administrator_service = AdministratorService(
+            active_member_service=self.__active_member_service,
             author_service=self.__author_service,
             bot=self.__bot,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             emoji=self.__emoji,
         )
+        self.__guild_owner_service = GuildOwnerService(
+            active_member_service=self.__active_member_service,
+            author_service=self.__author_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+        )
 
     @commands.Cog.listener()
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         if before.owner_id != after.owner_id:
-            where_kwargs = {
-                "guild_snowflake": int(before.id),
-                "member_snowflake": before.owner_id,
-            }
-            set_kwargs = {
-                "guild_snowflake": int(after.id),
-                "member_snowflake": after.owner_id,
-            }
-            await self.__database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
+            await self.__guild_owner_service.remove_guild_owner(
+                guild_snowflake=int(before.id), member_snowflake=int(before.owner_id)
+            )
+            await self.__guild_owner_service.add_guild_owner(
+                guild_snowflake=int(after.id), member_snowflake=int(after.owner_id)
             )
 
     @commands.Cog.listener()

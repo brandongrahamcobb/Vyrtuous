@@ -32,6 +32,7 @@ class AliasContext:
     def __init__(
         self,
         *,
+        active_member_service=None,
         bot=None,
         cap_service=None,
         content=None,
@@ -42,6 +43,7 @@ class AliasContext:
         moderator_service=None,
     ):
         self.alias = None
+        self.__active_member_service = active_member_service
         self.__alias_name: str
         self.__bot = bot
         self.__cap_service = cap_service
@@ -63,7 +65,7 @@ class AliasContext:
         self.category: str | None = None
         self.channel: discord.abc.GuildChannel | None = None
         self.guild: discord.Guild | None = None
-        self.member: discord.Member | None = None
+        self.member_snowflake: int | None = None
         self.role: discord.Role | None = None
         self.expires_in: datetime | None = None
         self.duration_value: str | None = None
@@ -140,12 +142,20 @@ class AliasContext:
                     await self.__moderator_service.check(
                         channel_snowflake=self.channel.id,
                         guild_snowflake=self.guild.id,
-                        member_snowflake=self.member.id,
+                        member_snowflake=self.member_snowflake,
                         lowest_role="Coordinator",
                     )
 
             elif field == "member":
-                self.member = self.guild.get_member(int(value))
+                self.member_snowflake = int(value)
+                member = self.__d_ctx.guild.get_member(self.member_snowflake)
+                if not member:
+                    display_name = self.__active_member_service.active_members.get(
+                        self.member_snowflake, None
+                    ).get("name", None)
+                else:
+                    display_name = member.display_name
+                self.display_name = display_name
             elif field == "reason":
                 if not value:
                     self.reason = "No reason provided."

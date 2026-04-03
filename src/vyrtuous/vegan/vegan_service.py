@@ -19,10 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from copy import copy
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Union
 
+from discord.ext import commands
 import discord
 
+
+from vyrtuous.active_members import active_member_service
 from vyrtuous.vegan.vegan import Vegan
 
 
@@ -36,22 +39,61 @@ class VeganDictionary:
 class VeganService:
     __CHUNK_SIZE = 12
     MODEL = Vegan
+    vegans = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         bot=None,
         database_factory=None,
         dictionary_service=None,
         emoji=None,
         stream_service=None,
     ):
+        self.__active_member_service = active_member_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__stream_service = stream_service
+
+    async def populate(self):
+        vegans = await self.__database_factory.select()
+        for vegan in vegans:
+            guild = self.__bot.get_guild(vegan.guild_snowflake)
+            if not guild:
+                continue
+            self.vegans[vegan.member_snowflake] = {
+                "last_active": None,
+                "name": vegan.display_name,
+            }
+
+    async def enforce_or_undo(
+        self,
+        ctx,
+        default_ctx,
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+        state,
+    ):
+        obj = await self.__database_factory.select(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member.id,
+            singular=True,
+        )
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            await source.reply("Member is inactive or incorrectly specified.")
+        if obj:
+            await self.undo(
+                ctx=ctx, default_ctx=default_ctx, source=source, state=state
+            )
+        else:
+            await self.enforce(
+                ctx=ctx, default_ctx=default_ctx, source=source, state=state
+            )
 
     async def build_clean_dictionary(self, obj):
         vegans = []
@@ -136,13 +178,17 @@ class VeganService:
         return pages
 
     async def enforce(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
         vegan = self.MODEL(
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
         )
         await self.__database_factory.create(vegan)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        self.vegans.update({ctx.member_snowflake: {"name": ctx.display_name}})
         await self.__stream_service.send_entry(
             channel_snowflake=ctx.channel.id,
             identifier="vegan",
@@ -153,12 +199,16 @@ class VeganService:
         return await state.end(success=embed)
 
     async def undo(self, ctx, source, state):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member.id)
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        del self.vegans[ctx.member_snowflake]
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
         )
         await self.__stream_service.send_entry(
             channel_snowflake=ctx.channel.id,
@@ -171,27 +221,45 @@ class VeganService:
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member.id)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"\U0001f525\U0001f525 {member.display_name} "
+            title=f"\U0001f525\U0001f525 {member_display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
-            description=(f"**User:** {member.mention}\n"),
+            description=(f"**User:** {member_str}\n"),
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member.id)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
-            f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",
-            description=(f"**User:** {member.mention}\n"),
+            f"{member_display_name} is a Carnist \U0001f44e\U0001f44e",
+            description=(f"**User:** {member_str}\n"),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def migrate(self, kwargs):

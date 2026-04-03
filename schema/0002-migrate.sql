@@ -34,3 +34,38 @@ CREATE TABLE uploads (
 );
 ALTER TABLE streaming
 ALTER COLUMN source_channel_snowflake DROP NOT NULL;
+ALTER TABLE active_bans
+ADD COLUMN display_name TEXT;
+ALTER TABLE guild_owners
+ADD COLUMN display_name TEXT;
+ALTER TABLE active_voice_mutes
+ADD COLUMN display_name TEXT;
+ALTER TABLE active_text_mutes
+ADD COLUMN display_name TEXT;
+ALTER TABLE developers
+ADD COLUMN display_name TEXT;
+ALTER TABLE moderators
+ADD COLUMN display_name TEXT;
+ALTER TABLE coordinators
+ADD COLUMN display_name TEXT;
+ALTER TABLE sysadmin
+ADD COLUMN display_name TEXT;
+ALTER TABLE owners
+ADD COLUMN display_name TEXT;
+ALTER TABLE administrators
+ADD COLUMN display_name TEXT;
+ALTER TABLE active_flags
+ADD COLUMN display_name TEXT;
+ALTER TABLE vegans
+ADD COLUMN display_name TEXT;
+ALTER TABLE active_server_voice_mutes
+ADD COLUMN display_name TEXT;
+
+
+CREATE TABLE active_members (
+    created_at timestamp with time zone DEFAULT now(),
+    display_name TEXT,
+    last_active timestamp with time zone DEFAULT now(),
+    member_snowflake bigint NOT NULL,
+    updated_at timestamp with time zone DEFAULT now()
+);

@@ -40,10 +40,12 @@ class TextMuteDictionary:
 class TextMuteService:
     __CHUNK_SIZE = 12
     MODEL = TextMute
+    text_muted_members = {}
 
     def __init__(
         self,
         *,
+        active_member_service=None,
         bot=None,
         database_factory=None,
         data_service=None,
@@ -52,6 +54,7 @@ class TextMuteService:
         emoji=None,
         stream_service=None,
     ):
+        self.__active_member_service = active_member_service
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
@@ -60,6 +63,17 @@ class TextMuteService:
         self.__duration_builder = duration_builder
         self.__emoji = emoji
         self.__stream_service = stream_service
+
+    async def populate(self):
+        text_muted_members = await self.__database_factory.select()
+        for text_muted_member in text_muted_members:
+            guild = self.__bot.get_guild(text_muted_member.guild_snowflake)
+            if not guild:
+                continue
+            self.text_muted_members[text_muted_member.member_snowflake] = {
+                "last_active": None,
+                "name": text_muted_member.display_name,
+            }
 
     async def enforce_or_undo(
         self,
@@ -74,6 +88,9 @@ class TextMuteService:
             member_snowflake=ctx.member.id,
             singular=True,
         )
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            await source.reply("Member is inactive or incorrectly specified.")
         if obj:
             await self.undo(
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
@@ -337,13 +354,15 @@ class TextMuteService:
     async def enforce(self, ctx, default_ctx, source, state):
         text_mute = self.MODEL(
             channel_snowflake=ctx.channel.id,
+            display_name=ctx.display_name,
             expires_in=ctx.expires_in,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
             reason=ctx.reason,
         )
         await self.__database_factory.create(text_mute)
-        if ctx.channel:
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if ctx.channel and member:
             try:
                 await ctx.channel.set_permissions(
                     target=ctx.member,
@@ -354,11 +373,18 @@ class TextMuteService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        self.text_muted_members.update(
+            {ctx.member_snowflake: {"name": ctx.display_name}}
+        )
         await self.enforce_log(
             author=default_ctx.author,
             channel=ctx.channel,
             duration_value=ctx.duration_value,
-            member=ctx.member,
+            member=member,
             reason=ctx.reason,
             source=source,
         )
@@ -386,9 +412,9 @@ class TextMuteService:
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
+            member_snowflake=ctx.member_snowflake,
         )
-        if ctx.channel:
+        if ctx.channel and member:
             try:
                 await ctx.channel.set_permissions(
                     target=ctx.member,
@@ -399,42 +425,64 @@ class TextMuteService:
             except discord.Forbidden as e:
                 self.__bot.logger.error(str(e).capitalize())
                 return await state.end(error=str(e).capitalize())
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if not member:
+            member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+        del self.text_muted_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,
-            member=ctx.member,
+            member=member,
             source=source,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been Text-Muted",
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been text-muted",
             description=(
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
+                f"**User:** {member_str}\n"
+                f"**Channel:** {ctx.channel.mention}\n"
                 f"**Expires:** {self.__duration_builder.parse(ctx.duration_value).to_unix_ts()}\n"
                 f"**Reason:** {ctx.reason}"
             ),
             color=discord.Color.blue(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def undo_embed(self, ctx):
-        guild = self.__bot.get_guild(ctx.guild.id)
-        channel = guild.get_channel(ctx.channel.id)
-        member = guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
         embed = discord.Embed(
-            title=f"{self.__emoji.get_random_emoji()} {member.display_name} has been Unmuted",
-            description=(f"**User:** {member.mention}\n**Channel:** {channel.mention}"),
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been untext-muted",
+            description=(f"**User:** {member_str}\n**Channel:** {ctx.channel.mention}"),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
     async def migrate(self, kwargs):
@@ -493,44 +541,3 @@ class TextMuteService:
         self.__bot.logger.info(
             f"Updated last_muted record for {member.display_name} in {channel.name}."
         )
-
-    async def match(self):
-        objects = await self.__database_factory.select()
-        object_lookup = {
-            (obj.guild_snowflake, obj.channel_snowflake, obj.member_snowflake)
-            for obj in objects
-        }
-        async with self.__bot.db_pool.acquire() as conn:
-            logs = await conn.fetch("""
-                SELECT DISTINCT ON (guild_snowflake, channel_snowflake, target_snowflake)
-                    guild_snowflake,
-                    channel_snowflake,
-                    target_snowflake,
-                    identifier,
-                    created_at
-                FROM moderation_logs
-                WHERE identifier IN ('tmute', 'untmute')
-                ORDER BY
-                    guild_snowflake,
-                    channel_snowflake,
-                    target_snowflake,
-                    created_at DESC
-            """)
-        for log in logs:
-            key = (
-                log["guild_snowflake"],
-                log["channel_snowflake"],
-                log["target_snowflake"],
-            )
-            if log["identifier"] == "tmute" and key not in object_lookup:
-                guild = self.__bot.get_guild(log["guild_snowflake"])
-                if not guild:
-                    continue
-                channel = guild.get_channel(log["channel_snowflake"])
-                member = guild.get_member(log["target_snowflake"])
-                if channel and member:
-                    await self.__data_service.save_data(
-                        channel=channel,
-                        identifier="untmute",
-                        member=member,
-                    )

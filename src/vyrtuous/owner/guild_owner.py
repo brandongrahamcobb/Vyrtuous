@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class GuildOwner:
     __tablename__ = "guild_owners"
     identifier = "owner"
+    display_name: str
     guild_snowflake: int
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
