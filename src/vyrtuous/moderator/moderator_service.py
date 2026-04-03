@@ -192,8 +192,14 @@ class ModeratorService:
         lines, pages = [], []
 
         obj_name = "All Servers"
-        if obj:
+        if not isinstance(obj, int):
             obj_name = obj.name
+        else:
+            member = self.__active_member_service.active_member.get(obj, None)
+            if member:
+                obj_name = member.get("name", None)
+            else:
+                return "No moderators found."
         title = f"{self.__emoji.get_random_emoji()} Moderators for {obj_name}"
 
         dictionary = await self.build_dictionary(obj=obj)
@@ -214,15 +220,23 @@ class ModeratorService:
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if not member:
-                    continue
+                if member:
+                    if not isinstance(obj, discord.Member):
+                        lines.append(
+                            f"**User:** {member.display_name} {member.mention}"
+                        )
+                        field_count += 1
+                    elif not thumbnail:
+                        embed.set_thumbnail(url=obj.display_avatar.url)
+                        thumbnail = True
+                else:
+                    member = self.__active_member_service.active_members.get(
+                        member_snowflake, None
+                    )
+                    if member:
+                        display_name = member.get("name", None)
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
                 mod_n += 1
-                if not isinstance(obj, discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(url=obj.display_avatar.url)
-                    thumbnail = True
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
                 ).items():

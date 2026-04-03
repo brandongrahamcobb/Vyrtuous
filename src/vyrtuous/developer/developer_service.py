@@ -97,8 +97,14 @@ class DeveloperService:
         lines, pages = [], []
 
         obj_name = "All Servers"
-        if obj:
+        if not isinstance(obj, int):
             obj_name = obj.name
+        else:
+            member = self.__active_member_service.active_member.get(obj, None)
+            if member:
+                obj_name = member.get("name", None)
+            else:
+                return "No developers found."
         title = f"{self.__emoji.get_random_emoji()} Developers for {obj_name}"
 
         dictionary = await self.build_dictionary(obj=obj)
@@ -112,14 +118,20 @@ class DeveloperService:
             thumbnail = False
             for member_snowflake, member_data in values.items():
                 user = self.__bot.get_user(member_snowflake)
-                if not user:
-                    continue
-                if not isinstance(obj, discord.Member):
-                    lines.append(f"**User:** {user.display_name} {user.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(url=obj.display_avatar.url)
-                    thumbnail = True
+                if user:
+                    if not isinstance(obj, discord.Member):
+                        lines.append(f"**User:** {user.display_name} {user.mention}")
+                        field_count += 1
+                    elif not thumbnail:
+                        embed.set_thumbnail(url=obj.display_avatar.url)
+                        thumbnail = True
+                else:
+                    member = self.__active_member_service.active_members.get(
+                        member_snowflake, None
+                    )
+                    if member:
+                        display_name = member.get("name", None)
+                        lines.append(f"**User:** {display_name} {member_snowflake}")
                 dev_n += 1
                 if field_count >= self.__CHUNK_SIZE:
                     embed.add_field(

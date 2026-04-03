@@ -141,20 +141,6 @@ class BanService:
                     )
                 except discord.Forbidden as e:
                     self.__bot.logger.error(str(e).capitalize())
-                if (
-                    member.voice
-                    and member.voice.channel
-                    and member.voice.channel.id == channel_snowflake
-                ):
-                    try:
-                        await member.edit(mute=False)
-                        self.__bot.logger.info(
-                            f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
-                        )
-                    except discord.Forbidden as e:
-                        self.__bot.logger.warning(
-                            f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
-                        )
 
     async def clean_overwrites(self):
         bans = await self.__database_factory.select()
@@ -232,8 +218,14 @@ class BanService:
         thumbnail = False
 
         obj_name = "All Servers"
-        if obj:
+        if not isinstance(obj, int):
             obj_name = obj.name
+        else:
+            member = self.__active_member_service.active_member.get(obj, None)
+            if member:
+                obj_name = member.get("name", None)
+            else:
+                return "No active bans found."
         title = f"{self.__emoji.get_random_emoji()} Bans for {obj_name}"
 
         dictionary = await self.build_dictionary(obj=obj)
@@ -251,13 +243,21 @@ class BanService:
             )
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not member:
-                    continue
-                if not isinstance(obj, discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                elif not thumbnail:
-                    embed.set_thumbnail(url=obj.display_avatar.url)
-                    thumbnail = True
+                if member:
+                    if not isinstance(obj, discord.Member):
+                        lines.append(
+                            f"**User:** {member.display_name} {member.mention}"
+                        )
+                    elif not thumbnail:
+                        embed.set_thumbnail(url=obj.display_avatar.url)
+                        thumbnail = True
+                else:
+                    display_name = self.__active_member_service.active_members.get(
+                        member_snowflake, None
+                    )
+                    if member:
+                        display_name = member.get("name", None)
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
                 ).items():

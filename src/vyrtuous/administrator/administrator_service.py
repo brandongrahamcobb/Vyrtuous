@@ -139,8 +139,14 @@ class AdministratorService:
         lines, pages = [], []
 
         obj_name = "All Servers"
-        if obj:
+        if not isinstance(obj, int):
             obj_name = obj.name
+        else:
+            member = self.__active_member_service.active_member.get(obj, None)
+            if member:
+                obj_name = member.get("name", None)
+            else:
+                return "No administrators found."
         title = f"{self.__emoji.get_random_emoji()} Administrators for {obj_name}"
 
         dictionary = await self.build_dictionary(obj=obj)
@@ -162,21 +168,28 @@ class AdministratorService:
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if not member:
-                    continue
+                if member:
+                    if not thumbnail and isinstance(obj, discord.Member):
+                        embed.set_thumbnail(url=obj.display_avatar.url)
+                        thumbnail = True
+                    else:
+                        lines.append(
+                            f"**User:** {member.display_name} {member.mention}"
+                        )
+                else:
+                    display_name = self.__active_member_service.active_members.get(
+                        member_snowflake, None
+                    )
+                    if member:
+                        display_name = member.get("name", None)
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
                 role_mentions = [
                     guild.get_role(role_snowflake).mention
                     for role_snowflake in processed_dictionary.get("administrators", {})
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and isinstance(obj, discord.Member):
-                    embed.set_thumbnail(url=obj.display_avatar.url)
-                    thumbnail = True
-                else:
-                    member_line = f"**User:** {member.display_name} {member.mention}"
-                    if role_mentions:
-                        member_line += "\n**Roles:** " + "\n".join(role_mentions)
-                    lines.append(member_line)
+                if isinstance(obj, disord.Member) and role_mentions:
+                    lines.append("\n**Roles:** " + "\n".join(role_mentions))
                 admin_n += 1
                 field_count += 1
                 if field_count >= self.__CHUNK_SIZE:

@@ -41,16 +41,13 @@ class ActiveMemberService:
             active_member.member_snowflake for active_member in active_members
         ]
         for member_snowflake in self.active_members:
-            self.__bot.logger.info("test1")
             if member_snowflake not in member_snowflakes:
-                self.__bot.logger.info("test2")
                 active_member = ActiveMember(
                     last_active=self.active_members[member_snowflake]["last_active"],
                     member_snowflake=member_snowflake,
                     display_name=self.active_members[member_snowflake]["name"],
                 )
                 await self.__database_factory.create(active_member)
-                self.__bot.logger.info("test3")
 
     async def remove_inactive_members(self, member_snowflakes):
         for member_snowflake in member_snowflakes:
