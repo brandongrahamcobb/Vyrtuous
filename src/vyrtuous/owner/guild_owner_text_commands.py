@@ -290,12 +290,7 @@ class GuildOwnerTextCommands(commands.Cog):
             obj = None
         else:
             obj = target or ctx.guild
-        try:
-            pages = await self.__developer_service.build_pages(obj=obj)
-        except:
-            import traceback
-
-            traceback.print_exc()
+        pages = await self.__developer_service.build_pages(obj=obj)
         return await state.end(success=pages)
 
     @commands.command(name="heroes", help="List heroes.")

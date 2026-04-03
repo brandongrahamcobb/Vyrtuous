@@ -135,15 +135,10 @@ class SysadminTextCommands(commands.Cog):
         else:
             display_name = None
             member_snowflake = member
-        try:
-            msg = await self.__developer_service.toggle_developer(
-                display_name=display_name,
-                member_snowflake=member_snowflake,
-            )
-        except:
-            import traceback
-
-            traceback.print_exc()
+        msg = await self.__developer_service.toggle_developer(
+            display_name=display_name,
+            member_snowflake=member_snowflake,
+        )
         return await state.end(success=msg)
 
     @commands.command(name="upload", help="Create the upload document.")

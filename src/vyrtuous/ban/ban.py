@@ -29,6 +29,7 @@ class Ban:
     display_name: str
     guild_snowflake: int
     member_snowflake: int
+    blacklisted: bool = False
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_in: datetime | None = None
     last_kicked: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

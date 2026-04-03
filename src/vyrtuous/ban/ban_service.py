@@ -142,6 +142,44 @@ class BanService:
                 except discord.Forbidden as e:
                     self.__bot.logger.error(str(e).capitalize())
 
+    async def toggle_blacklist(self, channel, member_snowflake):
+        ban = await self.__database_factory.select(
+            channel_snowflake=channel.id, member_snowflake=member_snowflake
+        )
+        member = channel.guild.get_member(member_snowflake)
+        if member:
+            display_name = member.display_name
+        else:
+            member = self.__active_member_service.active_members.get(
+                member_snowflake, None
+            )
+            if member:
+                display_name = member.get("name", None)
+            else:
+                display_name = "Unknown member"
+        if not ban:
+            return f"{display_name} is not banned in {channel.mention}."
+        where_kwargs = {
+            "channel_snowflake": channel.id,
+            "member_snowflake": member_snowflake,
+        }
+        if ban.blacklisted:
+            set_kwargs = {"blacklisted": False}
+            action = "unlisted"
+            await self.__database_factory.update(
+                where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            )
+        else:
+            set_kwargs = {"blacklisted": True}
+            action = "blacklisted"
+            await self.__database_factory.update(
+                where_kwargs=where_kwargs, set_kwargs=set_kwargs
+            )
+        self.__bot.logger.info(
+            f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
+        )
+        return f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
+
     async def clean_overwrites(self):
         bans = await self.__database_factory.select()
         for ban in bans:
@@ -154,9 +192,11 @@ class BanService:
                 "member_snowflake": member_snowflake,
             }
             set_kwargs = {"reset": True}
-            if not ban.reset and ban.last_kicked < datetime.now(
-                timezone.utc
-            ) - timedelta(weeks=1):
+            if (
+                not ban.reset
+                and ban.last_kicked < datetime.now(timezone.utc) - timedelta(weeks=1)
+                and not ban.blacklisted
+            ):
                 guild = self.__bot.get_guild(guild_snowflake)
                 if guild is None:
                     self.__bot.logger.info(
@@ -210,6 +250,7 @@ class BanService:
                 ][ban.channel_snowflake] = {
                     "reason": ban.reason,
                     "expires_in": ban.expires_in,
+                    "blacklisted": ban.blacklisted,
                 }
         return dictionary
 
@@ -269,6 +310,9 @@ class BanService:
                             f"**Expires in:** {self.__duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
                         )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
+                        lines.append(
+                            f"**Blacklisted:** {channel_dictionary['blacklisted']}"
+                        )
                     ban_n += 1
                     field_count += 1
                     if field_count >= self.__CHUNK_SIZE:

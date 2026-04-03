@@ -47,6 +47,7 @@ from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 from vyrtuous.utils.discord_object_service import MultiConverter
+from vyrtuous.ban.ban_service import BanService
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -154,6 +155,16 @@ class CoordinatorTextCommands(commands.Cog):
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory
         )
+        self.__ban_service = BanService(
+            active_member_service=self.__active_member_service,
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            data_service=self.__data_service,
+            dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+            stream_service=self.__stream_service,
+        )
 
     async def cog_check(self, ctx) -> Coroutine[Any, Any, bool]:
         context = DefaultContext(ctx=ctx)
@@ -172,6 +183,51 @@ class CoordinatorTextCommands(commands.Cog):
         raise NotCoordinator
 
     cog_check._permission_level = "Coordinator"
+
+    @commands.command(name="blacklist", help="Blacklist overwrite cleanup.")
+    async def toggle_blacklist_text_command(
+        self,
+        ctx: commands.Context,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
+            description="Tag a member or include their ID",
+        ),
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
+        context = DefaultContext(ctx=ctx)
+        await self.__moderator_service.check_minimum_role(
+            channel_snowflake=channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+            lowest_role="Coordinator",
+        )
+        await self.__moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(member.id),
+            member_snowflake=context.author.id,
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+        )
+        if isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            member_snowflake = member
+        msg = await self.__ban_service.toggle_blacklist(
+            channel=channel,
+            member_snowflake=member_snowflake,
+        )
+        return await state.end(success=msg)
 
     @commands.command(name="mod", help="Grant/revoke mods.")
     async def toggle_moderator_text_command(

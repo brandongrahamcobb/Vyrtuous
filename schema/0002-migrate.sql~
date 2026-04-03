@@ -36,8 +36,6 @@ ALTER TABLE streaming
 ALTER COLUMN source_channel_snowflake DROP NOT NULL;
 ALTER TABLE active_bans
 ADD COLUMN display_name TEXT;
-ALTER TABLE active_bans
-ADD COLUMN blacklisted BOOLEAN;
 ALTER TABLE guild_owners
 ADD COLUMN display_name TEXT;
 ALTER TABLE active_voice_mutes
