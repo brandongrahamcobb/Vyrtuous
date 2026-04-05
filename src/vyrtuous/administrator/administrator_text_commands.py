@@ -611,12 +611,16 @@ class AdminTextCommands(commands.Cog):
     async def room_move_all_text_command(
         self,
         ctx: commands.Context,
-        source_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        source_channel: (
+            discord.abc.GuildChannel | discord.StageChannel
+        ) = commands.parameter(
+            converter=MultiConverter,
             description="Tag a channel or include its ID.",
         ),
-        target_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        target_channel: (
+            discord.abc.GuildChannel | discord.StageChannel
+        ) = commands.parameter(
+            converter=MultiConverter,
             description="Tag a channel or include its ID.",
         ),
     ):

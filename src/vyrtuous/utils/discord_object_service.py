@@ -120,13 +120,19 @@ class MultiConverter(commands.Converter):
             return uuid
         except ValueError as e:
             self.__bot.logger.warning(e)
-        channel = commands.VoiceChannelConverter()
+        voice_channel = commands.VoiceChannelConverter()
+        stage_channel = commands.StageChannelConverter()
         guild = commands.GuildConverter()
         member = commands.MemberConverter()
         role = commands.RoleConverter()
         try:
-            channel = await channel.convert(ctx, argument)
-            return channel
+            voice_channel = await voice_channel.convert(ctx, argument)
+            return voice_channel
+        except commands.ChannelNotFound as e:
+            self.__bot.logger.warning(e)
+        try:
+            stage_channel = await stage_channel.convert(ctx, argument)
+            return stage_channel
         except commands.ChannelNotFound as e:
             self.__bot.logger.warning(e)
         try:

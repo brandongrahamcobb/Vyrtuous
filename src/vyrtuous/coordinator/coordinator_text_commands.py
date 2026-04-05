@@ -277,6 +277,63 @@ class CoordinatorTextCommands(commands.Cog):
         )
         return await state.end(success=msg)
 
+    @commands.command(name="purge", help="Delete messages.")
+    async def purge_text_command(
+        self,
+        ctx: commands.Context,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
+            description="Tag a member or include their ID",
+        ),
+        amount: int = commands.parameter(
+            default=25, description="Number of messages to delete"
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
+        context = DefaultContext(ctx=ctx)
+        await self.__moderator_service.check_minimum_role(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+            lowest_role="Coordinator",
+        )
+        await self.__moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(member.id),
+            member_snowflake=context.author.id,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.channel.guild.id,
+        )
+        if isinstance(member, discord.Member):
+            member_snowflake = int(member.id)
+            display_name = str(member.mention)
+        else:
+            member_snowflake = int(member)
+            member = self.__active_member_service.active_members.get(
+                member_snowflake, None
+            )
+            if member:
+                display_name = member.get("name", None)
+            else:
+                display_name = member_snowflake
+        count = int(0)
+        async for msg in ctx.channel.history():
+            if amount == count:
+                break
+            if msg.author.id == member_snowflake:
+                await msg.delete()
+                count += 1
+        return await state.end(
+            success=f"Successfully deleted {count} messages from {display_name} in {ctx.channel.mention}."
+        )
+
     @commands.command(name="stage", help="Start/stop stage")
     @skip_text_command_help_discovery()
     async def toggle_stage_text_command(
