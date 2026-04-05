@@ -39,6 +39,7 @@ from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.message_service import PaginatorService
+from vyrtuous.utils.system_monitoring_service import SystemMonitoringService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.vegan.vegan_service import VeganService
@@ -172,6 +173,7 @@ class ScheduledTasks(commands.Cog):
             emoji=self.__emoji,
             stream_service=self.__stream_service,
         )
+        self.__system_monitoring_service = SystemMonitoringService()
 
     async def cog_load(self):
         if not self.backup_database.is_running():
@@ -196,6 +198,14 @@ class ScheduledTasks(commands.Cog):
             self.match_moderation_logs.start()
         if not self.save_active_members.is_running():
             self.save_active_members.start()
+        if not self.system_monitoring.is_running():
+            self.system_monitoring.start()
+
+    @tasks.loop(minutes=1)
+    async def system_monitoring(self):
+        await self.__system_monitoring_service.log_cpu_seconds()
+        await self.__system_monitoring_service.log_rx_bytes()
+        await self.__system_monitoring_service.log_tx_bytes()
 
     @tasks.loop(minutes=1)
     async def save_active_members(self):
@@ -297,6 +307,10 @@ class ScheduledTasks(commands.Cog):
 
     @save_active_members.before_loop
     async def before_save_active_members(self):
+        await self.__bot.wait_until_ready()
+
+    @system_monitoring.before_loop
+    async def before_system_monitoring(self):
         await self.__bot.wait_until_ready()
 
 

@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from datetime import timedelta
 from typing import Any, Coroutine, Union
 from uuid import UUID
 
@@ -43,6 +44,7 @@ from vyrtuous.utils.logger import logger
 from vyrtuous.utils.message_service import MessageService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.utils.discord_object_service import MultiConverter
+from vyrtuous.utils.system_monitoring_service import SystemMonitoringService
 
 
 class DevTextCommands(commands.Cog):
@@ -82,6 +84,7 @@ class DevTextCommands(commands.Cog):
         self.__upload_service = UploadService(
             bot=self.__bot, database_factory=self.__database_factory
         )
+        self.__system_monitoring_service = SystemMonitoringService()
 
     async def cog_check(self, ctx: commands.Context) -> Coroutine[Any, Any, bool]:
         context = DefaultContext(ctx=ctx)
@@ -116,6 +119,43 @@ class DevTextCommands(commands.Cog):
         except RuntimeError as e:
             return await state.end(warning=str(e).capitalize())
         return await state.end(success=discord.File(db.file_name))
+
+    @commands.command(name="stats", help="Lists stats.")
+    async def list_stats_text_command(self, ctx: commands.Context):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
+        embed = discord.Embed(title="Statistics")
+        try:
+            cpu_usage = await self.__system_monitoring_service.calculate_cpu_usage()
+            embed.add_field(name="CPU %", value=cpu_usage, inline=True)
+            with open("/sys/fs/cgroup/memory.current", "r") as file:
+                bits = int(file.read())
+                memory_usage = round((bits / 1024) / 1024, 0)
+                embed.add_field(name="RAM", value=f"{memory_usage} MB", inline=True)
+            with open("/proc/uptime", "r") as file:
+                content = file.readline()
+                fields = content.split()
+                uptime_seconds = float(fields[0])
+                time = timedelta(seconds=uptime_seconds)
+            embed.add_field(name="Uptime", value=f"{str(time)}", inline=True)
+            rx_usage = await self.__system_monitoring_service.calculate_rx_usage()
+            embed.add_field(name="RX MB", value=f"{rx_usage} MB", inline=True)
+            tx_usage = await self.__system_monitoring_service.calculate_tx_usage()
+            embed.add_field(name="TX MB", value=f"{tx_usage} MB", inline=True)
+            number_of_servers = len(self.__bot.guilds)
+            embed.add_field(name="Servers", value=number_of_servers, inline=True)
+        except:
+            import traceback
+
+            traceback.print_exc()
+        return await state.end(success=embed)
 
     @commands.command(name="cogs", help="Lists cogs.")
     async def list_cogs_text_command(self, ctx: commands.Context):
