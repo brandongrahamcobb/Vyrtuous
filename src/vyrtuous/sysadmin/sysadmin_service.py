@@ -58,11 +58,14 @@ class SysadminService:
 
     async def update_sysadmin(self):
         member_snowflake = self.__bot.config.get("discord_owner_id", None)
+        member = self.__bot.get_user(member_snowflake)
         sysadmin = await self.__database_factory.select(
             member_snowflake=int(member_snowflake), singular=True
         )
         if not sysadmin:
-            sysadmin = Sysadmin(member_snowflake=int(member_snowflake))
+            sysadmin = Sysadmin(
+                display_name=member.display_name, member_snowflake=int(member_snowflake)
+            )
             await self.__database_factory.create(sysadmin)
             member = self.__bot.get_user(member_snowflake)
             if member:

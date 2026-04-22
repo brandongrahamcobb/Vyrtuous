@@ -1,6 +1,5 @@
 # startup.py Upon loading the bot, in memory data structures need to be populated for quicker memory access instead of running a DB query each time.
 from discord.ext import commands
-from vyrtuous.active_members import active_member_service
 from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.bot.discord_bot import DiscordBot

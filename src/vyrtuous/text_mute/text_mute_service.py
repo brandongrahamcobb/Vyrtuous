@@ -430,6 +430,7 @@ class TextMuteService:
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member_snowflake,
         )
+        member = ctx.guild.get_member(ctx.member_snowflake)
         if ctx.channel and member:
             try:
                 await ctx.channel.set_permissions(

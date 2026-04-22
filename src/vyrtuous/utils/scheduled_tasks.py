@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from discord.ext import commands, tasks
+import discord
 
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.ban.ban_service import BanService
@@ -42,8 +43,9 @@ from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.system_monitoring_service import SystemMonitoringService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
 from vyrtuous.active_members.active_member_service import ActiveMemberService
-from vyrtuous.vegan.vegan_service import VeganService
-from vyrtuous.flag.flag_service import FlagService
+
+# from vyrtuous.vegan.vegan_service import VeganService
+# from vyrtuous.flag.flag_service import FlagService
 
 
 class ScheduledTasks(commands.Cog):
@@ -158,21 +160,21 @@ class ScheduledTasks(commands.Cog):
             moderator_service=self.__moderator_service,
             voice_mute_service=self.__voice_mute_service,
         )
-        self.__vegan_service = VeganService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-            stream_service=self.__stream_service,
-        )
-        self.__flag_service = FlagService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            data_service=self.__data_service,
-            dictionary_service=self.__dictionary_service,
-            emoji=self.__emoji,
-            stream_service=self.__stream_service,
-        )
+        # self.__vegan_service = VeganService(
+        #     bot=self.__bot,
+        #     database_factory=self.__database_factory,
+        #     dictionary_service=self.__dictionary_service,
+        #     emoji=self.__emoji,
+        #     stream_service=self.__stream_service,
+        # )
+        # self.__flag_service = FlagService(
+        #     bot=self.__bot,
+        #     database_factory=self.__database_factory,
+        #     data_service=self.__data_service,
+        #     dictionary_service=self.__dictionary_service,
+        #     emoji=self.__emoji,
+        #     stream_service=self.__stream_service,
+        # )
         self.__system_monitoring_service = SystemMonitoringService()
 
     async def cog_load(self):
@@ -194,29 +196,45 @@ class ScheduledTasks(commands.Cog):
             self.check_sysadmin.start()
         if not self.temporarily_cleanup_overwrites.is_running():
             self.temporarily_cleanup_overwrites.start()
-        if not self.match_moderation_logs.is_running():
-            self.match_moderation_logs.start()
         if not self.save_active_members.is_running():
             self.save_active_members.start()
         if not self.system_monitoring.is_running():
             self.system_monitoring.start()
+        if not self.cleanup_stale_overwrites.is_running():
+            self.cleanup_stale_overwrites.start()
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(hours=1)
+    async def remove_inactive_members(self):
+        for guild in self.__bot.guilds:
+            count = await self.__active_member_service.remove_inactive_members(
+                guild=guild
+            )
+            self.__bot.logger.info(
+                f"Removed {count} inactive members from {guild.name}."
+            )
+
+    @tasks.loop(minutes=5)
     async def system_monitoring(self):
         await self.__system_monitoring_service.log_cpu_seconds()
         await self.__system_monitoring_service.log_rx_bytes()
         await self.__system_monitoring_service.log_tx_bytes()
 
+    @tasks.loop(hours=72)
+    async def cleanup_stale_overwrites(self):
+        for guild in self.__bot.guilds:
+            for channel in guild.channels:
+                if isinstance(channel, discord.VoiceChannel):
+                    for target, overwrite in channel.overwrites.items():
+                        if overwrite.is_empty():
+                            await channel.set_permissions(target, overwrite=None)
+                        self.__bot.logger.info(
+                            f"Cleaned up stale overwrite for {target.mention} in {channel.mention}."
+                        )
+
     @tasks.loop(minutes=1)
     async def save_active_members(self):
         await self.__active_member_service.save_active_members()
-
-    @tasks.loop(minutes=5)
-    async def match_moderation_logs(self):
-        await self.__ban_service.match()
-        await self.__text_mute_service.match()
-        await self.__voice_mute_service.match()
-        self.__bot.logger.info("Matched deleted entries to moderation logs")
+        self.__bot.logger.info("Saved active members.")
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
@@ -301,16 +319,16 @@ class ScheduledTasks(commands.Cog):
     async def before_temporarily_cleanup_overwrites(self):
         await self.__bot.wait_until_ready()
 
-    @match_moderation_logs.before_loop
-    async def before_match_moderation_logs(self):
-        await self.__bot.wait_until_ready()
-
     @save_active_members.before_loop
     async def before_save_active_members(self):
         await self.__bot.wait_until_ready()
 
     @system_monitoring.before_loop
     async def before_system_monitoring(self):
+        await self.__bot.wait_until_ready()
+
+    @cleanup_stale_overwrites.before_loop
+    async def before_cleanup_stale_overwrites(self):
         await self.__bot.wait_until_ready()
 
 

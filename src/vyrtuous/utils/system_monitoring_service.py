@@ -1,7 +1,7 @@
 from vyrtuous.bot.discord_bot import DiscordBot
 import statistics
 
-FIVE_MINUTES_SECONDS = 0.5 * 60
+FIVE_MINUTES_SECONDS = 5 * 60
 
 
 class SystemMonitoringService:
@@ -9,9 +9,6 @@ class SystemMonitoringService:
     __cpu_seconds = []
     __rx_bytes = []
     __tx_bytes = []
-
-    def __init__(self):
-        self.__bot = DiscordBot.get_instance()
 
     async def log_cpu_seconds(self):
         with open("/sys/fs/cgroup/cpu.stat", "r") as file:

@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class ActiveMember:
     __tablename__ = "active_members"
     display_name: str
+    guild_snowflake: int
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

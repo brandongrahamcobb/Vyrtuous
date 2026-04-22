@@ -330,7 +330,7 @@ ALTER TABLE public.roles OWNER TO vyrtuous;
 CREATE TABLE public.streaming (
     target_channel_snowflake bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    source_channel_snowflake bigint DEFAULT,
+    source_channel_snowflake bigint,
     guild_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -567,10 +567,11 @@ ALTER TABLE ONLY public.video_rooms
 --
 -- PostgreSQL database dump complete
 --
-CREATE TABLE active_members (
+CREATE TABLE public.active_members (
     created_at timestamp with time zone DEFAULT now(),
     display_name TEXT,
     last_active timestamp with time zone DEFAULT now(),
+    guild_snowflake bigint NOT NULL,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );

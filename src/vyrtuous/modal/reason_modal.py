@@ -31,14 +31,13 @@ class ReasonModal(discord.ui.Modal):
         text_mute_service=None,
         voice_mute_service=None,
     ):
-        super().__init__(timeout=120)
+        super().__init__(title="Reason", timeout=120)
         self.__infraction_services = [
             ban_service,
             flag_service,
             text_mute_service,
             voice_mute_service,
         ]
-        super().__init__(title="Reason")
         self.ctx = ctx
         self.channel_snowflake = ctx.channel.id
         self.guild_snowflake = ctx.source_channel_snowflake

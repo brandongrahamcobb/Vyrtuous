@@ -24,15 +24,24 @@ class ActiveMemberService:
         for member in active_members:
             await self.update_active_member(
                 last_active=member.last_active,
+                guild_snowflake=member.guild_snowflake,
                 member_snowflake=member.member_snowflake,
                 name=member.display_name,
             )
 
-    async def update_active_member(self, member_snowflake, name, last_active=None):
+    async def update_active_member(
+        self, guild_snowflake, member_snowflake, name, last_active=None
+    ):
         if last_active is None:
             last_active = datetime.now(timezone.utc)
         self.active_members.update(
-            {member_snowflake: {"last_active": last_active, "name": name}}
+            {
+                member_snowflake: {
+                    "last_active": last_active,
+                    "name": name,
+                    "guild_snowflake": guild_snowflake,
+                }
+            }
         )
 
     async def save_active_members(self):
@@ -43,12 +52,20 @@ class ActiveMemberService:
         for member_snowflake in self.active_members:
             if member_snowflake not in member_snowflakes:
                 active_member = ActiveMember(
+                    guild_snowflake=self.active_members[member_snowflake][
+                        "guild_snowflake"
+                    ],
                     last_active=self.active_members[member_snowflake]["last_active"],
                     member_snowflake=member_snowflake,
                     display_name=self.active_members[member_snowflake]["name"],
                 )
                 await self.__database_factory.create(active_member)
 
-    async def remove_inactive_members(self, member_snowflakes):
-        for member_snowflake in member_snowflakes:
-            del self.active_members[member_snowflake]
+    async def remove_inactive_members(self, guild):
+        for member in self.active_members:
+            member_snowflakes = [
+                active_member.member_snowflake for active_member in self.active_members
+            ]
+            for member_snowflake in member_snowflakes:
+                if self.active_members[member_snowflake]["guild_snowflake"] == guild.id:
+                    del self.active_members[member]

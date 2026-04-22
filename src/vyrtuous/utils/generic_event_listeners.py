@@ -178,7 +178,9 @@ class GenericEventListeners(commands.Cog):
             message.channel, discord.StageChannel
         ):
             await self.__active_member_service.update_active_member(
-                member_snowflake=message.author.id, name=message.author.display_name
+                guild_snowflake=message.guild.id,
+                member_snowflake=message.author.id,
+                name=message.author.display_name,
             )
         if (
             not message.guild

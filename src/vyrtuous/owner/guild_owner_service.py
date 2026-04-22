@@ -70,6 +70,7 @@ class GuildOwnerService:
             guild_owner = await self.__database_factory.select(
                 guild_snowflake=guild.id, singular=True
             )
+            member = guild.get_member(guild.owner_id)
             if guild_owner and guild_owner.member_snowflake == guild.owner_id:
                 self.__bot.logger.info(
                     f"Guild owner ({guild_owner.member_snowflake}) already in the db."
@@ -77,7 +78,9 @@ class GuildOwnerService:
                 continue
             else:
                 guild_owner = self.MODEL(
-                    guild_snowflake=guild.id, member_snowflake=guild.owner_id
+                    display_name=member.display_name,
+                    guild_snowflake=guild.id,
+                    member_snowflake=guild.owner_id,
                 )
                 await self.__database_factory.create(guild_owner)
                 member = guild.get_member(guild.owner.id)
@@ -89,8 +92,12 @@ class GuildOwnerService:
                 )
 
     async def add_guild_owner(self, guild_snowflake, member_snowflake):
+        guild = self.__bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
         guild_owner = self.MODEL(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            display_name=member.display_name,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
         )
         await self.__database_factory.create(guild_owner)
         member = guild.get_member(member_snowflake)

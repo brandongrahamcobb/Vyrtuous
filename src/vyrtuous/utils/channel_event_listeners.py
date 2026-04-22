@@ -284,7 +284,9 @@ class ChannelEventListeners(commands.Cog):
         if member.bot:
             return
         await self.__active_member_service.update_active_member(
-            member_snowflake=member.id, name=member.display_name
+            guild_snowflake=after.guild.id,
+            member_snowflake=member.id,
+            name=member.display_name,
         )
         if not after.channel:
             return

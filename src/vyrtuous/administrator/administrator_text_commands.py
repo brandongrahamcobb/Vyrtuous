@@ -37,7 +37,7 @@ from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_builder import DurationBuilder
-from vyrtuous.field.category import Category
+from vyrtuous.utils.category import Category
 from vyrtuous.flag.flag_service import FlagService
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.moderator.help_text_command import skip_text_command_help_discovery

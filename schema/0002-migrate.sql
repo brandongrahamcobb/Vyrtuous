@@ -67,6 +67,7 @@ ADD COLUMN display_name TEXT;
 CREATE TABLE active_members (
     created_at timestamp with time zone DEFAULT now(),
     display_name TEXT,
+    guild_snowflake bigint NOT NULL,
     last_active timestamp with time zone DEFAULT now(),
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
