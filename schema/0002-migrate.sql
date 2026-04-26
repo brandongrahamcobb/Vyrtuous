@@ -72,3 +72,4 @@ CREATE TABLE active_members (
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
+

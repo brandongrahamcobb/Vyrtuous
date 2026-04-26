@@ -26,6 +26,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.active_members import active_member_service
+from vyrtuous.moderator.moderator_service import HasEqualOrLowerRole
 from vyrtuous.voice_mute.voice_mute import VoiceMute
 
 
@@ -283,6 +284,16 @@ class VoiceMuteService:
                 target="user",
                 singular=True,
             )
+            try:
+                await self.__moderator_service.has_equal_or_lower_role(
+                    channel_snowflake=channel.id,
+                    guild_snowflake=channel.guild.id,
+                    member_snowflake=author.id,
+                    target_member_snowflake=member.id,
+                )
+            except:
+                skipped_members.append(member)
+                continue
             if voice_mute:
                 skipped_members.append(member)
                 continue
@@ -302,6 +313,7 @@ class VoiceMuteService:
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
             voice_mute = self.MODEL(
                 channel_snowflake=channel.id,
+                display_name=member.display_name,
                 expires_in=expires_in,
                 guild_snowflake=channel.guild.id,
                 member_snowflake=member.id,
@@ -516,7 +528,6 @@ class VoiceMuteService:
             is_channel_scope=is_channel_scope,
             member=member,
             source=source,
-            reason=ctx.reason,
         )
         embed = await self.undo_embed(ctx=ctx)
         return await state.end(success=embed)
@@ -663,6 +674,7 @@ class VoiceMuteService:
                 continue
             voice_mute = self.MODEL(
                 channel_snowflake=channel.id,
+                display_name=member.display_name,
                 expires_in=self.__duration_builder.parse(
                     value=duration_value
                 ).to_expires_in(),
@@ -702,6 +714,7 @@ class VoiceMuteService:
         expires_in = self.__duration_builder.parse(duration_value).to_expires_in()
         voice_mute = self.MODEL(
             channel_snowflake=channel.id,
+            display_name=member.display_name,
             expires_in=expires_in,
             guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
@@ -720,7 +733,7 @@ class VoiceMuteService:
         await self.__data_service.save_data(
             channel=channel,
             identifier="vmute",
-            duration=duration_value,
+            duration_value=duration_value,
             member=member,
         )
         await self.toggle_mute(channel=channel, member=member, should_be_muted=True)
@@ -733,7 +746,7 @@ class VoiceMuteService:
             target=target,
         )
         await self.__stream_service.send_log(
-            channel_snowflake=channel.id,
+            channel=channel,
             identifier="unvmute",
             is_channel_scope=True,
             member=member,

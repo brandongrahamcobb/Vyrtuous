@@ -26,6 +26,7 @@ class Flag:
     __tablename__ = "active_flags"
     identifier = "flag"
     channel_snowflake: int
+    display_name: str
     guild_snowflake: int
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

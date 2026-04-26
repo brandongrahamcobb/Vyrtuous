@@ -27,7 +27,6 @@ from vyrtuous.flag.flag_service import FlagService
 @dataclass(frozen=True)
 class FlagAlias:
     category = "flag"
-    display_name: str
     record = Flag
     service = FlagService
     ARGS_MAP: Dict[str, int] = field(

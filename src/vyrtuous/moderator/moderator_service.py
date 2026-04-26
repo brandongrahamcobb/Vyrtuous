@@ -142,13 +142,8 @@ class ModeratorService:
             raise NotModerator
         return True
 
-    async def is_moderator_at_all_wrapper(
-        self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ) -> bool:
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
-        return await self.is_moderator_at_all(member_snowflake=member_snowflake)
+    async def is_moderator_at_all_wrapper(self, context) -> bool:
+        return await self.is_moderator_at_all(member_snowflake=context.author.id)
 
     async def is_moderator_at_all(
         self,
@@ -619,7 +614,7 @@ class ModeratorService:
             if sender_rank <= target_rank:
                 raise HasEqualOrLowerRole(self.PERMISSION_TYPES[target_rank])
         except HasEqualOrLowerRole as e:
-            self.__bot.logger.warning(e)
+            raise
         return True
 
     async def can_list(

@@ -92,13 +92,8 @@ class CoordinatorService:
             raise NotCoordinator
         return True
 
-    async def is_coordinator_at_all_wrapper(
-        self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
-        return await self.is_coordinator_at_all(member_snowflake=member_snowflake)
+    async def is_coordinator_at_all_wrapper(self, context):
+        return await self.is_coordinator_at_all(member_snowflake=context.author.id)
 
     async def is_coordinator_wrapper(self, context):
         return await self.is_coordinator(

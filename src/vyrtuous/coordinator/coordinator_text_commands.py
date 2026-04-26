@@ -43,6 +43,7 @@ from vyrtuous.utils.data_service import DataService
 from vyrtuous.utils.default_context import DefaultContext
 from vyrtuous.utils.dictionary_service import DictionaryService
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.home import at_home
 from vyrtuous.utils.message_service import PaginatorService
 from vyrtuous.utils.state_service import StateService
 from vyrtuous.voice_mute.voice_mute_service import VoiceMuteService
@@ -228,6 +229,38 @@ class CoordinatorTextCommands(commands.Cog):
             member_snowflake=member_snowflake,
         )
         return await state.end(success=msg)
+
+    @commands.command(name="blacklists", help="List blacklists.")
+    async def list_blacklists_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        target: (
+            str | discord.Member | discord.Guild | discord.abc.GuildChannel
+        ) = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Tag a channel, guild, member, all or include their ID.",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await self.__ban_service.build_blacklist_pages(
+            is_at_home=is_at_home, obj=obj
+        )
+        return await state.end(success=pages)
 
     @commands.command(name="mod", help="Grant/revoke mods.")
     async def toggle_moderator_text_command(

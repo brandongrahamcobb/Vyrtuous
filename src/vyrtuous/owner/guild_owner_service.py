@@ -111,14 +111,9 @@ class GuildOwnerService:
         del self.guild_owners[member_snowflake]
         self.__bot.logger.info(f"Guild owner ({member_snowflake}) removed.")
 
-    async def is_guild_owner_wrapper(
-        self,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-    ):
-        member = self.__author_service.resolve_author(source=source)
-        member_snowflake = member.id
+    async def is_guild_owner_wrapper(self, context):
         return await self.is_guild_owner(
-            guild_snowflake=source.guild.id, member_snowflake=int(member_snowflake)
+            guild_snowflake=context.guild.id, member_snowflake=int(context.author.id)
         )
 
     async def is_guild_owner_at_all(

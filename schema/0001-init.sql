@@ -25,6 +25,7 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE public.active_bans (
+    blacklisted boolean DEFAULT FALSE,
     channel_snowflake bigint DEFAULT '-1'::integer NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     display_name TEXT,
@@ -269,20 +270,20 @@ ALTER TABLE public.guild_owners OWNER TO vyrtuous;
 --
 
 CREATE TABLE public.moderation_logs (
-    infraction_type text NOT NULL,
+    identifier text NOT NULL,
     channel_snowflake bigint,
-    executor_member_snowflake bigint,
+    author_snowflake bigint,
     expires_at timestamp with time zone,
     guild_snowflake bigint NOT NULL,
     is_modification boolean DEFAULT false NOT NULL,
-    target_member_snowflake bigint,
+    target_snowflake bigint,
     reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    channel_members_voice_count integer DEFAULT 0,
-    guild_members_offline_and_online_member_count integer DEFAULT 0,
-    guild_members_online_count integer DEFAULT 0,
-    guild_members_voice_count integer DEFAULT 0,
+    current_channel_members integer DEFAULT 0,
+    total_guild_members integer DEFAULT 0,
+    online_members integer DEFAULT 0,
+    total_voice_members integer DEFAULT 0,
     executor_highest_role text,
     target_highest_role text
 );

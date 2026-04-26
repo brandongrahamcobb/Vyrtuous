@@ -109,7 +109,9 @@ class StreamEmbed(discord.Embed):
             fields.append(f"**Display Name:** {target.display_name}")
             fields.append(f"**Username:** @{target.name}")
             fields.append(f"**User ID:** `{target.id}`")
-            fields.append(f"**Account Age:** <t:{int(target.created_at.timestamp())}:R>")
+            fields.append(
+                f"**Account Age:** <t:{int(target.created_at.timestamp())}:R>"
+            )
             fields.append(f"**Server Join:** <t:{int(target.joined_at.timestamp())}:R>")
         else:
             fields.append(f"**Display Name:** {target.get('name', None)}")
@@ -235,18 +237,20 @@ class StreamService:
         )
         embed = (
             StreamEmbed(duration_builder=self.__duration_builder)
-            .set_tn(url=author.display_avatar.url)
             .set_title(identifier=identifier, is_modification=is_modification)
             .set_description(channel=channel, target=member)
             .set_target(target=member, highest_role=target_role)
             .set_executor(author=author, highest_role=executor_role)
             .set_action(duration_value=duration_value)
-            .set_message_ctx(identifier=identifier, message=message)
             .set_channel_ctx(channel=channel, is_channel_scope=is_channel_scope)
-            .set_reference(
+        )
+        if author:
+            embed.set_tn(url=author.display_avatar.url)
+        if message:
+            embed.set_message_ctx(identifier=identifier, message=message).set_reference(
                 channel=channel, target=member, message=message, source=source
             )
-        )
+
         pages.append(embed)
         embed = StreamEmbed(color=None, description=None, title=None, url=None)
         embed.set_title(

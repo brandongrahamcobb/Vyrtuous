@@ -26,6 +26,7 @@ class TextMute:
     __tablename__ = "active_text_mutes"
     identifier = "tmute"
     channel_snowflake: int
+    display_name: str
     guild_snowflake: int
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

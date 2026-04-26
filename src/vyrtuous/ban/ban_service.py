@@ -144,7 +144,9 @@ class BanService:
 
     async def toggle_blacklist(self, channel, member_snowflake):
         ban = await self.__database_factory.select(
-            channel_snowflake=channel.id, member_snowflake=member_snowflake
+            channel_snowflake=channel.id,
+            member_snowflake=member_snowflake,
+            singular=True,
         )
         member = channel.guild.get_member(member_snowflake)
         if member:
@@ -338,6 +340,88 @@ class BanService:
             pages.extend(processed_dictionary.skipped_members)
         return pages
 
+    async def build_blacklist_pages(self, is_at_home, obj):
+        lines, pages = [], []
+        thumbnail = False
+
+        obj_name = "All Servers"
+        if not isinstance(obj, int):
+            obj_name = obj.name
+        else:
+            member = self.__active_member_service.active_member.get(obj, None)
+            if member:
+                obj_name = member.get("name", None)
+            else:
+                return "No active bans found."
+        title = f"{self.__emoji.get_random_emoji()} Blacklists for {obj_name}"
+
+        dictionary = await self.build_dictionary(obj=obj)
+        processed_dictionary = await self.__dictionary_service.process_dictionary(
+            cls=BanDictionary, dictionary=dictionary
+        )
+
+        for guild_snowflake, guild_data in processed_dictionary.data.items():
+            ban_n = 0
+            field_count = 0
+            lines = []
+            guild = self.__bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for member_snowflake, ban_dictionary in guild_data.get("members").items():
+                member = guild.get_member(member_snowflake)
+                if member:
+                    if not isinstance(obj, discord.Member):
+                        lines.append(
+                            f"**User:** {member.display_name} {member.mention}"
+                        )
+                    elif not thumbnail:
+                        embed.set_thumbnail(url=obj.display_avatar.url)
+                        thumbnail = True
+                else:
+                    display_name = self.__active_member_service.active_members.get(
+                        member_snowflake, None
+                    )
+                    if member:
+                        display_name = member.get("name", None)
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
+                for channel_snowflake, channel_dictionary in ban_dictionary.get(
+                    "bans"
+                ).items():
+                    if not channel_dictionary["blacklisted"]:
+                        continue
+                    channel = guild.get_channel(channel_snowflake)
+                    if not isinstance(obj, discord.abc.GuildChannel):
+                        lines.append(f"**Channel:** {channel.mention}")
+                    if isinstance(obj, discord.Member):
+                        lines.append(
+                            f"**Blacklisted:** {channel_dictionary['blacklisted']}"
+                        )
+                    ban_n += 1
+                    field_count += 1
+                    if field_count >= self.__CHUNK_SIZE:
+                        embed.add_field(
+                            name="Information",
+                            value="\n".join(lines),
+                            inline=False,
+                        )
+                        embed = self.__dictionary_service.flush_page(
+                            embed, pages, title, guild.name
+                        )
+                        lines = []
+                        field_count = 0
+            if lines:
+                embed.add_field(
+                    name="Information", value="\n".join(lines), inline=False
+                )
+            original_description = embed.description or ""
+            embed.description = f"**{original_description} ({ban_n})**"
+            pages.append(embed)
+        if is_at_home:
+            pages.extend(processed_dictionary.skipped_guilds)
+            pages.extend(processed_dictionary.skipped_members)
+        return pages
+
     async def delete(
         self,
         author,
@@ -475,29 +559,38 @@ class BanService:
         )
 
     async def undo(self, ctx, default_ctx, source, state):
-        await self.__database_factory.delete(
+        ban = await self.__database_factory.select(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member_snowflake,
+            singular=True,
         )
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if ctx.channel and member:
-            try:
-                await ctx.channel.set_permissions(member, view_channel=None)
-            except discord.Forbidden as e:
-                self.__bot.logger.error(str(e).capitalize())
-                return await state.end(error=str(e).capitalize())
-        if not member:
-            member = self.__active_member_service.active_members.get(
-                ctx.member_snowflake, None
+        if not ban.blacklisted:
+            await self.__database_factory.delete(
+                channel_snowflake=ctx.channel.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=ctx.member_snowflake,
             )
-        await self.undo_log(
-            author=default_ctx.author,
-            channel=ctx.channel,
-            member=member,
-            source=source,
-        )
-        embed = await self.undo_embed(ctx=ctx)
+            member = ctx.guild.get_member(ctx.member_snowflake)
+            if ctx.channel and member:
+                try:
+                    await ctx.channel.set_permissions(member, view_channel=None)
+                except discord.Forbidden as e:
+                    self.__bot.logger.error(str(e).capitalize())
+                    return await state.end(error=str(e).capitalize())
+            if not member:
+                member = self.__active_member_service.active_members.get(
+                    ctx.member_snowflake, None
+                )
+            await self.undo_log(
+                author=default_ctx.author,
+                channel=ctx.channel,
+                member=member,
+                source=source,
+            )
+            embed = await self.undo_embed(ctx=ctx)
+        else:
+            embed = await self.blacklisted_block_embed(ctx=ctx)
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
@@ -539,6 +632,26 @@ class BanService:
         embed = discord.Embed(
             title=f"{self.__emoji.get_random_emoji()} {member_display_name} has been unbanned",
             description=(f"**User:** {member_str}\n**Channel:** {ctx.channel.mention}"),
+            color=discord.Color.yellow(),
+        )
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
+        return embed
+
+    async def blacklisted_block_embed(self, ctx):
+        member = ctx.guild.get_member(ctx.member_snowflake)
+        if member:
+            member_display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = self.__active_member_service.active_members.get(
+                ctx.member_snowflake, None
+            )
+            member_display_name = simplified_member.get("name", None)
+            member_str = simplified_member.get("name", None)
+        embed = discord.Embed(
+            title=f"{self.__emoji.get_random_emoji()} {member_display_name} is blacklisted",
+            description=f"**User:** {member_str}\n**Channel:** {ctx.channel.mention}\nUse {self.__bot.config['discord_command_prefix']}blacklist to unblock.",
             color=discord.Color.yellow(),
         )
         if member:

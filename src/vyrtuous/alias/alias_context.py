@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from copy import copy
 from datetime import datetime
 
+from discord.ext import commands
 import discord
 
 from vyrtuous.alias.alias import Alias
@@ -147,14 +148,19 @@ class AliasContext:
                     )
 
             elif field == "member":
-                self.member_snowflake = int(value)
-                member = self.__d_ctx.guild.get_member(self.member_snowflake)
-                if not member:
+                self.member_snowflake = int(value.replace("<@", "").replace(">", ""))
+                self.member = self.__d_ctx.guild.get_member(self.member_snowflake)
+                if not self.member:
+                    self.__bot.logger.info(
+                        self.__active_member_service.active_members.get(
+                            self.member_snowflake, None
+                        )
+                    )
                     display_name = self.__active_member_service.active_members.get(
                         self.member_snowflake, None
                     ).get("name", None)
                 else:
-                    display_name = member.display_name
+                    display_name = self.member.display_name
                 self.display_name = display_name
             elif field == "reason":
                 if not value:

@@ -166,9 +166,9 @@ class GenericEventListeners(commands.Cog):
         if after.author.bot:
             return
         if before.content != after.content:
-            ctx = await self.bot.get_context(after)
+            ctx = await self.__bot.get_context(after)
             if ctx.command:
-                await self.bot.invoke(ctx)
+                await self.__bot.invoke(ctx)
             else:
                 await self.on_message(after)
 

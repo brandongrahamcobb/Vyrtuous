@@ -373,24 +373,18 @@ class FlagService:
         self.__flags = await self.__database_factory.select()
 
     async def warn(self, channel: discord.abc.GuildChannel, member: discord.Member):
-        if channel.id == 1222056499959042108:
-            for flag in self.__flags:
-                if flag.channel_snowflake == channel.id:
-                    if flag.member_snowflake == member.id:
-                        embed = discord.Embed(
-                            title=f"\u26a0\ufe0f {member.display_name} is flagged",
-                            color=discord.Color.red(),
-                        )
-                        embed.set_thumbnail(url=member.display_avatar.url)
-                        embed.add_field(
-                            name=f"User: {member.mention}",
-                            value=f"Channel: {channel.mention}\nReason: {flag.reason}",
-                            inline=False,
-                        )
-                        now = time.time()
-                        self.__join_log[member.id] = [
-                            t for t in self.__join_log[member.id] if now - t < 300
-                        ]
-                        if len(self.__join_log[member.id]) < 1:
-                            self.__join_log[member.id].append(now)
-                            await channel.send(embed=embed)
+        for flag in self.__flags:
+            if flag.channel_snowflake == channel.id:
+                if flag.member_snowflake == member.id:
+                    embed = discord.Embed(
+                        title=f"\u26a0\ufe0f {member.display_name} is flagged",
+                        description=f"Channel: {channel.mention}\nReason: {flag.reason}",
+                        color=discord.Color.red(),
+                    )
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    existing = self.__join_log.get(member.id, [])
+                    now = time.time()
+                    self.__join_log[member.id] = [t for t in existing if now - t < 300]
+                    if len(self.__join_log[member.id]) < 1:
+                        self.__join_log[member.id].append(now)
+                        await channel.send(embed=embed)
