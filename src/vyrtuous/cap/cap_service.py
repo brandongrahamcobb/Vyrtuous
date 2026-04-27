@@ -175,13 +175,13 @@ class CapService:
             value=duration_value
         ).to_seconds()
         if cap:
-            if duration_seconds > cap.duration_seconds:
+            if duration_seconds > cap.duration_seconds or duration_value == 0:
                 exceeds_cap = True
         else:
             cap_duration_seconds = self.__duration_builder.parse(
                 value="8h"
             ).to_seconds()
-            if duration_seconds > cap_duration_seconds:
+            if duration_seconds > cap_duration_seconds or duration_value == 0:
                 exceeds_cap = True
         return exceeds_cap
 
