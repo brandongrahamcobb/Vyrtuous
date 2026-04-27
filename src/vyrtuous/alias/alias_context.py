@@ -160,9 +160,13 @@ class AliasContext:
                             self.member_snowflake, None
                         )
                     )
-                    display_name = self.__active_member_service.active_members.get(
+                    member = self.__active_member_service.active_members.get(
                         self.member_snowflake, None
-                    ).get("name", None)
+                    )
+                    if member:
+                        display_name = member.get("name", None)
+                    else:
+                        raise commands.MemberNotFound(self.member_snowflake)
                 else:
                     display_name = self.member.display_name
                 self.display_name = display_name
