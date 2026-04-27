@@ -40,6 +40,7 @@ class AliasContext:
         database_factory=None,
         default_ctx=None,
         dictionary_service=None,
+        duration_builder=None,
         emoji=None,
         moderator_service=None,
     ):
@@ -51,6 +52,7 @@ class AliasContext:
         self.__content = content
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+        self.__duration_builder = duration_builder
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__alias_service = AliasService(
@@ -146,7 +148,9 @@ class AliasContext:
                         member_snowflake=self.member_snowflake,
                         lowest_role="Coordinator",
                     )
-
+                self.expires_in = self.__duration_builder.parse(
+                    self.duration_value
+                ).to_expires_in()
             elif field == "member":
                 self.member_snowflake = int(value.replace("<@", "").replace(">", ""))
                 self.member = self.__d_ctx.guild.get_member(self.member_snowflake)

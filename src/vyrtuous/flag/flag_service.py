@@ -311,7 +311,7 @@ class FlagService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        del self.flagged_members[ctx.member_snowflake]
+        # del self.flagged_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,

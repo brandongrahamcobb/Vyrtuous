@@ -190,7 +190,7 @@ class DeveloperService:
             if developer.member_snowflake == member_snowflake:
                 await self.__database_factory.delete(member_snowflake=member_snowflake)
                 found = True
-                del self.developer_members[member_snowflake]
+                # del self.developer_members[member_snowflake]
                 action = "revoked"
         if not found:
             new_developer = self.MODEL(

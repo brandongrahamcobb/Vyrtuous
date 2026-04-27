@@ -215,6 +215,7 @@ class GenericEventListeners(commands.Cog):
                 database_factory=self.__database_factory,
                 default_ctx=d_ctx,
                 dictionary_service=self.__dictionary_service,
+                duration_builder=self.__duration_builder,
                 emoji=self.__emoji,
                 moderator_service=self.__moderator_service,
             )

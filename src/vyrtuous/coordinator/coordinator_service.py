@@ -237,7 +237,7 @@ class CoordinatorService:
             await self.__database_factory.delete(
                 channel_snowflake=channel.id, member_snowflake=member_snowflake
             )
-            del self.coordinators[member_snowflake]
+            # del self.coordinators[member_snowflake]
             action = "revoked"
         else:
             coordinator = self.MODEL(

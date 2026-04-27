@@ -217,7 +217,7 @@ class VeganService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        del self.vegans[ctx.member_snowflake]
+        # del self.vegans[ctx.member_snowflake]
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,

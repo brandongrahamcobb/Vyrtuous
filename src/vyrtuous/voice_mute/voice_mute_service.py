@@ -520,7 +520,7 @@ class VoiceMuteService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        del self.voice_muted_members[ctx.member_snowflake]
+        # del self.voice_muted_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,
