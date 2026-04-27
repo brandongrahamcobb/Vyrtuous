@@ -352,7 +352,7 @@ class ChannelEventListeners(commands.Cog):
                     member=member,
                     target=target,
                 )
-            else:
+            elif after.mute:
                 target = "user"
                 await self.__voice_mute_service.unmute(
                     channel=after.channel, member=member, target=target
