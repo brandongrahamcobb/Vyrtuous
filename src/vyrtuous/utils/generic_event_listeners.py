@@ -222,7 +222,9 @@ class GenericEventListeners(commands.Cog):
             if not await ctx.setup():
                 return
             await self.__moderator_service.has_equal_or_lower_role(
-                **d_ctx.to_dict(),
+                channel_snowflake=ctx.channel.id,
+                guild_snowflake=d_ctx.guild.id,
+                member_snowflake=d_ctx.author.id,
                 target_member_snowflake=ctx.member_snowflake,
             )
             service = ctx.alias.service(
