@@ -230,7 +230,12 @@ class GuildOwnerTextCommands(commands.Cog):
         pages = await self.__administrator_role_service.toggle_administrator_role(
             role=role,
         )
-        return await state.end(success=pages)
+        try:
+            return await state.end(success=pages)
+        except:
+            import traceback
+
+            traceback.print_exc()
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
     @skip_text_command_help_discovery()

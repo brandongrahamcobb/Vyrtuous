@@ -92,9 +92,6 @@ class VoiceMuteService:
             member_snowflake=ctx.member.id,
             singular=True,
         )
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if not member:
-            await source.reply("Member is inactive or incorrectly specified.")
         if obj:
             await self.undo(
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state

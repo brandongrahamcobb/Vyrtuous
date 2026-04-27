@@ -471,9 +471,8 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        channel_dict = self.__discord_object_service.to_dict(obj=channel)
         msg = await self.__temporary_room_service.migrate_temporary_room(
-            channel_dict=channel_dict,
+            channel=channel,
             old_name=old_name,
         )
         return await state.end(success=msg)
@@ -577,6 +576,69 @@ class ModeratorTextCommands(commands.Cog):
             member=member,
         )
         return await state.end(success=msg)
+
+    @commands.command(name="purge", help="Delete messages.")
+    async def purge_text_command(
+        self,
+        ctx: commands.Context,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
+            description="Tag a member or include their ID",
+        ),
+        amount: int = commands.parameter(
+            default=25, description="Number of messages to delete"
+        ),
+        channel: Union[str, discord.abc.GuildChannel] = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            default=None,
+            description="Specify the channel or ID",
+        ),
+    ):
+        state = StateService(
+            author_service=self.__author_service,
+            bot=self.__bot,
+            bug_service=self.__bug_service,
+            ctx=ctx,
+            developer_service=self.__developer_service,
+            emoji=self.__emoji,
+            upload_service=self.__upload_service,
+        )
+        context = DefaultContext(ctx=ctx)
+        await self.__moderator_service.check_minimum_role(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+            lowest_role="Coordinator",
+        )
+        await self.__moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(member.id),
+            member_snowflake=context.author.id,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.channel.guild.id,
+        )
+        if isinstance(member, discord.Member):
+            member_snowflake = int(member.id)
+            display_name = str(member.mention)
+        else:
+            member_snowflake = int(member)
+            member = self.__active_member_service.active_members.get(
+                member_snowflake, None
+            )
+            if member:
+                display_name = member.get("name", None)
+            else:
+                display_name = member_snowflake
+        target = channel or ctx.channel
+        count = int(0)
+        async for msg in ctx.channel.history():
+            if amount == count:
+                break
+            if msg.author.id == member_snowflake:
+                await msg.delete()
+                count += 1
+        return await state.end(
+            success=f"Successfully deleted {count} messages from {display_name} in {target.mention}."
+        )
 
     @commands.command(name="summary", help="List user moderation.")
     async def list_moderation_summary_text_command(

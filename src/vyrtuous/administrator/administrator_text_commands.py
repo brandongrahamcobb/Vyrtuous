@@ -412,6 +412,7 @@ class AdminTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(name="clear", help="Reset database.")
+    @skip_text_command_help_discovery()
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
@@ -429,6 +430,7 @@ class AdminTextCommands(commands.Cog):
             "flag`, `mod`, `troom`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vroom`.",
         ),
     ):
+        return
         state = StateService(
             author_service=self.__author_service,
             bot=self.__bot,

@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Coroutine
+from typing import Any, Coroutine, Union
 
 import discord
 from discord.ext import commands
@@ -193,8 +193,10 @@ class CoordinatorTextCommands(commands.Cog):
             converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
+        *,
         channel: discord.abc.GuildChannel = commands.parameter(
             converter=commands.VoiceChannelConverter,
+            default=None,
             description="Tag a channel or include its ID.",
         ),
     ):
@@ -220,6 +222,7 @@ class CoordinatorTextCommands(commands.Cog):
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
         )
+        channel = channel or ctx.channel
         if isinstance(member, discord.Member):
             member_snowflake = member.id
         else:
@@ -310,16 +313,14 @@ class CoordinatorTextCommands(commands.Cog):
         )
         return await state.end(success=msg)
 
-    @commands.command(name="purge", help="Delete messages.")
-    async def purge_text_command(
+    @commands.command(name="roles", help="List role members.")
+    async def list_roles_text_command(
         self,
         ctx: commands.Context,
-        member: int | discord.Member = commands.parameter(
-            converter=MultiConverter,
-            description="Tag a member or include their ID",
-        ),
-        amount: int = commands.parameter(
-            default=25, description="Number of messages to delete"
+        role: Union[str, discord.Role] = commands.parameter(
+            converter=commands.RoleConverter,
+            default=None,
+            description="Tag a role or include its ID.",
         ),
     ):
         state = StateService(
@@ -331,41 +332,31 @@ class CoordinatorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        context = DefaultContext(ctx=ctx)
-        await self.__moderator_service.check_minimum_role(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-            lowest_role="Coordinator",
-        )
-        await self.__moderator_service.has_equal_or_lower_role(
-            target_member_snowflake=int(member.id),
-            member_snowflake=context.author.id,
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.channel.guild.id,
-        )
-        if isinstance(member, discord.Member):
-            member_snowflake = int(member.id)
-            display_name = str(member.mention)
-        else:
-            member_snowflake = int(member)
-            member = self.__active_member_service.active_members.get(
-                member_snowflake, None
+        embeds = []
+        members = [member for member in ctx.guild.members if role in member.roles]
+        chunk_size = 12
+        total_pages = (len(members) + chunk_size - 1) // chunk_size or 1
+        for index in range(0, len(members), chunk_size):
+            chunk = members[index : index + chunk_size]
+            description = "\n".join(
+                f"{position + 1}. {member.mention} ({member.id})"
+                for position, member in enumerate(chunk, start=index)
             )
-            if member:
-                display_name = member.get("name", None)
-            else:
-                display_name = member_snowflake
-        count = int(0)
-        async for msg in ctx.channel.history():
-            if amount == count:
-                break
-            if msg.author.id == member_snowflake:
-                await msg.delete()
-                count += 1
-        return await state.end(
-            success=f"Successfully deleted {count} messages from {display_name} in {ctx.channel.mention}."
-        )
+            embed = discord.Embed(
+                title=f"{role.name} Members",
+                description=description or "No members found.",
+                color=role.color if role.color.value else discord.Color.blurple(),
+            )
+
+            embeds.append(embed)
+        if not embeds:
+            embed = discord.Embed(
+                title=f"{role.name} Members",
+                description="No members found.",
+                color=role.color if role.color.value else discord.Color.blurple(),
+            )
+            embeds.append(embed)
+        return await state.end(success=embeds)
 
     @commands.command(name="stage", help="Start/stop stage")
     @skip_text_command_help_discovery()

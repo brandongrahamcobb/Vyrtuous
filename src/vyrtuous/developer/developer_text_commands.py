@@ -261,7 +261,7 @@ class DevTextCommands(commands.Cog):
         return await state.end(success=pages)
 
     @commands.command(
-        name="load", help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'"
+        name="load", help="Loads a cog by name `vyrtuous.cog.<cog_name>.`"
     )
     async def load_text_command(self, ctx: commands.Context, *, module: str):
         state = StateService(
@@ -381,7 +381,7 @@ class DevTextCommands(commands.Cog):
         return await state.end(success="Pong!")
 
     @commands.command(
-        name="reload", help="Reloads a cog by name 'vyrtuous.cog.<cog_name>'."
+        name="reload", help="Reloads a cog by name `vyrtuous.cog.<cog_name>`."
     )
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
         state = StateService(
@@ -402,7 +402,7 @@ class DevTextCommands(commands.Cog):
         return await state.end(success=f"Successfully reloaded {module}.")
 
     @commands.command(
-        name="unload", help="Unloads a cog by name 'vyrtuous.cog.<cog_name>'."
+        name="unload", help="Unloads a cog by name `vyrtuous.cog.<cog_name>`."
     )
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
         state = StateService(

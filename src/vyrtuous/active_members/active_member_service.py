@@ -40,6 +40,7 @@ class ActiveMemberService:
                     "last_active": last_active,
                     "name": name,
                     "guild_snowflake": guild_snowflake,
+                    "id": member_snowflake,
                 }
             }
         )

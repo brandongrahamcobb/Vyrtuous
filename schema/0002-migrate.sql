@@ -52,8 +52,6 @@ ALTER TABLE coordinators
 ADD COLUMN display_name TEXT;
 ALTER TABLE sysadmin
 ADD COLUMN display_name TEXT;
-ALTER TABLE owners
-ADD COLUMN display_name TEXT;
 ALTER TABLE administrators
 ADD COLUMN display_name TEXT;
 ALTER TABLE active_flags

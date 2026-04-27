@@ -90,9 +90,6 @@ class FlagService:
             member_snowflake=ctx.member_snowflake,
             singular=True,
         )
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if not member:
-            await source.reply("Member is inactive or incorrectly specified.")
         if obj:
             await self.undo(
                 ctx=ctx, default_ctx=default_ctx, source=source, state=state
@@ -386,5 +383,5 @@ class FlagService:
                     now = time.time()
                     self.__join_log[member.id] = [t for t in existing if now - t < 300]
                     if len(self.__join_log[member.id]) < 1:
-                        self.__join_log[member.id].append(now)
                         await channel.send(embed=embed)
+                    self.__join_log[member.id].append(now)

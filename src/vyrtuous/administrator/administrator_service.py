@@ -46,7 +46,7 @@ class AdministratorService:
 
     __CHUNK_SIZE = 12
     MODEL = Administrator
-    administrators = []
+    administrators = {}
 
     def __init__(
         self,
@@ -164,7 +164,7 @@ class AdministratorService:
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for member_snowflake, processed_dictionary in guild_data.get(
+            for member_snowflake, member_dictionary in guild_data.get(
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
@@ -185,10 +185,10 @@ class AdministratorService:
                         lines.append(f"**User:** {display_name} ({member_snowflake})")
                 role_mentions = [
                     guild.get_role(role_snowflake).mention
-                    for role_snowflake in processed_dictionary.get("administrators", {})
+                    for role_snowflake in member_dictionary.get("administrators", {})
                     if guild.get_role(role_snowflake)
                 ]
-                if isinstance(obj, disord.Member) and role_mentions:
+                if isinstance(obj, discord.Member) and role_mentions:
                     lines.append("\n**Roles:** " + "\n".join(role_mentions))
                 admin_n += 1
                 field_count += 1
@@ -246,15 +246,16 @@ class AdministratorService:
         member_snowflake = kwargs.get("member_snowflake", None)
         role_snowflake = kwargs.get("role_snowflake", None)
         administrator_existing = await self.administrator_existing(kwargs=kwargs)
+        guild = self.__bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
         if not administrator_existing:
             administrator = Administrator(
+                display_name=member.display_name,
                 guild_snowflake=int(guild_snowflake),
                 member_snowflake=int(member_snowflake),
                 role_snowflakes=[int(role_snowflake)],
             )
             await self.__database_factory.create(administrator)
-            guild = self.__bot.get_guild(guild_snowflake)
-            member = guild.get_member(member_snowflake)
             self.administrators.update(
                 {member_snowflake: {"name": member.display_name}}
             )
@@ -297,7 +298,7 @@ class AdministratorService:
             await self.__database_factory.delete(
                 guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
             )
-            del self.adminstrators[member_snowflake]
+            del self.administrators[member_snowflake]
         else:
             where_kwargs = {
                 "guild_snowflake": int(guild_snowflake),
