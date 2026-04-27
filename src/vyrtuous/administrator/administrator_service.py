@@ -294,6 +294,8 @@ class AdministratorService:
         )
         if not administrator:
             return
+        guild = self.__bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
         administrator_role_snowflakes = administrator.role_snowflakes
         administrator_role_snowflakes.remove(role_snowflake)
         if administrator_role_snowflakes == []:
@@ -410,6 +412,8 @@ class AdministratorRoleService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_roles)
+        if not pages:
+            return "No administrator roles found."
         return pages
 
     async def toggle_administrator_role(self, role):
