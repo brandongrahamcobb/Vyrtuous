@@ -159,6 +159,8 @@ class ServerMuteService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No server mutes found."
         return pages
 
     async def toggle_server_mute(self, context, member, reason):

@@ -186,6 +186,8 @@ class VeganService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No vegans found."
         return pages
 
     async def enforce(self, ctx, source, state):

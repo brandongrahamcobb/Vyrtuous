@@ -298,6 +298,8 @@ class TextMuteService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No text mutes found."
         return pages
 
     async def delete(

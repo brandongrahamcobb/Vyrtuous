@@ -140,6 +140,8 @@ class VideoRoomService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)
+        if not pages:
+            return "No video rooms found."
         return pages
 
     async def toggle_video_room(self, channel):

@@ -262,6 +262,8 @@ class BugService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_messages)
+        if not pages:
+            return "No bugs found."
         return pages
 
     async def create_bug(self, message, reference):

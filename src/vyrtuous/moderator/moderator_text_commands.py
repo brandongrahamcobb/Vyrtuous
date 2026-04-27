@@ -668,8 +668,12 @@ class ModeratorTextCommands(commands.Cog):
         services.append(self.__voice_mute_service)
         for service in services:
             summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
-            if summary_pages:
-                pages.extend(summary_pages)
+            if isinstance(summary_pages, list):
+                for page in summary_pages:
+                    if isinstance(page, discord.Embed):
+                        pages.append(page)
+        if not pages:
+            return await state.end(success="No infractions found")
         return await state.end(success=pages)
 
     @commands.command(name="survey", help="Survey stage members.")

@@ -163,6 +163,8 @@ class TemporaryRoomService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)
+        if not pages:
+            return "No temporary rooms found."
         return pages
 
     async def migrate_temporary_room(self, channel, old_name):

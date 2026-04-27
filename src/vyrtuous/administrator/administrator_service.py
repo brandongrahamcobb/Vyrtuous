@@ -215,6 +215,8 @@ class AdministratorService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No administrators found."
         return pages
 
     async def administrators_by_role(self, role_snowflake: int):

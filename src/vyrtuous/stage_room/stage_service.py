@@ -155,6 +155,8 @@ class StageService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_channels)
             pages.extend(processed_dictionary.skipped_guilds)
+        if not pages:
+            return "No stages found."
         return pages
 
     async def toggle_stage(self, channel, context, duration_value):

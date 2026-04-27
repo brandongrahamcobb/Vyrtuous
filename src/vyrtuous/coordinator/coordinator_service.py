@@ -223,6 +223,8 @@ class CoordinatorService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No coordinators found."
         return pages
 
     async def toggle_coordinator(self, channel, member_snowflake, display_name=None):

@@ -335,7 +335,32 @@ class BanService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No bans found."
         return pages
+
+    async def build_blacklist_dictionary(self, obj):
+        bans = []
+        dictionary = {}
+        if isinstance(obj, discord.Guild):
+            bans = await self.__database_factory.select(guild_snowflake=obj.id)
+        elif isinstance(obj, discord.abc.GuildChannel):
+            bans = await self.__database_factory.select(channel_snowflake=obj.id)
+        elif isinstance(obj, discord.Member):
+            bans = await self.__database_factory.select(member_snowflake=obj.id)
+        else:
+            bans = await self.__database_factory.select()
+        if bans:
+            for ban in bans:
+                if ban.blacklisted:
+                    dictionary.setdefault(ban.guild_snowflake, {"members": {}})
+                    dictionary[ban.guild_snowflake]["members"].setdefault(
+                        ban.member_snowflake, {"bans": {}}
+                    )
+                    dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+                        "bans"
+                    ].setdefault(ban.channel_snowflake, {})
+        return dictionary
 
     async def build_blacklist_pages(self, is_at_home, obj):
         lines, pages = [], []
@@ -352,7 +377,7 @@ class BanService:
                 return "No active bans found."
         title = f"{self.__emoji.get_random_emoji()} Blacklists for {obj_name}"
 
-        dictionary = await self.build_dictionary(obj=obj)
+        dictionary = await self.build_blacklist_dictionary(obj=obj)
         processed_dictionary = await self.__dictionary_service.process_dictionary(
             cls=BanDictionary, dictionary=dictionary
         )
@@ -385,15 +410,11 @@ class BanService:
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
                 ).items():
-                    if not channel_dictionary["blacklisted"]:
-                        continue
                     channel = guild.get_channel(channel_snowflake)
                     if not isinstance(obj, discord.abc.GuildChannel):
                         lines.append(f"**Channel:** {channel.mention}")
                     if isinstance(obj, discord.Member):
-                        lines.append(
-                            f"**Blacklisted:** {channel_dictionary['blacklisted']}"
-                        )
+                        lines.append(f"**Blacklisted:** True")
                     ban_n += 1
                     field_count += 1
                     if field_count >= self.__CHUNK_SIZE:
@@ -417,6 +438,8 @@ class BanService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No blacklists found."
         return pages
 
     async def delete(

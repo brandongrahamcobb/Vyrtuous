@@ -291,10 +291,7 @@ class GuildOwnerTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        if not target:
-            obj = None
-        else:
-            obj = target or ctx.guild
+        obj = target or "all"
         pages = await self.__developer_service.build_pages(obj=obj)
         return await state.end(success=pages)
 

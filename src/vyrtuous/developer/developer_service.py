@@ -158,6 +158,8 @@ class DeveloperService:
             original_description = embed.description or ""
             embed.description = f"**{original_description} ({dev_n})**"
             pages.append(embed)
+        if not pages:
+            return "No developers found."
         return pages
 
     async def report_issue(self, author, message, reference, source):

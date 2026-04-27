@@ -268,6 +268,8 @@ class VoiceMuteService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No voice mutes found."
         return pages
 
     async def room_mute(self, author, channel, reason):

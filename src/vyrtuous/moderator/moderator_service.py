@@ -264,6 +264,8 @@ class ModeratorService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No moderators found."
         return pages
 
     async def survey(self, channel):

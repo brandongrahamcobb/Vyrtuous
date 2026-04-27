@@ -140,7 +140,7 @@ class AliasContext:
                     ctx=self,
                     default_ctx=self.__d_ctx,
                 ):
-                    await self.__moderator_service.check(
+                    await self.__moderator_service.check_minimum_role(
                         channel_snowflake=self.channel.id,
                         guild_snowflake=self.guild.id,
                         member_snowflake=self.member_snowflake,

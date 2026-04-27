@@ -203,6 +203,8 @@ class FlagService:
         if is_at_home:
             pages.extend(processed_dictionary.skipped_guilds)
             pages.extend(processed_dictionary.skipped_members)
+        if not pages:
+            return "No flags found."
         return pages
 
     async def delete(
