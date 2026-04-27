@@ -386,7 +386,7 @@ class ModeratorService:
                 channel_snowflake=int(channel.id),
                 member_snowflake=int(member_snowflake),
             )
-            del self.moderators[member_snowflake]
+            # del self.moderators[member_snowflake]
             action = "revoked"
         else:
             moderator = self.MODEL(
