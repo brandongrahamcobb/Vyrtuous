@@ -171,17 +171,16 @@ class CapService:
         cap = await self.__database_factory.select(
             **default_ctx.to_dict(), category=ctx.category, singular=True
         )
-        duration_seconds = self.__duration_builder.parse(
-            value=duration_value
-        ).to_seconds()
+        duration = self.__duration_builder.parse(value=duration_value)
+        duration_seconds = duration.to_seconds()
         if cap:
-            if duration_seconds > cap.duration_seconds or duration_value == 0:
+            if duration_seconds > cap.duration_seconds or not duration:
                 exceeds_cap = True
         else:
             cap_duration_seconds = self.__duration_builder.parse(
                 value="8h"
             ).to_seconds()
-            if duration_seconds > cap_duration_seconds or duration_value == 0:
+            if duration_seconds > cap_duration_seconds or not duration:
                 exceeds_cap = True
         return exceeds_cap
 
