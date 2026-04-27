@@ -361,8 +361,10 @@ class ChannelEventListeners(commands.Cog):
         elif before.channel == after.channel:
             target = "user"
             if before.mute and not after.mute:
-                await self.__voice_mute_service.unmute(
-                    channel=after.channel, member=member, target=target
+                await self.__voice_mute_service.delete(
+                    channel_snowflake=after.channel.id,
+                    guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
                 )
             else:
                 await self.__voice_mute_service.mute(

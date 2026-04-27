@@ -385,9 +385,6 @@ class VoiceMuteService:
 
     async def delete(
         self,
-        author,
-        source,
-        *,
         guild_snowflake=None,
         channel_snowflake=None,
         member_snowflake=None,
@@ -407,17 +404,53 @@ class VoiceMuteService:
             member = guild.get_member(obj.member_snowflake)
             is_channel_scope = False
             if member.voice and member.voice.channel:
-                try:
-                    is_channel_scope = True
-                    await member.edit(mute=False)
-                except discord.Forbidden as e:
-                    self.__bot.logger.info(str(e).capitalize())
-            await self.undo_log(
-                author=author,
+                is_channel_scope = True
+            await self.__stream_service.send_log(
                 channel=channel,
+                identifier="unvmute",
                 is_channel_scope=is_channel_scope,
                 member=member,
-                source=source,
+                reason="Right-click unvoice-mute.",
+            )
+            await self.__data_service.save_data(
+                channel=channel,
+                identifier="unvmute",
+                member=member,
+            )
+
+    async def create(
+        self,
+        guild_snowflake=None,
+        channel_snowflake=None,
+        member_snowflake=None,
+    ):
+        kwargs = {}
+        if channel_snowflake:
+            kwargs.update({"channel_snowflake": channel_snowflake})
+        if guild_snowflake:
+            kwargs.update({"guild_snowflake": guild_snowflake})
+        if member_snowflake:
+            kwargs.update({"member_snowflake": member_snowflake})
+        objects = await self.__database_factory.select(**kwargs)
+        for obj in objects:
+            await self.__database_factory.creat(obj, **kwargs)
+            guild = self.__bot.get_guild(obj.guild_snowflake)
+            channel = guild.get_channel(obj.channel_snowflake)
+            member = guild.get_member(obj.member_snowflake)
+            is_channel_scope = False
+            if member.voice and member.voice.channel:
+                is_channel_scope = True
+            await self.__stream_service.send_log(
+                channel=channel,
+                identifier="vmute",
+                is_channel_scope=is_channel_scope,
+                member=member,
+                reason="Right-click voice-mute.",
+            )
+            await self.__data_service.save_data(
+                channel=channel,
+                identifier="vmute",
+                member=member,
             )
 
     async def enforce_log(
