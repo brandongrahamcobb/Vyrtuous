@@ -17,11 +17,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
+from typing import Dict
+from vyrtuous.vegan.vegan import Vegan
 from vyrtuous.vegan.vegan_service import VeganService
 
 
+@dataclass(frozen=True)
 class VeganAlias:
     category = "vegan"
+    record = Vegan
     service = VeganService
-
-    ARGS_MAP = {"alias_name": 1, "member": 2}
+    ARGS_MAP: Dict[str, int] = field(
+        default_factory=lambda: {"alias_name": 1, "member": 2}
+    )

@@ -47,6 +47,8 @@ class VeganService:
         active_member_service=None,
         bot=None,
         database_factory=None,
+        data_service=None,
+        duration_builder=None,
         dictionary_service=None,
         emoji=None,
         stream_service=None,
@@ -55,7 +57,9 @@ class VeganService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
+        self.__data_service = data_service
         self.__dictionary_service = dictionary_service
+        self.__duration_builder = duration_builder
         self.__emoji = emoji
         self.__stream_service = stream_service
 
@@ -190,7 +194,7 @@ class VeganService:
             return "No vegans found."
         return pages
 
-    async def enforce(self, ctx, source, state):
+    async def enforce(self, ctx, default_ctx, source, state):
         vegan = self.MODEL(
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member_snowflake,
@@ -202,8 +206,8 @@ class VeganService:
                 ctx.member_snowflake, None
             )
         self.vegans.update({ctx.member_snowflake: {"name": ctx.display_name}})
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.channel.id,
+        await self.__stream_service.send_log(
+            channel=ctx.channel,
             identifier="vegan",
             member=member,
             source=source,
@@ -211,8 +215,8 @@ class VeganService:
         embed = await self.act_embed(ctx=ctx)
         return await state.end(success=embed)
 
-    async def undo(self, ctx, source, state):
-        member = ctx.guild.get_member(ctx.member.id)
+    async def undo(self, ctx, default_ctx, source, state):
+        member = ctx.guild.get_member(ctx.member_snowflake)
         if not member:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
@@ -223,8 +227,8 @@ class VeganService:
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member_snowflake,
         )
-        await self.__stream_service.send_entry(
-            channel_snowflake=ctx.channel.id,
+        await self.__stream_service.send_log(
+            channel=ctx.channel,
             identifier="carnist",
             is_modification=True,
             member=member,
@@ -234,7 +238,7 @@ class VeganService:
         return await state.end(success=embed)
 
     async def act_embed(self, ctx):
-        member = ctx.guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
         if member:
             member_display_name = member.display_name
             member_str = member.mention
@@ -255,7 +259,7 @@ class VeganService:
         return embed
 
     async def undo_embed(self, ctx):
-        member = ctx.guild.get_member(ctx.member.id)
+        member = ctx.guild.get_member(ctx.member_snowflake)
         if member:
             member_display_name = member.display_name
             member_str = member.mention
