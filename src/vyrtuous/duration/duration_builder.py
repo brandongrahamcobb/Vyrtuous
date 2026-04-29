@@ -46,6 +46,8 @@ class DurationBuilder:
         return self.__duration_service.to_timedelta(self.__duration)
 
     def to_expires_in(self, base: datetime | None = None):
+        if not self.__duration.number:
+            return None
         return self.__duration_service.to_expires_in(self.__duration, base=base)
 
     def from_timestamp(self, expires_in: datetime):
