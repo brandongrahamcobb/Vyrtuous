@@ -365,7 +365,7 @@ class ModeratorTextCommands(commands.Cog):
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
-        message: discord.Message = commands.parameter(
+        msg: discord.Message = commands.parameter(
             converter=commands.MessageConverter, description="Message snowflake"
         ),
     ):
@@ -378,15 +378,18 @@ class ModeratorTextCommands(commands.Cog):
             emoji=self.__emoji,
             upload_service=self.__upload_service,
         )
-        try:
-            msg = await ctx.channel.fetch_message(message)
-        except discord.NotFound:
-            return await state.end(warning=f"Message `{message}` not found.")
+        context = DefaultContext(ctx=ctx)
+        await self.__moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(msg.author.id),
+            member_snowflake=context.author.id,
+            channel_snowflake=msg.channel.id,
+            guild_snowflake=msg.channel.guild.id,
+        )
         try:
             await msg.delete()
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
-        return await state.end(success=f"Message `{message}` deleted successfully.")
+        return await state.end(success=f"Message `{msg.id}` deleted successfully.")
 
     @commands.command(name="flags", help="List flags.")
     async def list_flags_text_command(
