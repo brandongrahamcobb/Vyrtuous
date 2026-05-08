@@ -169,20 +169,33 @@ class CapService:
         duration_value = ctx.duration_value
         exceeds_cap = False
         cap = await self.__database_factory.select(
-            **default_ctx.to_dict(), category=ctx.category, singular=True
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            category=ctx.category,
+            singular=True,
         )
         duration = self.__duration_builder.parse(value=duration_value)
         duration_seconds = duration.to_seconds()
         if cap:
-            if duration_seconds > cap.duration_seconds or not duration:
+            if duration_seconds > cap.duration_seconds or duration.build().number == 0:
                 exceeds_cap = True
         else:
             cap_duration_seconds = self.__duration_builder.parse(
                 value="8h"
             ).to_seconds()
-            if duration_seconds > cap_duration_seconds or not duration:
+            if duration_seconds > cap_duration_seconds or duration.build().number == 0:
                 exceeds_cap = True
         return exceeds_cap
+
+    async def get_cap_seconds(self, ctx, default_ctx):
+        cap = await self.__database_factory.select(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            category=ctx.category,
+            singular=True,
+        )
+        if cap:
+            return cap.duration_seconds
 
     async def migrate(self, kwargs):
         self.__database_factory.update(**kwargs)

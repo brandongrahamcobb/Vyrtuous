@@ -49,6 +49,7 @@ class VoiceMuteService:
         *,
         active_member_service=None,
         bot=None,
+        cap_service=None,
         database_factory=None,
         data_service=None,
         dictionary_service=None,
@@ -59,6 +60,7 @@ class VoiceMuteService:
     ):
         self.__active_member_service = active_member_service
         self.__bot = bot
+        self.__cap_service = cap_service
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
         self.__data_service = data_service
@@ -476,6 +478,16 @@ class VoiceMuteService:
         )
 
     async def enforce(self, ctx, default_ctx, source, state):
+        if await self.__cap_service.assertion(
+            ctx=ctx,
+            default_ctx=default_ctx,
+        ):
+            role = await self.__moderator_service.check_minimum_role(
+                channel_snowflake=ctx.channel.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=default_ctx.author.id,
+                lowest_role="Coordinator",
+            )
         voice_mute = self.MODEL(
             channel_snowflake=ctx.channel.id,
             display_name=ctx.display_name,
@@ -534,9 +546,27 @@ class VoiceMuteService:
         )
 
     async def undo(self, ctx, default_ctx, source, state):
+        voice_mute = await self.__database_factory.select(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.member_snowflake,
+            singular=True,
+        )
+        cap_seconds = await self.__cap_service.get_cap_seconds(
+            ctx=ctx, default_ctx=default_ctx
+        ) or (8 * 60 * 60)
+        if (
+            self.__duration_builder.from_timestamp(voice_mute.expires_in).to_seconds()
+            > cap_seconds
+        ):
+            await self.__moderator_service.check_minimum_role(
+                channel_snowflake=ctx.channel.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=default_ctx.author.id,
+                lowest_role="Coordinator",
+            )
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
-            display_name=ctx.display_name,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.member_snowflake,
         )

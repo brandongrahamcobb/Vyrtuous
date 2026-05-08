@@ -163,7 +163,6 @@ class AdminTextCommands(commands.Cog):
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
         )
-        self.__discord_object_service = DiscordObjectService()
         self.__server_mute_service = ServerMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -189,6 +188,7 @@ class AdminTextCommands(commands.Cog):
         )
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             data_service=self.__data_service,
@@ -214,21 +214,25 @@ class AdminTextCommands(commands.Cog):
         )
         self.__text_mute_service = TextMuteService(
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
         )
         self.__ban_service = BanService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
         )
         self.__temporary_room_service = TemporaryRoomService(

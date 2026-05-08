@@ -32,6 +32,7 @@ from vyrtuous.ban.ban_service import BanService
 from vyrtuous.base.database_factory import DatabaseFactory
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bug.bug_service import BugService
+from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.duration.duration_builder import DurationBuilder
@@ -119,6 +120,13 @@ class GuildOwnerTextCommands(commands.Cog):
             guild_owner_service=self.__guild_owner_service,
             sysadmin_service=self.__sysadmin_service,
         )
+        self.__cap_service = CapService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
             duration_builder=self.__duration_builder,
@@ -138,7 +146,6 @@ class GuildOwnerTextCommands(commands.Cog):
             moderator_service=self.__moderator_service,
             paginator_service=self.__paginator_service,
         )
-        self.__discord_object_service = DiscordObjectService()
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -152,11 +159,14 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__ban_service = BanService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
         )
         self.__flag_service = FlagService(
             bot=self.__bot,
@@ -168,11 +178,14 @@ class GuildOwnerTextCommands(commands.Cog):
         )
         self.__text_mute_service = TextMuteService(
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
         )
         self.__hero_service = HeroService(
             ban_service=self.__ban_service,

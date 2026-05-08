@@ -52,6 +52,7 @@ class VeganService:
         dictionary_service=None,
         emoji=None,
         stream_service=None,
+        **kwargs,
     ):
         self.__active_member_service = active_member_service
         self.__bot = bot

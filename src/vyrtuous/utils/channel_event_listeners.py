@@ -121,6 +121,13 @@ class ChannelEventListeners(commands.Cog):
             guild_owner_service=self.__guild_owner_service,
             sysadmin_service=self.__sysadmin_service,
         )
+        self.__cap_service = CapService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
         self.__video_room_service = VideoRoomService(
             bot=self.__bot,
             database_factory=self.__database_factory,
@@ -153,6 +160,7 @@ class ChannelEventListeners(commands.Cog):
         self.__voice_mute_service = VoiceMuteService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
@@ -164,6 +172,7 @@ class ChannelEventListeners(commands.Cog):
         self.__ban_service = BanService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
@@ -182,6 +191,7 @@ class ChannelEventListeners(commands.Cog):
         self.__text_mute_service = TextMuteService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,

@@ -427,6 +427,8 @@ class ModeratorService:
         )
         passed_lowest = False
         for role_name, verify in verifications:
+            if role_name == lowest_role:
+                passed_lowest = True
             try:
                 if role_name in ("Sysadmin", "Developer"):
                     if await verify(member_snowflake=int(member_snowflake)):
@@ -447,8 +449,6 @@ class ModeratorService:
             except commands.CheckFailure:
                 if lowest_role is not None and passed_lowest:
                     raise
-            if role_name == lowest_role:
-                passed_lowest = True
         return "Everyone"
 
     async def check_minimum_role_at_all(
@@ -467,7 +467,10 @@ class ModeratorService:
         )
         passed_lowest = False
         for role_name, verify in verifications:
+            if role_name == lowest_role:
+                passed_lowest = True
             try:
+
                 if role_name in ("Sysadmin", "Developer"):
                     if await verify(member_snowflake=int(member_snowflake)):
                         return role_name

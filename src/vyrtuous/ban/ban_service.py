@@ -47,22 +47,26 @@ class BanService:
         *,
         active_member_service=None,
         bot=None,
+        cap_service=None,
         database_factory=None,
         data_service=None,
         dictionary_service=None,
         duration_builder=None,
         emoji=None,
+        moderator_service=None,
         stream_service=None,
     ):
         self.__bot = bot
         self.__active_member_service = active_member_service
         self.__bot.logger.info(type(self.__active_member_service))
+        self.__cap_service = cap_service
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = Ban
         self.__data_service = data_service
         self.__dictionary_service = dictionary_service
         self.__duration_builder = duration_builder
         self.__emoji = emoji
+        self.__moderator_service = moderator_service
         self.__stream_service = stream_service
 
     async def populate(self):
@@ -507,6 +511,16 @@ class BanService:
         )
 
     async def enforce(self, ctx, default_ctx, source, state):
+        if await self.__cap_service.assertion(
+            ctx=ctx,
+            default_ctx=default_ctx,
+        ):
+            role = await self.__moderator_service.check_minimum_role(
+                channel_snowflake=ctx.channel.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=default_ctx.author.id,
+                lowest_role="Coordinator",
+            )
         ban = self.MODEL(
             channel_snowflake=ctx.channel.id,
             display_name=ctx.display_name,
@@ -586,6 +600,20 @@ class BanService:
             singular=True,
         )
         if not ban.blacklisted:
+            cap_seconds = await self.__cap_service.get_cap_seconds(
+                ctx=ctx, default_ctx=default_ctx
+            ) or (8 * 60 * 60)
+            if (
+                cap_seconds
+                and self.__duration_builder.from_timestamp(ban.expires_in).to_seconds()
+                > cap_seconds
+            ):
+                await self.__moderator_service.check_minimum_role(
+                    channel_snowflake=ctx.channel.id,
+                    guild_snowflake=ctx.guild.id,
+                    member_snowflake=default_ctx.author.id,
+                    lowest_role="Coordinator",
+                )
             await self.__database_factory.delete(
                 channel_snowflake=ctx.channel.id,
                 guild_snowflake=ctx.guild.id,

@@ -138,16 +138,6 @@ class AliasContext:
                     self.duration_value = "8h"
                 else:
                     self.duration_value = value
-                if await self.__cap_service.assertion(
-                    ctx=self,
-                    default_ctx=self.__d_ctx,
-                ):
-                    await self.__moderator_service.check_minimum_role(
-                        channel_snowflake=self.channel.id,
-                        guild_snowflake=self.guild.id,
-                        member_snowflake=self.__d_ctx.author.id,
-                        lowest_role="Coordinator",
-                    )
                 self.expires_in = self.__duration_builder.parse(
                     self.duration_value
                 ).to_expires_in()

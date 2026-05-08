@@ -124,6 +124,13 @@ class ModeratorAppCommands(commands.Cog):
             guild_owner_service=self.__guild_owner_service,
             sysadmin_service=self.__sysadmin_service,
         )
+        self.__cap_service = CapService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
 
         self.__paginator_service = PaginatorService(bot=self.__bot)
         self.__stream_service = StreamService(
@@ -137,6 +144,7 @@ class ModeratorAppCommands(commands.Cog):
         )
         self.__voice_mute_service = VoiceMuteService(
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
@@ -147,10 +155,13 @@ class ModeratorAppCommands(commands.Cog):
         self.__ban_service = BanService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
         )
         self.__flag_service = FlagService(
             bot=self.__bot,
@@ -161,20 +172,14 @@ class ModeratorAppCommands(commands.Cog):
         )
         self.__text_mute_service = TextMuteService(
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
             stream_service=self.__stream_service,
         )
-        self.__cap_service = CapService(
-            bot=self.__bot,
-            database_factory=self.__database_factory,
-            dictionary_service=self.__dictionary_service,
-            duration_builder=self.__duration_builder,
-            emoji=self.__emoji,
-        )
-        self.__discord_object_service = DiscordObjectService()
 
     async def cog_check(
         self, interaction: discord.Interaction

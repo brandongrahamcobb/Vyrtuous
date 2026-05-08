@@ -3,6 +3,7 @@ from discord.ext import commands
 from vyrtuous.active_members.active_member_service import ActiveMemberService
 from vyrtuous.administrator.administrator_service import AdministratorService
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cap.cap_service import CapService
 from vyrtuous.coordinator.coordinator_service import CoordinatorService
 from vyrtuous.developer.developer_service import DeveloperService
 from vyrtuous.moderator.moderator_service import ModeratorService
@@ -92,6 +93,13 @@ class Startup(commands.Cog):
             guild_owner_service=self.__guild_owner_service,
             sysadmin_service=self.__sysadmin_service,
         )
+        self.__cap_service = CapService(
+            bot=self.__bot,
+            database_factory=self.__database_factory,
+            dictionary_service=self.__dictionary_service,
+            duration_builder=self.__duration_builder,
+            emoji=self.__emoji,
+        )
         self.__data_service = DataService(
             database_factory=self.__database_factory,
             duration_builder=self.__duration_builder,
@@ -109,6 +117,7 @@ class Startup(commands.Cog):
         self.__voice_mute_service = VoiceMuteService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
@@ -120,11 +129,14 @@ class Startup(commands.Cog):
         self.__ban_service = BanService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
         )
         self.__flag_service = FlagService(
             active_member_service=self.__active_member_service,
@@ -146,11 +158,14 @@ class Startup(commands.Cog):
         self.__text_mute_service = TextMuteService(
             active_member_service=self.__active_member_service,
             bot=self.__bot,
+            cap_service=self.__cap_service,
             database_factory=self.__database_factory,
             data_service=self.__data_service,
             dictionary_service=self.__dictionary_service,
             duration_builder=self.__duration_builder,
             emoji=self.__emoji,
+            moderator_service=self.__moderator_service,
+            stream_service=self.__stream_service,
         )
 
     async def cog_load(self):
