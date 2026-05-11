@@ -271,7 +271,7 @@ class GuildOwnerTextCommands(commands.Cog):
         )
         enabled = self.__hero_service.toggle_enabled()
         if enabled:
-            self.__hero_service + (member.guild.id, member.id)
+            self.__hero_service.add_invincible_member(member.guild.id, member.id)
             await self.__hero_service.unrestrict(
                 guild_snowflake=member.guild.id, member_snowflake=member.id
             )
@@ -280,7 +280,7 @@ class GuildOwnerTextCommands(commands.Cog):
                 f"and invincibility has been enabled for {member.mention}."
             )
         else:
-            self.__hero_service - (member.guild.id, member.id)
+            self.__hero_service.remove_invincible_member(member.guild.id, member.id)
             msg = f"Invincibility has been disabled for {member.mention}"
         return await state.end(success=msg)
 

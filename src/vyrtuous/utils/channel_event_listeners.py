@@ -327,14 +327,21 @@ class ChannelEventListeners(commands.Cog):
                 after=after, before=before, member=member
             )
         duration_value = "1h"
-        if member.id in self.__hero_service.invincible_members:
-            embed = discord.Embed(
-                title=f"\u1f4aB {member.display_name} is a hero!",
-                description=f"{member.display_name} cannot be muted.",
-                color=discord.Color.gold(),
+        if (
+            after.channel.guild.id,
+            member.id,
+        ) in self.__hero_service.invincible_members:
+            # embed = discord.Embed(
+            #     title=f"{member.display_name} is a hero!",
+            #     description=f"{member.display_name} cannot be muted.",
+            #     color=discord.Color.gold(),
+            # )
+            await self.__voice_mute_service.unmute(
+                channel=after.channel, member=member, target="user"
             )
-            embed.set_thumbnail(url=member.display_avatar.url)
-            return await after.channel.send(embed=embed)
+            return
+            # embed.set_thumbnail(url=member.display_avatar.url)
+            # return await after.channel.send(embed=embed)
         elif (
             await self.__stage_service.is_active_stage_room(channel=after.channel)
             and await self.__moderator_service.resolve_highest_role(

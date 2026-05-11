@@ -603,11 +603,10 @@ class BanService:
             cap_seconds = await self.__cap_service.get_cap_seconds(
                 ctx=ctx, default_ctx=default_ctx
             ) or (8 * 60 * 60)
-            if (
-                cap_seconds
-                and self.__duration_builder.from_timestamp(ban.expires_in).to_seconds()
-                > cap_seconds
-            ):
+            expires_seconds = self.__duration_builder.from_timestamp(
+                ban.expires_in
+            ).to_seconds()
+            if not expires_seconds or (expires_seconds > cap_seconds):
                 await self.__moderator_service.check_minimum_role(
                     channel_snowflake=ctx.channel.id,
                     guild_snowflake=ctx.guild.id,
