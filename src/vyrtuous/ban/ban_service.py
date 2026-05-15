@@ -728,15 +728,14 @@ class BanService:
                 and member.voice.channel.id == channel.id
             ):
                 await self.kick(channel=channel, member=member)
-            targets = []
-            for target, overwrite in channel.overwrites.items():
-                if any(value is not None for value in overwrite._values.values()):
-                    if isinstance(target, discord.Member):
-                        targets.append(target)
-            if member not in targets:
-                await self.toggle_view_channel(
-                    channel=channel, member=member, view_channel=False
-                )
+            # targets = []
+            # for target, overwrite in channel.overwrites.items():
+            #     if any(value is not None for value in overwrite._values.values()):
+            #         if isinstance(target, discord.Member):
+            #             targets.append(target)
+            await self.toggle_view_channel(
+                channel=channel, member=member, view_channel=False
+            )
 
     async def toggle_view_channel(
         self,

@@ -554,22 +554,22 @@ class TextMuteService:
         self, channel: discord.abc.GuildChannel, member: discord.Member
     ):
         if await self.is_text_muted(channel=channel, member=member):
-            targets = []
-            for target, overwrite in channel.overwrites.items():
-                if any(value is not None for value in overwrite._values.values()):
-                    if isinstance(target, discord.Member):
-                        targets.append(target)
-            if member not in targets:
-                try:
-                    await channel.set_permissions(
-                        member,
-                        send_messages=False,
-                        add_reactions=False,
-                        reason="Reinstating active text-mute.",
-                    )
-                    await self.update_last_text_muted(channel=channel, member=member)
-                except discord.Forbidden as e:
-                    self.__bot.logger.warning(e)
+            # targets = []
+            # for target, overwrite in channel.overwrites.items():
+            #     if any(value is not None for value in overwrite._values.values()):
+            #         if isinstance(target, discord.Member):
+            #             targets.append(target)
+            # if member not in targets:
+            try:
+                await channel.set_permissions(
+                    member,
+                    send_messages=False,
+                    add_reactions=False,
+                    reason="Reinstating active text-mute.",
+                )
+                await self.update_last_text_muted(channel=channel, member=member)
+            except discord.Forbidden as e:
+                self.__bot.logger.warning(e)
 
     async def update_last_text_muted(
         self, channel: discord.abc.GuildChannel, member: discord.Member
