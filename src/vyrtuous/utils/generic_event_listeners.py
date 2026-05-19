@@ -265,7 +265,6 @@ class GenericEventListeners(commands.Cog):
                 ctx.member_snowflake,
             ) in self.__hero_service.invincible_members:
                 return
-
             await self.__moderator_service.has_equal_or_lower_role(
                 channel_snowflake=ctx.channel.id,
                 guild_snowflake=d_ctx.guild.id,

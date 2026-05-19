@@ -269,6 +269,7 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
+        await self.__text_mute_service.clean_expired()
         self.__bot.logger.info("Cleaned up expired text-mutes.")
 
     @tasks.loop(hours=8)
