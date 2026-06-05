@@ -144,6 +144,10 @@ class TextMuteService:
                     )
                 except discord.Forbidden as e:
                     self.__bot.logger.error(str(e).capitalize())
+                except discord.HTTPException as e:
+                    self.__bot.logger.error(
+                        f"HTTP error removing expired text mute: {e}"
+                    )
 
     async def clean_overwrites(self):
         now = datetime.now(timezone.utc)

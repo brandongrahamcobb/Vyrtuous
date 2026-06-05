@@ -142,6 +142,8 @@ class BanService:
                     )
                 except discord.Forbidden as e:
                     self.__bot.logger.error(str(e).capitalize())
+                except discord.HTTPException as e:
+                    self.__bot.logger.error(f"HTTP error removing expired ban: {e}")
 
     async def toggle_blacklist(self, channel, member_snowflake):
         ban = await self.__database_factory.select(
