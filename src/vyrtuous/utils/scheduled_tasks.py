@@ -238,10 +238,15 @@ class ScheduledTasks(commands.Cog):
                 if isinstance(channel, discord.VoiceChannel):
                     for target, overwrite in channel.overwrites.items():
                         if overwrite.is_empty():
-                            await channel.set_permissions(target, overwrite=None)
-                        self.__bot.logger.info(
-                            f"Cleaned up stale overwrite for {target.mention} in {channel.mention}."
-                        )
+                            try:
+                                await channel.set_permissions(target, overwrite=None)
+                                self.__bot.logger.info(
+                                    f"Cleaned up stale overwrite for {target.mention} in {channel.mention}."
+                                )
+                            except discord.Forbidden:
+                                self.__bot.logger.info(
+                                    f"Failed to cleaned up stale overwrite for {target.mention} in {channel.mention}."
+                                )
 
     @tasks.loop(minutes=1)
     async def save_active_members(self):
