@@ -500,3 +500,10 @@ class AdministratorRoleService:
             pages.append(embed)
             page_number += 1
         return pages
+
+    async def get_administrator_roles(self, guild_snowflake=None) -> list:
+        roles = await self.__database_factory.select(guild_snowflake=guild_snowflake)
+        role_snowflakes = []
+        for role in roles:
+            role_snowflakes.append(role.role_snowflake)
+        return role_snowflakes

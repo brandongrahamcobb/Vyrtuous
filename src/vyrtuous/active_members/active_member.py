@@ -1,5 +1,5 @@
 """!/bin/python3
-active_member.py The purpose of this program is to extend Infraction to provide the ban infraction.
+active_member.py The purpose of this program is to serve an active member dataclass.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
