@@ -38,7 +38,6 @@ class NotGuildOwner(commands.CheckFailure):
 
 class GuildOwnerService:
     MODEL = GuildOwner
-    guild_owners = {}
 
     def __init__(
         self,
@@ -53,17 +52,6 @@ class GuildOwnerService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
-
-    async def populate(self):
-        guild_owners = await self.__database_factory.select()
-        for guild_owner in guild_owners:
-            guild = self.__bot.get_guild(guild_owner.guild_snowflake)
-            if not guild:
-                continue
-            self.guild_owners[guild_owner.member_snowflake] = {
-                "last_active": None,
-                "name": guild_owner.display_name,
-            }
 
     async def update_guild_owners(self):
         for guild in self.__bot.guilds:
@@ -84,9 +72,6 @@ class GuildOwnerService:
                 )
                 await self.__database_factory.create(guild_owner)
                 member = guild.get_member(guild.owner.id)
-                self.guild_owners.update(
-                    {guild.owner_id: {"name": member.display_name}}
-                )
                 self.__bot.logger.info(
                     f"Guild owner ({guild_owner.member_snowflake}) added to the db."
                 )
@@ -101,14 +86,12 @@ class GuildOwnerService:
         )
         await self.__database_factory.create(guild_owner)
         member = guild.get_member(member_snowflake)
-        self.guild_owners.update({member_snowflake: {"name": member.display_name}})
         self.__bot.logger.info(f"Guild owner ({member_snowflake}) added.")
 
     async def remove_guild_owner(self, guild_snowflake, member_snowflake):
         await self.__database_factory.delete(
             guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
         )
-        del self.guild_owners[member_snowflake]
         self.__bot.logger.info(f"Guild owner ({member_snowflake}) removed.")
 
     async def is_guild_owner_wrapper(self, context):

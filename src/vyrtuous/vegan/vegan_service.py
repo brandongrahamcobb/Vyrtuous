@@ -39,7 +39,6 @@ class VeganDictionary:
 class VeganService:
     __CHUNK_SIZE = 12
     MODEL = Vegan
-    vegans = {}
 
     def __init__(
         self,
@@ -63,17 +62,6 @@ class VeganService:
         self.__duration_builder = duration_builder
         self.__emoji = emoji
         self.__stream_service = stream_service
-
-    async def populate(self):
-        vegans = await self.__database_factory.select()
-        for vegan in vegans:
-            guild = self.__bot.get_guild(vegan.guild_snowflake)
-            if not guild:
-                continue
-            self.vegans[vegan.member_snowflake] = {
-                "last_active": None,
-                "name": vegan.display_name,
-            }
 
     async def enforce_or_undo(
         self,
@@ -206,7 +194,6 @@ class VeganService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        self.vegans.update({ctx.member_snowflake: {"name": ctx.display_name}})
         await self.__stream_service.send_log(
             channel=ctx.channel,
             identifier="vegan",
@@ -222,7 +209,6 @@ class VeganService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        # del self.vegans[ctx.member_snowflake]
         await self.__database_factory.delete(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,

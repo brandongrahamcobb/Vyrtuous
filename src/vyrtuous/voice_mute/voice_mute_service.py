@@ -42,7 +42,6 @@ class VoiceMuteDictionary:
 class VoiceMuteService:
     __CHUNK_SIZE = 12
     MODEL = VoiceMute
-    voice_muted_members = {}
 
     def __init__(
         self,
@@ -69,17 +68,6 @@ class VoiceMuteService:
         self.__emoji = emoji
         self.__moderator_service = moderator_service
         self.__stream_service = stream_service
-
-    async def populate(self):
-        voice_muted_members = await self.__database_factory.select()
-        for voice_muted_member in voice_muted_members:
-            guild = self.__bot.get_guild(voice_muted_member.guild_snowflake)
-            if not guild:
-                continue
-            self.text_muted_members[voice_muted_member.member_snowflake] = {
-                "last_active": None,
-                "name": voice_muted_member.display_name,
-            }
 
     async def enforce_or_undo(
         self,
@@ -512,9 +500,6 @@ class VoiceMuteService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        self.voice_muted_members.update(
-            {ctx.member_snowflake: {"name": ctx.display_name}}
-        )
         await self.enforce_log(
             author=default_ctx.author,
             channel=ctx.channel,
@@ -583,7 +568,6 @@ class VoiceMuteService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        # del self.voice_muted_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,

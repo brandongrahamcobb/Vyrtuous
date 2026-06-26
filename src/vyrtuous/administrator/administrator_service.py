@@ -46,7 +46,6 @@ class AdministratorService:
 
     __CHUNK_SIZE = 12
     MODEL = Administrator
-    administrators = {}
 
     def __init__(
         self,
@@ -65,17 +64,6 @@ class AdministratorService:
         self.__database_factory.model = self.MODEL
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
-
-    async def populate(self):
-        administrators = await self.__database_factory.select()
-        for administrator in administrators:
-            guild = self.__bot.get_guild(administrator.guild_snowflake)
-            if not guild:
-                continue
-            self.administrators[administrator.member_snowflake] = {
-                "last_active": None,
-                "name": administrator.display_name,
-            }
 
     async def is_administrator_wrapper(
         self,
@@ -258,9 +246,6 @@ class AdministratorService:
                 role_snowflakes=[int(role_snowflake)],
             )
             await self.__database_factory.create(administrator)
-            self.administrators.update(
-                {member_snowflake: {"name": member.display_name}}
-            )
             return
         administrator_role_snowflakes = administrator_existing.role_snowflakes
         administrator_role_snowflakes.append(role_snowflake)
@@ -302,7 +287,6 @@ class AdministratorService:
             await self.__database_factory.delete(
                 guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
             )
-            del self.administrators[member_snowflake]
         else:
             where_kwargs = {
                 "guild_snowflake": int(guild_snowflake),

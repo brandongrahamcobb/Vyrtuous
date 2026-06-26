@@ -48,7 +48,6 @@ class CoordinatorDictionary:
 class CoordinatorService:
     __CHUNK_SIZE = 12
     MODEL = Coordinator
-    coordinators = {}
 
     def __init__(
         self,
@@ -101,17 +100,6 @@ class CoordinatorService:
             guild_snowflake=int(context.guild.id),
             member_snowflake=int(context.member.id),
         )
-
-    async def populate(self):
-        coordinators = await self.__database_factory.select()
-        for coordinator in coordinators:
-            guild = self.__bot.get_guild(coordinator.guild_snowflake)
-            if not guild:
-                continue
-            self.coordinators[coordinator.member_snowflake] = {
-                "last_active": None,
-                "name": coordinator.display_name,
-            }
 
     async def build_dictionary(self, obj):
         coordinators = []
@@ -237,7 +225,6 @@ class CoordinatorService:
             await self.__database_factory.delete(
                 channel_snowflake=channel.id, member_snowflake=member_snowflake
             )
-            # del self.coordinators[member_snowflake]
             action = "revoked"
         else:
             coordinator = self.MODEL(
@@ -247,7 +234,6 @@ class CoordinatorService:
                 member_snowflake=member_snowflake,
             )
             await self.__database_factory.create(coordinator)
-            self.coordinators.update({member_snowflake: {"name": display_name}})
             action = "granted"
         member = channel.guild.get_member(member_snowflake)
         if member:

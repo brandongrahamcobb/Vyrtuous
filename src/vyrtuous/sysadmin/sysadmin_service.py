@@ -32,7 +32,6 @@ class NotSysadmin(commands.CheckFailure):
 
 class SysadminService:
     MODEL = Sysadmin
-    sysadmins = {}
 
     def __init__(
         self,
@@ -47,14 +46,6 @@ class SysadminService:
         self.__bot = bot
         self.__database_factory = copy(database_factory)
         self.__database_factory.model = self.MODEL
-
-    async def populate(self):
-        sysadmins = await self.__database_factory.select()
-        for sysadmin in sysadmins:
-            self.sysadmins[sysadmin.member_snowflake] = {
-                "last_active": None,
-                "name": sysadmin.display_name,
-            }
 
     async def update_sysadmin(self):
         member_snowflake = self.__bot.config.get("discord_owner_id", None)
@@ -74,7 +65,6 @@ class SysadminService:
                 member_display_name = self.__active_member_service.active_members.get(
                     member_snowflake, None
                 ).get("name", None)
-            self.sysadmins.update({member_snowflake: {"name": member_display_name}})
             self.__bot.logger.info(f"Sysadmin ({member_snowflake}) added to the db.")
         else:
             self.__bot.logger.info(f"Sysadmin ({member_snowflake}) already in the db.")

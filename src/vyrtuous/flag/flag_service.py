@@ -41,7 +41,6 @@ class FlagDictionary:
 class FlagService:
     __CHUNK_SIZE = 12
     MODEL = Flag
-    flagged_members = {}
 
     def __init__(
         self,
@@ -65,17 +64,6 @@ class FlagService:
         self.__flags = []
         self.__join_log = {}
         self.__stream_service = stream_service
-
-    async def populate(self):
-        flagged_members = await self.__database_factory.select()
-        for flagged_member in flagged_members:
-            guild = self.__bot.get_guild(flagged_member.guild_snowflake)
-            if not guild:
-                continue
-            self.flagged_members[flagged_member.member_snowflake] = {
-                "last_active": None,
-                "name": flagged_member.display_name,
-            }
 
     async def enforce_or_undo(
         self,
@@ -268,7 +256,6 @@ class FlagService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        self.flagged_members.update({ctx.member_snowflake: {"name": ctx.display_name}})
         await self.enforce_log(
             author=default_ctx.author,
             channel=ctx.channel,
@@ -311,7 +298,6 @@ class FlagService:
             member = self.__active_member_service.active_members.get(
                 ctx.member_snowflake, None
             )
-        # del self.flagged_members[ctx.member_snowflake]
         await self.undo_log(
             author=default_ctx.author,
             channel=ctx.channel,

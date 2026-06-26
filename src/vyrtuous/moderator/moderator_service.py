@@ -81,7 +81,6 @@ class ModeratorService:
         "Developer",
         "Sysadmin",
     ]
-    moderators = {}
 
     def __init__(
         self,
@@ -110,17 +109,6 @@ class ModeratorService:
         self.__guild_owner_service = guild_owner_service
         self.__administrator_service = administrator_service
         self.__coordinator_service = coordinator_service
-
-    async def populate(self):
-        moderators = await self.__database_factory.select()
-        for moderator in moderators:
-            guild = self.__bot.get_guild(moderator.guild_snowflake)
-            if not guild:
-                continue
-            self.moderator[moderator.member_snowflake] = {
-                "last_active": None,
-                "name": moderator.display_name,
-            }
 
     async def is_moderator_wrapper(self, context):
         return await self.is_moderator(
@@ -386,7 +374,6 @@ class ModeratorService:
                 channel_snowflake=int(channel.id),
                 member_snowflake=int(member_snowflake),
             )
-            # del self.moderators[member_snowflake]
             action = "revoked"
         else:
             moderator = self.MODEL(
@@ -396,7 +383,6 @@ class ModeratorService:
                 member_snowflake=int(member_snowflake),
             )
             await self.__database_factory.create(moderator)
-            self.moderators.update({member_snowflake: {"name": display_name}})
             action = "granted"
         member = channel.guild.get_member(member_snowflake)
         if member:

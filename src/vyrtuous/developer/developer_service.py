@@ -34,7 +34,6 @@ class DeveloperService:
 
     __CHUNK_SIZE = 12
     MODEL = Developer
-    developer_members = {}
 
     def __init__(
         self,
@@ -64,14 +63,6 @@ class DeveloperService:
 
     async def is_developer_wrapper(self, context):
         return await self.is_developer(member_snowflake=int(context.author.id))
-
-    async def populate(self):
-        developers = await self.__database_factory.select()
-        for developer in developers:
-            self.developer_members[developer.member_snowflake] = {
-                "last_active": None,
-                "name": developer.display_name,
-            }
 
     async def build_dictionary(self, obj):
         developers = []
@@ -168,7 +159,8 @@ class DeveloperService:
         online_developer_mentions.append(sysadmin.mention)
         if source.guild:
             message = f"Issue reported by {author.name}!\n**Message:** {message.jump_url}\n**Reference:** {reference}"
-            for developer in await self.developers():
+            developers = await self.__database_factory.select()
+            for developer in developers:
                 member = source.guild.get_member(developer.member_snowflake)
                 if member and member.status != discord.Status.offline:
                     online_developer_mentions.append(member.mention)
@@ -186,18 +178,17 @@ class DeveloperService:
 
     async def toggle_developer(self, member_snowflake, display_name=None):
         found = False
-        for developer in await self.developers():
+        developers = await self.__database_factory.select()
+        for developer in developers:
             if developer.member_snowflake == member_snowflake:
                 await self.__database_factory.delete(member_snowflake=member_snowflake)
                 found = True
-                # del self.developer_members[member_snowflake]
                 action = "revoked"
         if not found:
             new_developer = self.MODEL(
                 display_name=display_name, member_snowflake=member_snowflake
             )
             await self.__database_factory.create(new_developer)
-            self.developer_members.update({member_snowflake: {"name": display_name}})
             action = "granted"
         member = self.__bot.get_user(member_snowflake)
         if member:
@@ -244,12 +235,9 @@ class DeveloperService:
                     f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}). {str(e).capitalize()}"
                 )
 
-    async def developers(self):
-        developers = await self.__database_factory.select()
-        return developers
-
     async def handle_developer_assignment(self, member, reference):
-        for developer in await self.developers():
+        developers = await self.__database_factory.select()
+        for developer in developers:
             if developer.member_snowflake == member.id:
                 bug, state = self.__bug_service.handle_bug_assignment(
                     developer=developer, reference=reference

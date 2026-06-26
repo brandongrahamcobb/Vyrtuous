@@ -37,7 +37,6 @@ class ServerMuteDictionary:
 class ServerMuteService:
     __CHUNK_SIZE = 12
     MODEL = ServerMute
-    server_muted_members = {}
 
     def __init__(
         self,
@@ -56,17 +55,6 @@ class ServerMuteService:
         self.__dictionary_service = dictionary_service
         self.__emoji = emoji
         self.__moderator_service = moderator_service
-
-    async def populate(self):
-        server_muted_members = await self.__database_factory.select()
-        for server_muted_member in server_muted_members:
-            guild = self.__bot.get_guild(server_muted_member.guild_snowflake)
-            if not guild:
-                continue
-            self.server_muted_members[server_muted_member.member_snowflake] = {
-                "last_active": None,
-                "name": server_muted_member.display_name,
-            }
 
     async def build_dictionary(self, obj):
         server_mutes = []

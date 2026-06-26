@@ -40,7 +40,6 @@ class BanDictionary:
 class BanService:
     __CHUNK_SIZE = 12
     MODEL = Ban
-    banned_members = {}
 
     def __init__(
         self,
@@ -68,17 +67,6 @@ class BanService:
         self.__emoji = emoji
         self.__moderator_service = moderator_service
         self.__stream_service = stream_service
-
-    async def populate(self):
-        banned_members = await self.__database_factory.select()
-        for banned_member in banned_members:
-            guild = self.__bot.get_guild(banned_member.guild_snowflake)
-            if not guild:
-                continue
-            self.banned_members[banned_member.member_snowflake] = {
-                "last_active": None,
-                "name": banned_member.display_name,
-            }
 
     async def enforce_or_undo(
         self,
