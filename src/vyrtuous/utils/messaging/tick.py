@@ -31,7 +31,8 @@ from vyrtuous.upload import upload_service
 from vyrtuous.utils.messaging import emojis, message_service
 from vyrtuous.utils.messaging.paginator import Paginator
 from vyrtuous.utils.tracking import bug_service
-from vyrtuous.utils.users import author_service, developer_service
+from vyrtuous.utils.users import developer_service
+from vyrtuous.inc.helpers import resolve_author
 
 COLOR_MAP = {"\u2705": 0x57F287, "\u26a0\ufe0f": 0xFEE65C, "\u274c": 0xED4245}
 
@@ -67,7 +68,7 @@ class Tick:
             )
         self.__bot = bot
         self.source = ctx or interaction or message
-        self.author = author_service.resolve_author(self.source)
+        self.author = resolve_author(self.source)
         self.elapsed = 0.0
         self.success = False
         self.start_time = self._resolve_start_time()

@@ -23,10 +23,10 @@ import asyncio
 import debugpy
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.config import Config
-from vyrtuous.database import Database
+from vyrtuous.system.config import Config
+from vyrtuous.db.database import Database
 from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
-from vyrtuous.utils.logger import logger, setup_logging
+from vyrtuous.system.logger import logger, setup_logging
 
 
 async def main():

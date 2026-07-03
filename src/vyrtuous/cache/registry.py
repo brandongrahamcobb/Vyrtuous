@@ -40,7 +40,7 @@ class MemberState:
 
 @dataclass
 class ChannelState:
-    deleted: defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
+    deleted: set[str] = field(default_factory=set)
     join_log: defaultdict[tuple[int, int], list[float]] = field(
         default_factory=lambda: defaultdict(list)
     )

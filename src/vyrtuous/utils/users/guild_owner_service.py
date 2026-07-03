@@ -25,7 +25,8 @@ MODEL = GuildOwner
 
 async def is_guild_owner_wrapper(context):
     return await is_guild_owner(
-        guild_snowflake=context.guild.id, member_snowflake=int(context.author.id)
+        guild_snowflake=context.guild_snowflake,
+        member_snowflake=int(context.member_snowflake),
     )
 
 

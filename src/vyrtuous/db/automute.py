@@ -22,9 +22,9 @@ from datetime import datetime, timezone
 
 
 @dataclass(frozen=True)
-class Stage:
-    __tablename__ = "active_stages"
-    identifier = "stage"
+class AutoMute:
+    __tablename__ = "active_automute_rooms"
+    identifier = "automute"
     channel_snowflake: int
     guild_snowflake: int
     expires_in: datetime | None = None

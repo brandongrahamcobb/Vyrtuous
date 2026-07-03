@@ -22,8 +22,7 @@ from discord.ext import commands, tasks
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
-from vyrtuous.utils.moderation import (ban_service, text_mute_service,
-                                       voice_mute_service)
+from vyrtuous.utils.moderation import ban_service, text_mute_service, voice_mute_service
 from vyrtuous.utils.rooms import automute_room_service
 from vyrtuous.utils.statistics import system_monitoring_service
 from vyrtuous.utils.tracking import bug_service
@@ -43,8 +42,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_voice_mutes.start()
         if not self.check_expired_text_mutes.is_running():
             self.check_expired_text_mutes.start()
-        if not self.check_expired_stages.is_running():
-            self.check_expired_stages.start()
+        if not self.check_expired_automutes.is_running():
+            self.check_expired_automutes.start()
         if not self.check_expired_bugs.is_running():
             self.check_expired_bugs.start()
         if not self.temporarily_cleanup_overwrites.is_running():
@@ -58,11 +57,8 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(hours=1)
     async def remove_inactive_members(self):
-        for guild in self.__bot.guilds:
-            count = await active_member_service.remove_inactive_members(guild=guild)
-            self.__bot.logger.info(
-                f"Removed {count} inactive members from {guild.name}."
-            )
+        count = await active_member_service.remove_inactive_members()
+        self.__bot.logger.info(f"Removed {count} inactive members.")
 
     @tasks.loop(minutes=5)
     async def system_monitoring(self):
@@ -76,7 +72,7 @@ class ScheduledTasks(commands.Cog):
             for channel in guild.channels:
                 if isinstance(channel, discord.VoiceChannel):
                     for target, overwrite in channel.overwrites.items():
-                        if overwrite.is_empty():
+                        if overwrite.is_empty() and isinstance(target, discord.Member):
                             try:
                                 await channel.set_permissions(target, overwrite=None)
                                 self.__bot.logger.info(
@@ -86,14 +82,10 @@ class ScheduledTasks(commands.Cog):
                                 self.__bot.logger.info(
                                     f"Failed to cleaned up stale overwrite for {target.mention} in {channel.mention}."
                                 )
-                            except discord.Forbidden:
-                                self.__bot.logger.info(
-                                    f"Failed to cleaned up stale overwrite for {target.mention} in {channel.mention}."
-                                )
 
     @tasks.loop(minutes=1)
     async def save_active_members(self):
-        await active_member_service.save_active_members()
+        await active_member_service.save_and_update_active_members()
         self.__bot.logger.info("Saved active members.")
 
     @tasks.loop(minutes=5)
@@ -107,9 +99,9 @@ class ScheduledTasks(commands.Cog):
         self.__bot.logger.info("Cleaned up expired voice-mutes.")
 
     @tasks.loop(minutes=1)
-    async def check_expired_stages(self):
+    async def check_expired_automutes(self):
         await automute_room_service.clean_expired()
-        self.__bot.logger.info("Cleaned up expired stages.")
+        self.__bot.logger.info("Cleaned up expired automute rooms.")
 
     @tasks.loop(hours=8)
     async def check_expired_bugs(self):

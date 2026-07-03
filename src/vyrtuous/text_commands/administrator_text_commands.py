@@ -28,7 +28,7 @@ from vyrtuous.db.administrator import NotAdministrator
 from vyrtuous.inc.helpers import PATH_LOG, at_home
 from vyrtuous.listing import (list_administrator_roles, list_caps,
                               list_permissions, list_server_mutes,
-                              list_streams, list_temporary_rooms,
+                              list_streams,
                               list_video_rooms)
 from vyrtuous.models.category import Category
 from vyrtuous.models.multi_converter import MultiConverter
@@ -39,7 +39,7 @@ from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import server_mute_service, voice_mute_service
 from vyrtuous.utils.rooms import (automute_room_service, cap_service,
-                                  temporary_room_service, video_room_service)
+                                  video_room_service)
 from vyrtuous.utils.tracking import stream_service
 from vyrtuous.utils.users import (administrator_service, coordinator_service,
                                   developer_service, guild_owner_service,
@@ -54,6 +54,8 @@ class AdminTextCommands(commands.Cog):
         self.__bot = bot
 
     async def cog_check(self, ctx):
+        if ctx.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -488,6 +490,8 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return tick.end(warning="This command must be used in a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -557,31 +561,6 @@ class AdminTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         msg = await temporary_room_service.toggle_temporary_room(channel=channel)
         return await tick.end(success=msg)
-
-    @commands.command(
-        name="temps",
-        help="List temporary rooms with matching command aliases.",
-    )
-    @skip_text_command_help_discovery()
-    async def list_temp_rooms_text_command(
-        self,
-        ctx: commands.Context,
-        target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, None
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: `all`, channel ID/mention, or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_temporary_rooms.build_pages(obj=obj, is_at_home=is_at_home)
-        return await tick.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")
     @skip_text_command_help_discovery()

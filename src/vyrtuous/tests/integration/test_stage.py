@@ -23,12 +23,13 @@ from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.coordinator.coordinator_text_commands import \
-    CoordinatorTextCommands
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
@@ -83,13 +84,13 @@ async def test_stage(bot, command: str, channel, permission_role):
         )
         coord_commands = bot.get_cog("CoordinatorTextCommands")
         with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(
-                    CoordinatorTextCommands,
-                    "cog_check",
-                    return_value=True,
-                )
-            )
+            # stack.enter_context(
+            #     patch.object(
+            #         CoordinatorTextCommands,
+            #         "cog_check",
+            #         return_value=True,
+            #     )
+            # )
             # stack.enter_context(
             #     patch(
             #         "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",

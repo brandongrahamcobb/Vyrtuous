@@ -28,13 +28,16 @@ from vyrtuous.cache.registry import MemberState
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_developers, list_heroes
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import \
-    skip_text_command_help_discovery
+from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (administrator_role_service,
-                                  developer_service, guild_owner_service,
-                                  hero_service, sysadmin_service)
+from vyrtuous.utils.users import (
+    administrator_role_service,
+    developer_service,
+    guild_owner_service,
+    hero_service,
+    sysadmin_service,
+)
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -45,6 +48,8 @@ class GuildOwnerTextCommands(commands.Cog):
         self.__bot = bot
 
     async def cog_check(self, ctx):
+        if ctx.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,

@@ -40,8 +40,8 @@ async def is_administrator_wrapper(
     context,
 ):
     return await is_administrator(
-        guild_snowflake=int(context.guild.id),
-        member_snowflake=int(context.author.id),
+        guild_snowflake=int(context.guild_snowflake),
+        member_snowflake=int(context.member_snowflake),
     )
 
 

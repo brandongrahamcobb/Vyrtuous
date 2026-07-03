@@ -21,23 +21,15 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.users import (administrator_role_service,
-                                  administrator_service, guild_owner_service)
+from vyrtuous.utils.users import (
+    administrator_role_service,
+    administrator_service,
+)
 
 
 class GuildEventListeners(commands.Cog):
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
-
-    @commands.Cog.listener()
-    async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
-        if before.owner_id != after.owner_id:
-            await guild_owner_service.remove_guild_owner(
-                guild_snowflake=int(before.id), member_snowflake=int(before.owner_id)
-            )
-            await guild_owner_service.add_guild_owner(
-                guild_snowflake=int(after.id), member_snowflake=int(after.owner_id)
-            )
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -51,32 +43,35 @@ class GuildEventListeners(commands.Cog):
         after_role_snowflakes = {str(r.id) for r in after.roles}
         added_roles = after_role_snowflakes - before_role_snowflakes
         removed_roles = before_role_snowflakes - after_role_snowflakes
-        kwargs = {
-            "guild_snowflake": int(guild_snowflake),
-            "member_snowflake": int(before.id),
-        }
         if added_roles:
             for added_role in added_roles:
                 if added_role in administrator_role_snowflakes:
-                    kwargs.update({"role_snowflake": int(added_role)})
-                    await administrator_service.added_role(kwargs=kwargs)
+                    await administrator_service.added_role(
+                        guild_snowflake=guild_snowflake,
+                        member_snowflake=before.id,
+                        role_snowflake=int(added_role),
+                    )
                     self.__bot.logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             for removed_role in removed_roles:
-                kwargs.update({"role_snowflake": int(removed_role)})
-                await administrator_service.removed_role(kwargs=kwargs)
+                await administrator_service.removed_role(
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=before.id,
+                    role_snowflake=int(removed_role),
+                )
+
                 self.__bot.logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
         guild_snowflake = role.guild.id
-        kwargs = {
-            "guild_snowflake": int(guild_snowflake),
-            "role_snowflake": str(role.id),
-        }
+        role_snowflake = role.id
         for member in role.members:
-            kwargs.update({"member_snowflake": member.id})
-            await administrator_service.removed_role(kwargs=kwargs)
+            await administrator_service.removed_role(
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member.id,
+                role_snowflake=role_snowflake,
+            )
             self.__bot.logger.info(
                 f"Removed role ({role.id}) from server ({role.guild.name})."
             )

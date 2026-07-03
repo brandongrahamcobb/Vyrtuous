@@ -28,7 +28,6 @@ from vyrtuous.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias import Alias, NotAlias
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.vegan.vegan_alias import VeganAlias
 
 MODEL = Alias
 
@@ -66,9 +65,7 @@ class AliasContext:
 
     def _fill_map(
         self,
-        alias: Union[
-            BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VeganAlias, VoiceMuteAlias
-        ],
+        alias: Union[BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias],
     ) -> None:
         map = alias.ARGS_MAP
         sorted_args = sorted(map.items(), key=lambda x: x[1])
@@ -90,9 +87,7 @@ class AliasContext:
 
     async def _populate_alias(
         self,
-    ) -> Union[
-        BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VeganAlias, VoiceMuteAlias
-    ]:
+    ) -> Union[BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]:
         database_factory = DatabaseFactory(MODEL)
         alias_entry = await database_factory.select(
             alias_name=self.__alias_name,

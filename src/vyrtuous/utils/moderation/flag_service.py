@@ -65,11 +65,6 @@ async def enforce_or_undo(
         return embed
 
 
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)
-
-
 async def warn(channel: discord.channel.VocalGuildChannel, member: discord.Member):
     bot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)

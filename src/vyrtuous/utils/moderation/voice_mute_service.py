@@ -21,8 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from vyrtuous.aliases import (unvoice_mute_alias_service,
-                              voice_mute_alias_service)
+from vyrtuous.aliases import unvoice_mute_alias_service, voice_mute_alias_service
 from vyrtuous.aliases.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
@@ -380,11 +379,6 @@ async def on_stage(channel, context, duration_value):
             )
             failed.append(member)
     return failed, skipped, succeeded
-
-
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)
 
 
 async def is_voice_muted(channel, member):

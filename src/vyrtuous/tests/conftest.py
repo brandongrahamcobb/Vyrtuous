@@ -25,7 +25,7 @@ from discord.ext.commands import Context
 from discord.ext.commands import view as cmd_view
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.config import Config
+from vyrtuous.system.config import Config
 from vyrtuous.tests.integration.mock_database import dsn
 from vyrtuous.tests.integration.mock_discord_bot import MockBot
 

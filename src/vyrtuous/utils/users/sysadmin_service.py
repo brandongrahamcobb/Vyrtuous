@@ -24,7 +24,7 @@ MODEL = Sysadmin
 
 
 async def is_sysadmin_wrapper(context):
-    return await is_sysadmin(member_snowflake=context.author.id)
+    return await is_sysadmin(member_snowflake=context.member_snowflake)
 
 
 async def is_sysadmin(member_snowflake: int) -> bool:

@@ -25,15 +25,19 @@ from vyrtuous.db.coordinator import NotCoordinator
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_bans
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import \
-    skip_text_command_help_discovery
+from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import ban_service
 from vyrtuous.utils.rooms import automute_room_service
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  moderator_service, sysadmin_service)
+from vyrtuous.utils.users import (
+    administrator_service,
+    coordinator_service,
+    developer_service,
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
+)
 
 
 class CoordinatorTextCommands(commands.Cog):
@@ -43,6 +47,8 @@ class CoordinatorTextCommands(commands.Cog):
         self.__bot = bot
 
     async def cog_check(self, ctx):
+        if ctx.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -193,41 +199,41 @@ class CoordinatorTextCommands(commands.Cog):
             embeds.append(embed)
         return await tick.end(success=embeds)
 
-    @commands.command(name="stage", help="Start/stop stage")
-    @skip_text_command_help_discovery()
-    async def toggle_stage_text_command(
-        self,
-        ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
-            default=None,
-            description="Tag a channel or include its ID.",
-        ),
-        *,
-        duration: str = commands.parameter(
-            default="1h",
-            description="Options: (+|-)duration(m|h|d) 0 - permanent / 24h - default",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        context = SnowflakeContext(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-        )
-        resolved_channel = channel or ctx.channel
-        await moderator_service.check_minimum_role(
-            channel_snowflake=resolved_channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-            lowest_role="Coordinator",
-        )
-        pages = await automute_room_service.toggle_stage(
-            channel=resolved_channel, context=context, duration_value=duration
-        )
-        return await tick.end(success=pages)
+    # @commands.command(name="stage", help="Start/stop stage")
+    # @skip_text_command_help_discovery()
+    # async def toggle_stage_text_command(
+    #     self,
+    #     ctx: commands.Context,
+    #     channel: discord.abc.GuildChannel = commands.parameter(
+    #         converter=commands.VoiceChannelConverter,
+    #         default=None,
+    #         description="Tag a channel or include its ID.",
+    #     ),
+    #     *,
+    #     duration: str = commands.parameter(
+    #         default="1h",
+    #         description="Options: (+|-)duration(m|h|d) 0 - permanent / 24h - default",
+    #     ),
+    # ):
+    #     tick = Tick(bot=self.__bot, ctx=ctx)
+    #     if ctx.guild is None:
+    #         return await tick.end(warning="This command must be executed in a server.")
+    #     context = SnowflakeContext(
+    #         channel_snowflake=ctx.channel.id,
+    #         guild_snowflake=ctx.guild.id,
+    #         member_snowflake=ctx.author.id,
+    #     )
+    #     resolved_channel = channel or ctx.channel
+    #     await moderator_service.check_minimum_role(
+    #         channel_snowflake=resolved_channel.id,
+    #         guild_snowflake=ctx.guild.id,
+    #         member_snowflake=ctx.author.id,
+    #         lowest_role="Coordinator",
+    #     )
+    #     pages = await automute_room_service.toggle_stage(
+    #         channel=resolved_channel, context=context, duration_value=duration
+    #     )
+    #     return await tick.end(success=pages)
 
 
 async def setup(bot: DiscordBot):

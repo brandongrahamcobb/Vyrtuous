@@ -41,7 +41,7 @@ async def is_developer(member_snowflake: int) -> bool:
 
 
 async def is_developer_wrapper(context):
-    return await is_developer(member_snowflake=int(context.author.id))
+    return await is_developer(member_snowflake=int(context.member_snowflake))
 
 
 async def report_issue(author, message, reference):

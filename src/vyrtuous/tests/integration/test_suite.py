@@ -22,9 +22,11 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from vyrtuous.messaging.tick import Tick
-from vyrtuous.tests.integration.mock_discord_channel import (MockTextChannel,
-                                                             MockVoiceChannel)
+from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.tests.integration.mock_discord_channel import (
+    MockTextChannel,
+    MockVoiceChannel,
+)
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage

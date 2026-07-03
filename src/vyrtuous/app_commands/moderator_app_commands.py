@@ -30,9 +30,14 @@ from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal
 from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  moderator_service, sysadmin_service)
+from vyrtuous.utils.users import (
+    administrator_service,
+    coordinator_service,
+    developer_service,
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
+)
 from vyrtuous.view.data_view import DataView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_infraction_view import ModifyInfractionView
@@ -46,7 +51,7 @@ class ModeratorAppCommands(commands.Cog):
     def __init__(
         self,
         *,
-        bot: DiscordBot | None = None,
+        bot: DiscordBot,
     ):
         self.__bot = bot
         self.__duration_builder = DurationBuilder()

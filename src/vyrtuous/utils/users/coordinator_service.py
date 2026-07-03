@@ -56,14 +56,14 @@ async def is_coordinator_at_all(
 
 
 async def is_coordinator_at_all_wrapper(context):
-    return await is_coordinator_at_all(member_snowflake=context.author.id)
+    return await is_coordinator_at_all(member_snowflake=context.member_snowflake)
 
 
 async def is_coordinator_wrapper(context):
     return await is_coordinator(
-        channel_snowflake=int(context.channel.id),
-        guild_snowflake=int(context.guild.id),
-        member_snowflake=int(context.member.id),
+        channel_snowflake=int(context.channel_snowflake),
+        guild_snowflake=int(context.guild_snowflake),
+        member_snowflake=int(context.member_snowflake),
     )
 
 
@@ -102,8 +102,3 @@ async def toggle_coordinator(channel, member_snowflake):
         f"Coordinator access has been {action} for {member_str} "
         f"in {channel.mention}."
     )
-
-
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(Coordinator)
-    await database_factory.update(**kwargs)

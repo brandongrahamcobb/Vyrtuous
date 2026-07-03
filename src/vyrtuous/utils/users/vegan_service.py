@@ -25,8 +25,8 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.stream import stream_service
-from vyrtuous.vegan.vegan import Vegan
+from vyrtuous.utils.tracking import stream_service
+from vyrtuous.db.vegan import Vegan
 
 MODEL = Vegan
 
@@ -151,8 +151,3 @@ async def undo_embed(ctx):
     if member:
         embed.set_thumbnail(url=member.display_avatar.url)
     return embed
-
-
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)

@@ -203,11 +203,6 @@ async def clean_overwrites():
             )
 
 
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)
-
-
 async def is_banned(channel: discord.abc.GuildChannel, member: discord.Member):
     database_factory = DatabaseFactory(MODEL)
     ban = await database_factory.select(

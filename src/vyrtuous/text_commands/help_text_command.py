@@ -30,9 +30,14 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.moderator import NotModerator
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  moderator_service, sysadmin_service)
+from vyrtuous.utils.users import (
+    administrator_service,
+    coordinator_service,
+    developer_service,
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
+)
 
 
 def skip_text_command_help_discovery():
@@ -59,6 +64,8 @@ class HelpTextCommand(commands.Cog):
         ]
 
     async def cog_check(self, ctx: commands.Context):
+        if ctx.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,

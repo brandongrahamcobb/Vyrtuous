@@ -26,20 +26,37 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.moderator import NotModerator
 from vyrtuous.inc.helpers import at_home
-from vyrtuous.listing import (list_administrators, list_aliases, list_bans,
-                              list_coordinators, list_flags, list_moderators,
-                              list_text_mutes, list_vegans, list_voice_mutes)
+from vyrtuous.listing import (
+    list_administrators,
+    list_aliases,
+    list_bans,
+    list_coordinators,
+    list_flags,
+    list_moderators,
+    list_text_mutes,
+    list_vegans,
+    list_voice_mutes,
+)
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import \
-    skip_text_command_help_discovery
+from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import (ban_service, flag_service,
-                                       text_mute_service, voice_mute_service)
-from vyrtuous.utils.rooms import automute_room_service, temporary_room_service
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  moderator_service, sysadmin_service)
+from vyrtuous.utils.moderation import (
+    ban_service,
+    flag_service,
+    text_mute_service,
+    voice_mute_service,
+)
+
+# from vyrtuous.utils.rooms import automute_room_service
+from vyrtuous.utils.users import (
+    administrator_service,
+    coordinator_service,
+    developer_service,
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
+)
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -50,6 +67,8 @@ class ModeratorTextCommands(commands.Cog):
         self.__bot = bot
 
     async def cog_check(self, ctx: commands.Context):
+        if ctx.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -224,27 +243,6 @@ class ModeratorTextCommands(commands.Cog):
         pages = await list_vegans.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
-    @commands.command(
-        name="migrate",
-        help="Migrate a temporary room to a new channel by snowflake.",
-    )
-    @skip_text_command_help_discovery()
-    async def migrate_temp_room_text_command(
-        self,
-        ctx: commands.Context,
-        old_name: str = commands.parameter(description="Provide a channel name"),
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
-            description="Tag a channel or include its ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        msg = await temporary_room_service.migrate_temporary_room(
-            channel=channel,
-            old_name=old_name,
-        )
-        return await tick.end(success=msg)
-
     @commands.command(name="mods", help="Lists mods.")
     async def list_moderators_text_command(
         self,
@@ -287,41 +285,41 @@ class ModeratorTextCommands(commands.Cog):
         pages = await list_voice_mutes.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
-    @commands.command(name="mstage", help="Toggle stage mute/unmute.")
-    @skip_text_command_help_discovery()
-    async def stage_mute_text_command(
-        self,
-        ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
-            description="Tag a member or include their ID",
-        ),
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
-            description="Tag a channel or include its ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
-        context = SnowflakeContext(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-        )
-        obj = channel or ctx.channel
-        await moderator_service.check_minimum_role(
-            channel_snowflake=obj.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-            lowest_role="Moderator",
-        )
-        msg = await automute_room_service.toggle_stage_mute(
-            channel=obj,
-            context=context,
-            member=member,
-        )
-        return await tick.end(success=msg)
+    # @commands.command(name="mstage", help="Toggle stage mute/unmute.")
+    # @skip_text_command_help_discovery()
+    # async def stage_mute_text_command(
+    #     self,
+    #     ctx: commands.Context,
+    #     member: discord.Member = commands.parameter(
+    #         converter=commands.MemberConverter,
+    #         description="Tag a member or include their ID",
+    #     ),
+    #     channel: discord.abc.GuildChannel = commands.parameter(
+    #         converter=commands.VoiceChannelConverter,
+    #         description="Tag a channel or include its ID.",
+    #     ),
+    # ):
+    #     tick = Tick(bot=self.__bot, ctx=ctx)
+    #     if ctx.guild is None:
+    #         return await tick.end(warning="This command must be used in a server.")
+    #     context = SnowflakeContext(
+    #         channel_snowflake=ctx.channel.id,
+    #         guild_snowflake=ctx.guild.id,
+    #         member_snowflake=ctx.author.id,
+    #     )
+    #     obj = channel or ctx.channel
+    #     await moderator_service.check_minimum_role(
+    #         channel_snowflake=obj.id,
+    #         guild_snowflake=ctx.guild.id,
+    #         member_snowflake=ctx.author.id,
+    #         lowest_role="Moderator",
+    #     )
+    #     msg = await automute_room_service.toggle_stage_mute(
+    #         channel=obj,
+    #         context=context,
+    #         member=member,
+    #     )
+    #     return await tick.end(success=msg)
 
     @commands.command(name="purge", help="Delete messages.")
     async def purge_text_command(

@@ -23,12 +23,17 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from vyrtuous.cache.registry import (ChannelState, MemberState,
-                                     MessageHistoryState, Registry,
-                                     SystemResourcesState, VideoRoomState)
-from vyrtuous.config import Config
+from vyrtuous.cache.registry import (
+    ChannelState,
+    MemberState,
+    MessageHistoryState,
+    Registry,
+    SystemResourcesState,
+    VideoRoomState,
+)
+from vyrtuous.system.config import Config
 from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
-from vyrtuous.utils.logger import logger, setup_logging
+from vyrtuous.system.logger import logger, setup_logging
 
 
 class MockBot(commands.Bot):

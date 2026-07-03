@@ -32,9 +32,13 @@ from vyrtuous.db.developer import NotDeveloper
 from vyrtuous.db.moderator import Moderator, NotModerator
 from vyrtuous.inc.helpers import resolve_author
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  sysadmin_service)
+from vyrtuous.utils.users import (
+    administrator_service,
+    coordinator_service,
+    developer_service,
+    guild_owner_service,
+    sysadmin_service,
+)
 
 MODEL = Moderator
 PERMISSION_TYPES = [
@@ -57,9 +61,9 @@ class HasEqualOrLowerRole(commands.CheckFailure):
 
 async def is_moderator_wrapper(context):
     return await is_moderator(
-        channel_snowflake=int(context.channel.id),
-        guild_snowflake=int(context.guild.id),
-        member_snowflake=int(context.author.id),
+        channel_snowflake=int(context.channel_snowflake),
+        guild_snowflake=int(context.guild_snowflake),
+        member_snowflake=int(context.member_snowflake),
     )
 
 
@@ -505,8 +509,3 @@ async def can_list(
             {c.id: c for c in available_channels[gid]}.values()
         )
     return available_channels, available_guilds
-
-
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)

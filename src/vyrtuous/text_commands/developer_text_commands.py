@@ -45,6 +45,8 @@ class DevTextCommands(commands.Cog):
         self.__bot = bot
 
     async def cog_check(self, ctx: commands.Context):
+        if ctx.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
