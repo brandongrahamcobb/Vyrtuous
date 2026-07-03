@@ -1,73 +1,52 @@
-ALTER TABLE public.streaming
-DROP COLUMN IF EXISTS enabled,
-DROP COLUMN IF EXISTS entry_type,
-DROP COLUMN IF EXISTS snowflakes;
-
-ALTER TABLE public.streaming
-RENAME COLUMN channel_snowflake TO target_channel_snowflake;
-ALTER TABLE public.streaming
-ALTER COLUMN target_channel_snowflake SET NOT NULL;
-ALTER TABLE public.streaming
-ADD COLUMN IF NOT EXISTS source_channel_snowflake bigint;
-
-ALTER TABLE public.streaming
-DROP CONSTRAINT IF EXISTS streaming_pkey;
-
-ALTER TABLE streaming
-ADD CONSTRAINT unique_target_source UNIQUE (target_channel_snowflake, source_channel_snowflake);
-
-ALTER TABLE moderation_logs RENAME COLUMN channel_members_voice_count TO current_channel_members;
-ALTER TABLE moderation_logs RENAME COLUMN guild_members_offline_and_online_member_count TO total_guild_members;
-ALTER TABLE moderation_logs RENAME COLUMN guild_members_online_count TO online_members;
-ALTER TABLE moderation_logs RENAME COLUMN guild_members_voice_count TO total_voice_members;
-ALTER TABLE moderation_logs RENAME COLUMN infraction_type TO identifier;
-ALTER TABLE moderation_logs RENAME COLUMN executor_member_snowflake TO author_snowflake;
-ALTER TABLE moderation_logs RENAME COLUMN target_member_snowflake TO target_snowflake;
-CREATE TABLE uploads (
-    command_name TEXT NOT NULL,
-    file_bytes BYTEA NOT NULL,
-    filename TEXT NOT NULL,
-    tag TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (command_name, tag)
+ALTER TABLE active_bans DROP COLUMN display_name;
+ALTER TABLE active_bans DROP COLUMN expired;
+ALTER TABLE active_bans ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_caps ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_flags DROP COLUMN display_name;
+ALTER TABLE active_flags DROP COLUMN expires_in;
+ALTER TABLE active_flags ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_server_voice_mutes DROP COLUMN display_name;
+ALTER TABLE active_stages DROP COLUMN expired;
+ALTER TABLE active_stages RENAME TO active_automute_channels;
+ALTER TABLE active_text_mutes DROP COLUMN expired;
+ALTER TABLE active_text_mutes DROP COLUMN role_snowflake;
+ALTER TABLE active_text_mutes DROP COLUMN display_name;
+ALTER TABLE active_text_mutes ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_voice_mutes DROP COLUMN expired;
+ALTER TABLE active_voice_mutes DROP COLUMN display_name;
+ALTER TABLE active_voice_mutes ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE administrators DROP COLUMN display_name;
+DROP TABLE ban_roles;
+ALTER TABLE command_aliases
+DROP CONSTRAINT command_aliases_category_check;
+ALTER TABLE command_aliases
+ADD CONSTRAINT command_aliases_category_check
+CHECK (
+    category = ANY (
+        ARRAY[
+            'vegan',
+            'vmute',
+            'ban',
+            'flag',
+            'tmute',
+            'role'
+        ]::text[]
+    )
 );
-ALTER TABLE streaming
-ALTER COLUMN source_channel_snowflake DROP NOT NULL;
-ALTER TABLE active_bans
-ADD COLUMN display_name TEXT;
-ALTER TABLE active_bans
-ADD COLUMN blacklisted BOOLEAN;
-ALTER TABLE guild_owners
-ADD COLUMN display_name TEXT;
-ALTER TABLE active_voice_mutes
-ADD COLUMN display_name TEXT;
-ALTER TABLE active_text_mutes
-ADD COLUMN display_name TEXT;
-ALTER TABLE developers
-ADD COLUMN display_name TEXT;
-ALTER TABLE moderators
-ADD COLUMN display_name TEXT;
-ALTER TABLE coordinators
-ADD COLUMN display_name TEXT;
-ALTER TABLE sysadmin
-ADD COLUMN display_name TEXT;
-ALTER TABLE administrators
-ADD COLUMN display_name TEXT;
-ALTER TABLE active_flags
-ADD COLUMN display_name TEXT;
-ALTER TABLE vegans
-ADD COLUMN display_name TEXT;
-ALTER TABLE active_server_voice_mutes
-ADD COLUMN display_name TEXT;
-
-
-CREATE TABLE active_members (
-    created_at timestamp with time zone DEFAULT now(),
-    display_name TEXT,
-    guild_snowflake bigint NOT NULL,
-    last_active timestamp with time zone DEFAULT now(),
-    member_snowflake bigint NOT NULL,
-    updated_at timestamp with time zone DEFAULT now()
-);
-
+ALTER TABLE coordinators DROP COLUMN display_name;
+ALTER TABLE developers DROP COLUMN display_name;
+DROP TABLE guild_owners;
+DROP TABLE hide_roles;
+ALTER TABLE moderators DROP COLUMN display_name;
+ALTER TABLE moderation_logs ADD COLUMN target TEXT DEFAULT 'user';
+ALTER TABLE moderation_logs ADD COLUMN role_snowflake BIGINT;
+DROP TABLE roles;
+DROP TABLE sysadmin;
+DROP TABLE temporary_blacklist;
+DROP TABLE text_mute_roles;
+DROP TABLE users;
+ALTER TABLE vegans DROP COLUMN display_name;
+DROP TRIGGER set_expired_active_bans ON active_bans;
+DROP TRIGGER set_expired_active_stages ON active_automute_channels;
+DROP TRIGGER set_expired_active_text_mutes ON active_text_mutes;
+DROP TRIGGER set_expired_active_voice_mutes ON active_voice_mutes;

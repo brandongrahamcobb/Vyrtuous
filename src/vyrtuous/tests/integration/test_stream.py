@@ -19,18 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from typing import Optional
 from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
@@ -152,7 +148,7 @@ async def test_stream(bot, command: str, source_channel, target, permission_role
             )
             async with capture_command() as end_results:
                 command = await admin_commands.modify_streaming_text_command(
-                    ctx, **kwargs
+                    ctx, tc, source_channel
                 )
             for kind, content in end_results:
                 assert kind == "success"

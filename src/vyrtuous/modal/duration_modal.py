@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
-
 import discord
 
 
@@ -71,7 +69,7 @@ class DurationModal(discord.ui.Modal):
         self.__ctx.expires_in = self.__duration_builder.parse(
             self.duration_selection.value
         ).to_expires_in()
-        if await self.__cap_service.assertion(ctx=self.__ctx, default_ctx=self.__d_ctx):
+        if await self.__cap_service.assertion(ctx=self.__ctx):
             return await interaction.response.send_message(
                 content=f"Duration {duration_str} exceeds the channel cap.",
                 ephemeral=True,

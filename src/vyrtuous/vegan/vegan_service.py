@@ -17,254 +17,142 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from copy import copy
-from dataclasses import dataclass, field
-from typing import Dict, List, Union
+from typing import Union
 
-from discord.ext import commands
 import discord
+from discord.ext import commands
 
-
-from vyrtuous.active_members import active_member_service
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.stream import stream_service
 from vyrtuous.vegan.vegan import Vegan
 
-
-@dataclass
-class VeganDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, dict]]]] = field(default_factory=dict)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
-    skipped_members: List[discord.Embed] = field(default_factory=list)
+MODEL = Vegan
 
 
-class VeganService:
-    __CHUNK_SIZE = 12
-    MODEL = Vegan
+async def enforce_or_undo(
+    ctx,
+    source: Union[commands.Context, discord.Interaction, discord.Message],
+    tick,
+):
+    database_factory = DatabaseFactory(MODEL)
+    obj = await database_factory.select(
+        channel_snowflake=ctx.channel.id,
+        guild_snowflake=ctx.guild.id,
+        member_snowflake=ctx.member.id,
+        singular=True,
+    )
+    if obj:
+        await undo(ctx=ctx, source=source, tick=tick)
+    else:
+        await enforce(ctx=ctx, source=source, tick=tick)
 
-    def __init__(
-        self,
-        *,
-        active_member_service=None,
-        bot=None,
-        database_factory=None,
-        data_service=None,
-        duration_builder=None,
-        dictionary_service=None,
-        emoji=None,
-        stream_service=None,
-        **kwargs,
-    ):
-        self.__active_member_service = active_member_service
-        self.__bot = bot
-        self.__database_factory = copy(database_factory)
-        self.__database_factory.model = self.MODEL
-        self.__data_service = data_service
-        self.__dictionary_service = dictionary_service
-        self.__duration_builder = duration_builder
-        self.__emoji = emoji
-        self.__stream_service = stream_service
 
-    async def enforce_or_undo(
-        self,
-        ctx,
-        default_ctx,
-        source: Union[commands.Context, discord.Interaction, discord.Message],
-        state,
-    ):
-        obj = await self.__database_factory.select(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member.id,
-            singular=True,
+async def enforce(ctx, source, tick):
+    bot = DiscordBot.get_instance()
+    database_factory = DatabaseFactory(MODEL)
+    vegan = MODEL(
+        guild_snowflake=ctx.guild.id,
+        member_snowflake=ctx.member_snowflake,
+    )
+    await database_factory.create(vegan)
+    member = ctx.guild.get_member(ctx.member_snowflake)
+    if member is None:
+        simplified_member = bot.registry.get(MemberState).active.get(
+            ctx.member_snowflake, None
         )
-        if obj:
-            await self.undo(
-                ctx=ctx, default_ctx=default_ctx, source=source, state=state
-            )
+        if simplified_member is None:
+            raise commands.MemberNotFound(str(ctx.member_snowflake))
+    await stream_service.send_log(
+        channel=ctx.channel,
+        identifier="vegan",
+        member=member,
+        source=source,
+    )
+    embed = await act_embed(ctx=ctx)
+    return await tick.end(success=embed)
+
+
+async def undo(ctx, source, tick):
+    bot = DiscordBot.get_instance()
+    database_factory = DatabaseFactory(MODEL)
+    member = ctx.guild.get_member(ctx.member_snowflake)
+    if member is None:
+        simplified_member = bot.registry.get(MemberState).active.get(
+            ctx.member_snowflake, None
+        )
+        if simplified_member is None:
+            raise commands.MemberNotFound(str(ctx.member_snowflake))
+
+    await database_factory.delete(
+        channel_snowflake=ctx.channel.id,
+        guild_snowflake=ctx.guild.id,
+        member_snowflake=ctx.member_snowflake,
+    )
+    await stream_service.send_log(
+        channel=ctx.channel,
+        identifier="carnist",
+        is_modification=True,
+        member=member,
+        source=source,
+    )
+    embed = await undo_embed(ctx=ctx)
+    return await tick.end(success=embed)
+
+
+async def act_embed(ctx):
+    bot = DiscordBot.get_instance()
+    member = ctx.guild.get_member(ctx.member_snowflake)
+    if member:
+        display_name = member.display_name
+        member_str = member.mention
+    else:
+        simplified_member = bot.registry.get(MemberState).active.get(
+            ctx.member_snowflake, None
+        )
+        if simplified_member:
+            display_name = simplified_member[0]
+            member_str = display_name
         else:
-            await self.enforce(
-                ctx=ctx, default_ctx=default_ctx, source=source, state=state
-            )
+            raise commands.MemberNotFound(str(ctx.member_snowflake))
+    embed = discord.Embed(
+        title=f"\U0001f525\U0001f525 {display_name} "
+        f"is going Vegan!!!\U0001f525\U0001f525",
+        description=(f"**User:** {member_str}\n"),
+        color=discord.Color.blue(),
+    )
+    if member:
+        embed.set_thumbnail(url=member.display_avatar.url)
+    return embed
 
-    async def build_clean_dictionary(self, obj):
-        vegans = []
-        dictionary = {}
-        if isinstance(obj, discord.Guild):
-            vegans = await self.__database_factory.select(guild_snowflake=obj.id)
-        elif isinstance(obj, discord.abc.GuildChannel):
-            vegans = await self.__database_factory.select(channel_snowflake=obj.id)
-        elif isinstance(obj, discord.Member):
-            vegans = await self.__database_factory.select(member_snowflake=obj.id)
+
+async def undo_embed(ctx):
+    bot = DiscordBot.get_instance()
+    member = ctx.guild.get_member(ctx.member_snowflake)
+    if member:
+        display_name = member.display_name
+        member_str = member.mention
+    else:
+        simplified_member = bot.registry.get(MemberState).active.get(
+            ctx.member_snowflake, None
+        )
+        if simplified_member:
+            display_name = simplified_member[0]
+            member_str = display_name
         else:
-            vegans = await self.__database_factory.select()
-        if vegans:
-            for vegan in vegans:
-                dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-                dictionary[vegan.guild_snowflake]["members"].setdefault(
-                    vegan.member_snowflake, {"vegans": {}}
-                )
-                dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
-                    "vegans"
-                ].setdefault("placeholder", {})
-        return dictionary
+            raise commands.MemberNotFound(str(ctx.member_snowflake))
+    embed = discord.Embed(
+        title=f"\U0001f44e\U0001f44e "
+        f"{display_name} is a Carnist \U0001f44e\U0001f44e",
+        description=(f"**User:** {member_str}\n"),
+        color=discord.Color.yellow(),
+    )
+    if member:
+        embed.set_thumbnail(url=member.display_avatar.url)
+    return embed
 
-    async def build_pages(self, is_at_home, obj):
-        lines, pages = [], []
 
-        obj_name = "All Servers"
-        if not isinstance(obj, int):
-            obj_name = obj.name
-        else:
-            member = self.__active_member_service.active_member.get(obj, None)
-            if member:
-                obj_name = member.get("name", None)
-            else:
-                return "No vegans found."
-        title = f"{self.__emoji.get_random_emoji()} Vegans for {obj_name}"
-
-        dictionary = await self.__dictionary_service.build_dictionary(obj=obj)
-        processed_dictionary = await self.__dictionary_service.process_dictionary(
-            cls=VeganDictionary, dictionary=dictionary
-        )
-
-        vegan_n = 0
-        for guild_snowflake, guild_data in processed_dictionary.data.items():
-            field_count = 0
-            lines = []
-            thumbnail = False
-            guild = self.__bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, vegan_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not member:
-                    if not isinstance(obj, discord.Member):
-                        lines.append(
-                            f"**User:** {member.display_name} {member.mention}"
-                        )
-                    else:
-                        if not thumbnail:
-                            embed.set_thumbnail(url=obj.display_avatar.url)
-                            thumbnail = True
-                else:
-                    member = self.__active_member_service.active_members.get(
-                        member_snowflake, None
-                    )
-                    if member:
-                        display_name = member.get("name", None)
-                        lines.append(f"**User:** {display_name} ({member_snowflake})")
-                vegan_n += 1
-                field_count += 1
-                if field_count >= self.__CHUNK_SIZE:
-                    embed.add_field(
-                        name="Information",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed = self.__dictionary_service.flush_page(
-                        embed, pages, title, guild.name
-                    )
-                    lines = []
-                    field_count = 0
-            if lines:
-                embed.add_field(
-                    name="Information",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-            pages.append(embed)
-        if pages:
-            original_description = embed.description or ""
-            embed.description = f"**{original_description} ({vegan_n})**"
-        if is_at_home:
-            pages.extend(processed_dictionary.skipped_guilds)
-            pages.extend(processed_dictionary.skipped_members)
-        if not pages:
-            return "No vegans found."
-        return pages
-
-    async def enforce(self, ctx, default_ctx, source, state):
-        vegan = self.MODEL(
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member_snowflake,
-        )
-        await self.__database_factory.create(vegan)
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if not member:
-            member = self.__active_member_service.active_members.get(
-                ctx.member_snowflake, None
-            )
-        await self.__stream_service.send_log(
-            channel=ctx.channel,
-            identifier="vegan",
-            member=member,
-            source=source,
-        )
-        embed = await self.act_embed(ctx=ctx)
-        return await state.end(success=embed)
-
-    async def undo(self, ctx, default_ctx, source, state):
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if not member:
-            member = self.__active_member_service.active_members.get(
-                ctx.member_snowflake, None
-            )
-        await self.__database_factory.delete(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.member_snowflake,
-        )
-        await self.__stream_service.send_log(
-            channel=ctx.channel,
-            identifier="carnist",
-            is_modification=True,
-            member=member,
-            source=source,
-        )
-        embed = await self.undo_embed(ctx=ctx)
-        return await state.end(success=embed)
-
-    async def act_embed(self, ctx):
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if member:
-            member_display_name = member.display_name
-            member_str = member.mention
-        else:
-            simplified_member = self.__active_member_service.active_members.get(
-                ctx.member_snowflake, None
-            )
-            member_display_name = simplified_member.get("name", None)
-            member_str = simplified_member.get("name", None)
-        embed = discord.Embed(
-            title=f"\U0001f525\U0001f525 {member_display_name} "
-            f"is going Vegan!!!\U0001f525\U0001f525",
-            description=(f"**User:** {member_str}\n"),
-            color=discord.Color.blue(),
-        )
-        if member:
-            embed.set_thumbnail(url=member.display_avatar.url)
-        return embed
-
-    async def undo_embed(self, ctx):
-        member = ctx.guild.get_member(ctx.member_snowflake)
-        if member:
-            member_display_name = member.display_name
-            member_str = member.mention
-        else:
-            simplified_member = self.__active_member_service.active_members.get(
-                ctx.member_snowflake, None
-            )
-            member_display_name = simplified_member.get("name", None)
-            member_str = simplified_member.get("name", None)
-        embed = discord.Embed(
-            title=f"\U0001f44e\U0001f44e "
-            f"{member_display_name} is a Carnist \U0001f44e\U0001f44e",
-            description=(f"**User:** {member_str}\n"),
-            color=discord.Color.yellow(),
-        )
-        if member:
-            embed.set_thumbnail(url=member.display_avatar.url)
-        return embed
-
-    async def migrate(self, kwargs):
-        self.__database_factory.update(**kwargs)
+async def migrate(kwargs):
+    database_factory = DatabaseFactory(MODEL)
+    await database_factory.update(**kwargs)

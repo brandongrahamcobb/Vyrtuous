@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import asyncio
-
 import asyncpg
 import pytest
 import pytest_asyncio
@@ -51,6 +49,7 @@ async def db():
 @pytest_asyncio.fixture
 async def bot(cf, db):
     bot = MockBot(config=cf, db_pool=db)
+    bot.register()
     DiscordBot._instance = bot
     await bot.setup_hook()
     return bot

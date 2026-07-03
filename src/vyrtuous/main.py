@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
-import this
 
 import debugpy
 
@@ -42,6 +41,7 @@ async def main():
     discord_bot = DiscordBot(
         config=config, db_pool=db_pool, extensions=DISCORD_COGS, logger=logger
     )
+    discord_bot.register()
     await discord_bot.start(config["vyrtuous_api_key"])
 
 

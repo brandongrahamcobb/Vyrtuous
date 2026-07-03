@@ -23,6 +23,9 @@ import asyncpg
 import discord
 from discord.ext import commands
 
+from vyrtuous.cache.registry import (ChannelState, MemberState,
+                                     MessageHistoryState, Registry,
+                                     SystemResourcesState, VideoRoomState)
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
 from vyrtuous.utils.logger import logger, setup_logging
@@ -35,6 +38,7 @@ class MockBot(commands.Bot):
         self.config = config
         self.db_pool = db_pool
         self._guilds = {}
+        self.registry = Registry()
         self._tree = AsyncMock()
         self._tree.sync = AsyncMock()
         self._tree.add_command = Mock()
@@ -42,6 +46,17 @@ class MockBot(commands.Bot):
         self._tree.copy_global_to = AsyncMock()
         self.logger = logger
         super().__init__(command_prefix="!", help_command=None, intents=intents)
+
+    def register(self):
+        self.registry.register(
+            (
+                ChannelState(),
+                MemberState(),
+                MessageHistoryState(),
+                SystemResourcesState(),
+                VideoRoomState(),
+            )
+        )
 
     @classmethod
     def get_instance(cls):

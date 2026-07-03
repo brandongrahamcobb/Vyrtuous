@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 
 import aiohttp
 from quart import Quart, redirect, request

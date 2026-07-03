@@ -1,0 +1,449 @@
+"""!/bin/python3
+moderator_text_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
+
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+from typing import Union
+
+import discord
+from discord.ext import commands
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.moderator import NotModerator
+from vyrtuous.inc.helpers import at_home
+from vyrtuous.listing import (list_administrators, list_aliases, list_bans,
+                              list_coordinators, list_flags, list_moderators,
+                              list_text_mutes, list_vegans, list_voice_mutes)
+from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.text_commands.help_text_command import \
+    skip_text_command_help_discovery
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
+from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.moderation import (ban_service, flag_service,
+                                       text_mute_service, voice_mute_service)
+from vyrtuous.utils.rooms import automute_room_service, temporary_room_service
+from vyrtuous.utils.users import (administrator_service, coordinator_service,
+                                  developer_service, guild_owner_service,
+                                  moderator_service, sysadmin_service)
+
+
+class ModeratorTextCommands(commands.Cog):
+
+    PERMISSION_LEVEL = "Moderator"
+
+    def __init__(self, *, bot: DiscordBot):
+        self.__bot = bot
+
+    async def cog_check(self, ctx: commands.Context):
+        context = SnowflakeContext(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+        )
+        for verify in (
+            sysadmin_service.is_sysadmin_wrapper,
+            developer_service.is_developer_wrapper,
+            guild_owner_service.is_guild_owner_wrapper,
+            administrator_service.is_administrator_wrapper,
+            coordinator_service.is_coordinator_at_all_wrapper,
+            moderator_service.is_moderator_at_all_wrapper,
+        ):
+            try:
+                if await verify(context=context):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise NotModerator
+
+    @commands.command(name="admins", help="Lists admins.")
+    @skip_text_command_help_discovery()
+    async def list_administrators_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: `all`, channel ID/mention or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
+        is_at_home = at_home(source=ctx)
+        pages = await list_administrators.build_pages(is_at_home=is_at_home, obj=obj)
+        return await tick.end(success=pages)
+
+    @commands.command(name="bans", help="List bans.")
+    async def list_bans_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_bans.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(name="cmds", help="List aliases.")
+    async def list_commands_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_aliases.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(name="coords", help="Lists coords.")
+    async def list_coordinators_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: `all`, channel ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_coordinators.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(name="del", help="Delete message.")
+    @skip_text_command_help_discovery()
+    async def delete_message_text_command(
+        self,
+        ctx: commands.Context,
+        msg: discord.Message = commands.parameter(
+            converter=commands.MessageConverter, description="Message snowflake"
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if msg.channel.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        await moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(msg.author.id),
+            member_snowflake=ctx.author.id,
+            channel_snowflake=msg.channel.id,
+            guild_snowflake=msg.channel.guild.id,
+        )
+        try:
+            await msg.delete()
+        except discord.Forbidden as e:
+            return await tick.end(error=str(e).capitalize())
+        return await tick.end(success=f"Message `{msg.id}` deleted successfully.")
+
+    @commands.command(name="flags", help="List flags.")
+    async def list_flags_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_flags.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(name="ls", help="List new vegans.")
+    @skip_text_command_help_discovery()
+    async def list_new_vegans_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
+        is_at_home = at_home(source=ctx)
+        pages = await list_vegans.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(
+        name="migrate",
+        help="Migrate a temporary room to a new channel by snowflake.",
+    )
+    @skip_text_command_help_discovery()
+    async def migrate_temp_room_text_command(
+        self,
+        ctx: commands.Context,
+        old_name: str = commands.parameter(description="Provide a channel name"),
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        msg = await temporary_room_service.migrate_temporary_room(
+            channel=channel,
+            old_name=old_name,
+        )
+        return await tick.end(success=msg)
+
+    @commands.command(name="mods", help="Lists mods.")
+    async def list_moderators_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_moderators.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(name="mutes", help="List mutes.")
+    async def list_mutes_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_voice_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @commands.command(name="mstage", help="Toggle stage mute/unmute.")
+    @skip_text_command_help_discovery()
+    async def stage_mute_text_command(
+        self,
+        ctx: commands.Context,
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID",
+        ),
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        context = SnowflakeContext(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+        )
+        obj = channel or ctx.channel
+        await moderator_service.check_minimum_role(
+            channel_snowflake=obj.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+            lowest_role="Moderator",
+        )
+        msg = await automute_room_service.toggle_stage_mute(
+            channel=obj,
+            context=context,
+            member=member,
+        )
+        return await tick.end(success=msg)
+
+    @commands.command(name="purge", help="Delete messages.")
+    async def purge_text_command(
+        self,
+        ctx: commands.Context,
+        member: Union[int, discord.Member] = commands.parameter(
+            converter=MultiConverter,
+            description="Tag a member or include their ID",
+        ),
+        amount: int = commands.parameter(
+            default=25, description="Number of messages to delete"
+        ),
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            default=None,
+            description="Specify the channel or ID",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if ctx.channel.guild is None:
+            return await tick.end(warning="This command must target a server channel.")
+        await moderator_service.check_minimum_role(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+            lowest_role="Coordinator",
+        )
+        if isinstance(member, discord.Member):
+            member_snowflake = int(member.id)
+            display_name = str(member.mention)
+        else:
+            member_snowflake = int(member)
+            display_name = self.__bot.registry.get(MemberState).active.get(
+                member_snowflake, None
+            )
+        await moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=int(member_snowflake),
+            member_snowflake=ctx.author.id,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.channel.guild.id,
+        )
+        target = channel or ctx.channel
+        count = int(0)
+        async for msg in ctx.channel.history():
+            if amount == count:
+                break
+            if msg.author.id == member_snowflake:
+                await msg.delete()
+                count += 1
+        return await tick.end(
+            success=f"Successfully deleted {count} messages from {display_name} in {target.mention}."
+        )
+
+    @commands.command(name="summary", help="List user moderation.")
+    async def list_moderation_summary_text_command(
+        self,
+        ctx: commands.Context,
+        member: discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Specify a member ID/mention.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        pages = []
+        obj = member or int(ctx.member)
+        is_at_home = at_home(source=ctx)
+        services = []
+        services.append(ban_service)
+        services.append(flag_service)
+        services.append(text_mute_service)
+        services.append(voice_mute_service)
+        for service in services:
+            summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
+            if isinstance(summary_pages, list):
+                for page in summary_pages:
+                    if isinstance(page, discord.Embed):
+                        pages.append(page)
+        if not pages:
+            return await tick.end(success="No infractions found")
+        return await tick.end(success=pages)
+
+    @commands.command(name="survey", help="Survey stage members.")
+    @skip_text_command_help_discovery()
+    async def stage_survey_text_command(
+        self,
+        ctx: commands.Context,
+        channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            default=None,
+            description="Tag a channel or include its ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        obj = channel or ctx.channel
+        pages = await moderator_service.survey(
+            channel=obj,
+        )
+        return await tick.end(success=pages)
+
+    @commands.command(name="tmutes", help="List text-mutes.")
+    async def list_text_mutes_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_text_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+
+async def setup(bot: DiscordBot):
+    await bot.add_cog(ModeratorTextCommands(bot=bot))

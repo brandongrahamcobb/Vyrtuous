@@ -17,22 +17,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import inspect
 import os
 from contextlib import ExitStack
-from typing import Optional
 from unittest.mock import patch
 
-import discord
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003

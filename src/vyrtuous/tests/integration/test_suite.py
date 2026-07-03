@@ -18,21 +18,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
-import threading
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from vyrtuous.tests.integration.mock_discord_channel import (
-    MockTextChannel,
-    MockVoiceChannel,
-)
+from vyrtuous.messaging.tick import Tick
+from vyrtuous.tests.integration.mock_discord_channel import (MockTextChannel,
+                                                             MockVoiceChannel)
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
 from vyrtuous.tests.integration.mock_discord_role import MockRole
 from vyrtuous.tests.integration.mock_discord_state import MockState
-from vyrtuous.utils.state_service import StateService
 
 PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
 PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"
@@ -53,7 +50,7 @@ async def capture(channel):
     called = []
     before = list(channel._messages)
     channel._end_result = []
-    original_end = StateService.end
+    original_end = Tick.end
 
     async def patched_end(self, *args, **kwargs):
         called.append((args, kwargs))
@@ -64,17 +61,18 @@ async def capture(channel):
             channel._end_result.append("warning")
         elif "error" in kwargs:
             channel._end_result.append("error")
+            print(kwargs)
         else:
-            print(f"   ⚪ No success/warning/error found in kwargs")
+            print("   ⚪ No success/warning/error found in kwargs")
         return None
 
-    StateService.end = patched_end
+    Tick.end = patched_end
 
     try:
         yield
         await asyncio.sleep(0.5)
     finally:
-        StateService.end = original_end
+        Tick.end = original_end
         after = channel._messages
         # if not after:
         #     await asyncio.sleep(1)
@@ -196,7 +194,7 @@ async def send_message(bot, content: str = None):
 @asynccontextmanager
 async def capture_command():
     results = []
-    original_end = StateService.end
+    original_end = Tick.end
 
     async def patched_end(self, *args, **kwargs):
         if getattr(self, "_ended", False):
@@ -210,8 +208,8 @@ async def capture_command():
             results.append(("error", kwargs["error"]))
         self._add_reactions = AsyncMock()
 
-    StateService.end = patched_end
+    Tick.end = patched_end
     try:
         yield results
     finally:
-        StateService.end = original_end
+        Tick.end = original_end

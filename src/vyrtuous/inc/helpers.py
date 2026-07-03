@@ -18,6 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from os.path import abspath, dirname, expanduser, join
+from typing import Union
+
+import discord
+from discord.ext import commands
+
+from vyrtuous.bot.discord_bot import DiscordBot
 
 #### DEVELOPMENT
 RELEASE_MODE = False
@@ -75,3 +81,24 @@ DISCORD_COMMAND_PREFIX = "!"
 #### PATHS
 PATH_TOML = join(DIR_HOME, "git", "sandbox", "python", "Vyrtuous", "pyproject.toml")
 PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
+
+
+def at_home(
+    source: Union[commands.Context, discord.Interaction, discord.Message],
+) -> bool:
+    bot = DiscordBot.get_instance()
+    if source.guild is None:
+        return False
+    if source.guild.id == int(bot.config["discord_testing_guild_snowflake"]):
+        return True
+    return False
+
+
+def resolve_author(source):
+    if isinstance(source, discord.Interaction):
+        member = source.user
+    elif isinstance(source, (commands.Context, discord.Message)):
+        member = source.author
+    else:
+        raise commands.MemberNotFound("Source")
+    return member

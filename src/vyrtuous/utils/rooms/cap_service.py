@@ -1,0 +1,96 @@
+"""!/bin/python3
+cap_service.py The purpose of this program is to extend Service to service the cap command class.
+
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+from vyrtuous.db.cap import Cap
+from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.models.duration import DurationBuilder
+
+MODEL = Cap
+
+
+async def toggle_cap(category: str, channel, hours: int):
+    database_factory = DatabaseFactory(MODEL)
+    seconds = int(hours) * 3600
+    where_kwargs = {"channel_snowflake": channel.id, "category": category}
+    cap = await database_factory.select(
+        singular=True, channel_snowflake=channel.id, category=category
+    )
+    if cap and seconds:
+        await database_factory.update(
+            set_kwargs={"duration_seconds": seconds}, where_kwargs=where_kwargs
+        )
+        return f"Cap `{category}` modified for {channel.mention}."
+    elif cap:
+        await database_factory.delete(channel_snowflake=channel.id, category=category)
+        return (
+            f"Cap of type {category} "
+            f"and channel {channel.mention} deleted successfully."
+        )
+    else:
+        where_kwargs.update({"duration_seconds": seconds})
+        cap = MODEL(
+            channel_snowflake=channel.id,
+            category=category,
+            duration_seconds=seconds,
+            guild_snowflake=channel.guild.id,
+        )
+        await database_factory.create(cap)
+        return f"Cap `{category}` created for {channel.mention} successfully."
+
+
+async def exceeds_cap(
+    category: str, channel_snowflake: int, duration_value: str, guild_snowflake: int
+):
+    database_factory = DatabaseFactory(MODEL)
+    duration_builder = DurationBuilder()
+    exceeds_cap = False
+    cap = await database_factory.select(
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        category=category,
+        singular=True,
+    )
+    duration = duration_builder.parse(value=duration_value)
+    value = duration.build().number
+    duration_seconds = duration.to_seconds()
+    if cap:
+        if duration_seconds > cap.duration_seconds or value == 0:
+            exceeds_cap = True
+    else:
+        cap_duration_seconds = duration_builder.parse(value="8h").to_seconds()
+        if duration_seconds > cap_duration_seconds or value == 0:
+            exceeds_cap = True
+    return exceeds_cap
+
+
+async def get_cap_seconds(ctx):
+    database_factory = DatabaseFactory(MODEL)
+    cap = await database_factory.select(
+        channel_snowflake=ctx.channel.id,
+        guild_snowflake=ctx.guild.id,
+        category=ctx.category,
+        singular=True,
+    )
+    if cap:
+        return cap.duration_seconds
+
+
+async def migrate(kwargs):
+    database_factory = DatabaseFactory(MODEL)
+    await database_factory.update(**kwargs)

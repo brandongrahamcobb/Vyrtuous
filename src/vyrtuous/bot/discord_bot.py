@@ -24,6 +24,10 @@ import asyncpg
 import discord
 from discord.ext import commands
 
+from vyrtuous.cache.registry import (ChannelState, MemberState,
+                                     MessageHistoryState, Registry,
+                                     SystemResourcesState, VideoRoomState)
+
 
 class DiscordBot(commands.Bot):
     _instance = None
@@ -49,11 +53,23 @@ class DiscordBot(commands.Bot):
         self.db_pool = db_pool
         self.__extensions = extensions
         self.logger = logger
+        self.registry = Registry()
         self.testing_guild_snowflake = self.config["discord_testing_guild_snowflake"]
 
     async def setup_hook(self):
         for ext in self.__extensions:
             await self.load_extension(ext)
+
+    def register(self):
+        self.registry.register(
+            (
+                ChannelState(),
+                MemberState(),
+                MessageHistoryState(),
+                SystemResourcesState(),
+                VideoRoomState(),
+            )
+        )
 
     @classmethod
     def get_instance(cls):

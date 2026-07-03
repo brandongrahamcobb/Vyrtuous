@@ -19,18 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from typing import Optional
 from unittest.mock import patch
 
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 

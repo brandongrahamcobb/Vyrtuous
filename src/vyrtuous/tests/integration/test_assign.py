@@ -19,7 +19,7 @@
 #
 # import os
 # from contextlib import ExitStack
-# from typing import Optional
+#
 # from unittest.mock import patch
 #
 # import pytest

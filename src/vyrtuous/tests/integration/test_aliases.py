@@ -17,21 +17,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import asyncio
 import os
 from contextlib import ExitStack
-from typing import Optional
 from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -92,13 +86,13 @@ async def test_aliases(bot, command: str, member_snowflake, permission_role):
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-            prefix="!",
-        )
+        # ctx = context(
+        #     bot=bot,
+        #     channel=objects.get("text_channel", None),
+        #     guild=objects.get("guild", None),
+        #     message=msg,
+        #     prefix="!",
+        # )
         generic_event_listeners = bot.get_cog("GenericEventListeners")
         with ExitStack() as stack:
             stack.enter_context(
