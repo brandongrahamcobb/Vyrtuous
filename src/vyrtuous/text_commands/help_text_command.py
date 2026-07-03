@@ -140,15 +140,8 @@ class HelpTextCommand(commands.Cog):
         return available, skipped
 
     async def get_command_permission_level(self, command):
-        if command.checks:
-            for verify in command.checks:
-                func = getattr(verify, "__wrapped__", verify)
-                level = getattr(func, "_permission_level", None)
-                if level:
-                    return level
-        if command.cog and hasattr(command.cog, "cog_check") and command.cog.cog_check:
-            func = getattr(command.cog.cog_check, "__wrapped__", command.cog.cog_check)
-            level = getattr(func, "_permission_level", None)
+        if command.cog:
+            level = getattr(command.cog, "PERMISSION_LEVEL", None)
             if level:
                 return level
         return "Everyone"
