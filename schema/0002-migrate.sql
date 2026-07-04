@@ -50,3 +50,6 @@ DROP TRIGGER set_expired_active_bans ON active_bans;
 DROP TRIGGER set_expired_active_stages ON active_automute_channels;
 DROP TRIGGER set_expired_active_text_mutes ON active_text_mutes;
 DROP TRIGGER set_expired_active_voice_mutes ON active_voice_mutes;
+DROP TABLE temporary_rooms;
+ALTER TABLE vegans ADD COLUMN notes TEXT;
+ALTER TABLE active_members DROP COLUMN guild_snowflake;

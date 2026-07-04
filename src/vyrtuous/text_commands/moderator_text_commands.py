@@ -56,6 +56,7 @@ from vyrtuous.utils.users import (
     guild_owner_service,
     moderator_service,
     sysadmin_service,
+    vegan_service,
 )
 
 
@@ -441,6 +442,33 @@ class ModeratorTextCommands(commands.Cog):
         is_at_home = at_home(source=ctx)
         pages = await list_text_mutes.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
+
+    @commands.command(name="vcow", help="Toggle vegan.")
+    async def toggle_vegan_text_command(
+        self,
+        ctx: commands.Context,
+        member: int | discord.Member = commands.parameter(
+            converter=commands.MemberConverter,
+            description="Tag a member or include their ID.",
+        ),
+        *,
+        notes: str | None = commands.parameter(
+            default=None,
+            description="Include notes.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server")
+        if not vegan_service.is_vegan(
+            guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id
+        ):
+            return await tick.end(warning="Author is not a vegan.")
+        if isinstance(member, discord.Member):
+            embed = await vegan_service.toggle_vegan(
+                guild_snowflake=ctx.guild.id, member_snowflake=member.id, notes=notes
+            )
+            return await tick.end(success=embed)
 
 
 async def setup(bot: DiscordBot):

@@ -32,7 +32,7 @@ from vyrtuous.utils.tracking import data_builder, stream_service
 MODEL = Flag
 
 
-@dataclass
+@dataclass(frozen=True)
 class FlagMessageContext:
     author_snowflake: int
     channel_snowflake: int

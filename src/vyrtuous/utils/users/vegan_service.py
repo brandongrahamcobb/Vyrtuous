@@ -17,109 +17,88 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.tracking import stream_service
 from vyrtuous.db.vegan import Vegan
 
 MODEL = Vegan
 
 
-async def enforce_or_undo(
-    ctx,
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-    tick,
-):
+def is_vegan(guild_snowflake: int, member_snowflake: int):
+    bot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    member = guild.get_member(member_snowflake)
+    if member is None:
+        raise commands.MemberNotFound(str(member_snowflake))
+    for role in member.roles:
+        if role.name == "Vegan":
+            return True
+    else:
+        return False
+
+
+async def toggle_vegan(guild_snowflake: int, member_snowflake: int, notes: str | None):
     database_factory = DatabaseFactory(MODEL)
-    obj = await database_factory.select(
-        channel_snowflake=ctx.channel.id,
-        guild_snowflake=ctx.guild.id,
-        member_snowflake=ctx.member.id,
+    vegan = await database_factory.select(
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
         singular=True,
     )
-    if obj:
-        await undo(ctx=ctx, source=source, tick=tick)
+    if vegan:
+        await database_factory.delete(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        embed = await build_vegan_embed(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            notes=notes,
+        )
+        return embed
     else:
-        await enforce(ctx=ctx, source=source, tick=tick)
-
-
-async def enforce(ctx, source, tick):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    vegan = MODEL(
-        guild_snowflake=ctx.guild.id,
-        member_snowflake=ctx.member_snowflake,
-    )
-    await database_factory.create(vegan)
-    member = ctx.guild.get_member(ctx.member_snowflake)
-    if member is None:
-        simplified_member = bot.registry.get(MemberState).active.get(
-            ctx.member_snowflake, None
+        vegan = MODEL(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            notes=notes,
         )
-        if simplified_member is None:
-            raise commands.MemberNotFound(str(ctx.member_snowflake))
-    await stream_service.send_log(
-        channel=ctx.channel,
-        identifier="vegan",
-        member=member,
-        source=source,
-    )
-    embed = await act_embed(ctx=ctx)
-    return await tick.end(success=embed)
-
-
-async def undo(ctx, source, tick):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    member = ctx.guild.get_member(ctx.member_snowflake)
-    if member is None:
-        simplified_member = bot.registry.get(MemberState).active.get(
-            ctx.member_snowflake, None
+        await database_factory.create(vegan)
+        embed = await build_carnist_embed(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
         )
-        if simplified_member is None:
-            raise commands.MemberNotFound(str(ctx.member_snowflake))
-
-    await database_factory.delete(
-        channel_snowflake=ctx.channel.id,
-        guild_snowflake=ctx.guild.id,
-        member_snowflake=ctx.member_snowflake,
-    )
-    await stream_service.send_log(
-        channel=ctx.channel,
-        identifier="carnist",
-        is_modification=True,
-        member=member,
-        source=source,
-    )
-    embed = await undo_embed(ctx=ctx)
-    return await tick.end(success=embed)
+        return embed
 
 
-async def act_embed(ctx):
+async def build_vegan_embed(
+    guild_snowflake: int, member_snowflake: int, notes: str | None
+):
     bot = DiscordBot.get_instance()
-    member = ctx.guild.get_member(ctx.member_snowflake)
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
         member_str = member.mention
     else:
         simplified_member = bot.registry.get(MemberState).active.get(
-            ctx.member_snowflake, None
+            member_snowflake, None
         )
         if simplified_member:
             display_name = simplified_member[0]
             member_str = display_name
         else:
-            raise commands.MemberNotFound(str(ctx.member_snowflake))
+            raise commands.MemberNotFound(str(member_snowflake))
     embed = discord.Embed(
         title=f"\U0001f525\U0001f525 {display_name} "
         f"is going Vegan!!!\U0001f525\U0001f525",
-        description=(f"**User:** {member_str}\n"),
+        description=(f"**User:** {member_str}\n**Notes:** {notes}\n"),
         color=discord.Color.blue(),
     )
     if member:
@@ -127,21 +106,24 @@ async def act_embed(ctx):
     return embed
 
 
-async def undo_embed(ctx):
+async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
     bot = DiscordBot.get_instance()
-    member = ctx.guild.get_member(ctx.member_snowflake)
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
         member_str = member.mention
     else:
         simplified_member = bot.registry.get(MemberState).active.get(
-            ctx.member_snowflake, None
+            member_snowflake, None
         )
         if simplified_member:
             display_name = simplified_member[0]
             member_str = display_name
         else:
-            raise commands.MemberNotFound(str(ctx.member_snowflake))
+            raise commands.MemberNotFound(str(member_snowflake))
     embed = discord.Embed(
         title=f"\U0001f44e\U0001f44e "
         f"{display_name} is a Carnist \U0001f44e\U0001f44e",

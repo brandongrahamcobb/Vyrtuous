@@ -28,7 +28,7 @@ from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 
 
-@dataclass
+@dataclass(frozen=True)
 class EnroleMessageContext:
     author_snowflake: int
     guild_snowflake: int

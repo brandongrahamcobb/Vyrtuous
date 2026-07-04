@@ -69,7 +69,7 @@ def build_untext_mute_embed(
     return embed
 
 
-@dataclass
+@dataclass(frozen=True)
 class UntextMuteMessageContext:
     author_snowflake: int
     channel_snowflake: int

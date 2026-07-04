@@ -36,7 +36,7 @@ from vyrtuous.utils.users import moderator_service
 MODEL = Ban
 
 
-@dataclass
+@dataclass(frozen=True)
 class BanMessageContext:
     author_snowflake: int
     channel_snowflake: int

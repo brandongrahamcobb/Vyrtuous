@@ -23,6 +23,7 @@ from typing import Dict, List
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
 from vyrtuous.listing import list_service
@@ -44,8 +45,6 @@ async def build_dictionary(obj):
     dictionary = {}
     if isinstance(obj, discord.Guild):
         vegans = await database_factory.select(guild_snowflake=obj.id, singular=False)
-    elif isinstance(obj, discord.abc.GuildChannel):
-        vegans = await database_factory.select(channel_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.Member):
         vegans = await database_factory.select(member_snowflake=obj.id, singular=False)
     else:
@@ -58,7 +57,7 @@ async def build_dictionary(obj):
             )
             dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
-            ].setdefault("placeholder", {})
+            ].setdefault("notes", vegan.notes)
     return dictionary
 
 
@@ -70,9 +69,9 @@ async def build_pages(is_at_home: bool, obj):
     if not isinstance(obj, int):
         obj_name = obj.name
     else:
-        member = bot.active_member.get(obj, None)
-        if member:
-            obj_name = member.get("name", None)
+        simplified_member = bot.registry.get(MemberState).active.get(obj, None)
+        if simplified_member:
+            obj_name = simplified_member[0]
         else:
             return "No vegans found."
     title = f"{emojis.get_random_emoji()} Vegans for {obj_name}"
@@ -88,23 +87,27 @@ async def build_pages(is_at_home: bool, obj):
         lines = []
         thumbnail = False
         guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            continue
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
         for member_snowflake, vegan_dictionary in guild_data.get("members").items():
             member = guild.get_member(member_snowflake)
-            if member is None:
-                if not isinstance(obj, discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+            if member:
+                if not thumbnail and isinstance(obj, discord.Member):
+                    embed.set_thumbnail(url=obj.display_avatar.url)
+                    thumbnail = True
                 else:
-                    if not thumbnail:
-                        embed.set_thumbnail(url=obj.display_avatar.url)
-                        thumbnail = True
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
             else:
-                member = bot.active_members.get(member_snowflake, None)
+                display_name = bot.registry.get(MemberState).active.get(
+                    member_snowflake, None
+                )
                 if member:
                     display_name = member.get("name", None)
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
+            lines.append(f"**Notes:** {vegan_dictionary.get("notes")}")
             vegan_n += 1
             field_count += 1
             if field_count >= list_service.CHUNK_SIZE:
@@ -122,10 +125,9 @@ async def build_pages(is_at_home: bool, obj):
                 value="\n".join(lines),
                 inline=False,
             )
-        pages.append(embed)
-    if pages:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({vegan_n})**"
+        pages.append(embed)
     if is_at_home:
         pages.extend(processed_dictionary.skipped_guilds)
         pages.extend(processed_dictionary.skipped_members)

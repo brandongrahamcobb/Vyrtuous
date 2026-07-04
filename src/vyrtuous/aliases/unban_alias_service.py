@@ -77,7 +77,7 @@ async def log_unban(
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UnbanMessageContext:
     author_snowflake: int
     channel_snowflake: int

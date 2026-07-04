@@ -35,7 +35,7 @@ from vyrtuous.utils.users import moderator_service
 MODEL = VoiceMute
 
 
-@dataclass
+@dataclass(frozen=True)
 class UnvoiceMuteMessageContext:
     author_snowflake: int
     channel_snowflake: int
