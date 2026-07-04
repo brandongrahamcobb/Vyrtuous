@@ -53,3 +53,4 @@ DROP TRIGGER set_expired_active_voice_mutes ON active_voice_mutes;
 DROP TABLE temporary_rooms;
 ALTER TABLE vegans ADD COLUMN notes TEXT;
 ALTER TABLE active_members DROP COLUMN guild_snowflake;
+ALTER TABLE video_rooms RENAME TO active_video_only_channels;

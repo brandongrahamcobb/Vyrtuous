@@ -70,7 +70,7 @@ class MessageHistoryState:
 
 
 @dataclass
-class VideoRoomState:
+class VideoChannelState:
     tasks: dict[tuple[int, int], asyncio.Task] = field(default_factory=dict)
     cooldowns: dict[int, datetime] = field(default_factory=dict)
 

@@ -1,5 +1,5 @@
 """!/bin/python3
-temporary_rooms_service.py The purpose of this program is to extend Service to service the temporary room class.
+temporary_channels_service.py The purpose of this program is to extend Service to service the temporary room class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

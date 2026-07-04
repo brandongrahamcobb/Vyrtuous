@@ -42,7 +42,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 )
 async def test_overwrites(bot, command: str, channel, permission_role):
     """
-    Voice-mute a whole room and undo it by adding and removing
+    Voice-mute a whole channel and undo it by adding and removing
     entries in the PostgreSQL database 'vyrtuous' in the table
     'active_voice_mutes'.
 

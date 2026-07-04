@@ -1,5 +1,5 @@
 """!/bin/python3stage"
-automute_room_service.py The purpose of this program is to extend Service to service the stage class.
+automute_channel_service.py The purpose of this program is to extend Service to service the stage class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -147,7 +147,7 @@ async def build_pages(is_at_home: bool, obj):
         pages.extend(processed_dictionary.skipped_channels)
         pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
-        return "No automute rooms found."
+        return "No automute channels found."
     return pages
 
 
@@ -305,11 +305,11 @@ async def clean_expired():
 #     return should_be_muted, expires_in
 
 
-async def is_active_automute_room(channel):
+async def is_active_automute_channel(channel):
     database_factory = DatabaseFactory(MODEL)
-    automute_room = await database_factory.select(
+    automute_channel = await database_factory.select(
         channel_snowflake=channel.id, singular=True
     )
-    if automute_room:
+    if automute_channel:
         return True
     return False

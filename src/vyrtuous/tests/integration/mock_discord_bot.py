@@ -29,7 +29,7 @@ from vyrtuous.cache.registry import (
     MessageHistoryState,
     Registry,
     SystemResourcesState,
-    VideoRoomState,
+    VideoChannelState,
 )
 from vyrtuous.system.config import Config
 from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
@@ -59,7 +59,7 @@ class MockBot(commands.Bot):
                 MemberState(),
                 MessageHistoryState(),
                 SystemResourcesState(),
-                VideoRoomState(),
+                VideoChannelState(),
             )
         )
 

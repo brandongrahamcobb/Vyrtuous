@@ -24,9 +24,14 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from vyrtuous.cache.registry import (ChannelState, MemberState,
-                                     MessageHistoryState, Registry,
-                                     SystemResourcesState, VideoRoomState)
+from vyrtuous.cache.registry import (
+    ChannelState,
+    MemberState,
+    MessageHistoryState,
+    Registry,
+    SystemResourcesState,
+    VideoChannelState,
+)
 
 
 class DiscordBot(commands.Bot):
@@ -67,7 +72,7 @@ class DiscordBot(commands.Bot):
                 MemberState(),
                 MessageHistoryState(),
                 SystemResourcesState(),
-                VideoRoomState(),
+                VideoChannelState(),
             )
         )
 

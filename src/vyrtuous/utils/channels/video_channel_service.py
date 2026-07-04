@@ -1,5 +1,5 @@
 """!/bin/python3
-video_rooms_service.py The purpose of this program is to extend Service to service the video room class.
+video_channels_service.py The purpose of this program is to extend Service to service the video channel class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,57 +23,57 @@ from datetime import timedelta
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import ChannelState, VideoRoomState
+from vyrtuous.cache.registry import ChannelState, VideoChannelState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.video_room import VideoRoom
+from vyrtuous.db.video_channel import VideoChannel
 from vyrtuous.utils.messaging import emojis
 
-MODEL = VideoRoom
+MODEL = VideoChannel
 COOLDOWN = timedelta(minutes=30)
 
 
-async def toggle_video_room(channel):
+async def toggle_video_channel(channel):
     bot = DiscordBot.get_instance()
-    video_rooms = bot.registry.get(ChannelState).video
+    video_channels = bot.registry.get(ChannelState).video
     database_factory = DatabaseFactory(MODEL)
-    video_room = await database_factory.select(
+    video_channel = await database_factory.select(
         channel_snowflake=channel.id, singular=True
     )
-    if video_room:
+    if video_channel:
         action = "removed"
-        video_rooms.remove(video_room.channel_snowflake)
+        video_channels.remove(video_channel.channel_snowflake)
         await database_factory.delete(channel_snowflake=channel.id)
     else:
-        video_room = MODEL(
+        video_channel = MODEL(
             channel_snowflake=channel.id, guild_snowflake=channel.guild.id
         )
-        await database_factory.create(video_room)
-        video_rooms.add(video_room.channel_snowflake)
+        await database_factory.create(video_channel)
+        video_channels.add(video_channel.channel_snowflake)
         action = "created"
-    return f"Video-only room {action} in {channel.mention}."
+    return f"Video-only channel {action} in {channel.mention}."
 
 
 async def populate():
     bot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     original_set = bot.registry.get(ChannelState).video
-    video_rooms = await database_factory.select(singular=False)
-    for video_room in video_rooms:
-        original_set.add(video_room.channel_snowflake)
+    video_channels = await database_factory.select(singular=False)
+    for video_channel in video_channels:
+        original_set.add(video_channel.channel_snowflake)
 
 
-def is_active_video_room(channel):
+def is_active_video_channel(channel):
     bot = DiscordBot.get_instance()
-    video_rooms = bot.registry.get(ChannelState).video
-    if channel.id in video_rooms:
+    video_channels = bot.registry.get(ChannelState).video
+    if channel.id in video_channels:
         return True
     return False
 
 
-async def update_video_room_tasks(before, after, member):
+async def update_video_channel_tasks(before, after, member):
     bot = DiscordBot.get_instance()
     key = (member.guild.id, member.id)
-    video = bot.registry.get(VideoRoomState)
+    video = bot.registry.get(VideoChannelState)
 
     if before.channel and not after.channel:
         video.cancel(key)
@@ -108,13 +108,13 @@ async def _prompt_enable_camera(
     member: discord.Member, channel: discord.VoiceChannel
 ) -> None:
     bot = DiscordBot.get_instance()
-    video = bot.registry.get(VideoRoomState)
+    video = bot.registry.get(VideoChannelState)
     if video.is_on_cooldown(member.id, COOLDOWN):
         return
     video.set_cooldown(member.id)
     await channel.send(
         f"{emojis.get_random_emoji()} "
-        f"Hi {member.mention}, {channel.mention} is a video-only room. "
+        f"Hi {member.mention}, {channel.mention} is a video-only channel. "
         f"You have 5 minutes to enable your camera."
     )
 
@@ -139,5 +139,5 @@ async def _enforce_video(
         )
     except Exception:
         pass
-    video = bot.registry.get(VideoRoomState)
+    video = bot.registry.get(VideoChannelState)
     video.set_cooldown(member.id)

@@ -231,7 +231,7 @@ class DataView(discord.ui.View):
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         async with self.__bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT created_at, identifier FROM moderation_logs {where_clause}",
+                f"SELECT created_at, identifier FROM channels_logs {where_clause}",
                 *values,
             )
         df = pd.DataFrame(rows, columns=column_names)

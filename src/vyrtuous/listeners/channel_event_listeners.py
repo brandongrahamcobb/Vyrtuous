@@ -33,8 +33,8 @@ from vyrtuous.utils.moderation import (
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.rooms import (
-    video_room_service,
+from vyrtuous.utils.channels import (
+    video_channel_service,
 )
 
 
@@ -69,8 +69,8 @@ class ChannelEventListeners(commands.Cog):
             channel=after.channel, member=member
         ):
             return
-        if video_room_service.is_active_video_room(channel=after.channel):
-            await video_room_service.update_video_room_tasks(
+        if video_channel_service.is_active_video_channel(channel=after.channel):
+            await video_channel_service.update_video_channel_tasks(
                 after=after, before=before, member=member
             )
         duration_value = "1h"
@@ -104,7 +104,7 @@ class ChannelEventListeners(commands.Cog):
             # embed.set_thumbnail(url=member.display_avatar.url)
             # return await after.channel.send(embed=embed)
         # elif (
-        #     await automute_room_service.is_active_automute_room(
+        #     await automute_channel_service.is_active_automute_channel(
         #         channel_snowflake=after.channel.id
         #     )
         #     and await moderator_service.resolve_highest_role(

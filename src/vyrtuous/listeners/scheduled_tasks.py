@@ -23,7 +23,7 @@ from discord.ext import commands, tasks
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
 from vyrtuous.utils.moderation import ban_service, text_mute_service, voice_mute_service
-from vyrtuous.utils.rooms import automute_room_service
+from vyrtuous.utils.channels import automute_channel_service
 from vyrtuous.utils.statistics import system_monitoring_service
 from vyrtuous.utils.tracking import bug_service
 from vyrtuous.utils.users import active_member_service
@@ -100,8 +100,8 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def check_expired_automutes(self):
-        await automute_room_service.clean_expired()
-        self.__bot.logger.info("Cleaned up expired automute rooms.")
+        await automute_channel_service.clean_expired()
+        self.__bot.logger.info("Cleaned up expired automute channels.")
 
     @tasks.loop(hours=8)
     async def check_expired_bugs(self):

@@ -1,5 +1,5 @@
 """!/bin/python3
-video_rooms.py The purpose of this program is to extend DatabaseFactory to provide the video room class.
+video_channels.py The purpose of this program is to extend DatabaseFactory to provide the video channel class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -24,10 +24,10 @@ from vyrtuous.db.database_factory import DatabaseFactory
 
 
 @dataclass(frozen=True)
-class VideoRoom(DatabaseFactory):
+class VideoChannel(DatabaseFactory):
 
-    __tablename__ = "video_rooms"
-    category = "vroom"
+    __tablename__ = "active_video_only_channels"
+    category = "video_channel"
     channel_snowflake: int
     guild_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

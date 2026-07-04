@@ -45,7 +45,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 async def test_stage(bot, command: str, channel, permission_role):
     """
     Create or teardown a stage by accessing
-    the PostgresSQL database 'vyrtuous' in the table 'video_rooms'.
+    the PostgresSQL database 'vyrtuous' in the table 'video_channels'.
 
     Parameters
     ----------

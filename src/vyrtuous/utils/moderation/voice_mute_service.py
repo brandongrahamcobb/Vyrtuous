@@ -136,7 +136,7 @@ async def clean_expired():
                 )
 
 
-async def room_mute(author, channel, reason):
+async def channel_mute(author, channel, reason):
     bot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     muted_members, pages, skipped_members, failed_members = [], [], [], []
@@ -203,7 +203,7 @@ async def room_mute(author, channel, reason):
     return pages
 
 
-async def room_unmute(channel):
+async def channel_unmute(channel):
     bot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     unmuted_members, pages, skipped_members, failed_members = [], [], [], []
@@ -258,7 +258,7 @@ async def clean_expired_stage(channel, guild):
     voice_mutes = await database_factory.select(
         channel_snowflake=channel.id,
         guild_snowflake=guild.id,
-        target="room",
+        target="automute",
         singular=False,
     )
     for voice_mute in voice_mutes:
@@ -269,7 +269,7 @@ async def clean_expired_stage(channel, guild):
                 channel_snowflake=channel.id,
                 member_snowflake=int(member_snowflake),
                 guild_snowflake=guild.id,
-                target="room",
+                target="automute",
             )
             bot.logger.info(
                 f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.id}) from expired stage."
@@ -279,7 +279,7 @@ async def clean_expired_stage(channel, guild):
             channel_snowflake=channel.id,
             member_snowflake=member.id,
             guild_snowflake=guild.id,
-            target="room",
+            target="automute",
         )
         if (
             member.voice
@@ -288,7 +288,9 @@ async def clean_expired_stage(channel, guild):
             and member.voice_channel.id == channel.id
         ):
             try:
-                await member.edit(mute=False, reason="Stage room closed automatically.")
+                await member.edit(
+                    mute=False, reason="Stage channel closed automatically."
+                )
                 bot.logger.info(
                     f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in in guild {guild.name} ({guild.id}) after stage expired."
                 )
@@ -311,7 +313,7 @@ async def off_stage(channel):
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
-            target="room",
+            target="channel",
         )
         voice_mute = await database_factory.select(
             channel_snowflake=channel.id,
@@ -361,7 +363,7 @@ async def on_stage(channel, context, duration_value):
             expires_in=duration_builder.parse(value=duration_value).to_expires_in(),
             guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
-            target="room",
+            target="automute",
             reason="Stage mute",
         )
         await database_factory.create(voice_mute)

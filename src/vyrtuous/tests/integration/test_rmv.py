@@ -109,7 +109,7 @@ async def test_rmv(bot, command: str, source_channel, target_channel, permission
                 )
             )
             async with capture_command() as end_results:
-                command = await admin_commands.room_move_all_text_command(
+                command = await admin_commands.channel_move_all_text_command(
                     ctx, source_channel=sc, target_channel=tc
                 )
             for kind, content in end_results:

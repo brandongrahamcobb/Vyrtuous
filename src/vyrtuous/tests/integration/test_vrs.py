@@ -45,17 +45,17 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 async def test_vrs(bot, command: str, target, permission_role):
     """
     List channels which are registered in the PostgresSQL database
-    'vyrtuous' in the table 'video_rooms'.
+    'vyrtuous' in the table 'video_channels'.
 
     Parameters
     ----------
     all : str, optional
-        Generic showing all video rooms in all guilds
+        Generic showing all video channels in all guilds
     channel_snowflake : int | str, optional
         Mention or snowflake of a channel with vrs
         in any of the guilds Vyrtuous has access inside.
     guild_snowflake : int | str, optional
-        Snowflake of a guild where video rooms are present.
+        Snowflake of a guild where video channels are present.
 
     Examples
     --------
@@ -115,7 +115,7 @@ async def test_vrs(bot, command: str, target, permission_role):
                 )
             )
             async with capture_command() as end_results:
-                command = await admin_commands.list_video_rooms_text_command(
+                command = await admin_commands.list_video_channels_text_command(
                     ctx, target=t
                 )
             for kind, content in end_results:

@@ -41,8 +41,8 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 )
 async def test_vr(bot, command: str, channel, permission_role):
     """
-    Create or teardown a video room by accessing
-    the PostgresSQL database 'vyrtuous' in the table 'video_rooms'.
+    Create or teardown a video channel by accessing
+    the PostgresSQL database 'vyrtuous' in the table 'video_channels'.
 
     Parameters
     ----------
@@ -102,7 +102,7 @@ async def test_vr(bot, command: str, channel, permission_role):
                 )
             )
             async with capture_command() as end_results:
-                command = await admin_commands.toggle_video_room_text_command(
+                command = await admin_commands.toggle_video_channel_text_command(
                     ctx, channel=c
                 )
             for kind, content in end_results:

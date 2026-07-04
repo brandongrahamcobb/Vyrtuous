@@ -48,7 +48,7 @@ from vyrtuous.utils.moderation import (
     voice_mute_service,
 )
 
-# from vyrtuous.utils.rooms import automute_room_service
+# from vyrtuous.utils.channels import automute_channel_service
 from vyrtuous.utils.users import (
     administrator_service,
     coordinator_service,
@@ -292,7 +292,7 @@ class ModeratorTextCommands(commands.Cog):
     #         member_snowflake=ctx.author.id,
     #         lowest_role="Moderator",
     #     )
-    #     msg = await automute_room_service.toggle_stage_mute(
+    #     msg = await automute_channel_service.toggle_stage_mute(
     #         channel=obj,
     #         context=context,
     #         member=member,

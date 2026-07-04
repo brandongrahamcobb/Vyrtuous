@@ -1,5 +1,5 @@
 """!/bin/python3
-video_rooms_service.py The purpose of this program is to extend Service to service the video room class.
+video_channels_service.py The purpose of this program is to extend Service to service the video channel class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -24,11 +24,11 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.video_room import VideoRoom
+from vyrtuous.db.video_channel import VideoChannel
 from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
-MODEL = VideoRoom
+MODEL = VideoChannel
 
 
 @dataclass
@@ -40,23 +40,23 @@ class VideoRoomDictionary:
 
 async def build_dictionary(obj):
     database_factory = DatabaseFactory(MODEL)
-    video_rooms = []
+    video_channels = []
     dictionary = {}
     if isinstance(obj, discord.Guild):
-        video_rooms = await database_factory.select(
+        video_channels = await database_factory.select(
             guild_snowflake=obj.id, singular=False
         )
     elif isinstance(obj, discord.abc.GuildChannel):
-        video_rooms = await database_factory.select(
+        video_channels = await database_factory.select(
             channel_snowflake=obj.id, singular=False
         )
     else:
-        video_rooms = await database_factory.select(singular=False)
-    if video_rooms:
-        for video_room in video_rooms:
-            dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            dictionary[video_room.guild_snowflake]["channels"][
-                video_room.channel_snowflake
+        video_channels = await database_factory.select(singular=False)
+    if video_channels:
+        for video_channel in video_channels:
+            dictionary.setdefault(video_channel.guild_snowflake, {"channels": {}})
+            dictionary[video_channel.guild_snowflake]["channels"][
+                video_channel.channel_snowflake
             ] = {}
     return dictionary
 
@@ -75,11 +75,13 @@ async def build_pages(is_at_home: bool, obj):
         cls=VideoRoomDictionary, dictionary=dictionary
     )
 
-    vr_n = 0
+    vc_n = 0
     for guild_snowflake, guild_data in processed_dictionary.data.items():
         field_count = 0
         lines = []
         guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            continue
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
@@ -92,7 +94,7 @@ async def build_pages(is_at_home: bool, obj):
             for category, alias_names in channel_data.items():
                 lines.append(f"{category}")
                 field_count += 1
-                vr_n += 1
+                vc_n += 1
                 for name in alias_names:
                     lines.append(f"  ↳ {name}")
                     field_count += 1
@@ -121,12 +123,11 @@ async def build_pages(is_at_home: bool, obj):
                 inline=False,
             )
         pages.append(embed)
-    if pages:
         original_description = embed.description or ""
-        embed.description = f"**{original_description}** **({vr_n})**"
+        embed.description = f"**{original_description}** **({vc_n})**"
     if is_at_home:
         pages.extend(processed_dictionary.skipped_channels)
         pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
-        return "No video rooms found."
+        return "No video channels found."
     return pages

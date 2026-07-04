@@ -29,7 +29,7 @@ from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.rooms import cap_service
+from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import data_builder, stream_service
 from vyrtuous.utils.users import moderator_service
 

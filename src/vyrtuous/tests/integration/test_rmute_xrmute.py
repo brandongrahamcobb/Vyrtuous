@@ -44,7 +44,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 )
 async def test_rmute_xrmute(bot, command: str, channel, permission_role):
     """
-    Voice-mute a whole room and undo it by adding and removing
+    Voice-mute a whole channel and undo it by adding and removing
     entries in the PostgreSQL database 'vyrtuous' in the table
     'active_voice_mutes'.
 
@@ -112,11 +112,11 @@ async def test_rmute_xrmute(bot, command: str, channel, permission_role):
                 )
             )
             async with capture_command() as end_results:
-                command = await admin_commands.room_mute_text_command(
+                command = await admin_commands.channel_mute_text_command(
                     ctx, channel=c, reason="test_reason"
                 )
                 for kind, content in end_results:
                     assert kind == "success"
-                command = await admin_commands.room_unmute_text_command(ctx, channel=c)
+                command = await admin_commands.channel_unmute_text_command(ctx, channel=c)
                 for kind, content in end_results:
                     assert kind == "success"

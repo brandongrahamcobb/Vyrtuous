@@ -29,7 +29,7 @@ from vyrtuous.text_commands.help_text_command import skip_text_command_help_disc
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import ban_service
-from vyrtuous.utils.rooms import automute_room_service
+from vyrtuous.utils.channels import automute_channel_service
 from vyrtuous.utils.users import (
     administrator_service,
     coordinator_service,
@@ -230,7 +230,7 @@ class CoordinatorTextCommands(commands.Cog):
     #         member_snowflake=ctx.author.id,
     #         lowest_role="Coordinator",
     #     )
-    #     pages = await automute_room_service.toggle_stage(
+    #     pages = await automute_channel_service.toggle_stage(
     #         channel=resolved_channel, context=context, duration_value=duration
     #     )
     #     return await tick.end(success=pages)

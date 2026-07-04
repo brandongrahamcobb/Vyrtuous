@@ -26,24 +26,35 @@ from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.administrator import NotAdministrator
 from vyrtuous.inc.helpers import PATH_LOG, at_home
-from vyrtuous.listing import (list_administrator_roles, list_caps,
-                              list_permissions, list_server_mutes,
-                              list_streams,
-                              list_video_rooms)
+from vyrtuous.listing import (
+    list_administrator_roles,
+    list_caps,
+    list_permissions,
+    list_server_mutes,
+    list_streams,
+    list_video_channels,
+)
 from vyrtuous.models.category import Category
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import \
-    skip_text_command_help_discovery
+from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import server_mute_service, voice_mute_service
-from vyrtuous.utils.rooms import (automute_room_service, cap_service,
-                                  video_room_service)
+from vyrtuous.utils.moderation import (
+    cap_service,
+    server_mute_service,
+    voice_mute_service,
+)
+from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.tracking import stream_service
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  moderator_service, sysadmin_service)
+from vyrtuous.utils.users import (
+    administrator_service,
+    coordinator_service,
+    developer_service,
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
+)
 
 
 class AdminTextCommands(commands.Cog):
@@ -361,6 +372,8 @@ class AdminTextCommands(commands.Cog):
         ),
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -379,7 +392,7 @@ class AdminTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="rmute", help="Room mute (except yourself).")
-    async def room_mute_text_command(
+    async def channel_mute_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel | None = commands.parameter(
@@ -394,7 +407,7 @@ class AdminTextCommands(commands.Cog):
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = channel or ctx.channel
-        pages = await voice_mute_service.room_mute(
+        pages = await voice_mute_service.channel_mute(
             author=ctx.author,
             channel=obj,
             reason=reason,
@@ -402,7 +415,7 @@ class AdminTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="rmv", help="VC move.")
-    async def room_move_all_text_command(
+    async def channel_move_all_text_command(
         self,
         ctx: commands.Context,
         source_channel: (
@@ -543,24 +556,10 @@ class AdminTextCommands(commands.Cog):
         else:
             obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        pages = await automute_room_service.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await automute_channel_service.build_pages(
+            obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
-
-    @commands.command(
-        name="temp", help="Toggle a temporary room and assign an owner.", hidden=True
-    )
-    @skip_text_command_help_discovery()
-    async def toggle_temp_room_text_command(
-        self,
-        ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
-            description="Tag a channel or include its ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        msg = await temporary_room_service.toggle_temporary_room(channel=channel)
-        return await tick.end(success=msg)
 
     @commands.command(name="stream", help="Setup streaming.")
     @skip_text_command_help_discovery()
@@ -607,9 +606,9 @@ class AdminTextCommands(commands.Cog):
         pages = await list_streams.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
-    @commands.command(name="vr", help="Start/stop video-only room.")
+    @commands.command(name="vo", help="Start/stop video-only channel.")
     @skip_text_command_help_discovery()
-    async def toggle_video_room_text_command(
+    async def toggle_video_channel_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel = commands.parameter(
@@ -620,15 +619,15 @@ class AdminTextCommands(commands.Cog):
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = channel or ctx.channel
-        msg = await video_room_service.toggle_video_room(channel=obj)
+        msg = await video_channel_service.toggle_video_channel(channel=obj)
         return await tick.end(success=msg)
 
     @commands.command(
-        name="vrs",
-        help="List video rooms.",
+        name="vos",
+        help="List video channels.",
     )
     @skip_text_command_help_discovery()
-    async def list_video_rooms_text_command(
+    async def list_video_channels_text_command(
         self,
         ctx: commands.Context,
         *,
@@ -646,7 +645,7 @@ class AdminTextCommands(commands.Cog):
         else:
             obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
-        pages = await list_video_rooms.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_video_channels.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
     @commands.command(name="xalias", help="Delete alias.")
@@ -667,7 +666,7 @@ class AdminTextCommands(commands.Cog):
         return await tick.end(success=msg)
 
     @commands.command(name="xrmute", help="Unmute all.")
-    async def room_unmute_text_command(
+    async def channel_unmute_text_command(
         self,
         ctx: commands.Context,
         channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
@@ -678,7 +677,7 @@ class AdminTextCommands(commands.Cog):
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = channel or ctx.channel
-        pages = await voice_mute_service.room_unmute(channel=obj)
+        pages = await voice_mute_service.channel_unmute(channel=obj)
         return await tick.end(success=pages)
 
 

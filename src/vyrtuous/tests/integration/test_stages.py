@@ -50,12 +50,12 @@ async def test_stages(bot, command: str, target, permission_role):
     Parameters
     ----------
     all : str, optional
-        Generic showing all temporary rooms in all guilds
+        Generic showing all temporary channels in all guilds
     channel_snowflake : int | str, optional
         Mention or snowflake of a channel with stages
         in any of the guilds Vyrtuous has access inside.
     guild_snowflake : int | str, optional
-        Snowflake of a guild where temporary rooms are present.
+        Snowflake of a guild where temporary channels are present.
 
     Examples
     --------

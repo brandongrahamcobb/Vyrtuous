@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 
 @dataclass(frozen=True)
 class AutoMute:
-    __tablename__ = "active_automute_rooms"
+    __tablename__ = "active_automute_channels"
     identifier = "automute"
     channel_snowflake: int
     guild_snowflake: int
