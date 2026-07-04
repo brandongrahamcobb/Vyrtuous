@@ -31,8 +31,15 @@ pyflakes = "^3.4.0"
 matplotlib = "^3.10.8"
 pandas = "^3.0.0"
 seaborn = "^0.13.2"
+mypy = "^2.1.0"
+types-cachetools = "^7.0.0.20260518"
+pandas-stubs = "^3.0.3.260530"
+types-seaborn = "^0.13.2.20260518"
 
 [tool.poetry.scripts]
 vyrtuous = "vyrtuous.main:run"
+
+[tool.mypy]
+mypy_path = ["src"]
 
 
