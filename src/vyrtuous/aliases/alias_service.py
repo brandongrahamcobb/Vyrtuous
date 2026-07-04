@@ -20,9 +20,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import importlib.util
 import inspect
 from pathlib import Path
+from typing import Union
 
 from discord.ext import commands
 
+from vyrtuous.aliases.ban_alias import BanAlias
+from vyrtuous.aliases.flag_alias import FlagAlias
+from vyrtuous.aliases.role_alias import RoleAlias
+from vyrtuous.aliases.text_mute_alias import TextMuteAlias
+from vyrtuous.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias import Alias, NotAlias
 from vyrtuous.db.database_factory import DatabaseFactory
@@ -72,9 +78,9 @@ CATEGORY_TO_PERMISSION_LEVEL = {
 }
 
 
-async def delete_alias(alias_name: str, context):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def delete_alias(alias_name: str, context) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild_snowflake = context.guild.id
     where_kwargs = {
         "alias_name": alias_name,
@@ -108,8 +114,8 @@ async def delete_alias(alias_name: str, context):
     return msg
 
 
-async def create_alias(alias_name: str, category: str, channel, *, role=None):
-    database_factory = DatabaseFactory(MODEL)
+async def create_alias(alias_name: str, category: str, channel, *, role=None) -> str:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     kwargs = {"channel_snowflake": channel.id, "guild_snowflake": channel.guild.id}
     msg = (
         f"Alias `{alias_name}` of type `{category}` "
@@ -137,7 +143,9 @@ async def create_alias(alias_name: str, category: str, channel, *, role=None):
     return msg
 
 
-def alias_category_to_alias(category: str):
+def alias_category_to_alias(
+    category: str,
+) -> Union[BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]:
     dir_paths = []
     dir_paths.append(Path("/app/vyrtuous"))
     typed_aliases = dir_to_classes(dir_paths=dir_paths)
@@ -163,8 +171,3 @@ def dir_to_classes(dir_paths, *, attr="ARGS_MAP"):
                 if attr in getattr(cls, "__annotations__", {}):
                     classes.append(cls)
     return classes
-
-
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)

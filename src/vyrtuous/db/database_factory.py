@@ -27,7 +27,7 @@ T = TypeVar("T", bound="DatabaseFactory")
 
 class DatabaseFactory(Generic[T]):
     def __init__(self, model):
-        self.__bot = DiscordBot.get_instance()
+        self.__bot: DiscordBot = DiscordBot.get_instance()
         self.model = model
 
     async def create(self, obj):
@@ -129,8 +129,8 @@ class DatabaseFactory(Generic[T]):
         virtual_filters = {"expired"}
         real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
-        conditions = []
-        values = []
+        conditions: list[str] = []
+        values: list[str] = []
         if virtual_kwargs.get("expired") is True:
             conditions.append("expires_in IS NOT NULL AND expires_in < NOW()")
             real_kwargs.pop("expired", None)

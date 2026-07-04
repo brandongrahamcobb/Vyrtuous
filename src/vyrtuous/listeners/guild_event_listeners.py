@@ -21,10 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.users import (
-    administrator_role_service,
-    administrator_service,
-)
+from vyrtuous.utils.users import administrator_role_service, administrator_service
 
 
 class GuildEventListeners(commands.Cog):
@@ -32,7 +29,9 @@ class GuildEventListeners(commands.Cog):
         self.__bot = bot
 
     @commands.Cog.listener()
-    async def on_member_update(self, before: discord.Member, after: discord.Member):
+    async def on_member_update(
+        self, before: discord.Member, after: discord.Member
+    ) -> None:
         if before.roles == after.roles:
             return
         guild_snowflake = before.guild.id
@@ -63,7 +62,7 @@ class GuildEventListeners(commands.Cog):
                 self.__bot.logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
-    async def on_guild_role_delete(self, role: discord.Role):
+    async def on_guild_role_delete(self, role: discord.Role) -> None:
         guild_snowflake = role.guild.id
         role_snowflake = role.id
         for member in role.members:

@@ -29,7 +29,7 @@ from vyrtuous.utils.messaging import emojis
 MODEL = Developer
 
 
-async def build_dictionary(obj):
+async def build_dictionary(obj) -> dict:
     database_factory = DatabaseFactory(MODEL)
     developers = []
     dictionary = {}
@@ -55,9 +55,10 @@ async def build_dictionary(obj):
     return dictionary
 
 
-async def build_pages(obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if not isinstance(obj, int):

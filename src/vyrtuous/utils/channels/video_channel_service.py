@@ -32,8 +32,8 @@ MODEL = VideoChannel
 COOLDOWN = timedelta(minutes=30)
 
 
-async def toggle_video_channel(channel):
-    bot = DiscordBot.get_instance()
+async def toggle_video_channel(channel) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
     video_channels = bot.registry.get(ChannelState).video
     database_factory = DatabaseFactory(MODEL)
     video_channel = await database_factory.select(
@@ -53,8 +53,8 @@ async def toggle_video_channel(channel):
     return f"Video-only channel {action} in {channel.mention}."
 
 
-async def populate():
-    bot = DiscordBot.get_instance()
+async def populate() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     original_set = bot.registry.get(ChannelState).video
     video_channels = await database_factory.select(singular=False)
@@ -62,16 +62,16 @@ async def populate():
         original_set.add(video_channel.channel_snowflake)
 
 
-def is_active_video_channel(channel):
-    bot = DiscordBot.get_instance()
+def is_active_video_channel(channel) -> bool:
+    bot: DiscordBot = DiscordBot.get_instance()
     video_channels = bot.registry.get(ChannelState).video
     if channel.id in video_channels:
         return True
     return False
 
 
-async def update_video_channel_tasks(before, after, member):
-    bot = DiscordBot.get_instance()
+async def update_video_channel_tasks(before, after, member) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     key = (member.guild.id, member.id)
     video = bot.registry.get(VideoChannelState)
 
@@ -107,7 +107,7 @@ async def update_video_channel_tasks(before, after, member):
 async def _prompt_enable_camera(
     member: discord.Member, channel: discord.VoiceChannel
 ) -> None:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     video = bot.registry.get(VideoChannelState)
     if video.is_on_cooldown(member.id, COOLDOWN):
         return
@@ -123,7 +123,7 @@ async def _enforce_video(
     member: discord.Member, channel: discord.VoiceChannel, delay: int
 ) -> None:
     await asyncio.sleep(delay)
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     if not member.voice or member.voice.channel != channel or member.voice.self_video:
         return
     try:

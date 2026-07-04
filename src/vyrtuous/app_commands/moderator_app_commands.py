@@ -72,164 +72,165 @@ class ModeratorAppCommands(commands.Cog):
                 continue
         raise NotAppModerator
 
-    @app_commands.command(name="data", description="Create a chart.")
-    async def create_data_app_command(self, interaction: discord.Interaction):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        view = DataView(
-            bot=self.__bot,
-            ban_service=self.__ban_service,
-            duration_builder=self.__duration_builder,
-            flag_service=self.__flag_service,
-            interaction=interaction,
-            moderator_service=self.__moderator_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-            tick=tick,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel, duration and infraction",
-            view=view,
-            ephemeral=True,
-        )
-
-    @app_commands.command(name="duration", description="Modify a duration.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    async def change_moderation_duration_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
-    ):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(
-            ban_service=self.__ban_service,
-            flag_service=self.__flag_service,
-            interaction=interaction,
-            moderator_service=self.__moderator_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-        )
-        await ctx.setup(target_member_snowflake=member.id)
-        view = ModifyInfractionView(
-            ctx=ctx,
-            modal=DurationModal,
-            tick=tick,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and an infraction", view=view, ephemeral=True
-        )
-
-    @app_commands.command(name="reason", description="Modify a reason.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    async def change_moderation_reason_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
-    ):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(
-            ban_service=self.__ban_service,
-            flag_service=self.__flag_service,
-            interaction=interaction,
-            moderator_service=self.__moderator_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-        )
-        await ctx.setup(target_member_snowflake=member.id)
-        view = ModifyInfractionView(
-            ctx=ctx,
-            modal=ReasonModal,
-            tick=tick,
-            ban_service=self.__ban_service,
-            flag_service=self.__flag_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and an infraction", view=view, ephemeral=True
-        )
-
-    @app_commands.command(name="vban", description="Create a ban.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    async def create_ban_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
-    ):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(
-            ban_service=self.__ban_service,
-            flag_service=self.__flag_service,
-            interaction=interaction,
-            moderator_service=self.__moderator_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-        )
-        ctx.infraction = Ban
-        await ctx.setup(target_member_snowflake=member.id)
-        view = InfractionView(
-            cap_service=self.__cap_service,
-            ctx=ctx,
-            duration_builder=self.__duration_builder,
-            modal=ReasonModal,
-            tick=tick,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
-        )
-
-    @app_commands.command(name="vmute", description="Create a mute.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    async def create_voice_mute_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
-    ):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(
-            ban_service=self.__ban_service,
-            flag_service=self.__flag_service,
-            interaction=interaction,
-            moderator_service=self.__moderator_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-        )
-        ctx.infraction = VoiceMute
-        await ctx.setup(target_member_snowflake=member.id)
-        view = InfractionView(
-            cap_service=self.__cap_service,
-            ctx=ctx,
-            duration_builder=self.__duration_builder,
-            modal=ReasonModal,
-            tick=tick,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
-        )
-
-    @app_commands.command(name="vtmute", description="Create a text-mute.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    async def create_text_mute_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
-    ):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(
-            ban_service=self.__ban_service,
-            flag_service=self.__flag_service,
-            interaction=interaction,
-            moderator_service=self.__moderator_service,
-            text_mute_service=self.__text_mute_service,
-            voice_mute_service=self.__voice_mute_service,
-        )
-        ctx.infraction = TextMute
-        await ctx.setup(target_member_snowflake=member.id)
-        view = InfractionView(
-            cap_service=self.__cap_service,
-            ctx=ctx,
-            duration_builder=self.__duration_builder,
-            modal=ReasonModal,
-            tick=tick,
-        )
-        await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
-        )
+    # @app_commands.command(name="data", description="Create a chart.")
+    # async def create_data_app_command(self, interaction: discord.Interaction):
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     view = DataView(
+    #         bot=self.__bot,
+    #         ban_service=self.__ban_service,
+    #         duration_builder=self.__duration_builder,
+    #         flag_service=self.__flag_service,
+    #         interaction=interaction,
+    #         moderator_service=self.__moderator_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #         tick=tick,
+    #     )
+    #     await view.setup()
+    #     await interaction.response.send_message(
+    #         content="Select a channel, duration and infraction",
+    #         view=view,
+    #         ephemeral=True,
+    #     )
+    #
+    # @app_commands.command(name="duration", description="Modify a duration.")
+    # @app_commands.describe(member="The ID or mention of the member.")
+    # async def change_moderation_duration_app_command(
+    #     self, interaction: discord.Interaction, member: discord.Member
+    # ):
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     ctx = ViewContext(
+    #         ban_service=self.__ban_service,
+    #         flag_service=self.__flag_service,
+    #         interaction=interaction,
+    #         moderator_service=self.__moderator_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #     )
+    #     await ctx.setup(target_member_snowflake=member.id)
+    #     view = ModifyInfractionView(
+    #         ctx=ctx,
+    #         modal=DurationModal,
+    #         tick=tick,
+    #     )
+    #     await view.setup()
+    #     await interaction.response.send_message(
+    #         content="Select a channel and an infraction", view=view, ephemeral=True
+    #     )
+    #
+    # @app_commands.command(name="reason", description="Modify a reason.")
+    # @app_commands.describe(member="The ID or mention of the member.")
+    # async def change_moderation_reason_app_command(
+    #     self, interaction: discord.Interaction, member: discord.Member
+    # ):
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     ctx = ViewContext(
+    #         ban_service=self.__ban_service,
+    #         flag_service=self.__flag_service,
+    #         interaction=interaction,
+    #         moderator_service=self.__moderator_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #     )
+    #     await ctx.setup(target_member_snowflake=member.id)
+    #     view = ModifyInfractionView(
+    #         ctx=ctx,
+    #         modal=ReasonModal,
+    #         tick=tick,
+    #         ban_service=self.__ban_service,
+    #         flag_service=self.__flag_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #     )
+    #     await view.setup()
+    #     await interaction.response.send_message(
+    #         content="Select a channel and an infraction", view=view, ephemeral=True
+    #     )
+    #
+    # @app_commands.command(name="vban", description="Create a ban.")
+    # @app_commands.describe(member="The ID or mention of the member.")
+    # async def create_ban_app_command(
+    #     self, interaction: discord.Interaction, member: discord.Member
+    # ):
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     ctx = ViewContext(
+    #         ban_service=self.__ban_service,
+    #         flag_service=self.__flag_service,
+    #         interaction=interaction,
+    #         moderator_service=self.__moderator_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #     )
+    #     ctx.infraction = Ban
+    #     await ctx.setup(target_member_snowflake=member.id)
+    #     view = InfractionView(
+    #         cap_service=self.__cap_service,
+    #         ctx=ctx,
+    #         duration_builder=self.__duration_builder,
+    #         modal=ReasonModal,
+    #         tick=tick,
+    #     )
+    #     await view.setup()
+    #     await interaction.response.send_message(
+    #         content="Select a channel and a duration", view=view, ephemeral=True
+    #     )
+    #
+    # @app_commands.command(name="vmute", description="Create a mute.")
+    # @app_commands.describe(member="The ID or mention of the member.")
+    # async def create_voice_mute_app_command(
+    #     self, interaction: discord.Interaction, member: discord.Member
+    # ):
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     ctx = ViewContext(
+    #         ban_service=self.__ban_service,
+    #         flag_service=self.__flag_service,
+    #         interaction=interaction,
+    #         moderator_service=self.__moderator_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #     )
+    #     ctx.infraction = VoiceMute
+    #     await ctx.setup(target_member_snowflake=member.id)
+    #     view = InfractionView(
+    #         cap_service=self.__cap_service,
+    #         ctx=ctx,
+    #         duration_builder=self.__duration_builder,
+    #         modal=ReasonModal,
+    #         tick=tick,
+    #     )
+    #     await view.setup()
+    #     await interaction.response.send_message(
+    #         content="Select a channel and a duration", view=view, ephemeral=True
+    #     )
+    #
+    # @app_commands.command(name="vtmute", description="Create a text-mute.")
+    # @app_commands.describe(member="The ID or mention of the member.")
+    # async def create_text_mute_app_command(
+    #     self, interaction: discord.Interaction, member: discord.Member
+    # ):
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     ctx = ViewContext(
+    #         ban_service=self.__ban_service,
+    #         flag_service=self.__flag_service,
+    #         interaction=interaction,
+    #         moderator_service=self.__moderator_service,
+    #         text_mute_service=self.__text_mute_service,
+    #         voice_mute_service=self.__voice_mute_service,
+    #     )
+    #     ctx.infraction = TextMute
+    #     await ctx.setup(target_member_snowflake=member.id)
+    #     view = InfractionView(
+    #         cap_service=self.__cap_service,
+    #         ctx=ctx,
+    #         duration_builder=self.__duration_builder,
+    #         modal=ReasonModal,
+    #         tick=tick,
+    #     )
+    #     await view.setup()
+    #     await interaction.response.send_message(
+    #         content="Select a channel and a duration", view=view, ephemeral=True
+    #     )
+    #
 
 
 async def setup(bot: DiscordBot):

@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
+from typing import Self
 
 import asyncpg
 import discord
@@ -42,7 +43,7 @@ class DiscordBot(commands.Bot):
         *,
         config,
         db_pool: asyncpg.Pool,
-        extensions: list[str],
+        initial_extensions: list[str],
         logger: logging.Logger,
         **kwargs,
     ):
@@ -56,16 +57,16 @@ class DiscordBot(commands.Bot):
         )
         self.config = config
         self.db_pool = db_pool
-        self.__extensions = extensions
+        self.__initial_extensions = initial_extensions
         self.logger = logger
         self.registry = Registry()
         self.testing_guild_snowflake = self.config["discord_testing_guild_snowflake"]
 
-    async def setup_hook(self):
-        for ext in self.__extensions:
+    async def setup_hook(self) -> None:
+        for ext in self.__initial_extensions:
             await self.load_extension(ext)
 
-    def register(self):
+    def register(self) -> None:
         self.registry.register(
             (
                 ChannelState(),
@@ -77,7 +78,7 @@ class DiscordBot(commands.Bot):
         )
 
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> Self:
         if cls._instance is None:
             raise RuntimeError("DiscordBot instance has not been created yet")
         return cls._instance

@@ -21,11 +21,16 @@ import discord
 from discord.ext import commands, tasks
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.clean import (
+    clean_active_member_service,
+    clean_automute_service,
+    clean_ban_service,
+    clean_bug_service,
+    clean_text_mute_service,
+    clean_voice_mute_service,
+)
 from vyrtuous.db.database import Database
-from vyrtuous.utils.moderation import ban_service, text_mute_service, voice_mute_service
-from vyrtuous.utils.channels import automute_channel_service
 from vyrtuous.utils.statistics import system_monitoring_service
-from vyrtuous.utils.tracking import bug_service
 from vyrtuous.utils.users import active_member_service
 
 
@@ -33,7 +38,7 @@ class ScheduledTasks(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
         if not self.backup_database.is_running():
             self.backup_database.start()
         if not self.check_expired_bans.is_running():
@@ -56,18 +61,18 @@ class ScheduledTasks(commands.Cog):
             self.cleanup_stale_overwrites.start()
 
     @tasks.loop(hours=1)
-    async def remove_inactive_members(self):
-        count = await active_member_service.remove_inactive_members()
+    async def clean_inactive_members(self) -> None:
+        count = await clean_active_member_service.clean_inactive_members()
         self.__bot.logger.info(f"Removed {count} inactive members.")
 
     @tasks.loop(minutes=5)
-    async def system_monitoring(self):
+    async def system_monitoring(self) -> None:
         await system_monitoring_service.log_cpu_seconds()
         await system_monitoring_service.log_rx_bytes()
         await system_monitoring_service.log_tx_bytes()
 
     @tasks.loop(hours=72)
-    async def cleanup_stale_overwrites(self):
+    async def cleanup_stale_overwrites(self) -> None:
         for guild in self.__bot.guilds:
             for channel in guild.channels:
                 if isinstance(channel, discord.VoiceChannel):
@@ -84,43 +89,43 @@ class ScheduledTasks(commands.Cog):
                                 )
 
     @tasks.loop(minutes=1)
-    async def save_active_members(self):
+    async def save_active_members(self) -> None:
         await active_member_service.save_and_update_active_members()
         self.__bot.logger.info("Saved active members.")
 
     @tasks.loop(minutes=5)
-    async def check_expired_bans(self):
-        await ban_service.clean_expired()
+    async def check_expired_bans(self) -> None:
+        await clean_ban_service.clean_expired_bans()
         self.__bot.logger.info("Cleaned up expired bans.")
 
     @tasks.loop(seconds=15)
-    async def check_expired_voice_mutes(self):
-        await voice_mute_service.clean_expired()
+    async def check_expired_voice_mutes(self) -> None:
+        await clean_voice_mute_service.clean_expired_voice_mutes()
         self.__bot.logger.info("Cleaned up expired voice-mutes.")
 
     @tasks.loop(minutes=1)
-    async def check_expired_automutes(self):
-        await automute_channel_service.clean_expired()
+    async def check_expired_automutes(self) -> None:
+        await clean_automute_service.clean_expired_automutes()
         self.__bot.logger.info("Cleaned up expired automute channels.")
 
     @tasks.loop(hours=8)
-    async def check_expired_bugs(self):
-        await bug_service.clean_expired()
+    async def check_expired_bugs(self) -> None:
+        await clean_bug_service.clean_expired_bugs()
         self.__bot.logger.info("Sent developer log to developers.")
 
     @tasks.loop(minutes=1)
-    async def check_expired_text_mutes(self):
-        await text_mute_service.clean_expired()
+    async def check_expired_text_mutes(self) -> None:
+        await clean_text_mute_service.clean_expired_text_mutes()
         self.__bot.logger.info("Cleaned up expired text-mutes.")
 
     @tasks.loop(hours=1)
-    async def temporarily_cleanup_overwrites(self):
-        await ban_service.clean_overwrites()
-        await text_mute_service.clean_overwrites()
+    async def temporarily_cleanup_overwrites(self) -> None:
+        await clean_ban_service.clean_ban_overwrites()
+        await clean_text_mute_service.clean_text_mute_overwrites()
         self.__bot.logger.info("Reset ban and text-mute overwrites.")
 
     @tasks.loop(hours=24)
-    async def backup_database(self):
+    async def backup_database(self) -> None:
         try:
             db = Database(config=self.__bot.config)
             db.create_backup_directory()

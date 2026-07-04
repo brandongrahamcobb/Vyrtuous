@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import inspect
 from collections import defaultdict
+from typing import Callable
 
 import discord
 from discord.ext import commands
@@ -40,8 +41,8 @@ from vyrtuous.utils.users import (
 )
 
 
-def skip_text_command_help_discovery():
-    async def predicate(ctx):
+def skip_text_command_help_discovery() -> Callable:
+    async def predicate(ctx) -> bool:
         return True
 
     return commands.check(predicate)
@@ -63,7 +64,7 @@ class HelpTextCommand(commands.Cog):
             ("Everyone", "Commands available to everyone."),
         ]
 
-    async def cog_check(self, ctx: commands.Context):
+    async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
@@ -90,7 +91,7 @@ class HelpTextCommand(commands.Cog):
         self, channel_snowflake: int, guild_snowflake: int
     ) -> list[str]:
         lines = []
-        database_factory = DatabaseFactory(Alias)
+        database_factory: DatabaseFactory = DatabaseFactory(Alias)
         aliases = await database_factory.select(
             channel_snowflake=channel_snowflake,
             guild_snowflake=int(guild_snowflake),
@@ -110,7 +111,9 @@ class HelpTextCommand(commands.Cog):
                         lines.append(f"• {line}")
         return lines
 
-    async def get_available_commands(self, user_highest):
+    async def get_available_commands(
+        self, user_highest
+    ) -> tuple[list[commands.Command], list[commands.Command]]:
         available = []
         skipped = []
         for command in self.__bot.commands:
@@ -139,14 +142,14 @@ class HelpTextCommand(commands.Cog):
                 )
         return available, skipped
 
-    async def get_command_permission_level(self, command):
+    async def get_command_permission_level(self, command) -> str:
         if command.cog:
             level = getattr(command.cog, "PERMISSION_LEVEL", None)
             if level:
                 return level
         return "Everyone"
 
-    def get_permission_color(self, perm_level):
+    def get_permission_color(self, perm_level) -> discord.Color:
         colors = {
             "Sysadmin": discord.Color.dark_red(),
             "Developer": discord.Color.red(),
@@ -158,7 +161,9 @@ class HelpTextCommand(commands.Cog):
         }
         return colors.get(perm_level, discord.Color.greyple())
 
-    async def group_commands_by_permission(self, commands_list):
+    async def group_commands_by_permission(
+        self, commands_list
+    ) -> dict[str, list[commands.Command]]:
         permission_groups = {level: [] for level in moderator_service.PERMISSION_TYPES}
         for command in commands_list:
             perm_level = await self.get_command_permission_level(command)
@@ -168,8 +173,10 @@ class HelpTextCommand(commands.Cog):
                 permission_groups["Everyone"].append(command)
         return permission_groups
 
-    async def resolve_command_or_alias(self, source, name: str):
-        database_factory = DatabaseFactory(Alias)
+    async def resolve_command_or_alias(
+        self, source, name: str
+    ) -> tuple[str | None, commands.Command | Alias | None]:
+        database_factory: DatabaseFactory = DatabaseFactory(Alias)
         cmd = self.__bot.get_command(name.lower())
         if cmd:
             return ("command", cmd)
@@ -180,7 +187,7 @@ class HelpTextCommand(commands.Cog):
             return ("alias", alias)
         return (None, None)
 
-    def split_command_list(self, commands_list, max_length=1024):
+    def split_command_list(self, commands_list, max_length=1024) -> list[str]:
         current_chunk, chunks = [], []
         current_length = 0
         for cmd in commands_list:
@@ -197,23 +204,25 @@ class HelpTextCommand(commands.Cog):
             chunks.append("\n".join(current_chunk))
         return chunks
 
-    def unwrap_callback(self, func):
+    def unwrap_callback(self, func) -> Callable:
         while hasattr(func, "__wrapped__"):
             func = func.__wrapped__
         return func
 
-    async def get_permission_filtered_aliases(self, source):
-        database_factory = DatabaseFactory(Alias)
+    async def get_permission_filtered_aliases(
+        self, source
+    ) -> defaultdict[str, list[str]]:
+        database_factory: DatabaseFactory = DatabaseFactory(Alias)
         aliases = await database_factory.select(
             channel_snowflake=source.channel.id,
             guild_snowflake=source.guild.id,
             singular=False,
         )
+        grouped = defaultdict(list)
+        perm_alias_map = defaultdict(list)
         if aliases:
-            grouped = defaultdict(list)
             for alias in aliases:
                 grouped[alias.category].append(alias)
-            perm_alias_map = defaultdict(list)
             for category, alias_list in grouped.items():
                 perm_level = alias_service.CATEGORY_TO_PERMISSION_LEVEL.get(
                     category, "Everyone"
@@ -224,12 +233,14 @@ class HelpTextCommand(commands.Cog):
                         f"**{self.__bot.config['discord_command_prefix']}{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
                     )
-            return perm_alias_map
+        return perm_alias_map
 
     @commands.command(name="help", help="List commands.")
-    async def help_text_command(self, ctx, *, command_name: str | None = None):
+    async def help_text_command(
+        self, ctx, *, command_name: str | None = None
+    ) -> discord.Message | None:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        database_factory = DatabaseFactory(Alias)
+        database_factory: DatabaseFactory = DatabaseFactory(Alias)
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)

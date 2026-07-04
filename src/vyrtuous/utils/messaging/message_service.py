@@ -32,7 +32,7 @@ async def send_message(
     allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
     ephemeral: bool = True,
     view: discord.ui.View | None,
-):
+) -> discord.Message:
     if isinstance(source, commands.Context):
         can_send = (
             source.guild
@@ -107,7 +107,7 @@ async def send_message(
 
 async def _send_message(
     send_func, *, content=None, file=None, embed=None, allowed_mentions=None, view=None
-):
+) -> discord.Message:
     kwargs = {}
     if content:
         kwargs["content"] = content
@@ -130,7 +130,7 @@ async def send_dm(
     embed=None,
     allowed_mentions=None,
     view=None,
-):
+) -> discord.Message:
     dm_channel = user.dm_channel
     if dm_channel is None:
         dm_channel = await user.create_dm()

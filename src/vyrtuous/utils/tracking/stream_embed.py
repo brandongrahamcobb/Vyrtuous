@@ -48,7 +48,7 @@ class StreamEmbed(discord.Embed):
         )
 
     def set_role(self, *, guild_snowflake: int, role_snowflake: int) -> Self:
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))
@@ -58,7 +58,7 @@ class StreamEmbed(discord.Embed):
         self.add_field(name="Role", value=role.mention, inline=False)
         return self
 
-    def set_title(self, *, identifier: str):
+    def set_title(self, *, identifier: str) -> Self:
         self.color = 0xDC143C
         match identifier:
             case "ban":
@@ -79,14 +79,14 @@ class StreamEmbed(discord.Embed):
                 self.title = "🔄 User Unmuted"
         return self
 
-    def set_tn(self, *, url):
+    def set_tn(self, *, url) -> Self:
         self.set_thumbnail(url=url)
         return self
 
     def set_executor(
         self, *, author_snowflake: int, guild_snowflake: int, highest_role: str
     ) -> Self:
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))
@@ -116,7 +116,7 @@ class StreamEmbed(discord.Embed):
         fields = []
         if target:
             fields.append(f"Type: {target}")
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))
@@ -154,7 +154,7 @@ class StreamEmbed(discord.Embed):
         message_snowflake: int,
         message_channel_snowflake: int,
     ) -> Self:
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             raise commands.GuildNotFound(str(guild_snowflake))
@@ -196,7 +196,7 @@ class StreamEmbed(discord.Embed):
         target_snowflake: int,
         message_snowflake: int | None,
     ) -> Self:
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))
@@ -212,7 +212,7 @@ class StreamEmbed(discord.Embed):
         self, *, channel_snowflake: int, guild_snowflake: int, is_channel_scope: bool
     ) -> Self:
         fields = []
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))
@@ -236,7 +236,7 @@ class StreamEmbed(discord.Embed):
     def set_description(
         self, *, channel_snowflake: int, guild_snowflake: int, target_snowflake: int
     ) -> Self:
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))

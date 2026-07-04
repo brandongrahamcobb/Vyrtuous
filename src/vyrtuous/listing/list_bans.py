@@ -42,7 +42,7 @@ class BanDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj):
+async def build_dictionary(obj) -> dict:
     database_factory = DatabaseFactory(MODEL)
     bans = []
     dictionary = {}
@@ -73,10 +73,11 @@ async def build_dictionary(obj):
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
+async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
     duration_builder = DurationBuilder()
-    lines, pages = [], []
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
     thumbnail = False
 
     obj_name = "All Servers"
@@ -162,7 +163,7 @@ async def build_pages(is_at_home: bool, obj):
     return pages
 
 
-async def build_blacklist_dictionary(obj):
+async def build_blacklist_dictionary(obj) -> dict:
     database_factory = DatabaseFactory(MODEL)
     bans = []
     dictionary = {}
@@ -187,9 +188,10 @@ async def build_blacklist_dictionary(obj):
     return dictionary
 
 
-async def build_blacklist_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_blacklist_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
     thumbnail = False
 
     obj_name = "All Servers"

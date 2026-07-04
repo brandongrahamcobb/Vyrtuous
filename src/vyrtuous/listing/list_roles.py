@@ -66,8 +66,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
 # async def build_pages(is_at_home: bool, obj):
-#     bot = DiscordBot.get_instance()
-#     lines, pages = []
+#     bot: DiscordBot = DiscordBot.get_instance()
+#     lines, pages: list[discord.Embed] = []
 #     title = f"{emojis.get_random_emoji()} Role {f'for {obj.name}' if isinstance(obj, discord.Member) else ''}"
 #
 #     dictionary = await build_dictionary(obj=obj)

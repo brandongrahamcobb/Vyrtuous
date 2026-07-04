@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
-
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.active_member import ActiveMember
@@ -27,15 +25,15 @@ from vyrtuous.db.database_factory import DatabaseFactory
 MODEL = ActiveMember
 
 
-async def is_active(member_snowflake: int):
-    bot = DiscordBot.get_instance()
+async def is_active(member_snowflake: int) -> bool:
+    bot: DiscordBot = DiscordBot.get_instance()
     if member_snowflake in bot.registry.get(MemberState).active.keys():
         return True
     return False
 
 
-async def populate():
-    bot = DiscordBot.get_instance()
+async def populate() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     active_members = await database_factory.select(singular=False)
     for member in active_members:
@@ -45,8 +43,8 @@ async def populate():
     bot.logger.info("Populated in-memory active members.")
 
 
-async def save_and_update_active_members():
-    bot = DiscordBot.get_instance()
+async def save_and_update_active_members() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     saved_members = await database_factory.select(singular=False)
     member_snowflakes = [
@@ -71,16 +69,4 @@ async def save_and_update_active_members():
             )
             bot.logger.info(
                 f"Updated {data[0]} last active timestamp in the active members database table."
-            )
-
-
-async def remove_inactive_members():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    saved_members = await database_factory.select(singular=False)
-    for member in saved_members:
-        if datetime.now(timezone.utc) - member.last_active > timedelta(days=7):
-            del bot.registry.get(MemberState).active[member.member_snowflake]
-            bot.logger.info(
-                f"Deleted inactive member {member.display_name} from the active members database table."
             )

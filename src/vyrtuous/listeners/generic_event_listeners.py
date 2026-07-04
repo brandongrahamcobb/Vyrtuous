@@ -28,8 +28,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.alias import NotAlias
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import (ban_service, flag_service,
-                                       text_mute_service, voice_mute_service)
+from vyrtuous.utils.moderation import (
+    ban_service,
+    flag_service,
+    text_mute_service,
+    voice_mute_service,
+)
 from vyrtuous.utils.users import moderator_service
 
 
@@ -39,7 +43,7 @@ class GenericEventListeners(commands.Cog):
         self.__bot = bot
 
     @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
+    async def on_message_edit(self, before, after) -> None:
         if after.author.bot:
             return
         if before.content != after.content:
@@ -50,7 +54,7 @@ class GenericEventListeners(commands.Cog):
                 await self.on_message(after)
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> discord.Message | None:
         if isinstance(message.channel, discord.VoiceChannel) or isinstance(
             message.channel, discord.StageChannel
         ):
@@ -141,7 +145,7 @@ class GenericEventListeners(commands.Cog):
                 return await tick.end(error=str(e))
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
+    async def on_command_error(self, ctx, error) -> discord.Message | None:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if isinstance(error, commands.BadArgument):
             return await tick.end(error=str(error))
@@ -154,13 +158,13 @@ class GenericEventListeners(commands.Cog):
             return await tick.end(error=f"Missing required argument: `{missing}`")
 
     @commands.Cog.listener()
-    async def on_app_command_error(self, interaction, error):
+    async def on_app_command_error(self, interaction, error) -> discord.Message | None:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if isinstance(error, app_commands.CheckFailure):
             return await tick.end(error=str(error))
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True

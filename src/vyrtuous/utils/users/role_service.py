@@ -28,7 +28,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 async def enforce_or_undo(
     alias_ctx: AliasContext, message: discord.Message
 ) -> discord.Embed:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(alias_ctx.guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(alias_ctx.guild_snowflake))
@@ -68,8 +68,8 @@ async def added_role(
     guild_snowflake,
     member_snowflake,
     role_snowflake,
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     kwargs = {
         "guild_snowflake": int(guild_snowflake),
         "role_snowflake": str(role_snowflake),
@@ -92,8 +92,8 @@ async def removed_role(
     guild_snowflake,
     member_snowflake,
     role_snowflake,
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     kwargs = {
         "guild_snowflake": int(guild_snowflake),
         "role_snowflake": str(role_snowflake),

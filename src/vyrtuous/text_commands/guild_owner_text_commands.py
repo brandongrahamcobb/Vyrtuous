@@ -24,18 +24,14 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.guild_owner import NotGuildOwner
-from vyrtuous.cache.registry import MemberState
-from vyrtuous.inc.helpers import at_home
-from vyrtuous.listing import list_developers, list_heroes
+from vyrtuous.listing import list_developers
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import (
     administrator_role_service,
     developer_service,
     guild_owner_service,
-    hero_service,
     sysadmin_service,
 )
 
@@ -47,7 +43,7 @@ class GuildOwnerTextCommands(commands.Cog):
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
 
-    async def cog_check(self, ctx):
+    async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
@@ -74,42 +70,12 @@ class GuildOwnerTextCommands(commands.Cog):
         role: discord.Role = commands.parameter(
             converter=commands.RoleConverter, description="Tag a role or its ID"
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         pages = await administrator_role_service.toggle_administrator_role(
             role=role,
         )
         return await tick.end(success=pages)
-
-    @commands.command(name="hero", help="Grant/revoke invincibility.")
-    @skip_text_command_help_discovery()
-    async def invincibility_text_command(
-        self,
-        ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
-            description="Tag a member or include their ID",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
-        if member.id in (self.__bot.registry.get(MemberState).invincible[ctx.guild.id]):
-            await hero_service.add_invincible_member(member.guild.id, member.id)
-            await hero_service.unrestrict(
-                guild_snowflake=member.guild.id, member_snowflake=member.id
-            )
-            msg = (
-                f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member.mention}."
-            )
-        else:
-            await hero_service.remove_invincible_member(member.guild.id, member.id)
-            self.__bot.registry.get(MemberState).invincible[ctx.guild.id].remove(
-                member.id
-            )
-            msg = f"Invincibility has been disabled for {member.mention}"
-        return await tick.end(success=msg)
 
     @commands.command(name="devs", help="List devs.")
     async def list_developers_text_command(
@@ -121,29 +87,10 @@ class GuildOwnerTextCommands(commands.Cog):
             default=None,
             description="'all', or user mention/ID",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = target or "all"
         pages = await list_developers.build_pages(obj=obj)
-        return await tick.end(success=pages)
-
-    @commands.command(name="heroes", help="List heroes.")
-    async def list_heroes_text_command(
-        self,
-        ctx: commands.Context,
-        *,
-        target: Union[str, discord.Member] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="'all', or user mention/ID",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        is_at_home = at_home(source=ctx)
-        pages = await list_heroes.build_pages(
-            is_at_home=is_at_home,
-            obj=target,
-        )
         return await tick.end(success=pages)
 
     @commands.command(name="sync", help="Sync app commands.")
@@ -153,7 +100,7 @@ class GuildOwnerTextCommands(commands.Cog):
         spec: Optional[Literal["~", "*", "^"]] = None,
         *,
         guilds: Union[commands.Greedy[discord.Object], None] = None,
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         synced = []
         if not guilds:

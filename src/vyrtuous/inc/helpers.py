@@ -52,17 +52,23 @@ DISCORD_COGS = [
     "vyrtuous.text_commands.developer_text_commands",
     "vyrtuous.text_commands.guild_owner_text_commands",
     "vyrtuous.text_commands.help_text_command",
+    "vyrtuous.text_commands.hidden_administrator_text_commands",
+    "vyrtuous.text_commands.hidden_coordinator_text_commands",
+    "vyrtuous.text_commands.hidden_developer_text_commands",
+    "vyrtuous.text_commands.hidden_guild_owner_text_commands",
+    "vyrtuous.text_commands.hidden_moderator_text_commands",
+    "vyrtuous.text_commands.hidden_sysadmin_text_commands",
     "vyrtuous.text_commands.moderator_text_commands",
     "vyrtuous.text_commands.sysadmin_text_commands",
 ]
 DISCORD_COGS_CLASSES = [
-    "AdminAppCommands",
-    "AdminTextCommands",
+    "AdministratorAppCommands",
+    "AdministratorTextCommands",
     "ChannelEventListeners",
     "CoordinatorAppCommands",
     "CoordinatorTextCommands",
-    "DevAppCommands",
-    "DevTextCommands",
+    "DeveloperAppCommands",
+    "DeveloperTextCommands",
     "GenericEventListeners",
     "GuildEventListeners",
     "GuildOwnerAppCommands",
@@ -70,6 +76,12 @@ DISCORD_COGS_CLASSES = [
     "HelpAppCommand",
     "HelpTextCommand",
     "Heartbeat",
+    "HiddenAdministratorTextCommands",
+    "HiddenCoordinatorTextCommands",
+    "HiddenDeveloperTextCommands",
+    "HiddenGuildOwnerTextCommands",
+    "HiddenModeratorTextCommands",
+    "HiddenSysadminTextCommands",
     "ModeratorAppCommands",
     "ModeratorTextCommands",
     "ScheduledTasks",
@@ -79,14 +91,13 @@ DISCORD_COGS_CLASSES = [
 ]
 DISCORD_COMMAND_PREFIX = "!"
 #### PATHS
-PATH_TOML = join(DIR_HOME, "git", "sandbox", "python", "Vyrtuous", "pyproject.toml")
 PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
 
 
 def at_home(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ) -> bool:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     if source.guild is None:
         return False
     if source.guild.id == int(bot.config["discord_testing_guild_snowflake"]):
@@ -94,7 +105,7 @@ def at_home(
     return False
 
 
-def resolve_author(source):
+def resolve_author(source) -> discord.User | discord.Member:
     if isinstance(source, discord.Interaction):
         member = source.user
     elif isinstance(source, (commands.Context, discord.Message)):

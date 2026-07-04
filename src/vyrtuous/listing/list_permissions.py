@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.listing import list_service
@@ -45,8 +46,8 @@ class PermissionDictionary:
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
-def build_dictionary(obj, me):
-    bot = DiscordBot.get_instance()
+def build_dictionary(obj, me) -> dict:
+    bot: DiscordBot = DiscordBot.get_instance()
     channels = []
     dictionary = {}
     if isinstance(obj, discord.Guild):
@@ -72,13 +73,19 @@ def build_dictionary(obj, me):
     return dictionary
 
 
-async def build_pages(obj, context, is_at_home):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(obj, context, is_at_home) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
+
     guild = bot.get_guild(context.guild.id)
+    if guild is None:
+        return "This command must be used in a server."
     obj_name = "All Servers"
     if obj:
         obj_name = obj.name
+    if bot.user is None:
+        return "The bot must be in a server."
     title = f"{emojis.get_random_emoji()} {bot.user.display_name} Missing Permissions in {obj_name}"
 
     dictionary = build_dictionary(obj=obj, me=guild.me)
@@ -90,13 +97,17 @@ async def build_pages(obj, context, is_at_home):
         perm_n = 0
         field_count = 0
         guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            continue
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
         for channel_snowflake, channel_data in guild_data.get("channels", {}).items():
             channel = guild.get_channel(channel_snowflake)
+            if channel is None:
+                continue
             lines.append(f"Channel: {channel.mention}")
-            for section_name, permissions in channel_data.items():
+            for _, permissions in channel_data.items():
                 for permission in permissions:
                     lines.append(f"  ↳ {permission}")
             field_count += 1

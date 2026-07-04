@@ -24,7 +24,7 @@ from datetime import datetime
 import aiohttp
 from quart import Quart, redirect, request
 
-from vyrtuous.utils.logger import logger
+from vyrtuous.system.logger import logger
 
 discord_app = Quart(__name__)
 

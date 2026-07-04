@@ -123,7 +123,7 @@ async def save_data(
     reason: str,
     role_snowflake: int | None,
     target: str | None,
-):
+) -> None:
     data = DataBuilder(
         guild_snowflake=guild_snowflake, target_snowflake=member_snowflake
     )
@@ -132,7 +132,7 @@ async def save_data(
         data.set_target(target=target)
     if reason:
         data.set_reason(reason=reason)
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))

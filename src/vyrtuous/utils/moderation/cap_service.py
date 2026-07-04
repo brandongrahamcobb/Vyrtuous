@@ -24,8 +24,8 @@ from vyrtuous.models.duration import DurationBuilder
 MODEL = Cap
 
 
-async def toggle_cap(category: str, channel, hours: int):
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_cap(category: str, channel, hours: int) -> str:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     seconds = int(hours) * 3600
     where_kwargs = {"channel_snowflake": channel.id, "category": category}
     cap = await database_factory.select(
@@ -56,8 +56,8 @@ async def toggle_cap(category: str, channel, hours: int):
 
 async def exceeds_cap(
     category: str, channel_snowflake: int, duration_value: str, guild_snowflake: int
-):
-    database_factory = DatabaseFactory(MODEL)
+) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
     exceeds_cap = False
     cap = await database_factory.select(
@@ -77,20 +77,3 @@ async def exceeds_cap(
         if duration_seconds > cap_duration_seconds or value == 0:
             exceeds_cap = True
     return exceeds_cap
-
-
-async def get_cap_seconds(ctx):
-    database_factory = DatabaseFactory(MODEL)
-    cap = await database_factory.select(
-        channel_snowflake=ctx.channel.id,
-        guild_snowflake=ctx.guild.id,
-        category=ctx.category,
-        singular=True,
-    )
-    if cap:
-        return cap.duration_seconds
-
-
-async def migrate(kwargs):
-    database_factory = DatabaseFactory(MODEL)
-    await database_factory.update(**kwargs)

@@ -26,7 +26,6 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.cache.sysadmin import NotSysadmin
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.upload import upload_service
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import developer_service, sysadmin_service
@@ -39,7 +38,7 @@ class SysadminTextCommands(commands.Cog):
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
 
-    async def cog_check(self, ctx: commands.Context):
+    async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
@@ -51,25 +50,6 @@ class SysadminTextCommands(commands.Cog):
             return True
         raise NotSysadmin
 
-    @commands.command(name="assign", help="Assign developer.")
-    async def assign_bug_to_developer_text_command(
-        self,
-        ctx: commands.Context,
-        reference: str = commands.parameter(
-            description="Include an issue reference ID"
-        ),
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
-            description="Tag a member or include their ID",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        embed = await developer_service.handle_developer_assignment(
-            member=member,
-            reference=reference,
-        )
-        return await tick.end(success=embed)
-
     @commands.command(name="dev", help="Grant/revoke devs.")
     async def toggle_developer_text_command(
         self,
@@ -78,7 +58,7 @@ class SysadminTextCommands(commands.Cog):
             converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if isinstance(member, discord.Member):
             member_snowflake = member.id
@@ -94,15 +74,6 @@ class SysadminTextCommands(commands.Cog):
             member_snowflake=member_snowflake,
         )
         return await tick.end(success=msg)
-
-    @commands.command(name="upload", help="Create the upload document.")
-    async def uploads_text_command(
-        self,
-        ctx: commands.Context,
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        await upload_service.build_latex_document()
-        return await tick.end(success="Success!")
 
 
 async def setup(bot: DiscordBot):

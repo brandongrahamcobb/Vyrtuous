@@ -9,7 +9,7 @@ MODEL = Upload
 
 
 def extract_command_and_args(source):
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     if isinstance(source, discord.Interaction):
         command_name = getattr(getattr(source, "command", None), "name", None)
         namespace = getattr(source, "namespace", None)
@@ -54,7 +54,7 @@ async def send_prompt(source):
 
 
 async def wait_for_upload(channel, user):
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
 
     def check(m: discord.Message):
         return m.channel == channel and m.author == user and len(m.attachments) > 0
@@ -97,7 +97,7 @@ async def request_upload(source):
 
 
 async def build_latex_document():
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     import re
 
     def escape_latex(text):

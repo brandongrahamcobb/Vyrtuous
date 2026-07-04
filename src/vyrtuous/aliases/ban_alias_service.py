@@ -137,8 +137,8 @@ async def ban_by_message(
 
 async def set_ban_overwrite(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int, reason: str
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -163,10 +163,10 @@ async def ban(
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
-):
+) -> bool:
     is_channel_scope = False
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -224,8 +224,8 @@ async def build_ban_embed(
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
-):
-    bot = DiscordBot.get_instance()
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     duration_builder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:

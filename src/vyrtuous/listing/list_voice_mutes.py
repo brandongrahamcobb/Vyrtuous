@@ -23,6 +23,7 @@ from typing import Any, Dict, List
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.listing import list_service
@@ -40,7 +41,7 @@ class VoiceMuteDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj):
+async def build_dictionary(obj) -> dict:
     database_factory = DatabaseFactory(MODEL)
     voice_mutes = []
     dictionary = {}
@@ -75,17 +76,18 @@ async def build_dictionary(obj):
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if not isinstance(obj, int):
         obj_name = obj.name
     else:
-        member = bot.active_member.get(obj, None)
-        if member:
-            obj_name = member.get("name", None)
+        simplified_member = bot.registry.get(MemberState).active.get(obj, None)
+        if simplified_member:
+            obj_name = simplified_member[0]
         else:
             return "No active voice-mutes found."
     title = f"{emojis.get_random_emoji()} Voice Mutes for {obj_name}"
@@ -101,6 +103,8 @@ async def build_pages(is_at_home: bool, obj):
         lines = []
         thumbnail = False
         guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            continue
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
@@ -116,14 +120,18 @@ async def build_pages(is_at_home: bool, obj):
                     embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
             else:
-                member = bot.active_members.get(member_snowflake, None)
-                if member:
-                    display_name = member.get("name", None)
+                simplified_member = bot.registry.get(MemberState).active.get(
+                    member_snowflake, None
+                )
+                if simplified_member:
+                    display_name = simplified_member[0]
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
             for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                 "voice_mutes", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
+                if channel is None:
+                    continue
                 if not isinstance(obj, discord.abc.GuildChannel):
                     lines.append(f"**Channel:** {channel.mention}")
                 if isinstance(obj, discord.Member):
@@ -146,10 +154,9 @@ async def build_pages(is_at_home: bool, obj):
                 value="\n".join(lines),
                 inline=False,
             )
-        pages.append(embed)
-    if pages:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({vmute_n})**"
+        pages.append(embed)
     if is_at_home:
         pages.extend(processed_dictionary.skipped_guilds)
         pages.extend(processed_dictionary.skipped_members)

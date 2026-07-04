@@ -92,7 +92,7 @@ async def log_text_mute(
 async def set_text_mute_overwrite(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int, reason: str
 ) -> None:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -164,8 +164,8 @@ async def text_mute(
     member_snowflake: int,
     reason: str,
 ) -> None:
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -203,7 +203,7 @@ def build_text_mute_embed(
     member_snowflake: int,
     reason: str,
 ) -> discord.Embed:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     duration_builder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:

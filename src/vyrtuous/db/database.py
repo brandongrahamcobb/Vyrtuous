@@ -41,7 +41,7 @@ class Database:
         os.makedirs(self.directory, exist_ok=True)
         return
 
-    async def database_init(self):
+    async def database_init(self) -> asyncpg.Pool:
         return await asyncpg.create_pool(
             host=self.host,
             database=self.database,
@@ -50,7 +50,7 @@ class Database:
             command_timeout=30,
         )
 
-    def execute_backup(self):
+    def execute_backup(self) -> subprocess.CompletedProcess[str]:
         dump_command = [
             "pg_dump",
             "-U",

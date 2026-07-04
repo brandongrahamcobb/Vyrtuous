@@ -6,30 +6,30 @@ from vyrtuous.cache.registry import SystemResourcesState
 FIVE_MINUTES_SECONDS = 5 * 60
 
 
-async def log_cpu_seconds():
-    bot = DiscordBot.get_instance()
+async def log_cpu_seconds() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     with open("/sys/fs/cgroup/cpu.stat", "r") as file:
         content = file.readline()
         fields = content.split()
         bot.registry.get(SystemResourcesState).cpu_seconds.append(int(fields[1]))
 
 
-async def log_rx_bytes():
-    bot = DiscordBot.get_instance()
+async def log_rx_bytes() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     with open("/sys/class/net/eth0/statistics/rx_bytes", "r") as file:
         content = file.readline()
         bot.registry.get(SystemResourcesState).rx_bytes.append(int(content))
 
 
-async def log_tx_bytes():
-    bot = DiscordBot.get_instance()
+async def log_tx_bytes() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     with open("/sys/class/net/eth0/statistics/tx_bytes", "r") as file:
         content = file.readline()
         bot.registry.get(SystemResourcesState).tx_bytes.append(int(content))
 
 
-async def calculate_cpu_usage():
-    bot = DiscordBot.get_instance()
+async def calculate_cpu_usage() -> float:
+    bot: DiscordBot = DiscordBot.get_instance()
     state = bot.registry.get(SystemResourcesState)
     interval_seconds = len(state.cpu_seconds) * FIVE_MINUTES_SECONDS
     average_difference = [
@@ -43,8 +43,8 @@ async def calculate_cpu_usage():
     return calculated_percentage
 
 
-async def calculate_rx_usage():
-    bot = DiscordBot.get_instance()
+async def calculate_rx_usage() -> float:
+    bot: DiscordBot = DiscordBot.get_instance()
     state = bot.registry.get(SystemResourcesState)
     interval_seconds = len(state.rx_bytes) * FIVE_MINUTES_SECONDS
     average_difference = [
@@ -59,8 +59,8 @@ async def calculate_rx_usage():
     return calculated_megabytes
 
 
-async def calculate_tx_usage():
-    bot = DiscordBot.get_instance()
+async def calculate_tx_usage() -> float:
+    bot: DiscordBot = DiscordBot.get_instance()
     state = bot.registry.get(SystemResourcesState)
     interval_seconds = len(state.tx_bytes) * FIVE_MINUTES_SECONDS
     average_difference = [

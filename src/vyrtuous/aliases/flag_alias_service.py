@@ -52,7 +52,7 @@ async def log_flag(
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
     reason: str | None,
-):
+) -> None:
     duration_value = None
     is_channel_scope = None
     role_snowflake = None
@@ -118,9 +118,9 @@ async def flag(
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
-):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -148,8 +148,8 @@ async def build_flag_embed(
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
-):
-    bot = DiscordBot.get_instance()
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))

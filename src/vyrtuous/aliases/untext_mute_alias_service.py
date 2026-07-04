@@ -40,7 +40,7 @@ def build_untext_mute_embed(
     guild_snowflake: int,
     member_snowflake: int,
 ) -> discord.Embed:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -124,7 +124,7 @@ async def log_untext_mute(
 async def set_untext_mute_overwrite(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> None:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -153,8 +153,8 @@ async def set_untext_mute_overwrite(
 async def untext_mute(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> None:
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -182,7 +182,7 @@ async def untext_mute(
 async def untext_mute_by_message(
     ctx: UntextMuteMessageContext, display: bool = True
 ) -> discord.Embed:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
     text_mute = await database_factory.select(
         channel_snowflake=ctx.channel_snowflake,

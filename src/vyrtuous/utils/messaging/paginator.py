@@ -31,8 +31,10 @@ class Paginator:
         self.current_page = 0
         self._reaction_lock = asyncio.Lock()
 
-    async def start(self, channel, pages, *, ephemeral=False, timeout=60):
-        bot = DiscordBot.get_instance()
+    async def start(
+        self, channel, pages, *, ephemeral=False, timeout=60
+    ) -> discord.Message:
+        bot: DiscordBot = DiscordBot.get_instance()
         embed = self.get_current_embed(channel=channel, pages=pages)
         if isinstance(channel, discord.Interaction):
             if not channel.response.is_done():
@@ -51,7 +53,7 @@ class Paginator:
         )
         return message
 
-    def get_current_embed(self, channel, pages):
+    def get_current_embed(self, channel, pages) -> discord.Embed:
         embed = pages[self.current_page].copy()
         total_pages = len(pages)
         label = "page"
@@ -60,8 +62,8 @@ class Paginator:
         )
         return embed
 
-    async def wait_for_reactions(self, channel, message, pages, timeout):
-        bot = DiscordBot.get_instance()
+    async def wait_for_reactions(self, channel, message, pages, timeout) -> None:
+        bot: DiscordBot = DiscordBot.get_instance()
 
         def look(reaction, user):
             return (
@@ -89,7 +91,7 @@ class Paginator:
             except Exception as e:
                 bot.logger.warning(str(e).capitalize())
 
-    async def handle_reaction(self, channel, message, pages, reaction):
+    async def handle_reaction(self, channel, message, pages, reaction) -> None:
         async with self._reaction_lock:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):

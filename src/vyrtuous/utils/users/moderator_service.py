@@ -59,7 +59,7 @@ class HasEqualOrLowerRole(commands.CheckFailure):
         )
 
 
-async def is_moderator_wrapper(context):
+async def is_moderator_wrapper(context) -> bool:
     return await is_moderator(
         channel_snowflake=int(context.channel_snowflake),
         guild_snowflake=int(context.guild_snowflake),
@@ -70,7 +70,7 @@ async def is_moderator_wrapper(context):
 async def is_moderator(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> bool:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     moderator = await database_factory.select(
         channel_snowflake=int(channel_snowflake),
         guild_snowflake=int(guild_snowflake),
@@ -89,7 +89,7 @@ async def is_moderator_at_all_wrapper(context) -> bool:
 async def is_moderator_at_all(
     member_snowflake: int,
 ) -> bool:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     moderator = await database_factory.select(
         member_snowflake=int(member_snowflake), singular=True
     )
@@ -98,8 +98,8 @@ async def is_moderator_at_all(
     return True
 
 
-async def survey(channel):
-    bot = DiscordBot.get_instance()
+async def survey(channel) -> list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
     chunk_size, pages = 7, []
     (
         sysadmins,
@@ -200,9 +200,9 @@ async def survey(channel):
     return pages
 
 
-async def toggle_moderator(channel, member_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_moderator(channel, member_snowflake: int) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     moderator = await database_factory.select(
         channel_snowflake=int(channel.id),
         member_snowflake=int(member_snowflake),
@@ -341,8 +341,8 @@ async def resolve_highest_role(
     channel_snowflake: int,
     member_snowflake: int,
     guild_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
     try:
         if await sysadmin_service.is_sysadmin(member_snowflake=int(member_snowflake)):
             return "Sysadmin"
@@ -393,8 +393,8 @@ async def resolve_highest_role(
 
 async def resolve_highest_role_at_all(
     member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
     try:
         if await sysadmin_service.is_sysadmin(member_snowflake=int(member_snowflake)):
             return "Sysadmin"
@@ -436,7 +436,7 @@ async def resolve_highest_role_at_all(
     return "Everyone"
 
 
-def compare_ranks(sender_rank, target_rank):
+def compare_ranks(sender_rank, target_rank) -> bool:
     try:
         if sender_rank <= target_rank:
             raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
@@ -445,67 +445,67 @@ def compare_ranks(sender_rank, target_rank):
     return True
 
 
-async def can_list(
-    source=Union[commands.Context, discord.Interaction, discord.Message]
-):
-    bot = DiscordBot.get_instance()
-    available_channels = {}
-    available_guilds = {}
-    member_snowflake = resolve_author(source=source).id
-    verifications = (
-        ("all", sysadmin_service.is_sysadmin),
-        ("all", developer_service.is_developer),
-        ("guild", guild_owner_service.is_guild_owner),
-        ("guild", administrator_service.is_administrator),
-        ("channel", coordinator_service.is_coordinator),
-        ("channel", is_moderator),
-    )
-    for role_scope, verify in verifications:
-        if role_scope == "all":
-            try:
-                if await verify(member_snowflake=int(member_snowflake)):
-                    available_guilds["all"] = bot.guilds
-                    available_channels["all"] = []
-                    for guild in bot.guilds:
-                        available_guilds[guild.id] = guild
-                        available_channels.setdefault(guild.id, [])
-                        for channel in guild.channels:
-                            if isinstance(channel, discord.VoiceChannel):
-                                available_channels[guild.id].append(channel)
-                                available_channels["all"].append(channel)
-            except commands.CheckFailure:
-                pass
-        elif role_scope == "guild":
-            try:
-                for guild in bot.guilds:
-                    if await verify(
-                        guild_snowflake=int(guild.id),
-                        member_snowflake=int(member_snowflake),
-                    ):
-                        available_guilds[guild.id] = guild
-                        available_channels.setdefault(guild.id, [])
-                        for channel in guild.channels:
-                            if isinstance(channel, discord.VoiceChannel):
-                                available_channels[guild.id].append(channel)
-            except commands.CheckFailure:
-                pass
-        elif role_scope == "channel":
-            try:
-                for guild in bot.guilds:
-                    for channel in guild.channels:
-                        if await verify(
-                            channel_snowflake=int(channel.id),
-                            guild_snowflake=int(guild.id),
-                            member_snowflake=int(member_snowflake),
-                        ):
-                            available_guilds[guild.id] = guild
-                            available_channels.setdefault(guild.id, [])
-                            if isinstance(channel, discord.VoiceChannel):
-                                available_channels[guild.id].append(channel)
-            except commands.CheckFailure:
-                pass
-    for gid in list(available_channels):
-        available_channels[gid] = list(
-            {c.id: c for c in available_channels[gid]}.values()
-        )
-    return available_channels, available_guilds
+# async def can_list(
+#     source=Union[commands.Context, discord.Interaction, discord.Message]
+# ) -> tuple[list[discord.], list[int]]:
+#     bot: DiscordBot = DiscordBot.get_instance()
+#     available_channels = {}
+#     available_guilds = {}
+#     member_snowflake = resolve_author(source=source).id
+#     verifications = (
+#         ("all", sysadmin_service.is_sysadmin),
+#         ("all", developer_service.is_developer),
+#         ("guild", guild_owner_service.is_guild_owner),
+#         ("guild", administrator_service.is_administrator),
+#         ("channel", coordinator_service.is_coordinator),
+#         ("channel", is_moderator),
+#     )
+#     for role_scope, verify in verifications:
+#         if role_scope == "all":
+#             try:
+#                 if await verify(member_snowflake=int(member_snowflake)):
+#                     available_guilds["all"] = bot.guilds
+#                     available_channels["all"] = []
+#                     for guild in bot.guilds:
+#                         available_guilds[guild.id] = guild
+#                         available_channels.setdefault(guild.id, [])
+#                         for channel in guild.channels:
+#                             if isinstance(channel, discord.VoiceChannel):
+#                                 available_channels[guild.id].append(channel)
+#                                 available_channels["all"].append(channel)
+#             except commands.CheckFailure:
+#                 pass
+#         elif role_scope == "guild":
+#             try:
+#                 for guild in bot.guilds:
+#                     if await verify(
+#                         guild_snowflake=int(guild.id),
+#                         member_snowflake=int(member_snowflake),
+#                     ):
+#                         available_guilds[guild.id] = guild
+#                         available_channels.setdefault(guild.id, [])
+#                         for channel in guild.channels:
+#                             if isinstance(channel, discord.VoiceChannel):
+#                                 available_channels[guild.id].append(channel)
+#             except commands.CheckFailure:
+#                 pass
+#         elif role_scope == "channel":
+#             try:
+#                 for guild in bot.guilds:
+#                     for channel in guild.channels:
+#                         if await verify(
+#                             channel_snowflake=int(channel.id),
+#                             guild_snowflake=int(guild.id),
+#                             member_snowflake=int(member_snowflake),
+#                         ):
+#                             available_guilds[guild.id] = guild
+#                             available_channels.setdefault(guild.id, [])
+#                             if isinstance(channel, discord.VoiceChannel):
+#                                 available_channels[guild.id].append(channel)
+#             except commands.CheckFailure:
+#                 pass
+#     for gid in list(available_channels):
+#         available_channels[gid] = list(
+#             {c.id: c for c in available_channels[gid]}.values()
+#         )
+#     return available_channels, available_guilds

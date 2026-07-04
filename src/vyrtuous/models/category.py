@@ -36,12 +36,12 @@ class CategoryObject:
         self.__category = category
 
     @property
-    def category(self):
+    def category(self) -> None:
         return self.__category
 
     @category.setter
-    def category(self, new_cat):
-        bot = DiscordBot.get_instance()
+    def category(self, new_cat) -> None:
+        bot: DiscordBot = DiscordBot.get_instance()
         dir_paths = []
         dir_paths.append(Path("/app/vyrtuous/db"))
         classes = dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory)
@@ -58,7 +58,7 @@ class Converter(commands.Converter):
     def __init__(self, category_cls=CategoryObject):
         self.category_cls = category_cls
 
-    async def convert(self, ctx: commands.Context, argument):
+    async def convert(self, ctx: commands.Context, argument) -> CategoryObject | None:
         return self.category_cls(argument).category
 
 
@@ -67,7 +67,9 @@ class Transformer(app_commands.Transformer):
     def __init__(self, category_cls=CategoryObject):
         self.category_cls = category_cls
 
-    async def transform(self, interaction: discord.Interaction, arg):
+    async def transform(
+        self, interaction: discord.Interaction, arg
+    ) -> CategoryObject | None:
         return self.category_cls(arg).category
 
 

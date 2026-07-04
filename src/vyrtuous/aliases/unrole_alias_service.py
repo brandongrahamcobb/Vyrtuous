@@ -40,8 +40,8 @@ class UnroleMessageContext:
 
 async def set_unrole_overwrite(
     guild_snowflake: int, member_snowflake: int, role_snowflake: int
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -67,7 +67,7 @@ def build_unrole_embed(
     member_snowflake: int,
     role_snowflake: int,
 ) -> discord.Embed:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -105,7 +105,7 @@ async def log_unrole(
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
     role_snowflake: int,
-):
+) -> None:
     channel_snowflake = None
     duration_value = None
     is_channel_scope = None

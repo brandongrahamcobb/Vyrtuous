@@ -27,11 +27,11 @@ class Heartbeat(commands.Cog):
         self.bot = bot
         self.heartbeat.start()
 
-    async def cog_unload(self):
+    async def cog_unload(self) -> None:
         self.heartbeat.cancel()
 
     @tasks.loop(seconds=5.0)
-    async def heartbeat(self):
+    async def heartbeat(self) -> None:
         with open("/tmp/vyrtuous_heartbeat", "w", encoding="utf-8") as f:
             if self.bot.is_ready and self.bot.latency:
                 f.write("0")

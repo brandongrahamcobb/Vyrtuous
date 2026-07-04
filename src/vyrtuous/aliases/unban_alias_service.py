@@ -43,7 +43,7 @@ async def log_unban(
     member_snowflake: int,
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
-):
+) -> None:
     duration_value = None
     is_channel_scope = False
     reason = None
@@ -90,9 +90,8 @@ class UnbanMessageContext:
 async def unban_by_message(
     ctx: UnbanMessageContext,
     display: bool = True,
-):
-
-    database_factory = DatabaseFactory(MODEL)
+) -> discord.Embed:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
     ban = await database_factory.select(
         channel_snowflake=ctx.channel_snowflake,
@@ -137,20 +136,19 @@ async def unban_by_message(
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
     )
-    if display:
-        return await build_unban_embed(
-            channel_snowflake=ctx.channel_snowflake,
-            guild_snowflake=ctx.guild_snowflake,
-            member_snowflake=ctx.member_snowflake,
-        )
+    return await build_unban_embed(
+        channel_snowflake=ctx.channel_snowflake,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+    )
 
 
 async def unset_ban_overwrite(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -172,9 +170,9 @@ async def unban(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -203,8 +201,8 @@ async def build_unban_embed(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -237,8 +235,8 @@ async def build_blacklisted_block_embed(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))

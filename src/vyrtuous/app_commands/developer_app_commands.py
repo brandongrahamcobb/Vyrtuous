@@ -23,7 +23,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.developer import Developer
 
 
-class DevAppCommands(commands.Cog):
+class DeveloperAppCommands(commands.Cog):
     ROLE = Developer
 
     def __init__(self, *, bot: DiscordBot | None = None):
@@ -31,4 +31,4 @@ class DevAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(DevAppCommands(bot=bot))
+    await bot.add_cog(DeveloperAppCommands(bot=bot))

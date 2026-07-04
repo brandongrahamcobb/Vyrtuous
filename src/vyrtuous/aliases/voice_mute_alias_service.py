@@ -97,7 +97,7 @@ async def set_voice_mute_overwrite(
     reason: str,
 ) -> bool:
     is_channel_scope = False
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -175,8 +175,8 @@ async def voice_mute(
     target: str,
 ) -> bool:
     is_channel_scope = False
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -216,7 +216,7 @@ def build_voice_mute_embed(
     member_snowflake: int,
     reason: str,
 ) -> discord.Embed:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     duration_builder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:

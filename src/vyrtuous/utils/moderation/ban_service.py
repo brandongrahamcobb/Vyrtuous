@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -35,8 +35,8 @@ MODEL = Ban
 async def enforce_or_undo(
     alias_ctx: AliasContext,
     message: discord.Message,
-):
-    database_factory = DatabaseFactory(MODEL)
+) -> discord.Embed:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     ban = await database_factory.select(
         channel_snowflake=alias_ctx.channel_snowflake,
         guild_snowflake=alias_ctx.guild_snowflake,
@@ -72,55 +72,9 @@ async def enforce_or_undo(
         return embed
 
 
-async def clean_expired():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    expired_bans = await database_factory.select(expired=True, singular=False)
-    if expired_bans:
-        for expired_ban in expired_bans:
-            channel_snowflake = int(expired_ban.channel_snowflake)
-            guild_snowflake = int(expired_ban.guild_snowflake)
-            member_snowflake = int(expired_ban.member_snowflake)
-            kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
-                "member_snowflake": member_snowflake,
-            }
-            guild = bot.get_guild(guild_snowflake)
-            if guild is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.info(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired ban."
-                )
-                continue
-            channel = guild.get_channel(channel_snowflake)
-            if channel is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.info(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, cleaning up expired ban."
-                )
-                continue
-            member = guild.get_member(member_snowflake)
-            if member is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.info(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired ban."
-                )
-                continue
-            await database_factory.delete(**kwargs)
-            try:
-                await channel.set_permissions(
-                    member, view_channel=None, reason="Cleaning up expired ban."
-                )
-            except discord.Forbidden as e:
-                bot.logger.error(str(e).capitalize())
-            except discord.HTTPException as e:
-                bot.logger.error(f"HTTP error removing expired ban: {e}")
-
-
-async def toggle_blacklist(channel, member_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_blacklist(channel, member_snowflake: int) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     ban = await database_factory.select(
         channel_snowflake=channel.id,
         member_snowflake=member_snowflake,
@@ -155,56 +109,8 @@ async def toggle_blacklist(channel, member_snowflake: int):
     return f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
 
 
-async def clean_overwrites():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    bans = await database_factory.select(singular=False)
-    for ban in bans:
-        channel_snowflake = int(ban.channel_snowflake)
-        guild_snowflake = int(ban.guild_snowflake)
-        member_snowflake = int(ban.member_snowflake)
-        where_kwargs = {
-            "channel_snowflake": channel_snowflake,
-            "guild_snowflake": guild_snowflake,
-            "member_snowflake": member_snowflake,
-        }
-        set_kwargs = {"reset": True}
-        if (
-            not ban.reset
-            and ban.last_kicked < datetime.now(timezone.utc) - timedelta(weeks=1)
-            and not ban.blacklisted
-        ):
-            guild = bot.get_guild(guild_snowflake)
-            if guild is None:
-                bot.logger.info(
-                    f"Unable to locate guild {guild_snowflake} for removing overwrite."
-                )
-                continue
-            channel = guild.get_channel(channel_snowflake)
-            if channel is None:
-                bot.logger.info(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) for removing overwrite."
-                )
-                continue
-            member = guild.get_member(member_snowflake)
-            if member is None:
-                bot.logger.info(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) for removing overwrite."
-                )
-                continue
-            try:
-                await channel.set_permissions(
-                    target=member, overwrite=None, reason="Resetting ban overwrite."
-                )
-            except discord.Forbidden as e:
-                bot.logger.error(str(e).capitalize())
-            await database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-
-
-async def is_banned(channel: discord.abc.GuildChannel, member: discord.Member):
-    database_factory = DatabaseFactory(MODEL)
+async def is_banned(channel: discord.abc.GuildChannel, member: discord.Member) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     ban = await database_factory.select(
         channel_snowflake=channel.id, member_snowflake=member.id, singular=True
     )
@@ -215,7 +121,7 @@ async def is_banned(channel: discord.abc.GuildChannel, member: discord.Member):
 
 async def is_banned_then_kick_and_reset_cooldown(
     channel: discord.abc.GuildChannel, member: discord.Member
-):
+) -> None:
     if await is_banned(channel=channel, member=member):
         if (
             member.voice
@@ -230,8 +136,8 @@ async def toggle_view_channel(
     channel: discord.abc.GuildChannel,
     member: discord.Member,
     view_channel: bool,
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     try:
         await channel.set_permissions(
             member,
@@ -242,8 +148,8 @@ async def toggle_view_channel(
         bot.logger.warning(e)
 
 
-async def kick(channel: discord.abc.GuildChannel, member: discord.Member):
-    bot = DiscordBot.get_instance()
+async def kick(channel: discord.abc.GuildChannel, member: discord.Member) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     try:
         await member.move_to(None, reason="Reinstating active ban.")
         await update_last_kicked(channel=channel, member=member)
@@ -251,9 +157,11 @@ async def kick(channel: discord.abc.GuildChannel, member: discord.Member):
         bot.logger.warning(e)
 
 
-async def update_last_kicked(channel: discord.abc.GuildChannel, member: discord.Member):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def update_last_kicked(
+    channel: discord.abc.GuildChannel, member: discord.Member
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     where_kwargs = {"channel_snowflake": channel.id, "member_snowflake": member.id}
     set_kwargs = {
         "last_kicked": datetime.now(timezone.utc),

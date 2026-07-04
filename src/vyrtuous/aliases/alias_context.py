@@ -47,7 +47,7 @@ class AliasContext:
         self.role_snowflake: int
         self.reason = "No reason provided"
 
-    async def setup(self):
+    async def setup(self) -> bool:
         self._message_to_args()
         self._alias_name_from_args()
         alias = await self._populate_alias()
@@ -58,7 +58,7 @@ class AliasContext:
         return True
 
     def _message_to_args(self) -> None:
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         self.__args = (
             self.__content[len(bot.config["discord_command_prefix"]) :].strip().split()
         )
@@ -80,7 +80,7 @@ class AliasContext:
                 value = str(self.__args[pos - 1]) if len(self.__args) >= pos else ""
             self.__kwargs[key] = (pos, value)
 
-    def _alias_name_from_args(self):
+    def _alias_name_from_args(self) -> None:
         if not self.__args:
             return
         self.__alias_name = self.__args[0]
@@ -88,7 +88,7 @@ class AliasContext:
     async def _populate_alias(
         self,
     ) -> Union[BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]:
-        database_factory = DatabaseFactory(MODEL)
+        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
         alias_entry = await database_factory.select(
             alias_name=self.__alias_name,
             guild_snowflake=self.guild_snowflake,
@@ -102,7 +102,7 @@ class AliasContext:
         alias = alias_service.alias_category_to_alias(category=alias_entry.category)
         return alias
 
-    async def _convert_args_to_values(self):
+    async def _convert_args_to_values(self) -> None:
         for field, tuple in self.__kwargs.items():
             value = tuple[1]
             if field == "duration":

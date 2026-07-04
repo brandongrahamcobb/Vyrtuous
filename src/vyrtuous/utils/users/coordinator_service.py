@@ -30,7 +30,7 @@ MODEL = Coordinator
 async def is_coordinator(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> bool:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     coordinator = await database_factory.select(
         channel_snowflake=int(channel_snowflake),
         guild_snowflake=int(guild_snowflake),
@@ -44,8 +44,8 @@ async def is_coordinator(
 
 async def is_coordinator_at_all(
     member_snowflake: int,
-):
-    database_factory = DatabaseFactory(MODEL)
+) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     coordinator = await database_factory.select(
         member_snowflake=int(member_snowflake),
         singular=True,
@@ -55,11 +55,11 @@ async def is_coordinator_at_all(
     return True
 
 
-async def is_coordinator_at_all_wrapper(context):
+async def is_coordinator_at_all_wrapper(context) -> bool:
     return await is_coordinator_at_all(member_snowflake=context.member_snowflake)
 
 
-async def is_coordinator_wrapper(context):
+async def is_coordinator_wrapper(context) -> bool:
     return await is_coordinator(
         channel_snowflake=int(context.channel_snowflake),
         guild_snowflake=int(context.guild_snowflake),
@@ -67,9 +67,9 @@ async def is_coordinator_wrapper(context):
     )
 
 
-async def toggle_coordinator(channel, member_snowflake):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(Coordinator)
+async def toggle_coordinator(channel, member_snowflake) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(Coordinator)
     coordinator = await database_factory.select(
         singular=True,
         channel_snowflake=channel.id,

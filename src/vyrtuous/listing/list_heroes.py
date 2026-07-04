@@ -35,8 +35,8 @@ class HeroDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-def build_dictionary():
-    bot = DiscordBot.get_instance()
+def build_dictionary() -> dict:
+    bot: DiscordBot = DiscordBot.get_instance()
     dictionary = {}
     for (
         guild_snowflake,
@@ -47,9 +47,10 @@ def build_dictionary():
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if obj:

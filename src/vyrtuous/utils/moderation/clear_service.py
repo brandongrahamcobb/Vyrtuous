@@ -23,6 +23,8 @@ from pathlib import Path
 
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
+
 
 class ClearService:
     def __init__(
@@ -45,6 +47,7 @@ class ClearService:
         self.__voice_mute_service = voice_mute_service
 
     def dir_to_classes(self, dir_paths, *, attr=None):
+        bot: DiscordBot = DiscordBot.get_instance()
         classes = []
         for dir_path in dir_paths:
             for py_file in dir_path.rglob("*.py"):
@@ -60,9 +63,7 @@ class ClearService:
                     if getattr(cls, "__skip_db_discovery__", False):
                         continue
                     if attr in cls.__annotations__ or not attr:
-                        from vyrtuous.utils.logger import logger
-
-                        logger.info(cls.__name__)
+                        bot.logger.info(cls.__name__)
                         classes.append(cls)
         return classes
 

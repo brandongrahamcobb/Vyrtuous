@@ -23,7 +23,7 @@ from vyrtuous.cache.guild_owner import GuildOwner, NotGuildOwner
 MODEL = GuildOwner
 
 
-async def is_guild_owner_wrapper(context):
+async def is_guild_owner_wrapper(context) -> bool:
     return await is_guild_owner(
         guild_snowflake=context.guild_snowflake,
         member_snowflake=int(context.member_snowflake),
@@ -32,8 +32,8 @@ async def is_guild_owner_wrapper(context):
 
 async def is_guild_owner_at_all(
     member_snowflake: int,
-):
-    bot = DiscordBot.get_instance()
+) -> bool:
+    bot: DiscordBot = DiscordBot.get_instance()
     for guild in bot.guilds:
         if guild and guild.owner_id == member_snowflake:
             return True
@@ -41,7 +41,7 @@ async def is_guild_owner_at_all(
 
 
 async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild and guild.owner_id == member_snowflake:
         return True

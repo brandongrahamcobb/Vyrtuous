@@ -24,8 +24,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.hero import Hero
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.moderation import (ban_service, flag_service,
-                                       text_mute_service, voice_mute_service)
+from vyrtuous.utils.moderation import (
+    ban_service,
+    flag_service,
+    text_mute_service,
+    voice_mute_service,
+)
 
 INFRACTION_MODELS = [
     ban_service.MODEL,
@@ -37,8 +41,8 @@ INFRACTION_MODELS = [
 MODEL = Hero
 
 
-async def unrestrict(guild_snowflake: int, member_snowflake: int):
-    bot = DiscordBot.get_instance()
+async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if not guild:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -50,7 +54,7 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int):
         "member_snowflake": member_snowflake,
     }
     for model in INFRACTION_MODELS:
-        database_factory = DatabaseFactory(model)
+        database_factory: DatabaseFactory = DatabaseFactory(model)
         objects = await database_factory.select(singular=False, **kwargs)
         if objects:
             match model.identifier:
@@ -89,9 +93,9 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int):
             await database_factory.delete(**kwargs)
 
 
-async def add_invincible_member(guild_snowflake: int, member_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def add_invincible_member(guild_snowflake: int, member_snowflake: int) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     hero = Hero(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
@@ -100,9 +104,9 @@ async def add_invincible_member(guild_snowflake: int, member_snowflake: int):
     bot.registry.get(MemberState).invincible[guild_snowflake].add(member_snowflake)
 
 
-async def remove_invincible_member(guild_snowflake: int, member_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def remove_invincible_member(guild_snowflake: int, member_snowflake: int) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     await database_factory.delete(
         guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
     )

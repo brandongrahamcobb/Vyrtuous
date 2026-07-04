@@ -70,7 +70,7 @@ async def process_dictionary(cls, dictionary):
 
 def generate_skipped_set_pages(skipped, title):
     field_count = 0
-    pages = []
+    pages: list[discord.Embed] = []
     embed = discord.Embed(title=title, description="\u200b", color=discord.Color.blue())
     lines = []
     for snowflake in skipped:
@@ -90,9 +90,9 @@ def generate_skipped_set_pages(skipped, title):
 
 
 def generate_skipped_dict_pages(skipped, title):
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     field_count = 0
-    pages = []
+    pages: list[discord.Embed] = []
     for guild_snowflake, list in skipped.items():
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
@@ -120,7 +120,7 @@ def generate_skipped_dict_pages(skipped, title):
 
 
 def generate_skipped_guilds(dictionary: dict) -> set:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     skipped_guilds = set()
     for guild_snowflake in dictionary:
         if not bot.get_guild(guild_snowflake):
@@ -129,8 +129,8 @@ def generate_skipped_guilds(dictionary: dict) -> set:
 
 
 def generate_skipped_channels(dictionary: dict) -> dict:
-    bot = DiscordBot.get_instance()
-    skipped_channels = {}
+    bot: DiscordBot = DiscordBot.get_instance()
+    skipped_channels: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
@@ -144,8 +144,8 @@ def generate_skipped_channels(dictionary: dict) -> dict:
 
 
 def generate_skipped_members(dictionary: dict) -> dict:
-    bot = DiscordBot.get_instance()
-    skipped_members = {}
+    bot: DiscordBot = DiscordBot.get_instance()
+    skipped_members: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
@@ -157,8 +157,8 @@ def generate_skipped_members(dictionary: dict) -> dict:
 
 
 def generate_skipped_roles(dictionary: dict) -> dict:
-    bot = DiscordBot.get_instance()
-    skipped_roles = {}
+    bot: DiscordBot = DiscordBot.get_instance()
+    skipped_roles: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
@@ -225,8 +225,8 @@ def clean_dictionary(
 
 
 async def generate_skipped_messages(dictionary: dict) -> dict:
-    bot = DiscordBot.get_instance()
-    skipped_messages = {}
+    bot: DiscordBot = DiscordBot.get_instance()
+    skipped_messages: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
         guild = bot.get_guild(guild_snowflake)
         if guild is None:

@@ -17,105 +17,105 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import discord
-
-
-class InfractionView(discord.ui.View):
-    def __init__(
-        self,
-        *,
-        cap_service=None,
-        ctx=None,
-        default_ctx=None,
-        duration_builder=None,
-        modal=None,
-        state=None,
-    ):
-        super().__init__(timeout=120)
-        self.__cap_service = cap_service
-        self.__ctx = ctx
-        self.__duration_builder = duration_builder
-        self.__modal = modal
-        self.__d_ctx = default_ctx
-        self.__state = state
-
-    async def interaction_check(self, interaction):
-        return interaction.user.id == self.__d_ctx.author.id
-
-    async def setup(self):
-        channel_options = await self._build_channel_options()
-        duration_options = self._build_duration_options()
-        self.channel_select.options = channel_options
-        self.__duration_select.options = duration_options
-
-    async def _build_channel_options(self):
-        channel_options = [
-            discord.SelectOption(label=c.name, value=str(c.id))
-            for c in self.__ctx.available_channels
-            if c != "all"
-        ]
-        if "all" in self.__ctx.available_channels:
-            channel_options.append(discord.SelectOption(label="All", value="all"))
-        return channel_options
-
-    def _build_duration_options(self):
-        durations = ["0", "1h", "8h", "1d", "1w"]
-        return [
-            discord.SelectOption(
-                label=duration if duration != "0" else "Permanent", value=duration
-            )
-            for duration in durations
-        ]
-
-    @discord.ui.select(
-        placeholder="Select channel",
-        options=[],
-    )
-    async def channel_select(self, interaction, select):
-        channel = interaction.guild.get_channel(int(select.values[0]))
-        self.__ctx.channel.id = channel.id
-        self.channel_select.placeholder = channel.name
-        await interaction.response.defer()
-        await interaction.edit_original_response(view=self)
-
-    @discord.ui.select(
-        placeholder="Select duration",
-        options=[],
-    )
-    async def duration_select(self, interaction, select):
-        duration_name = select.values[0]
-        self.__duration_select.placeholder = duration_name
-        self.__ctx.duration_value = duration_name
-        await interaction.response.defer()
-        await interaction.edit_original_response(view=self)
-
-    @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
-    async def submit(self, interaction, button):
-        if not self.has_the_user_selected_all_fields():
-            return await interaction.response.send_message(
-                content="Please select all fields.", ephemeral=True
-            )
-        if await self.__cap_duration.assertion(
-            ctx=self.__ctx,
-            default_ctx=self.__d_ctx,
-        ):
-            return await interaction.response.send_message(
-                content="Duration exceeds the channel cap.", ephemeral=True
-            )
-        modal = self.__modal(
-            ctx=self.__ctx,
-            state=self.__state,
-        )
-        await modal.setup()
-        await interaction.response.send_modal(modal)
-
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
-    async def cancel(self, interaction, button):
-        await interaction.message.delete()
-        self.stop()
-        return await self.__state.end(success="Cancelled action.")
-
-    def has_the_user_selected_all_fields(self):
-        if not self.__ctx.expires_in or not self.__ctx.channel.id:
-            return False
-        return True
+# import discord
+#
+#
+# class InfractionView(discord.ui.View):
+#     def __init__(
+#         self,
+#         *,
+#         cap_service=None,
+#         ctx=None,
+#         default_ctx=None,
+#         duration_builder=None,
+#         modal=None,
+#         state=None,
+#     ):
+#         super().__init__(timeout=120)
+#         self.__cap_service = cap_service
+#         self.__ctx = ctx
+#         self.__duration_builder = duration_builder
+#         self.__modal = modal
+#         self.__d_ctx = default_ctx
+#         self.__state = state
+#
+#     async def interaction_check(self, interaction):
+#         return interaction.user.id == self.__d_ctx.author.id
+#
+#     async def setup(self):
+#         channel_options = await self._build_channel_options()
+#         duration_options = self._build_duration_options()
+#         self.channel_select.options = channel_options
+#         self.__duration_select.options = duration_options
+#
+#     async def _build_channel_options(self):
+#         channel_options = [
+#             discord.SelectOption(label=c.name, value=str(c.id))
+#             for c in self.__ctx.available_channels
+#             if c != "all"
+#         ]
+#         if "all" in self.__ctx.available_channels:
+#             channel_options.append(discord.SelectOption(label="All", value="all"))
+#         return channel_options
+#
+#     def _build_duration_options(self):
+#         durations = ["0", "1h", "8h", "1d", "1w"]
+#         return [
+#             discord.SelectOption(
+#                 label=duration if duration != "0" else "Permanent", value=duration
+#             )
+#             for duration in durations
+#         ]
+#
+#     @discord.ui.select(
+#         placeholder="Select channel",
+#         options=[],
+#     )
+#     async def channel_select(self, interaction, select):
+#         channel = interaction.guild.get_channel(int(select.values[0]))
+#         self.__ctx.channel.id = channel.id
+#         self.channel_select.placeholder = channel.name
+#         await interaction.response.defer()
+#         await interaction.edit_original_response(view=self)
+#
+#     @discord.ui.select(
+#         placeholder="Select duration",
+#         options=[],
+#     )
+#     async def duration_select(self, interaction, select):
+#         duration_name = select.values[0]
+#         self.__duration_select.placeholder = duration_name
+#         self.__ctx.duration_value = duration_name
+#         await interaction.response.defer()
+#         await interaction.edit_original_response(view=self)
+#
+#     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
+#     async def submit(self, interaction, button):
+#         if not self.has_the_user_selected_all_fields():
+#             return await interaction.response.send_message(
+#                 content="Please select all fields.", ephemeral=True
+#             )
+#         if await self.__cap_duration.assertion(
+#             ctx=self.__ctx,
+#             default_ctx=self.__d_ctx,
+#         ):
+#             return await interaction.response.send_message(
+#                 content="Duration exceeds the channel cap.", ephemeral=True
+#             )
+#         modal = self.__modal(
+#             ctx=self.__ctx,
+#             state=self.__state,
+#         )
+#         await modal.setup()
+#         await interaction.response.send_modal(modal)
+#
+#     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+#     async def cancel(self, interaction, button):
+#         await interaction.message.delete()
+#         self.stop()
+#         return await self.__state.end(success="Cancelled action.")
+#
+#     def has_the_user_selected_all_fields(self):
+#         if not self.__ctx.expires_in or not self.__ctx.channel.id:
+#             return False
+#         return True

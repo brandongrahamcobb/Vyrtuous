@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Union
 from uuid import UUID
 
 import discord
@@ -44,9 +45,17 @@ class TargetIsBot(commands.CheckFailure):
 
 class MultiConverter(commands.Converter):
     def __init__(self):
-        self.__bot = DiscordBot.get_instance()
+        self.__bot: DiscordBot = DiscordBot.get_instance()
 
-    async def convert(self, ctx: commands.Context, argument: str):
+    async def convert(self, ctx: commands.Context, argument: str) -> Union[
+        discord.VoiceChannel,
+        discord.StageChannel,
+        discord.Guild,
+        discord.Member,
+        discord.Role,
+        UUID,
+        None,
+    ]:
         if argument and str(argument).lower() == "all":
             return None
         try:
@@ -54,33 +63,33 @@ class MultiConverter(commands.Converter):
             return uuid
         except ValueError as e:
             self.__bot.logger.warning(e)
-        voice_channel = commands.VoiceChannelConverter()
-        stage_channel = commands.StageChannelConverter()
-        guild = commands.GuildConverter()
-        member = commands.MemberConverter()
-        role = commands.RoleConverter()
+        voice_channel_converter = commands.VoiceChannelConverter()
+        stage_channel_converter = commands.StageChannelConverter()
+        guild_converter = commands.GuildConverter()
+        member_converter = commands.MemberConverter()
+        role_converter = commands.RoleConverter()
         try:
-            voice_channel = await voice_channel.convert(ctx, argument)
+            voice_channel = await voice_channel_converter.convert(ctx, argument)
             return voice_channel
         except commands.ChannelNotFound as e:
             self.__bot.logger.warning(e)
         try:
-            stage_channel = await stage_channel.convert(ctx, argument)
+            stage_channel = await stage_channel_converter.convert(ctx, argument)
             return stage_channel
         except commands.ChannelNotFound as e:
             self.__bot.logger.warning(e)
         try:
-            member = await member.convert(ctx, argument)
+            member = await member_converter.convert(ctx, argument)
             return member
         except commands.MemberNotFound as e:
             self.__bot.logger.warning(e)
         try:
-            guild = await guild.convert(ctx, argument)
+            guild = await guild_converter.convert(ctx, argument)
             return guild
         except commands.GuildNotFound as e:
             self.__bot.logger.warning(e)
         try:
-            role = await role.convert(ctx, argument)
+            role = await role_converter.convert(ctx, argument)
             return role
         except commands.RoleNotFound as e:
             self.__bot.logger.warning(e)

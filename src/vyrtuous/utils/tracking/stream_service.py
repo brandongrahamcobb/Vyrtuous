@@ -44,14 +44,14 @@ async def send_log(
     role_snowflake: int | None,
     target: str | None,
     reason: str = "No reason provided",
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory = DatabaseFactory(MODEL)
     embed = StreamEmbed(color=None, description=None, title=None, url=None)
     embed.set_title(identifier=identifier).set_action(
         duration_value=duration_value
     ).set_reason(reason=reason)
-    pages = []
+    pages: list[discord.Embed] = []
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -121,7 +121,7 @@ async def send_log(
 async def toggle_stream(
     source,
     target_channel,
-):
+) -> discord.Embed:
     database_factory = DatabaseFactory(MODEL)
     if source:
         stream = await database_factory.select(
@@ -157,4 +157,4 @@ async def toggle_stream(
         title=f"{emojis.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}",
         color=0x00FF00,
     )
-    return [embed]
+    return embed

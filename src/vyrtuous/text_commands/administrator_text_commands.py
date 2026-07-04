@@ -25,28 +25,19 @@ from discord.ext import commands
 from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.administrator import NotAdministrator
-from vyrtuous.inc.helpers import PATH_LOG, at_home
+from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import (
-    list_administrator_roles,
-    list_caps,
-    list_permissions,
     list_server_mutes,
-    list_streams,
-    list_video_channels,
 )
 from vyrtuous.models.category import Category
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
-    cap_service,
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.channels import automute_channel_service, video_channel_service
-from vyrtuous.utils.tracking import stream_service
 from vyrtuous.utils.users import (
     administrator_service,
     coordinator_service,
@@ -57,14 +48,14 @@ from vyrtuous.utils.users import (
 )
 
 
-class AdminTextCommands(commands.Cog):
+class AdministratorTextCommands(commands.Cog):
 
     PERMISSION_LEVEL = "Administrator"
 
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
 
-    async def cog_check(self, ctx):
+    async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
         context = SnowflakeContext(
@@ -106,81 +97,13 @@ class AdminTextCommands(commands.Cog):
             default=None,
             description="Tag a role or include the ID.",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         kwargs = {"alias_name": alias_name, "category": category, "channel": channel}
         if role:
             kwargs.update({"role": role})
         msg = await alias_service.create_alias(**kwargs)
         return await tick.end(success=msg)
-
-    @commands.command(name="aroles", help="Administrator roles.")
-    @skip_text_command_help_discovery()
-    async def list_administrator_roles_text_command(
-        self,
-        ctx: commands.Context,
-        *,
-        target: Union[
-            str, discord.Guild, discord.abc.GuildChannel
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.guild
-        is_at_home = at_home(source=ctx)
-        pages = await list_administrator_roles.build_pages(
-            obj=obj, is_at_home=is_at_home
-        )
-        return await tick.end(success=pages)
-
-    @commands.command(name="cap", help="Cap alias duration for mods.")
-    @skip_text_command_help_discovery()
-    async def cap_text_command(
-        self,
-        ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
-            description="Tag a channel or include its ID.",
-        ),
-        category: Category = commands.parameter(
-            description="One of: `mute`, `ban`, `tmute`"
-        ),
-        *,
-        hours: int = commands.parameter(default=24, description="# of hours"),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        msg = await cap_service.toggle_cap(
-            category=category, channel=channel, hours=hours
-        )
-        return await tick.end(success=msg)
-
-    @commands.command(name="caps", help="List caps.")
-    @skip_text_command_help_discovery()
-    async def list_caps_text_command(
-        self,
-        ctx: commands.Context,
-        target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, None
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: 'all', channel ID/mention or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_caps.build_pages(obj=obj, is_at_home=is_at_home)
-        return await tick.end(success=pages)
 
     # @commands.command(name="clear", help="Reset database.")
     # @skip_text_command_help_discovery()
@@ -242,7 +165,7 @@ class AdminTextCommands(commands.Cog):
             converter=commands.VoiceChannelConverter,
             description="Tag a channel or include its ID.",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(member.id),
@@ -256,29 +179,6 @@ class AdminTextCommands(commands.Cog):
         )
         return await tick.end(success=msg)
 
-    @commands.command(name="debug", help="Shows the last `n` number of logging.")
-    async def debug_text_command(
-        self,
-        ctx,
-        *,
-        lines: int = commands.parameter(
-            default=3, description="Specify the number of lines"
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if lines <= 0:
-            return await tick.end(warning="Lines must be greater than 0")
-        try:
-            with open(PATH_LOG, "r") as f:
-                content = f.readlines()[-lines:]
-                content = [line.split(" - ", 3)[-1] for line in content]
-        except FileNotFoundError:
-            return await tick.end(warning="Log file not found")
-        output = "".join(content)
-        if len(output) > 1900:
-            output = output[-1900:]
-        return await tick.end(success=f"```log\n{output}\n```")
-
     @commands.command(name="ow", help="Overwrite stats.")
     async def list_overwrites_text_command(
         self,
@@ -290,7 +190,7 @@ class AdminTextCommands(commands.Cog):
             default=None,
             description="Specify the ID or mention.",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         member_count, role_count, total_count = 0, 0, 0
         if isinstance(target, str):
@@ -360,37 +260,6 @@ class AdminTextCommands(commands.Cog):
                 )
                 return await tick.end(success=embed)
 
-    @commands.command(name="pc", help="View permissions.")
-    @skip_text_command_help_discovery()
-    async def list_permissions_text_command(
-        self,
-        ctx: commands.Context,
-        target: Union[str, discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: `all`, channel ID/mention or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
-        context = SnowflakeContext(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-        )
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_permissions.build_pages(
-            obj=obj,
-            context=context,
-            is_at_home=is_at_home,
-        )
-        return await tick.end(success=pages)
-
     @commands.command(name="rmute", help="Room mute (except yourself).")
     async def channel_mute_text_command(
         self,
@@ -404,7 +273,7 @@ class AdminTextCommands(commands.Cog):
         reason: str = commands.parameter(
             default="No reason provided.", description="Specify a reason."
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = channel or ctx.channel
         pages = await voice_mute_service.channel_mute(
@@ -430,7 +299,7 @@ class AdminTextCommands(commands.Cog):
             converter=MultiConverter,
             description="Tag a channel or include its ID.",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used within a server.")
@@ -474,20 +343,6 @@ class AdminTextCommands(commands.Cog):
         )
         return await tick.end(success=embed)
 
-    @commands.command(name="roleid", help="Get role by name.")
-    @skip_text_command_help_discovery()
-    async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used within a server.")
-        role = discord.utils.get(ctx.guild.roles, name=role_name)
-        if role:
-            return await tick.end(success=f"Role `{role.name}` has ID `{role.id}`.")
-        else:
-            return await tick.end(
-                warning=f"No role named `{role_name}` found in this server."
-            )
-
     @commands.command(name="smute", help="Server mute/server unmute.")
     async def toggle_server_mute_text_command(
         self,
@@ -501,10 +356,10 @@ class AdminTextCommands(commands.Cog):
             default="No reason provided",
             description="Optional reason (required for 7 days or more)",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -526,8 +381,7 @@ class AdminTextCommands(commands.Cog):
             default=None,
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
-    ):
-
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if target == "all":
             obj = None
@@ -537,126 +391,15 @@ class AdminTextCommands(commands.Cog):
         pages = await list_server_mutes.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
-    @commands.command(name="stages", help="List stages.")
-    @skip_text_command_help_discovery()
-    async def list_stages_text_command(
-        self,
-        ctx: commands.Context,
-        target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await automute_channel_service.build_pages(
-            obj=obj, is_at_home=is_at_home
-        )
-        return await tick.end(success=pages)
-
-    @commands.command(name="stream", help="Setup streaming.")
-    @skip_text_command_help_discovery()
-    async def modify_streaming_text_command(
-        self,
-        ctx: commands.Context,
-        target_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.TextChannelConverter,
-            description="Tag a channel or include its ID.",
-        ),
-        source: Union[str, discord.abc.GuildChannel] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="`All` or tag a channel/include its ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        pages = await stream_service.toggle_stream(
-            source=source,
-            target_channel=target_channel,
-        )
-        return await tick.end(success=pages)
-
-    @commands.command(name="streams", help="List streaming routes.")
-    @skip_text_command_help_discovery()
-    async def list_streaming_text_command(
-        self,
-        ctx: commands.Context,
-        *,
-        target: Union[
-            str, discord.Guild, discord.abc.GuildChannel
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: `all`, channel ID/mention, or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_streams.build_pages(obj=obj, is_at_home=is_at_home)
-        return await tick.end(success=pages)
-
-    @commands.command(name="vo", help="Start/stop video-only channel.")
-    @skip_text_command_help_discovery()
-    async def toggle_video_channel_text_command(
-        self,
-        ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.VoiceChannelConverter,
-            default=None,
-            description="Tag a channel or include the ID",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        obj = channel or ctx.channel
-        msg = await video_channel_service.toggle_video_channel(channel=obj)
-        return await tick.end(success=msg)
-
-    @commands.command(
-        name="vos",
-        help="List video channels.",
-    )
-    @skip_text_command_help_discovery()
-    async def list_video_channels_text_command(
-        self,
-        ctx: commands.Context,
-        *,
-        target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Include `all`, channel or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_video_channels.build_pages(obj=obj, is_at_home=is_at_home)
-        return await tick.end(success=pages)
-
     @commands.command(name="xalias", help="Delete alias.")
     async def delete_alias_text_command(
         self,
         ctx: commands.Context,
         alias_name: str = commands.parameter(description="Include an alias name"),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return tick.end(warning="This command must be used in a guild.")
+            return await tick.end(warning="This command must be used in a guild.")
         context = SnowflakeContext(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -674,7 +417,7 @@ class AdminTextCommands(commands.Cog):
             default=None,
             description="Tag a channel or include its ID.",
         ),
-    ):
+    ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = channel or ctx.channel
         pages = await voice_mute_service.channel_unmute(channel=obj)
@@ -682,4 +425,4 @@ class AdminTextCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(AdminTextCommands(bot=bot))
+    await bot.add_cog(AdministratorTextCommands(bot=bot))

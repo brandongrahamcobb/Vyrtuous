@@ -33,7 +33,7 @@ async def enforce_or_undo(
     alias_ctx: AliasContext,
     message: discord.Message,
 ) -> discord.Embed:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     obj = await database_factory.select(
         channel_snowflake=alias_ctx.channel_snowflake,
         guild_snowflake=alias_ctx.guild_snowflake,
@@ -65,9 +65,11 @@ async def enforce_or_undo(
         return embed
 
 
-async def warn(channel: discord.channel.VocalGuildChannel, member: discord.Member):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def warn(
+    channel: discord.channel.VocalGuildChannel, member: discord.Member
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     flags = await database_factory.select(singular=False)
     for flag in flags:
         if flag.channel_snowflake == channel.id and flag.member_snowflake == member.id:
@@ -82,9 +84,9 @@ async def warn(channel: discord.channel.VocalGuildChannel, member: discord.Membe
             bot.registry.get(ChannelState).record(channel.id, member.id)
 
 
-async def populate():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def populate() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     original_set = bot.registry.get(MemberState).flagged
     flags = await database_factory.select(singular=False)
     for flag in flags:

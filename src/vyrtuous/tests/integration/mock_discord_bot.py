@@ -23,16 +23,11 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from vyrtuous.cache.registry import (
-    ChannelState,
-    MemberState,
-    MessageHistoryState,
-    Registry,
-    SystemResourcesState,
-    VideoChannelState,
-)
-from vyrtuous.system.config import Config
+from vyrtuous.cache.registry import (ChannelState, MemberState,
+                                     MessageHistoryState, Registry,
+                                     SystemResourcesState, VideoChannelState)
 from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
+from vyrtuous.system.config import Config
 from vyrtuous.system.logger import logger, setup_logging
 
 

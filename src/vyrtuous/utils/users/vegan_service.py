@@ -28,8 +28,8 @@ from vyrtuous.db.vegan import Vegan
 MODEL = Vegan
 
 
-def is_vegan(guild_snowflake: int, member_snowflake: int):
-    bot = DiscordBot.get_instance()
+def is_vegan(guild_snowflake: int, member_snowflake: int) -> bool:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -43,8 +43,10 @@ def is_vegan(guild_snowflake: int, member_snowflake: int):
         return False
 
 
-async def toggle_vegan(guild_snowflake: int, member_snowflake: int, notes: str | None):
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_vegan(
+    guild_snowflake: int, member_snowflake: int, notes: str | None
+) -> discord.Embed:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     vegan = await database_factory.select(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
@@ -77,8 +79,8 @@ async def toggle_vegan(guild_snowflake: int, member_snowflake: int, notes: str |
 
 async def build_vegan_embed(
     guild_snowflake: int, member_snowflake: int, notes: str | None
-):
-    bot = DiscordBot.get_instance()
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -107,7 +109,7 @@ async def build_vegan_embed(
 
 
 async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))

@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Self
 
 from discord.ext import commands
 
@@ -84,7 +85,7 @@ class DurationBuilder:
     def __init__(self):
         self.__duration = Duration(number=8, prefix="", sign=1, unit="h")
 
-    def parse(self, value):
+    def parse(self, value) -> Self:
         if not value:
             self.__duration = Duration(number=0, unit="", prefix="", sign=1)
             return self
@@ -132,17 +133,17 @@ class DurationBuilder:
         self.__duration = Duration(number=number, unit=unit, prefix=prefix, sign=sign)
         return self
 
-    def from_seconds(self, seconds):
+    def from_seconds(self, seconds) -> Self:
         self.parse(f"{seconds}s")
         return self
 
-    def from_timedelta(self, td, prefix="+"):
+    def from_timedelta(self, td, prefix="+") -> Self:
         total_seconds = int(td.total_seconds())
         number, unit = _largest_unit(total_seconds)
         self.parse(f"{prefix}{number}{unit}")
         return self
 
-    def to_seconds(self):
+    def to_seconds(self) -> int:
         unit_seconds = UNIT_SECONDS.get(getattr(self.__duration, "unit", "h"), 3600)
         return (
             getattr(self.__duration, "sign", 1)
@@ -150,7 +151,7 @@ class DurationBuilder:
             * unit_seconds
         )
 
-    def to_timedelta(self):
+    def to_timedelta(self) -> timedelta:
         match self.__duration.unit:
             case "y":
                 return timedelta(
@@ -171,13 +172,13 @@ class DurationBuilder:
             case _:
                 raise ValueError(f"Unsupported unit: {self.__duration.unit}")
 
-    def to_expires_in(self, base: datetime | None = None):
+    def to_expires_in(self, base: datetime | None = None) -> datetime | None:
         if not self.__duration.number:
             return None
         base = base or datetime.now(timezone.utc)
         return base + self.to_timedelta()
 
-    def from_timestamp(self, expires_in: datetime):
+    def from_timestamp(self, expires_in: datetime) -> Self:
         now = datetime.now(timezone.utc)
         remaining = expires_in - now
         total_seconds = max(0, int(remaining.total_seconds()))
@@ -185,12 +186,12 @@ class DurationBuilder:
         self.parse(f"+{number}{unit}")
         return self
 
-    def build(self, *, as_str: bool = False):
+    def build(self, *, as_str: bool = False) -> Duration | str:
         if as_str and self.__duration:
             return f"{self.__duration.prefix}{self.__duration.number}{self.__duration.unit}"
         return self.__duration
 
-    def to_unix_ts(self, base: datetime | None = None):
+    def to_unix_ts(self, base: datetime | None = None) -> str:
         expires_in = self.to_expires_in(base)
         if expires_in is None or self.__duration.number == 0:
             return "permanent"

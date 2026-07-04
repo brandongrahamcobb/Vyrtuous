@@ -31,7 +31,7 @@ MODEL = Developer
 
 
 async def is_developer(member_snowflake: int) -> bool:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     developer = await database_factory.select(
         member_snowflake=int(member_snowflake), singular=True
     )
@@ -40,13 +40,13 @@ async def is_developer(member_snowflake: int) -> bool:
     return True
 
 
-async def is_developer_wrapper(context):
+async def is_developer_wrapper(context) -> bool:
     return await is_developer(member_snowflake=int(context.member_snowflake))
 
 
-async def report_issue(author, message, reference):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def report_issue(author, message, reference) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     online_developer_mentions = []
     sysadmin = bot.get_user(bot.config["discord_owner_id"])
     if sysadmin:
@@ -72,9 +72,9 @@ async def report_issue(author, message, reference):
     await author.send(msg)
 
 
-async def toggle_developer(member_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_developer(member_snowflake: int) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     found = False
     developers = await database_factory.select(singular=False)
     found = any(
@@ -109,8 +109,8 @@ async def ping_about_expired_bugs(
     msg,
     notes,
     updated_at,
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     duration_builder = DurationBuilder()
     assigned_developer_mentions = []
     for developer_snowflake in member_snowflakes:
@@ -140,8 +140,8 @@ async def ping_about_expired_bugs(
             )
 
 
-async def handle_developer_assignment(member, reference):
-    database_factory = DatabaseFactory(MODEL)
+async def handle_developer_assignment(member, reference) -> discord.Embed:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     developers = await database_factory.select(singular=False)
     for developer in developers:
         if developer.member_snowflake == member.id:

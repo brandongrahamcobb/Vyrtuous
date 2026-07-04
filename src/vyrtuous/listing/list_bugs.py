@@ -38,7 +38,7 @@ class BugDictionary:
     skipped_messages: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj, reference):
+async def build_dictionary(obj, reference) -> dict:
     database_factory = DatabaseFactory(MODEL)
     bugs = []
     dictionary = {}
@@ -71,9 +71,12 @@ async def build_dictionary(obj, reference):
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj, reference, scope):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(
+    is_at_home: bool, obj, reference, scope
+) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if obj:

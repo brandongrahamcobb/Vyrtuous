@@ -27,14 +27,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
+from vyrtuous.utils.channels import video_channel_service
 from vyrtuous.utils.moderation import (
     ban_service,
     flag_service,
     server_mute_service,
     voice_mute_service,
-)
-from vyrtuous.utils.channels import (
-    video_channel_service,
 )
 
 
@@ -48,7 +46,7 @@ class ChannelEventListeners(commands.Cog):
         member: discord.Member,
         before: discord.VoiceState,
         after: discord.VoiceState,
-    ):
+    ) -> None:
         if member.bot:
             return
         self.__bot.registry.get(MemberState).active[member.id] = (

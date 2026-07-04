@@ -23,12 +23,12 @@ from vyrtuous.cache.sysadmin import NotSysadmin, Sysadmin
 MODEL = Sysadmin
 
 
-async def is_sysadmin_wrapper(context):
+async def is_sysadmin_wrapper(context) -> bool:
     return await is_sysadmin(member_snowflake=context.member_snowflake)
 
 
 async def is_sysadmin(member_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     if int(bot.config["discord_owner_id"]) == member_snowflake:
         return True
     raise NotSysadmin

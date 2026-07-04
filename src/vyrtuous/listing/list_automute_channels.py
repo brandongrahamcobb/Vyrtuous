@@ -1,5 +1,5 @@
-"""!/bin/python3
-temporary_channels_service.py The purpose of this program is to extend Service to service the temporary room class.
+"""!/bin/python3stage"
+automute_channel_service.py The purpose of this program is to extend Service to service the stage class.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -18,65 +18,74 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.temporary_room import TemporaryRoom
 from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
-MODEL = TemporaryRoom
+MODEL = AutoMute
 
 
 @dataclass
-class TemporaryRoomDictionary:
-    data: Dict[int, Dict[str, Dict[int, bool]]] = field(default_factory=dict)
+class AutoMuteDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, Any]]]]] = field(
+        default_factory=dict
+    )
     skipped_channels: List[discord.Embed] = field(default_factory=list)
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(obj):
     database_factory = DatabaseFactory(MODEL)
-    temporary_rooms = []
+    automutes = []
     dictionary = {}
     if isinstance(obj, discord.Guild):
-        temporary_rooms = await database_factory.select(
+        automutes = await database_factory.select(
             guild_snowflake=obj.id, singular=False
         )
     elif isinstance(obj, discord.abc.GuildChannel):
-        temporary_rooms = await database_factory.select(
+        automutes = await database_factory.select(
             channel_snowflake=obj.id, singular=False
         )
     else:
-        temporary_rooms = await database_factory.select(singular=False)
-    if temporary_rooms:
-        for temporary_room in temporary_rooms:
-            dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
-            dictionary[temporary_room.guild_snowflake]["channels"][
-                temporary_room.channel_snowflake
-            ] = {}
+        automutes = await database_factory.select(singular=False)
+    if automutes:
+        for automute in automutes:
+            dictionary.setdefault(automute.guild_snowflake, {"channels": {}})
+            dictionary[automute.guild_snowflake]["channels"].setdefault(
+                automute.channel_snowflake, {}
+            )
+            dictionary[automute.guild_snowflake]["channels"][
+                automute.channel_snowflake
+            ].setdefault("automutes", {})
+            dictionary[automute.guild_snowflake]["channels"][
+                automute.channel_snowflake
+            ]["automutes"].update({"expires_in": automute.expires_in})
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if obj:
         obj_name = obj.name
-    title = f"{emojis.get_random_emoji()} Temporary Rooms for {obj_name}"
+    title = f"{emojis.get_random_emoji()} Automute Rooms for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
     processed_dictionary = await list_service.process_dictionary(
-        cls=TemporaryRoomDictionary, dictionary=dictionary
+        cls=AutoMuteDictionary, dictionary=dictionary
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
-        temp_n = 0
+        automute_n = 0
         field_count = 0
         lines = []
         guild = bot.get_guild(guild_snowflake)
@@ -85,49 +94,38 @@ async def build_pages(is_at_home: bool, obj):
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
-        for channel_snowflake, channel_data in guild_data.get("channels", {}).items():
+        for channel_snowflake, automute_dictionary in guild_data.get(
+            "channels"
+        ).items():
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
                 continue
-            lines.append(f"Channel: {channel.mention}")
+            lines.append(
+                f"**Expires in:** {automute_dictionary.get('automutes', {}).get('expires_in', None)}"
+            )
+            automute_n += 1
             field_count += 1
-            for category, alias_names in channel_data.items():
-                lines.append(f"{category}")
-                temp_n += 1
-                field_count += 1
-                for name in alias_names:
-                    lines.append(f"  ↳ {name}")
-                    field_count += 1
-                    if field_count >= list_service.CHUNK_SIZE:
-                        embed.add_field(
-                            name="Information",
-                            value="\n".join(lines),
-                            inline=False,
-                        )
-                        embed = list_service.flush_page(embed, pages, title, guild.name)
-                        lines = []
-                        field_count = 0
-            if field_count >= list_service.CHUNK_SIZE:
+            if field_count == list_service.CHUNK_SIZE:
                 embed.add_field(
-                    name="Information",
+                    name=f"Channel: {channel.mention}",
                     value="\n".join(lines),
                     inline=False,
                 )
                 embed = list_service.flush_page(embed, pages, title, guild.name)
                 lines = []
                 field_count = 0
-        if lines:
-            embed.add_field(
-                name="Information",
-                value="\n".join(lines),
-                inline=False,
-            )
+            if lines:
+                embed.add_field(
+                    name=f"Channel: {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
+                )
         original_description = embed.description or ""
-        embed.description = f"**{original_description} ({temp_n})**"
+        embed.description = f"**{original_description} ({automute_n})**"
         pages.append(embed)
     if is_at_home:
         pages.extend(processed_dictionary.skipped_channels)
         pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
-        return "No temporary rooms found."
+        return "No automute channels found."
     return pages

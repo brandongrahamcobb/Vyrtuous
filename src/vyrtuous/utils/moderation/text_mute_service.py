@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import discord
 
@@ -33,7 +33,7 @@ MODEL = TextMute
 async def enforce_or_undo(
     alias_ctx: AliasContext, message: discord.Message
 ) -> discord.Embed:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     text_mute = await database_factory.select(
         channel_snowflake=alias_ctx.channel_snowflake,
         guild_snowflake=alias_ctx.guild_snowflake,
@@ -70,104 +70,10 @@ async def enforce_or_undo(
         return embed
 
 
-async def clean_expired():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    expired_text_mutes = await database_factory.select(expired=True, singular=False)
-    if expired_text_mutes:
-        for expired_text_mute in expired_text_mutes:
-            channel_snowflake = int(expired_text_mute.channel_snowflake)
-            guild_snowflake = int(expired_text_mute.guild_snowflake)
-            member_snowflake = int(expired_text_mute.member_snowflake)
-            kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
-                "member_snowflake": member_snowflake,
-            }
-            guild = bot.get_guild(guild_snowflake)
-            if guild is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.info(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired text-mute."
-                )
-                continue
-            channel = guild.get_channel(channel_snowflake)
-            if channel is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.info(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
-                )
-                continue
-            member = guild.get_member(member_snowflake)
-            if member is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.info(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
-                )
-                continue
-            await database_factory.delete(**kwargs)
-            try:
-                await channel.set_permissions(
-                    target=member,
-                    send_messages=None,
-                    add_reactions=None,
-                    reason="Cleaning up expired text-mute",
-                )
-            except discord.Forbidden as e:
-                bot.logger.error(str(e).capitalize())
-            except discord.HTTPException as e:
-                bot.logger.error(f"HTTP error removing expired text mute: {e}")
-
-
-async def clean_overwrites():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    now = datetime.now(timezone.utc)
-    text_mutes = await database_factory.select(singular=False)
-    for text_mute in text_mutes:
-        channel_snowflake = int(text_mute.channel_snowflake)
-        guild_snowflake = int(text_mute.guild_snowflake)
-        member_snowflake = int(text_mute.member_snowflake)
-        where_kwargs = {
-            "channel_snowflake": channel_snowflake,
-            "guild_snowflake": guild_snowflake,
-            "member_snowflake": member_snowflake,
-        }
-        set_kwargs = {"reset": True}
-        if not text_mute.reset and text_mute.last_muted < now - timedelta(weeks=1):
-            guild = bot.get_guild(guild_snowflake)
-            if guild is None:
-                bot.logger.info(
-                    f"Unable to locate guild {guild_snowflake} for removing overwrite."
-                )
-                continue
-            channel = guild.get_channel(channel_snowflake)
-            if channel is None:
-                bot.logger.info(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) for removing overwrite."
-                )
-                continue
-            member = guild.get_member(member_snowflake)
-            if member is None:
-                bot.logger.info(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) for removing overwrite."
-                )
-                continue
-            try:
-                await channel.set_permissions(
-                    target=member,
-                    overwrite=None,
-                    reason="Resetting text-mute overwrite",
-                )
-            except discord.Forbidden as e:
-                bot.logger.error(str(e).capitalize())
-            await database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-
-
-async def is_text_muted(channel: discord.abc.GuildChannel, member: discord.Member):
-    database_factory = DatabaseFactory(MODEL)
+async def is_text_muted(
+    channel: discord.abc.GuildChannel, member: discord.Member
+) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     mute = await database_factory.select(
         channel_snowflake=channel.id,
         guild_snowflake=channel.guild.id,
@@ -181,8 +87,8 @@ async def is_text_muted(channel: discord.abc.GuildChannel, member: discord.Membe
 
 async def is_text_muted_then_mute_and_reset_cooldown(
     channel: discord.abc.GuildChannel, member: discord.Member
-):
-    bot = DiscordBot.get_instance()
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
     if await is_text_muted(channel=channel, member=member):
         try:
             await channel.set_permissions(
@@ -198,9 +104,9 @@ async def is_text_muted_then_mute_and_reset_cooldown(
 
 async def update_last_text_muted(
     channel: discord.abc.GuildChannel, member: discord.Member
-):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     where_kwargs = {
         "channel_snowflake": channel.id,
         "guild_snowflake": channel.guild.id,

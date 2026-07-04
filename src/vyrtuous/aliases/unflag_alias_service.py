@@ -75,7 +75,7 @@ async def log_unflag(
     member_snowflake: int,
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
-):
+) -> None:
     duration_value = None
     is_channel_scope = None
     reason = None
@@ -109,9 +109,11 @@ async def log_unflag(
         )
 
 
-async def unflag(channel_snowflake: int, guild_snowflake: int, member_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def unflag(
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -134,8 +136,8 @@ async def unflag(channel_snowflake: int, guild_snowflake: int, member_snowflake:
 
 async def build_unflag_embed(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
-):
-    bot = DiscordBot.get_instance()
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))

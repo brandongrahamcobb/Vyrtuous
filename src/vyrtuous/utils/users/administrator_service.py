@@ -25,7 +25,7 @@ MODEL = Administrator
 
 
 async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrator = await database_factory.select(
         guild_snowflake=int(guild_snowflake),
         member_snowflake=int(member_snowflake),
@@ -38,7 +38,7 @@ async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
 
 async def is_administrator_wrapper(
     context,
-):
+) -> bool:
     return await is_administrator(
         guild_snowflake=int(context.guild_snowflake),
         member_snowflake=int(context.member_snowflake),
@@ -47,8 +47,8 @@ async def is_administrator_wrapper(
 
 async def is_administrator_at_all(
     member_snowflake: int,
-):
-    database_factory = DatabaseFactory(MODEL)
+) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrator = await database_factory.select(
         member_snowflake=int(member_snowflake), singular=True
     )
@@ -57,8 +57,8 @@ async def is_administrator_at_all(
     return True
 
 
-async def administrators_by_role(role_snowflake: int):
-    database_factory = DatabaseFactory(MODEL)
+async def administrators_by_role(role_snowflake: int) -> list[Administrator]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrators = await database_factory.select(
         role_snowflakes=int(role_snowflake),
         inside_fields=["role_snowflakes"],
@@ -71,8 +71,8 @@ async def administrators_by_role(role_snowflake: int):
 
 async def administrator_existing(
     guild_snowflake: int, member_snowflake: int, role_snowflake: int
-):
-    database_factory = DatabaseFactory(MODEL)
+) -> Administrator | None:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrator = await database_factory.select(
         guild_snowflake=int(guild_snowflake),
         member_snowflake=int(member_snowflake),
@@ -85,9 +85,11 @@ async def administrator_existing(
     return None
 
 
-async def added_role(guild_snowflake: int, member_snowflake: int, role_snowflake: int):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def added_role(
+    guild_snowflake: int, member_snowflake: int, role_snowflake: int
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrator_role_snowflakes = []
     administrator = await administrator_existing(
         guild_snowflake=guild_snowflake,
@@ -120,9 +122,9 @@ async def added_role(guild_snowflake: int, member_snowflake: int, role_snowflake
 
 async def removed_role(
     guild_snowflake: int, member_snowflake: int, role_snowflake: int
-):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrator_role_snowflakes = []
     administrator = await database_factory.select(
         guild_snowflake=int(guild_snowflake),

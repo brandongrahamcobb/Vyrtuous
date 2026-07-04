@@ -27,8 +27,8 @@ from vyrtuous.utils.users import moderator_service
 MODEL = ServerMute
 
 
-async def toggle_server_mute(context, member, reason):
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_server_mute(context, member, reason) -> str:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     await moderator_service.has_equal_or_lower_role(
         **context.to_dict(),
         target_member_snowflake=member.id,
@@ -57,9 +57,9 @@ async def toggle_server_mute(context, member, reason):
     return f"Successfully server {action} {member.mention} in {context.guild.name}."
 
 
-async def enforce(after, member):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def enforce(after, member) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     server_mute = await database_factory.select(
         member_snowflake=member.id, singular=True
     )
@@ -79,12 +79,10 @@ async def enforce(after, member):
                         f"{member.display_name}: "
                         f"{str(e).capitalize()}"
                     )
-        return False
-    return True
 
 
-async def is_server_muted(channel, member):
-    database_factory = DatabaseFactory(MODEL)
+async def is_server_muted(channel, member) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     server_mute = await database_factory.select(
         channel_snowflake=channel.id, member_snowflake=member.id, singular=False
     )

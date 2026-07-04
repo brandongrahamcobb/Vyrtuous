@@ -28,8 +28,10 @@ from vyrtuous.utils.users import administrator_service
 MODEL = AdministratorRole
 
 
-async def is_added_role_administrator(guild_snowflake: int, role_snowflake: int):
-    database_factory = DatabaseFactory(MODEL)
+async def is_added_role_administrator(
+    guild_snowflake: int, role_snowflake: int
+) -> bool:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     where_kwargs = {
         "guild_snowflake": int(guild_snowflake),
         "role_snowflake": int(role_snowflake),
@@ -43,8 +45,8 @@ async def is_added_role_administrator(guild_snowflake: int, role_snowflake: int)
     return True
 
 
-async def toggle_administrator_role(role):
-    database_factory = DatabaseFactory(MODEL)
+async def toggle_administrator_role(role) -> list[discord.Embed]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     title = f"{emojis.get_random_emoji()} Administrators and Roles"
     administrators = await administrator_service.administrators_by_role(
         role_snowflake=role.id
@@ -60,11 +62,9 @@ async def toggle_administrator_role(role):
         for administrator in administrators:
             member = role.guild.get_member(administrator.member_snowflake)
             await administrator_service.removed_role(
-                {
-                    "guild_snowflake": role.guild.id,
-                    "member_snowflake": administrator.member_snowflake,
-                    "role_snowflake": role.id,
-                }
+                guild_snowflake=administrator.guild_snowflake,
+                member_snowflake=administrator.member_snowflake,
+                role_snowflake=role.id,
             )
             revoked_members.setdefault(role.guild.id, {}).setdefault(
                 role.id, []
@@ -96,7 +96,7 @@ async def toggle_administrator_role(role):
 
     chunks = []
     chunk = []
-    pages = []
+    pages: list[discord.Embed] = []
     for member in members:
         chunk.append(member)
         if len(chunk) == list_service.CHUNK_SIZE:
@@ -126,8 +126,8 @@ async def toggle_administrator_role(role):
     return pages
 
 
-async def get_administrator_roles(guild_snowflake=None) -> list:
-    database_factory = DatabaseFactory(MODEL)
+async def get_administrator_roles(guild_snowflake=None) -> list[int]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     roles = await database_factory.select(
         guild_snowflake=guild_snowflake, singular=False
     )

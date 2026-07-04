@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timedelta, timezone
-
 import discord
 from discord.ext import commands
 
@@ -26,13 +24,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.bug import Bug
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.users import developer_service
 
 MODEL = Bug
 
 
-async def update_bug(action: str, notes, reference):
-    database_factory = DatabaseFactory(MODEL)
+async def update_bug(action: str, notes, reference) -> str:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     message = "You successfully "
     bug = await database_factory.select(id=reference, resolved=False, singular=True)
     if not bug:
@@ -55,67 +52,8 @@ async def update_bug(action: str, notes, reference):
     return message
 
 
-async def clean_expired():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    now = datetime.now(timezone.utc)
-    bugs = await database_factory.select(resolved=True, singular=False)
-    if bugs:
-        for bug in bugs:
-            channel_snowflake = int(bug.channel_snowflake)
-            guild_snowflake = int(bug.guild_snowflake)
-            member_snowflakes = bug.member_snowflakes
-            message_snowflake = int(bug.message_snowflake)
-            reference = bug.id
-            if bug.created_at < now - timedelta(weeks=1):
-                guild = bot.get_guild(bug.guild_snowflake)
-                if guild is None:
-                    bot.logger.info(
-                        f"Unable to locate guild {guild_snowflake}, not sending developer log."
-                    )
-                    continue
-                embed = discord.Embed(
-                    title=f"\U000026a0\U0000fe0f An issue is unresolved in {guild.name}",
-                    color=discord.Color.red(),
-                )
-                channel = guild.get_channel(channel_snowflake)
-                if (
-                    channel is None
-                    or not isinstance(channel, discord.TextChannel)
-                    or not isinstance(channel, discord.VoiceChannel)
-                ):
-                    bot.logger.info(
-                        f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, not sending developer log."
-                    )
-                    continue
-                for member_snowflake in member_snowflakes:
-                    member = guild.get_member(member_snowflake)
-                    if member is None:
-                        bot.logger.info(
-                            f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
-                        )
-                        continue
-                    embed.set_thumbnail(url=member.display_avatar.url)
-                    try:
-                        msg = await channel.fetch_message(message_snowflake)
-                    except Exception as e:
-                        bot.logger.warning(
-                            f"Unable to locate a message {message_snowflake} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), deleting developer log. {str(e).capitalize()}"
-                        )
-                        return await database_factory.delete(id=reference)
-                    await developer_service.ping_about_expired_bugs(
-                        channel=channel,
-                        embed=embed,
-                        member=member,
-                        member_snowflakes=bug.member_snowflakes,
-                        msg=msg,
-                        notes=bug.notes,
-                        updated_at=bug.updated_at,
-                    )
-
-
-async def create_embed(action: str, bug, member):
-    bot = DiscordBot.get_instance()
+async def create_embed(action: str, bug, member) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     current_developer_mentions = []
     guild = bot.get_guild(bug.guild_snowflake)
     if guild is None:
@@ -154,9 +92,9 @@ async def create_embed(action: str, bug, member):
         return embed
 
 
-async def create_bug(message, reference):
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+async def create_bug(message, reference) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     try:
         bug = MODEL(
             channel_snowflake=message.channel.id,
@@ -170,10 +108,10 @@ async def create_bug(message, reference):
         bot.logger.info(str(e).capitalize())
 
 
-async def handle_bug_assignment(developer, reference):
-    database_factory = DatabaseFactory(MODEL)
+async def handle_bug_assignment(developer, reference) -> tuple[Bug, bool]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     bugs = await database_factory.select(singular=False)
-    state = None
+    state = False
     bug = next((bug for bug in bugs if bug.id == reference and not bug.resolved), None)
     if bug:
         where_kwargs = {"id": bug.id}
@@ -191,4 +129,4 @@ async def handle_bug_assignment(developer, reference):
             await database_factory.update(
                 set_kwargs=set_kwargs, where_kwargs=where_kwargs
             )
-        return bug, state
+    return bug, state

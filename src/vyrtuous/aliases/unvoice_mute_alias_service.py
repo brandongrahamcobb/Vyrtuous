@@ -95,7 +95,7 @@ async def set_unvoice_mute_overwrite(
 ) -> bool:
     is_channel_scope = False
     reason = None
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -123,7 +123,7 @@ async def set_unvoice_mute_overwrite(
 async def unvoice_mute_by_message(
     ctx: UnvoiceMuteMessageContext, display: bool = True
 ) -> discord.Embed:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
     voice_mute = await database_factory.select(
         channel_snowflake=ctx.channel_snowflake,
@@ -179,8 +179,8 @@ async def unvoice_mute(
     target: str,
 ) -> bool:
     is_channel_scope = False
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
@@ -212,7 +212,7 @@ def build_unvoice_mute_embed(
     guild_snowflake: int,
     member_snowflake: int,
 ) -> discord.Embed:
-    bot = DiscordBot.get_instance()
+    bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))

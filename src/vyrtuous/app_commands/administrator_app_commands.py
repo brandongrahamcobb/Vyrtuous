@@ -24,7 +24,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.administrator import Administrator
 
 
-class AdminAppCommands(commands.Cog):
+class AdministratorAppCommands(commands.Cog):
     ROLE = Administrator
 
     def __init__(self, *, bot: DiscordBot | None = None):
@@ -32,4 +32,4 @@ class AdminAppCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(AdminAppCommands(bot=bot))
+    await bot.add_cog(AdministratorAppCommands(bot=bot))

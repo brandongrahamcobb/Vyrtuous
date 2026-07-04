@@ -40,7 +40,7 @@ class StreamDictionary:
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj):
+async def build_dictionary(obj) -> dict:
     database_factory = DatabaseFactory(MODEL)
     streaming = []
     dictionary = {}
@@ -66,9 +66,10 @@ async def build_dictionary(obj):
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if obj:

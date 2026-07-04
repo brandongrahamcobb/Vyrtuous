@@ -39,7 +39,7 @@ class AdministratorDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj):
+async def build_dictionary(obj) -> dict:
     database_factory = DatabaseFactory(MODEL)
     administrators = []
     dictionary = {}
@@ -67,9 +67,10 @@ async def build_dictionary(obj):
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
+async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    lines: list[str] = []
+    pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
     if not isinstance(obj, int):
@@ -89,7 +90,7 @@ async def build_pages(is_at_home: bool, obj):
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
-        bot = DiscordBot.get_instance()
+        bot: DiscordBot = DiscordBot.get_instance()
         admin_n = 0
         field_count = 0
         lines = []

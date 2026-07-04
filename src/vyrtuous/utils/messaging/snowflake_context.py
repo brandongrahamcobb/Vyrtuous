@@ -11,7 +11,7 @@ class SnowflakeContext:
         guild_snowflake: int,
         member_snowflake: int,
     ):
-        self.bot = DiscordBot.get_instance()
+        self.bot: DiscordBot = DiscordBot.get_instance()
         self.guild_snowflake = guild_snowflake
         self.guild = self.bot.get_guild(guild_snowflake)
         if self.guild is None:

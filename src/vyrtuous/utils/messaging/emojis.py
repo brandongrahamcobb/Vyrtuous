@@ -107,5 +107,5 @@ EMOJIS = [
 ]
 
 
-def get_random_emoji():
+def get_random_emoji() -> str:
     return random.choice(EMOJIS)

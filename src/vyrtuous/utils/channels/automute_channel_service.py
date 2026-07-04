@@ -35,19 +35,10 @@ from vyrtuous.utils.users import moderator_service
 MODEL = AutoMute
 
 
-@dataclass
-class AutoMuteDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, Any]]]]] = field(
-        default_factory=dict
-    )
-    skipped_channels: List[discord.Embed] = field(default_factory=list)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
-
-
 # async def send_automute_ask_to_speak_message(
 #     join_log: dict[int, discord.Member], member: discord.Member, automute: AutoMute
 # ):
-#     bot = DiscordBot.get_instance()
+#     bot: DiscordBot = DiscordBot.get_instance()
 #     now = time.time()
 #     join_log[member.id] = [t for t in join_log[member.id] if now - t < 300]
 #     if len(join_log[member.id]) < 1:
@@ -60,99 +51,8 @@ class AutoMuteDictionary:
 #         embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
 #         await bot.get_channel(automute.channel_snowflake).send(embed=embed)
 
-
-async def build_dictionary(obj):
-    database_factory = DatabaseFactory(MODEL)
-    automutes = []
-    dictionary = {}
-    if isinstance(obj, discord.Guild):
-        automutes = await database_factory.select(
-            guild_snowflake=obj.id, singular=False
-        )
-    elif isinstance(obj, discord.abc.GuildChannel):
-        automutes = await database_factory.select(
-            channel_snowflake=obj.id, singular=False
-        )
-    else:
-        automutes = await database_factory.select(singular=False)
-    if automutes:
-        for automute in automutes:
-            dictionary.setdefault(automute.guild_snowflake, {"channels": {}})
-            dictionary[automute.guild_snowflake]["channels"].setdefault(
-                automute.channel_snowflake, {}
-            )
-            dictionary[automute.guild_snowflake]["channels"][
-                automute.channel_snowflake
-            ].setdefault("automutes", {})
-            dictionary[automute.guild_snowflake]["channels"][
-                automute.channel_snowflake
-            ]["automutes"].update({"expires_in": automute.expires_in})
-    return dictionary
-
-
-async def build_pages(is_at_home: bool, obj):
-    bot = DiscordBot.get_instance()
-    lines, pages = [], []
-
-    obj_name = "All Servers"
-    if obj:
-        obj_name = obj.name
-    title = f"{emojis.get_random_emoji()} Automute Rooms for {obj_name}"
-
-    dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
-        cls=AutoMuteDictionary, dictionary=dictionary
-    )
-
-    for guild_snowflake, guild_data in processed_dictionary.data.items():
-        automute_n = 0
-        field_count = 0
-        lines = []
-        guild = bot.get_guild(guild_snowflake)
-        if guild is None:
-            continue
-        embed = discord.Embed(
-            title=title, description=guild.name, color=discord.Color.blue()
-        )
-        for channel_snowflake, automute_dictionary in guild_data.get(
-            "channels"
-        ).items():
-            channel = guild.get_channel(channel_snowflake)
-            if channel is None:
-                continue
-            lines.append(
-                f"**Expires in:** {automute_dictionary.get('automutes', {}).get('expires_in', None)}"
-            )
-            automute_n += 1
-            field_count += 1
-            if field_count == list_service.CHUNK_SIZE:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-                embed = list_service.flush_page(embed, pages, title, guild.name)
-                lines = []
-                field_count = 0
-            if lines:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-        original_description = embed.description or ""
-        embed.description = f"**{original_description} ({automute_n})**"
-        pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_channels)
-        pages.extend(processed_dictionary.skipped_guilds)
-    if not pages:
-        return "No automute channels found."
-    return pages
-
-
 # async def toggle_automute(channel_snowflake: int, guild_snowflake: int, context, duration_value):
-#     bot = DiscordBot.get_instance()
+#     bot: DiscordBot = DiscordBot.get_instance()
 #     guild = bot.get_guild(guild_snowflake)
 #     if guild is None:
 #         raise commands.GuildNotFound(str(guild_snowflake))
@@ -229,61 +129,8 @@ async def build_pages(is_at_home: bool, obj):
 #         )
 
 
-async def clean_expired():
-    bot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
-    expired_automutes = await database_factory.select(expired=True, singular=False)
-    if expired_automutes:
-        for expired_automute in expired_automutes:
-            channel_snowflake = int(expired_automute.channel_snowflake)
-            guild_snowflake = int(expired_automute.guild_snowflake)
-            guild = bot.get_guild(guild_snowflake)
-            if guild is None:
-                await database_factory.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                )
-                bot.logger.info(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired automute."
-                )
-                continue
-            channel = guild.get_channel(channel_snowflake)
-            if channel is None:
-                await database_factory.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                )
-                bot.logger.info(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
-                )
-                continue
-            if not isinstance(channel, discord.VoiceChannel):
-                continue
-            database_factory = DatabaseFactory(VoiceMute)
-            automutes = await database_factory.select(
-                channel_snowflake=channel_snowflake, target="auto", singular=False
-            )
-            for automute in automutes:
-                member_snowflake = automute.member_snowflake
-                member = guild.get_member(member_snowflake)
-                if member is None:
-                    continue
-                else:
-                    await database_factory.delete(
-                        channel_snowflake=channel_snowflake,
-                        member_snowflake=member_snowflake,
-                        target="auto",
-                    )
-                    if member in channel.members:
-                        try:
-                            await member.edit(mute=False, reason="Undoing automute")
-                        except discord.Forbidden:
-                            continue
-        bot.logger.info("Cleaned up expired automutes.")
-
-
 # async def enforce(after, member):
-#     bot = DiscordBot.get_instance()
+#     bot: DiscordBot = DiscordBot.get_instance()
 #     database_factory = DatabaseFactory(MODEL)
 #     should_be_muted = False
 #     expires_in = None
