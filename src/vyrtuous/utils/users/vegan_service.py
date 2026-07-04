@@ -55,10 +55,9 @@ async def toggle_vegan(guild_snowflake: int, member_snowflake: int, notes: str |
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
-        embed = await build_vegan_embed(
+        embed = await build_carnist_embed(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
-            notes=notes,
         )
         return embed
     else:
@@ -68,9 +67,10 @@ async def toggle_vegan(guild_snowflake: int, member_snowflake: int, notes: str |
             notes=notes,
         )
         await database_factory.create(vegan)
-        embed = await build_carnist_embed(
+        embed = await build_vegan_embed(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
+            notes=notes,
         )
         return embed
 

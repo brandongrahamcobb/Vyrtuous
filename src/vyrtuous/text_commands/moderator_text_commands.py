@@ -221,29 +221,6 @@ class ModeratorTextCommands(commands.Cog):
         pages = await list_flags.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
-    @commands.command(name="ls", help="List new vegans.")
-    @skip_text_command_help_discovery()
-    async def list_new_vegans_text_command(
-        self,
-        ctx: commands.Context,
-        *,
-        target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
-        ),
-    ):
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-        else:
-            obj = target or ctx.guild
-        is_at_home = at_home(source=ctx)
-        pages = await list_vegans.build_pages(obj=obj, is_at_home=is_at_home)
-        return await tick.end(success=pages)
-
     @commands.command(name="mods", help="Lists mods.")
     async def list_moderators_text_command(
         self,
@@ -469,6 +446,29 @@ class ModeratorTextCommands(commands.Cog):
                 guild_snowflake=ctx.guild.id, member_snowflake=member.id, notes=notes
             )
             return await tick.end(success=embed)
+
+    @commands.command(name="vegans", help="List new vegans.")
+    @skip_text_command_help_discovery()
+    async def list_new_vegans_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        target: Union[
+            str, discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.guild
+        is_at_home = at_home(source=ctx)
+        pages = await list_vegans.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
 
 
 async def setup(bot: DiscordBot):
