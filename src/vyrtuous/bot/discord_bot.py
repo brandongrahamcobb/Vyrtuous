@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
-from typing import Self
+from typing import Self, cast
 
 import asyncpg
 import discord
@@ -81,4 +81,4 @@ class DiscordBot(commands.Bot):
     def get_instance(cls) -> Self:
         if cls._instance is None:
             raise RuntimeError("DiscordBot instance has not been created yet")
-        return cls._instance
+        return cast(Self, cls._instance)

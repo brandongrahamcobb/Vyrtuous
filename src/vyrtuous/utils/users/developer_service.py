@@ -24,8 +24,9 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import Developer, NotDeveloper
-from vyrtuous.models.duration import DurationBuilder
-from vyrtuous.utils.tracking import bug_service
+
+# from vyrtuous.models.duration import DurationBuilder
+# from vyrtuous.utils.tracking import bug_service
 
 MODEL = Developer
 
@@ -97,59 +98,59 @@ async def toggle_developer(member_snowflake: int) -> str:
     return f"Developer access for {member_str} has been {action} globally."
 
 
-async def ping_about_expired_bugs(
-    channel,
-    embed,
-    member,
-    member_snowflakes,
-    msg,
-    notes,
-    updated_at,
-) -> None:
-    bot: DiscordBot = DiscordBot.get_instance()
-    duration_builder = DurationBuilder()
-    assigned_developer_mentions = []
-    for developer_snowflake in member_snowflakes:
-        assigned_developer = bot.get_user(developer_snowflake)
-        if assigned_developer:
-            assigned_developer_mentions.append(assigned_developer.mention)
-    embed.add_field(
-        name=f"Updated: {duration_builder.from_timestamp(updated_at).to_unix_ts()}",
-        value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {notes}",
-        inline=False,
-    )
-    for developer_snowflake in member_snowflakes:
-        member = bot.get_user(developer_snowflake)
-        if member is None:
-            bot.logger.info(
-                f"Unable to locate member {developer_snowflake} in channel {channel.name} ({channel.id}) not sending developer log."
-            )
-            continue
-        try:
-            await member.send(embed=embed)
-            bot.logger.info(
-                f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id})."
-            )
-        except Exception as e:
-            bot.logger.warning(
-                f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}). {str(e).capitalize()}"
-            )
-
-
-async def handle_developer_assignment(member, reference) -> discord.Embed:
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    developers = await database_factory.select(singular=False)
-    for developer in developers:
-        if developer.member_snowflake == member.id:
-            bug, state = await bug_service.handle_bug_assignment(
-                developer=developer, reference=reference
-            )
-            if not state:
-                action = "unassigned"
-            else:
-                action = "assigned"
-            return await bug_service.create_embed(
-                action=action,
-                bug=bug,
-                member=member,
-            )
+# async def ping_about_expired_bugs(
+#     channel,
+#     embed,
+#     member,
+#     member_snowflakes,
+#     msg,
+#     notes,
+#     updated_at,
+# ) -> None:
+#     bot: DiscordBot = DiscordBot.get_instance()
+#     duration_builder = DurationBuilder()
+#     assigned_developer_mentions = []
+#     for developer_snowflake in member_snowflakes:
+#         assigned_developer = bot.get_user(developer_snowflake)
+#         if assigned_developer:
+#             assigned_developer_mentions.append(assigned_developer.mention)
+#     embed.add_field(
+#         name=f"Updated: {duration_builder.from_timestamp(updated_at).to_unix_ts()}",
+#         value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {notes}",
+#         inline=False,
+#     )
+#     for developer_snowflake in member_snowflakes:
+#         member = bot.get_user(developer_snowflake)
+#         if member is None:
+#             bot.logger.info(
+#                 f"Unable to locate member {developer_snowflake} in channel {channel.name} ({channel.id}) not sending developer log."
+#             )
+#             continue
+#         try:
+#             await member.send(embed=embed)
+#             bot.logger.info(
+#                 f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id})."
+#             )
+#         except Exception as e:
+#             bot.logger.warning(
+#                 f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}). {str(e).capitalize()}"
+#             )
+#
+#
+# async def handle_developer_assignment(member, reference) -> discord.Embed:
+#     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+#     developers = await database_factory.select(singular=False)
+#     for developer in developers:
+#         if developer.member_snowflake == member.id:
+#             bug, state = await bug_service.handle_bug_assignment(
+#                 developer=developer, reference=reference
+#             )
+#             if not state:
+#                 action = "unassigned"
+#             else:
+#                 action = "assigned"
+#             return await bug_service.create_embed(
+#                 action=action,
+#                 bug=bug,
+#                 member=member,
+#             )

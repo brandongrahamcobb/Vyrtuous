@@ -39,10 +39,11 @@ class VeganDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict[str, dict]]]]:
+
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     vegans = []
-    dictionary = {}
+    dictionary: dict[int, dict[str, dict[int, dict[str, dict]]]] = {}
     if isinstance(obj, discord.Guild):
         vegans = await database_factory.select(guild_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.Member):
@@ -78,7 +79,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Vegans for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: VeganDictionary = await list_service.process_dictionary(
         cls=VeganDictionary, dictionary=dictionary
     )
 
@@ -93,7 +94,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
-        for member_snowflake, vegan_dictionary in guild_data.get("members").items():
+        for member_snowflake, vegan_dictionary in guild_data.get("members", {}).items():
             member = guild.get_member(member_snowflake)
             if member:
                 if not thumbnail and isinstance(obj, discord.Member):
@@ -102,11 +103,11 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
                 else:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
             else:
-                display_name = bot.registry.get(MemberState).active.get(
+                simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None
                 )
-                if member:
-                    display_name = member.get("name", None)
+                if simplified_member:
+                    display_name = simplified_member[0]
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
             lines.append(f"**Notes:** {vegan_dictionary.get("notes")}")
             vegan_n += 1

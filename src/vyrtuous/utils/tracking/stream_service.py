@@ -114,11 +114,18 @@ async def send_log(
     streaming = await database_factory.select(singular=False)
     for stream in streaming:
         channel_obj = bot.get_channel(stream.target_channel_snowflake)
-        if channel_obj and isinstance(channel_obj, discord.TextChannel):
+        if channel_obj and isinstance(
+            channel_obj,
+            (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
+        ):
             perms = channel_obj.permissions_for(channel_obj.guild.me)
             if perms.send_messages and not channel_obj.guild.me.is_timed_out():
                 paginator = Paginator()
-                await paginator.start(channel=channel_obj, pages=pages)
+                await paginator.start_without_message(
+                    channel_snowflake=channel_obj.id,
+                    guild_snowflake=channel_obj.guild.id,
+                    pages=pages,
+                )
     return
 
 

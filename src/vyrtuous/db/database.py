@@ -26,7 +26,7 @@ import asyncpg
 
 
 class Database:
-    def __init__(self, config, *, directory=None):
+    def __init__(self, config, *, directory=None) -> None:
         self.database: str = config.get("postgres_database")
         self.directory = directory if directory else config.get("backup_directory")
         self.host: str = config.get("postgres_host")
@@ -37,7 +37,7 @@ class Database:
         )
         self.user: str = str(os.getenv("POSTGRES_USER"))
 
-    def create_backup_directory(self):
+    def create_backup_directory(self) -> None:
         os.makedirs(self.directory, exist_ok=True)
         return
 

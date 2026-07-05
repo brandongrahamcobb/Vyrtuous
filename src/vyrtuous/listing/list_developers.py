@@ -29,10 +29,10 @@ from vyrtuous.utils.messaging import emojis
 MODEL = Developer
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(obj) -> dict[str, dict[int, dict[str, dict[str, str]]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     developers = []
-    dictionary = {}
+    dictionary: dict[str, dict[int, dict[str, dict[str, str]]]] = {}
     if isinstance(obj, discord.Guild):
         developers = await database_factory.select(
             guild_snowflake=obj.id, singular=False

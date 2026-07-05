@@ -17,20 +17,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
-from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES, at_home
-from vyrtuous.listing import list_bugs
-from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.tracking import bug_service
 from vyrtuous.utils.users import moderator_service
 
 
@@ -63,62 +58,6 @@ class HiddenDeveloperTextCommands(commands.Cog):
         except RuntimeError as e:
             return await tick.end(warning=str(e).capitalize())
         return await tick.end(success=discord.File(db.file_name))
-
-    @commands.command(
-        name="bug", help="Resolve or update the notes on an issue by reference"
-    )
-    @skip_text_command_help_discovery()
-    async def update_bug_tracking_text_command(
-        self,
-        ctx: commands.Context,
-        reference: str = commands.parameter(
-            description="Specify the developer log reference ID."
-        ),
-        action: str = commands.parameter(
-            description="Specify one of: `resolve` or `append` or `overwrite`.",
-        ),
-        *,
-        notes: str = commands.parameter(
-            default=None, description="Optionally specify notes."
-        ),
-    ) -> discord.Message:
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        msg = await bug_service.update_bug(
-            action=action, notes=notes, reference=reference
-        )
-        return await tick.end(success=msg)
-
-    @commands.command(name="bugs", help="List issues.")
-    @skip_text_command_help_discovery()
-    async def list_bugs_text_command(
-        self,
-        ctx: commands.Context,
-        target: Union[str, discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
-            description="Specify one of: `all`, server ID or UUID.",
-        ),
-        *,
-        scope: str = commands.parameter(
-            default=None,
-            description="Optionally specify `resolved` or `unresolved`.",
-        ),
-    ) -> discord.Message:
-        tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
-            reference = None
-        elif isinstance(target, discord.Guild):
-            obj = target
-            reference = None
-        else:
-            reference = target
-            obj = ctx.guild
-        is_at_home = at_home(source=ctx)
-        pages = await list_bugs.build_pages(
-            is_at_home=is_at_home, obj=obj, reference=reference, scope=scope
-        )
-        return await tick.end(success=pages)
 
     @commands.command(name="cogs", help="Lists cogs.")
     @skip_text_command_help_discovery()

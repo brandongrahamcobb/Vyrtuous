@@ -41,10 +41,14 @@ class CoordinatorDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(
+    obj,
+) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, str]]]]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     coordinators = []
-    dictionary = {}
+    dictionary: dict[
+        int, dict[str, dict[int, dict[str, dict[int, dict[str, str]]]]]
+    ] = {}
     if isinstance(obj, discord.Guild):
         coordinators = await database_factory.select(
             guild_snowflake=obj.id, singular=False
@@ -93,12 +97,11 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Coordinators for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: CoordinatorDictionary = await list_service.process_dictionary(
         cls=CoordinatorDictionary, dictionary=dictionary
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
-        bot: DiscordBot = DiscordBot.get_instance()
         coord_n = 0
         field_count = 0
         lines = []
@@ -110,7 +113,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             title=title, description=guild.name, color=discord.Color.blue()
         )
         for member_snowflake, coordinator_dictionary in guild_data.get(
-            "members"
+            "members", {}
         ).items():
             member = guild.get_member(member_snowflake)
             if member:
@@ -130,8 +133,8 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
                 else:
                     continue
             coord_n += 1
-            for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
-                "coordinators"
+            for channel_snowflake, _ in coordinator_dictionary.get(
+                "coordinators", {}
             ).items():
                 if not isinstance(obj, discord.abc.GuildChannel):
                     channel = guild.get_channel(channel_snowflake)

@@ -38,10 +38,10 @@ class AdministratorRoleDictionary:
     skipped_roles: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrator_roles = []
-    dictionary = {}
+    dictionary: dict[int, dict[str, dict[int, dict]]] = {}
     if isinstance(obj, discord.Guild):
         administrator_roles = await database_factory.select(
             guild_snowflake=obj.id, singular=False
@@ -67,8 +67,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Administrator Roles in {obj_name}"
 
     full_dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
-        cls=AdministratorRoleDictionary, dictionary=full_dictionary
+    processed_dictionary: AdministratorRoleDictionary = (
+        await list_service.process_dictionary(
+            cls=AdministratorRoleDictionary, dictionary=full_dictionary
+        )
     )
 
     admin_role_n = 0

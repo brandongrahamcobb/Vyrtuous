@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Self
+from typing import Self, overload
 
 from discord.ext import commands
 
@@ -122,14 +122,15 @@ class DurationBuilder:
         if not s:
             unit = "h"
         else:
-            unit = UNIT_MAP.get(s, None)
-            if not unit:
+            value = UNIT_MAP.get(s, None)
+            if not value:
                 for known in UNIT_MAP.keys():
                     if s.startswith(known):
                         unit = UNIT_MAP[known]
                         break
-            if not unit:
                 raise commands.BadArgument(f"Invalid duration unit in '{value}'")
+            else:
+                unit = value
         self.__duration = Duration(number=number, unit=unit, prefix=prefix, sign=sign)
         return self
 
@@ -187,7 +188,7 @@ class DurationBuilder:
         return self
 
     def build(self, *, as_str: bool = False) -> Duration | str:
-        if as_str and self.__duration:
+        if as_str:
             return f"{self.__duration.prefix}{self.__duration.number}{self.__duration.unit}"
         return self.__duration
 

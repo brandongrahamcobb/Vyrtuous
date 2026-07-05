@@ -33,18 +33,20 @@ MODEL = Alias
 
 @dataclass(frozen=True)
 class AliasDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, Union[List, str]]]]]] = (
-        field(default_factory=dict)
-    )
+    data: Dict[
+        int, Dict[str, Dict[int, Dict[str, Dict[str, Dict[str, list | str]]]]]
+    ] = field(default_factory=dict)
     skipped_channels: List[discord.Embed] = field(default_factory=list)
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(obj) -> dict:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     aliases = []
-    dictionary = {}
+    dictionary: dict[
+        int, dict[str, dict[int, dict[str, dict[str, dict[str, list | str]]]]]
+    ] = {}
     if isinstance(obj, discord.Guild):
         aliases = await database_factory.select(guild_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.abc.GuildChannel):
@@ -85,13 +87,12 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Command Aliases in {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: AliasDictionary = await list_service.process_dictionary(
         cls=AliasDictionary, dictionary=dictionary
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
         alias_n = 0
-        pages: list[discord.Embed] = []
         field_count = 0
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
@@ -105,7 +106,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
                 continue
-            for category, alias_data in channel_dictionary["aliases"].items():
+            for category, alias_data in channel_dictionary.get("aliases", {}).items():
                 lines.append(f"{category}")
                 for name, role_mention in alias_data.items():
                     if category == "role":

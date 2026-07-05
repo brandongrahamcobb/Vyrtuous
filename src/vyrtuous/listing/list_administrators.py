@@ -34,15 +34,19 @@ MODEL = Administrator
 
 @dataclass(frozen=True)
 class AdministratorDictionary:
-    data: Dict[int, Dict[int, Dict[int, bool]]] = field(default_factory=dict)
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, bool]]]]] = field(
+        default_factory=dict
+    )
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(
+    obj,
+) -> dict[int, dict[str, dict[int, dict[str, dict[int, bool]]]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrators = []
-    dictionary = {}
+    dictionary: dict[int, dict[str, dict[int, dict[str, dict[int, bool]]]]] = {}
     if isinstance(obj, discord.Guild):
         administrators = await database_factory.select(
             guild_snowflake=obj.id, singular=False
@@ -76,21 +80,22 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     if not isinstance(obj, int):
         obj_name = obj.name
     else:
-        member_data = bot.registry.get(MemberState).active.get(obj, None)
-        if member_data:
-            obj_name = member_data[0]
+        simplified_member = bot.registry.get(MemberState).active.get(obj, None)
+        if simplified_member:
+            obj_name = simplified_member[0]
         else:
             return "No administrators found."
     title = f"{emojis.get_random_emoji()} Administrators for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
-        cls=AdministratorDictionary,
-        dictionary=dictionary,
+    processed_dictionary: AdministratorDictionary = (
+        await list_service.process_dictionary(
+            cls=AdministratorDictionary,
+            dictionary=dictionary,
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
-        bot: DiscordBot = DiscordBot.get_instance()
         admin_n = 0
         field_count = 0
         lines = []
@@ -112,11 +117,11 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
                 else:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
             else:
-                display_name = bot.registry.get(MemberState).active.get(
+                simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None
                 )
-                if member:
-                    display_name = member.get("name", None)
+                if simplified_member:
+                    display_name = simplified_member[0]
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
             role_mentions = [
                 role.mention

@@ -35,15 +35,16 @@ class HeroDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-def build_dictionary() -> dict:
+def build_dictionary() -> dict[int, dict[str, dict[int, bool]]]:
     bot: DiscordBot = DiscordBot.get_instance()
-    dictionary = {}
+    dictionary: dict[int, dict[str, dict[int, bool]]] = {}
     for (
         guild_snowflake,
-        member_snowflake,
+        member_snowflakes,
     ) in bot.registry.get(MemberState).invincible.items():
         dictionary.setdefault(guild_snowflake, {"members": {}})
-        dictionary[guild_snowflake]["members"][member_snowflake] = True
+        for member_snowflake in member_snowflakes:
+            dictionary[guild_snowflake]["members"][member_snowflake] = True
     return dictionary
 
 
@@ -58,7 +59,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Heroes for {obj_name}"
 
     dictionary = build_dictionary()
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: HeroDictionary = await list_service.process_dictionary(
         cls=HeroDictionary, dictionary=dictionary
     )
 

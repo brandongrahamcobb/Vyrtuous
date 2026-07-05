@@ -40,10 +40,12 @@ class StreamDictionary:
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(
+    obj,
+) -> dict[int, dict[str, dict[int, dict[str, list[int]]]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     streaming = []
-    dictionary = {}
+    dictionary: dict[int, dict[str, dict[int, dict[str, list[int]]]]] = {}
     if isinstance(obj, discord.Guild):
         streaming = await database_factory.select(
             guild_snowflake=obj.id, singular=False
@@ -77,7 +79,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Streaming Routes for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: StreamDictionary = await list_service.process_dictionary(
         cls=StreamDictionary, dictionary=dictionary
     )
 

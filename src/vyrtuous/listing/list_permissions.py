@@ -21,7 +21,6 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.listing import list_service
@@ -46,13 +45,15 @@ class PermissionDictionary:
     skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
-def build_dictionary(obj, me) -> dict:
+def build_dictionary(obj, me) -> dict[int, dict[str, dict[int, dict[str, list[str]]]]]:
     bot: DiscordBot = DiscordBot.get_instance()
     channels = []
-    dictionary = {}
+    dictionary: dict[int, dict[str, dict[int, dict[str, list[str]]]]] = {}
     if isinstance(obj, discord.Guild):
-        channels = obj.channels
-    elif isinstance(obj, discord.abc.GuildChannel):
+        channels = [channel for channel in obj.channels]
+    elif isinstance(
+        obj, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+    ):
         channels = [obj]
     else:
         channels = [channel for guild in bot.guilds for channel in guild.channels]
@@ -89,7 +90,7 @@ async def build_pages(obj, context, is_at_home) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} {bot.user.display_name} Missing Permissions in {obj_name}"
 
     dictionary = build_dictionary(obj=obj, me=guild.me)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: PermissionDictionary = await list_service.process_dictionary(
         cls=PermissionDictionary, dictionary=dictionary
     )
 

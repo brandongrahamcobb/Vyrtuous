@@ -18,14 +18,59 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import fields
+from typing import Any, Union
+
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.listing.list_administrator_roles import AdministratorRoleDictionary
+from vyrtuous.listing.list_administrators import AdministratorDictionary
+from vyrtuous.listing.list_aliases import AliasDictionary
+from vyrtuous.listing.list_automute_channels import AutoMuteDictionary
+from vyrtuous.listing.list_bans import BanDictionary
+from vyrtuous.listing.list_caps import CapDictionary
+from vyrtuous.listing.list_coordinators import CoordinatorDictionary
+from vyrtuous.listing.list_flags import FlagDictionary
+from vyrtuous.listing.list_heroes import HeroDictionary
+from vyrtuous.listing.list_moderators import ModeratorDictionary
+from vyrtuous.listing.list_permissions import PermissionDictionary
+from vyrtuous.listing.list_server_mutes import ServerMuteDictionary
+from vyrtuous.listing.list_streams import StreamDictionary
+from vyrtuous.listing.list_text_mutes import TextMuteDictionary
+from vyrtuous.listing.list_vegans import VeganDictionary
+from vyrtuous.listing.list_video_channels import VideoChannelDictionary
+from vyrtuous.listing.list_voice_mutes import VoiceMuteDictionary
 
 CHUNK_SIZE = 12
 
+from typing import TypeVar, cast
 
-async def process_dictionary(cls, dictionary):
+DictT = TypeVar(
+    "DictT",
+    bound=Union[
+        BanDictionary,
+        AdministratorDictionary,
+        AdministratorRoleDictionary,
+        AliasDictionary,
+        AutoMuteDictionary,
+        CapDictionary,
+        CoordinatorDictionary,
+        FlagDictionary,
+        HeroDictionary,
+        ModeratorDictionary,
+        PermissionDictionary,
+        ServerMuteDictionary,
+        StreamDictionary,
+        TextMuteDictionary,
+        VeganDictionary,
+        VideoChannelDictionary,
+        VoiceMuteDictionary,
+    ],
+)
+
+
+async def process_dictionary(cls, dictionary) -> DictT:
     skipped_pages = {}
     skipped_channels = generate_skipped_channels(dictionary)
     skipped_guilds = generate_skipped_guilds(dictionary)
@@ -40,39 +85,36 @@ async def process_dictionary(cls, dictionary):
         skipped_messages=skipped_messages,
         skipped_roles=skipped_roles,
     )
-    if hasattr(cls(), "skipped_channels"):
-        skipped_pages["skipped_channels"] = generate_skipped_dict_pages(
-            skipped=skipped_channels,
-            title="Skipped Channels in Server",
+    field_names = {f.name for f in fields(cls)}
+    kwargs: dict[str, object] = {"data": data}
+    if "skipped_channels" in field_names:
+        kwargs["skipped_channels"] = generate_skipped_dict_pages(
+            skipped=skipped_channels, title="Skipped Channels in Server"
         )
-    if hasattr(cls(), "skipped_guilds"):
-        skipped_pages["skipped_guilds"] = generate_skipped_set_pages(
-            skipped=skipped_guilds,
-            title="Skipped Servers",
+    if "skipped_guilds" in field_names:
+        kwargs["skipped_guilds"] = generate_skipped_set_pages(
+            skipped=skipped_guilds, title="Skipped Servers"
         )
-    if hasattr(cls(), "skipped_members"):
-        skipped_pages["skipped_members"] = generate_skipped_dict_pages(
-            skipped=skipped_members,
-            title="Skipped Members in Server",
+    if "skipped_members" in field_names:
+        kwargs["skipped_members"] = generate_skipped_dict_pages(
+            skipped=skipped_members, title="Skipped Members in Server"
         )
-    if hasattr(cls(), "skipped_messages"):
-        skipped_pages["skipped_messages"] = generate_skipped_dict_pages(
-            skipped=skipped_messages,
-            title="Skipped Messages in Server",
+    if "skipped_messages" in field_names:
+        kwargs["skipped_messages"] = generate_skipped_dict_pages(
+            skipped=skipped_messages, title="Skipped Messages in Server"
         )
-    if hasattr(cls(), "skipped_roles"):
-        skipped_pages["skipped_roles"] = generate_skipped_dict_pages(
-            skipped=skipped_roles,
-            title="Skipped Roles in Server",
+    if "skipped_roles" in field_names:
+        kwargs["skipped_roles"] = generate_skipped_dict_pages(
+            skipped=skipped_roles, title="Skipped Roles in Server"
         )
-    return cls(data=data, **skipped_pages)
+    return cls(**kwargs)
 
 
-def generate_skipped_set_pages(skipped, title):
+def generate_skipped_set_pages(skipped, title) -> list[discord.Embed]:
     field_count = 0
     pages: list[discord.Embed] = []
     embed = discord.Embed(title=title, description="\u200b", color=discord.Color.blue())
-    lines = []
+    lines: list[str] = []
     for snowflake in skipped:
         if field_count >= CHUNK_SIZE:
             embed.description = "\n".join(lines)
@@ -89,11 +131,11 @@ def generate_skipped_set_pages(skipped, title):
     return pages
 
 
-def generate_skipped_dict_pages(skipped, title):
+def generate_skipped_dict_pages(skipped, title) -> list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     field_count = 0
     pages: list[discord.Embed] = []
-    for guild_snowflake, list in skipped.items():
+    for guild_snowflake, data in skipped.items():
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             continue
@@ -101,8 +143,8 @@ def generate_skipped_dict_pages(skipped, title):
             color=discord.Color.red(), title=f"{title} ({guild.name})"
         )
         field_count = 0
-        lines = []
-        for snowflake in list:
+        lines: list[str] = []
+        for snowflake in data:
             if field_count >= CHUNK_SIZE:
                 embed.description = "\n".join(lines)
                 pages.append(embed)
@@ -119,7 +161,7 @@ def generate_skipped_dict_pages(skipped, title):
     return pages
 
 
-def generate_skipped_guilds(dictionary: dict) -> set:
+def generate_skipped_guilds(dictionary: dict) -> set[int]:
     bot: DiscordBot = DiscordBot.get_instance()
     skipped_guilds = set()
     for guild_snowflake in dictionary:
@@ -128,7 +170,7 @@ def generate_skipped_guilds(dictionary: dict) -> set:
     return skipped_guilds
 
 
-def generate_skipped_channels(dictionary: dict) -> dict:
+def generate_skipped_channels(dictionary: dict) -> dict[int, list[int]]:
     bot: DiscordBot = DiscordBot.get_instance()
     skipped_channels: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
@@ -143,7 +185,7 @@ def generate_skipped_channels(dictionary: dict) -> dict:
     return skipped_channels
 
 
-def generate_skipped_members(dictionary: dict) -> dict:
+def generate_skipped_members(dictionary: dict) -> dict[int, list[int]]:
     bot: DiscordBot = DiscordBot.get_instance()
     skipped_members: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
@@ -156,7 +198,7 @@ def generate_skipped_members(dictionary: dict) -> dict:
     return skipped_members
 
 
-def generate_skipped_roles(dictionary: dict) -> dict:
+def generate_skipped_roles(dictionary: dict) -> dict[int, list[int]]:
     bot: DiscordBot = DiscordBot.get_instance()
     skipped_roles: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
@@ -178,7 +220,7 @@ def clean_dictionary(
     skipped_messages: dict | None = None,
     skipped_roles: dict | None = None,
     skipped_snowflakes: dict | None = None,
-) -> dict:
+) -> dict[Any, dict[str, dict[Any, Any]]]:
     cleaned = {}
     skipped_guilds = skipped_guilds or set()
     skipped_channels = skipped_channels or {}
@@ -224,7 +266,7 @@ def clean_dictionary(
     return cleaned
 
 
-async def generate_skipped_messages(dictionary: dict) -> dict:
+async def generate_skipped_messages(dictionary: dict) -> dict[int, list[int]]:
     bot: DiscordBot = DiscordBot.get_instance()
     skipped_messages: dict[int, list[int]] = {}
     for guild_snowflake, guild_data in dictionary.items():
@@ -256,7 +298,7 @@ async def generate_skipped_messages(dictionary: dict) -> dict:
     return skipped_messages
 
 
-def flush_page(embed, pages, title, guild_name):
+def flush_page(embed, pages, title, guild_name) -> discord.Embed:
     pages.append(embed)
     return discord.Embed(
         title=title,

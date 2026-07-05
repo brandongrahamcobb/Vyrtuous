@@ -8,7 +8,7 @@ from vyrtuous.upload.upload import Upload
 MODEL = Upload
 
 
-def extract_command_and_args(source):
+def extract_command_and_args(source) -> tuple[str | None, str | None]:
     bot: DiscordBot = DiscordBot.get_instance()
     if isinstance(source, discord.Interaction):
         command_name = getattr(getattr(source, "command", None), "name", None)
@@ -37,23 +37,31 @@ def extract_command_and_args(source):
     return None, None
 
 
-async def send_prompt(source):
+async def send_prompt(
+    source,
+) -> tuple[
+    discord.Message | None,
+    discord.Member | discord.User | None,
+]:
     if isinstance(source, discord.Interaction):
         await source.followup.send(
             "Upload a file in your next message.",
             ephemeral=False,
         )
-        return source.channel, source.user
+        message: discord.Message | discord.interactions.InteractionMessage = (
+            await source.original_response()
+        )
+        return message, source.user
     elif isinstance(source, commands.Context):
-        await source.send("Upload a file in your next message.")
-        return source.channel, source.author
+        message = await source.send("Upload a file in your next message.")
+        return message, source.author
     elif isinstance(source, discord.Message):
-        await source.channel.send("Upload a file in your next message.")
-        return source.channel, source.author
+        message = await source.channel.send("Upload a file in your next message.")
+        return message, source.author
     return None, None
 
 
-async def wait_for_upload(channel, user):
+async def wait_for_upload(channel, user) -> discord.Message:
     bot: DiscordBot = DiscordBot.get_instance()
 
     def check(m: discord.Message):
@@ -62,8 +70,8 @@ async def wait_for_upload(channel, user):
     return await bot.wait_for("message", timeout=300, check=check)
 
 
-async def save_upload(attachment, command_name, tag):
-    database_factory = DatabaseFactory(MODEL)
+async def save_upload(attachment, command_name, tag) -> None:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     file_bytes = await attachment.read()
     obj = Upload(
         command_name=command_name,
@@ -74,17 +82,17 @@ async def save_upload(attachment, command_name, tag):
     await database_factory.upsert(obj)
 
 
-async def request_upload(source):
+async def request_upload(source) -> bool:
     if not source:
         return False
     command_name, arguments = extract_command_and_args(source)
     if not command_name:
         return False
-    channel, user = await send_prompt(source)
-    if channel is None:
+    message, user = await send_prompt(source)
+    if message is None:
         return False
     try:
-        message = await wait_for_upload(channel, user)
+        message = await wait_for_upload(message.channel, user)
     except Exception:
         return False
     attachment = message.attachments[0]
@@ -96,7 +104,7 @@ async def request_upload(source):
     return True
 
 
-async def build_latex_document():
+async def build_latex_document() -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     import re
 

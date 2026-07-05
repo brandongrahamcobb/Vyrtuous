@@ -44,8 +44,6 @@ class TargetIsBot(commands.CheckFailure):
 
 
 class MultiConverter(commands.Converter):
-    def __init__(self):
-        self.__bot: DiscordBot = DiscordBot.get_instance()
 
     async def convert(self, ctx: commands.Context, argument: str) -> Union[
         discord.VoiceChannel,
@@ -54,15 +52,17 @@ class MultiConverter(commands.Converter):
         discord.Member,
         discord.Role,
         UUID,
+        str,
         None,
     ]:
+        bot: DiscordBot = DiscordBot.get_instance()
         if argument and str(argument).lower() == "all":
             return None
         try:
             uuid = UUID(argument)
             return uuid
         except ValueError as e:
-            self.__bot.logger.warning(e)
+            bot.logger.warning(e)
         voice_channel_converter = commands.VoiceChannelConverter()
         stage_channel_converter = commands.StageChannelConverter()
         guild_converter = commands.GuildConverter()
@@ -72,34 +72,34 @@ class MultiConverter(commands.Converter):
             voice_channel = await voice_channel_converter.convert(ctx, argument)
             return voice_channel
         except commands.ChannelNotFound as e:
-            self.__bot.logger.warning(e)
+            bot.logger.warning(e)
         try:
             stage_channel = await stage_channel_converter.convert(ctx, argument)
             return stage_channel
         except commands.ChannelNotFound as e:
-            self.__bot.logger.warning(e)
+            bot.logger.warning(e)
         try:
             member = await member_converter.convert(ctx, argument)
             return member
         except commands.MemberNotFound as e:
-            self.__bot.logger.warning(e)
+            bot.logger.warning(e)
         try:
             guild = await guild_converter.convert(ctx, argument)
             return guild
         except commands.GuildNotFound as e:
-            self.__bot.logger.warning(e)
+            bot.logger.warning(e)
         try:
             role = await role_converter.convert(ctx, argument)
             return role
         except commands.RoleNotFound as e:
-            self.__bot.logger.warning(e)
+            bot.logger.warning(e)
         if isinstance(argument, int):
             try:
-                member = self.__bot.registry.get(MemberState).active.get(argument, None)
+                member = bot.registry.get(MemberState).active.get(argument, None)
                 if member:
                     return argument
             except commands.MemberNotFound as e:
-                self.__bot.logger.warning(e)
+                bot.logger.warning(e)
         raise commands.BadArgument(
             "Argument is not a channel, member, guild, role or UUID."
         )

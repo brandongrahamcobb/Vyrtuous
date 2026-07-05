@@ -18,8 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+from typing import Union
 
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 
@@ -31,38 +33,83 @@ class Paginator:
         self.current_page = 0
         self._reaction_lock = asyncio.Lock()
 
-    async def start(
-        self, channel, pages, *, ephemeral=False, timeout=60
+    async def start_by_message(
+        self,
+        pages: list[discord.Embed],
+        source: Union[commands.Context, discord.Interaction, discord.Message],
+        *,
+        ephemeral=False,
+        timeout=60,
     ) -> discord.Message:
         bot: DiscordBot = DiscordBot.get_instance()
-        embed = self.get_current_embed(channel=channel, pages=pages)
-        if isinstance(channel, discord.Interaction):
-            if not channel.response.is_done():
-                await channel.response.send_message(embed=embed, ephemeral=ephemeral)
-            message = await channel.original_response()
-        elif isinstance(channel, discord.Message):
-            message = await channel.reply(embed=embed)
+        if source.guild is None:
+            raise commands.CheckFailure("This message must be sent in a guild.")
+        embed = self.get_current_embed(guild_snowflake=source.guild.id, pages=pages)
+        if isinstance(source, discord.Interaction):
+            if not source.response.is_done():
+                await source.response.send_message(embed=embed, ephemeral=ephemeral)
+            message: discord.Message | discord.interactions.InteractionMessage = (
+                await source.original_response()
+            )
         else:
-            message = await channel.send(embed=embed)
+            message = await source.reply(embed=embed)
         for emoji in self.NAV_EMOJIS:
             await message.add_reaction(emoji)
         bot.loop.create_task(
-            self.wait_for_reactions(
-                channel=channel, message=message, pages=pages, timeout=timeout
-            )
+            self.wait_for_reactions(message=message, pages=pages, timeout=timeout)
         )
         return message
 
-    def get_current_embed(self, channel, pages) -> discord.Embed:
+    async def start_without_message(
+        self,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        pages: list[discord.Embed],
+        *,
+        timeout=60,
+    ) -> discord.Message:
+        bot: DiscordBot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
+        channel = guild.get_channel(channel_snowflake)
+        if channel is None:
+            raise commands.ChannelNotFound(str(channel_snowflake))
+        if not isinstance(
+            channel,
+            (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
+        ):
+            raise commands.CheckFailure("This message must be sent to a valid channel.")
+        embed = self.get_current_embed(guild_snowflake=guild_snowflake, pages=pages)
+        message = await channel.send(embed=embed)
+        for emoji in self.NAV_EMOJIS:
+            await message.add_reaction(emoji)
+        bot.loop.create_task(
+            self.wait_for_reactions(message=message, pages=pages, timeout=timeout)
+        )
+        return message
+
+    def get_current_embed(
+        self, guild_snowflake: int, pages: list[discord.Embed]
+    ) -> discord.Embed:
+        bot: DiscordBot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
         embed = pages[self.current_page].copy()
         total_pages = len(pages)
         label = "page"
         embed.set_footer(
-            text=f"{label} {self.current_page + 1}/{total_pages} • {channel.guild.name}"
+            text=f"{label} {self.current_page + 1}/{total_pages} • {guild.name}"
         )
         return embed
 
-    async def wait_for_reactions(self, channel, message, pages, timeout) -> None:
+    async def wait_for_reactions(
+        self,
+        message: discord.Message,
+        pages: list[discord.Embed],
+        timeout: int,
+    ) -> None:
         bot: DiscordBot = DiscordBot.get_instance()
 
         def look(reaction, user):
@@ -84,14 +131,16 @@ class Paginator:
                     bot.logger.warning(str(e).capitalize())
                 break
             await self.handle_reaction(
-                channel=channel, message=message, pages=pages, reaction=reaction
+                message=message,
+                pages=pages,
+                reaction=reaction,
             )
             try:
                 await message.remove_reaction(reaction.emoji, user)
             except Exception as e:
                 bot.logger.warning(str(e).capitalize())
 
-    async def handle_reaction(self, channel, message, pages, reaction) -> None:
+    async def handle_reaction(self, message, pages, reaction) -> None:
         async with self._reaction_lock:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):
@@ -99,5 +148,8 @@ class Paginator:
                     0, min(self.current_page + action, len(pages) - 1)
                 )
                 await message.edit(
-                    embed=self.get_current_embed(channel=channel, pages=pages)
+                    embed=self.get_current_embed(
+                        guild_snowflake=message.channel.guild.id,
+                        pages=pages,
+                    )
                 )

@@ -41,10 +41,14 @@ class FlagDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(
+    obj,
+) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, str]]]]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     flags = []
-    dictionary = {}
+    dictionary: dict[
+        int, dict[str, dict[int, dict[str, dict[int, dict[str, str]]]]]
+    ] = {}
     if isinstance(obj, discord.Guild):
         flags = await database_factory.select(guild_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.abc.GuildChannel):
@@ -89,7 +93,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Flags for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: FlagDictionary = await list_service.process_dictionary(
         cls=FlagDictionary, dictionary=dictionary
     )
 
@@ -104,7 +108,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
-        for member_snowflake, flag_dictionary in guild_data.get("members").items():
+        for member_snowflake, flag_dictionary in guild_data.get("members", {}).items():
             member = guild.get_member(member_snowflake)
             if member:
                 if not isinstance(obj, discord.Member):

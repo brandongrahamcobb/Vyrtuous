@@ -213,6 +213,8 @@ class Tick:
         allowed_mentions=discord.AllowedMentions.none(),
         view=None,
     ) -> discord.Message:
+        if self.source is None:
+            raise commands.CheckFailure("Source not provided.")
         message_obj, is_success = self._resolve_content(success, warning, error)
         self.elapsed = self._compute_elapsed()
         self.success = is_success
@@ -223,7 +225,10 @@ class Tick:
 
         if isinstance(message_obj, list) and message_obj:
             paginator = Paginator()
-            response = await paginator.start(channel=self.source, pages=message_obj)
+            response = await paginator.start_by_message(
+                pages=message_obj,
+                source=self.source,
+            )
             message_history.cache[response.id] = self._build_record(is_success)
             await self._add_reactions(
                 response=response, show_error_emoji=show_error_emoji, paginated=True

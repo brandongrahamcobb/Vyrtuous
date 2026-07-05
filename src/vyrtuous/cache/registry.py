@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Type, TypeVar, Union, cast
+from typing import Self, Type, TypeVar, Union, cast
 
 import discord
 from cachetools import TTLCache
@@ -12,10 +12,10 @@ T = TypeVar("T")
 
 
 class Registry:
-    def __init__(self):
+    def __init__(self) -> None:
         self._services: dict[type, object] = {}
 
-    def register(self, service: Union[object, tuple[object, ...]]) -> "Registry":
+    def register(self, service: Union[object, tuple[object, ...]]) -> Self:
         if isinstance(service, tuple):
             for s in service:
                 self._services[type(s)] = s

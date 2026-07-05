@@ -35,7 +35,7 @@ COOLDOWN = timedelta(minutes=30)
 async def toggle_video_channel(channel) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     video_channels = bot.registry.get(ChannelState).video
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     video_channel = await database_factory.select(
         channel_snowflake=channel.id, singular=True
     )
@@ -55,7 +55,7 @@ async def toggle_video_channel(channel) -> str:
 
 async def populate() -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     original_set = bot.registry.get(ChannelState).video
     video_channels = await database_factory.select(singular=False)
     for video_channel in video_channels:
@@ -85,7 +85,6 @@ async def update_video_channel_tasks(before, after, member) -> None:
             video.schedule(
                 member,
                 after.channel,
-                delay=300,
                 coro=_enforce_video(member, after.channel, 300),
             )
         return
@@ -95,7 +94,6 @@ async def update_video_channel_tasks(before, after, member) -> None:
         video.schedule(
             member,
             after.channel,
-            delay=300,
             coro=_enforce_video(member, after.channel, 300),
         )
         return

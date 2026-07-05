@@ -34,7 +34,7 @@ async def is_active(member_snowflake: int) -> bool:
 
 async def populate() -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     active_members = await database_factory.select(singular=False)
     for member in active_members:
         bot.registry.get(MemberState).active[
@@ -45,7 +45,7 @@ async def populate() -> None:
 
 async def save_and_update_active_members() -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     saved_members = await database_factory.select(singular=False)
     member_snowflakes = [
         active_member.member_snowflake for active_member in saved_members

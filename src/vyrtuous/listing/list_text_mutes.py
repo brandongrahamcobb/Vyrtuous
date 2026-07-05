@@ -41,10 +41,14 @@ class TextMuteDictionary:
     skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
-async def build_dictionary(obj) -> dict:
-    database_factory = DatabaseFactory(MODEL)
+async def build_dictionary(
+    obj,
+) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     text_mutes = []
-    dictionary = {}
+    dictionary: dict[
+        int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]
+    ] = {}
     if isinstance(obj, discord.Guild):
         text_mutes = await database_factory.select(
             guild_snowflake=obj.id, singular=False
@@ -94,7 +98,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Text Mutes for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary = await list_service.process_dictionary(
+    processed_dictionary: TextMuteDictionary = await list_service.process_dictionary(
         cls=TextMuteDictionary, dictionary=dictionary
     )
 

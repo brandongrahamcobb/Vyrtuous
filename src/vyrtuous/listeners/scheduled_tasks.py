@@ -49,8 +49,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_automutes.is_running():
             self.check_expired_automutes.start()
-        if not self.check_expired_bugs.is_running():
-            self.check_expired_bugs.start()
+        # if not self.check_expired_bugs.is_running():
+        #     self.check_expired_bugs.start()
         if not self.temporarily_cleanup_overwrites.is_running():
             self.temporarily_cleanup_overwrites.start()
         if not self.save_active_members.is_running():
@@ -108,10 +108,10 @@ class ScheduledTasks(commands.Cog):
         await clean_automute_service.clean_expired_automutes()
         self.__bot.logger.info("Cleaned up expired automute channels.")
 
-    @tasks.loop(hours=8)
-    async def check_expired_bugs(self) -> None:
-        await clean_bug_service.clean_expired_bugs()
-        self.__bot.logger.info("Sent developer log to developers.")
+    # @tasks.loop(hours=8)
+    # async def check_expired_bugs(self) -> None:
+    #     await clean_bug_service.clean_expired_bugs()
+    #     self.__bot.logger.info("Sent developer log to developers.")
 
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self) -> None:

@@ -29,16 +29,19 @@ MODEL = AutoMute
 
 async def clean_expired_automutes() -> int:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    automute_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     count: int = 0
-    expired_automutes = await database_factory.select(expired=True, singular=False)
+    expired_automutes = await automute_database_factory.select(
+        expired=True, singular=False
+    )
+    voice_mute_database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
     if expired_automutes:
         for expired_automute in expired_automutes:
             channel_snowflake = int(expired_automute.channel_snowflake)
             guild_snowflake = int(expired_automute.guild_snowflake)
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
-                await database_factory.delete(
+                await automute_database_factory.delete(
                     channel_snowflake=channel_snowflake,
                     guild_snowflake=guild_snowflake,
                 )
@@ -48,7 +51,7 @@ async def clean_expired_automutes() -> int:
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                await database_factory.delete(
+                await automute_database_factory.delete(
                     channel_snowflake=channel_snowflake,
                     guild_snowflake=guild_snowflake,
                 )
@@ -58,8 +61,7 @@ async def clean_expired_automutes() -> int:
                 continue
             if not isinstance(channel, discord.VoiceChannel):
                 continue
-            database_factory = DatabaseFactory(VoiceMute)
-            automutes = await database_factory.select(
+            automutes = await voice_mute_database_factory.select(
                 channel_snowflake=channel_snowflake, target="auto", singular=False
             )
             for automute in automutes:
@@ -68,7 +70,7 @@ async def clean_expired_automutes() -> int:
                 if member is None:
                     continue
                 else:
-                    await database_factory.delete(
+                    await voice_mute_database_factory.delete(
                         channel_snowflake=channel_snowflake,
                         member_snowflake=member_snowflake,
                         target="auto",

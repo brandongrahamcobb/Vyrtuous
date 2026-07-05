@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from vyrtuous.db.cap import Cap
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import Duration, DurationBuilder
 
 MODEL = Cap
 
@@ -67,13 +67,15 @@ async def exceeds_cap(
         singular=True,
     )
     duration = duration_builder.parse(value=duration_value)
-    value = duration.build().number
-    duration_seconds = duration.to_seconds()
-    if cap:
-        if duration_seconds > cap.duration_seconds or value == 0:
-            exceeds_cap = True
-    else:
-        cap_duration_seconds = duration_builder.parse(value="8h").to_seconds()
-        if duration_seconds > cap_duration_seconds or value == 0:
-            exceeds_cap = True
+    value = duration.build()
+    if isinstance(value, Duration):
+        number = value.number
+        duration_seconds = duration.to_seconds()
+        if cap:
+            if duration_seconds > cap.duration_seconds or number == 0:
+                exceeds_cap = True
+        else:
+            cap_duration_seconds = duration_builder.parse(value="8h").to_seconds()
+            if duration_seconds > cap_duration_seconds or number == 0:
+                exceeds_cap = True
     return exceeds_cap

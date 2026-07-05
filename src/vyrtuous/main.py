@@ -39,7 +39,7 @@ async def main():
     setup_logging(config, PATH_LOG)
     db_pool = await Database(config=config).database_init()
     discord_bot = DiscordBot(
-        config=config, db_pool=db_pool, extensions=DISCORD_COGS, logger=logger
+        config=config, db_pool=db_pool, initial_extensions=DISCORD_COGS, logger=logger
     )
     discord_bot.register()
     await discord_bot.start(config["vyrtuous_api_key"])

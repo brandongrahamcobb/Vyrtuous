@@ -58,7 +58,7 @@ async def toggle_administrator_role(role) -> list[discord.Embed]:
         action = "revoked"
         if administrator_roles:
             await database_factory.delete(role_snowflake=role.id)
-        revoked_members = {}
+        revoked_members: dict[int, dict[int, list[discord.Member]]] = {}
         for administrator in administrators:
             member = role.guild.get_member(administrator.member_snowflake)
             await administrator_service.removed_role(
@@ -72,7 +72,7 @@ async def toggle_administrator_role(role) -> list[discord.Embed]:
         members = revoked_members.get(role.guild.id, {}).get(role.id, [])
     else:
         action = "granted"
-        granted_members = {}
+        granted_members: dict[int, dict[int, list[discord.Member]]] = {}
         granted_members.setdefault(role.guild.id, {})[role.id] = []
         administrator_role = AdministratorRole(
             guild_snowflake=role.guild.id, role_snowflake=role.id

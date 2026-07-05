@@ -37,7 +37,7 @@ class AliasContext:
     def __init__(self, content: str, guild_snowflake: int):
         self.__alias_name: str
         self.__content = content
-        self.__args = []
+        self.__args: list[str] = []
         self.__kwargs: dict[str, tuple] = {}
         self.category: str
         self.channel_snowflake: int
