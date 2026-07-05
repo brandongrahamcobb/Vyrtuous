@@ -72,7 +72,7 @@ class VerifyView(discord.ui.View):
         self._result = None
         if isinstance(obj, discord.Guild):
             self.__mention = obj.name
-        elif obj:
+        elif obj is not None and not isinstance(obj, str):
             self.__mention = obj.mention
         else:
             self.__mention = "All"
