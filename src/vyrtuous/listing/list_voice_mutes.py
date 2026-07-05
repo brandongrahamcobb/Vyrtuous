@@ -45,21 +45,22 @@ async def build_dictionary(
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    target = "user"
     voice_mutes = []
     dictionary: dict[
         int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]
     ] = {}
     if isinstance(obj, discord.Guild):
         voice_mutes = await database_factory.select(
-            guild_snowflake=obj.id, singular=False
+            guild_snowflake=obj.id, tagret=target, singular=False
         )
     elif isinstance(obj, discord.abc.GuildChannel):
         voice_mutes = await database_factory.select(
-            channel_snowflake=obj.id, singular=False
+            channel_snowflake=obj.id, target=target, singular=False
         )
     elif isinstance(obj, discord.Member):
         voice_mutes = await database_factory.select(
-            member_snowflake=obj.id, singular=False
+            member_snowflake=obj.id, target=target, singular=False
         )
     else:
         voice_mutes = await database_factory.select(singular=False)

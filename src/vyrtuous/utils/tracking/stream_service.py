@@ -130,42 +130,54 @@ async def send_log(
 
 
 async def toggle_stream(
-    source,
-    target_channel,
+    target_channel_snowflake: int,
+    guild_snowflake: int,
+    *,
+    source_channel_snowflake: int,
 ) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    if source:
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    source_channel = guild.get_channel(source_channel_snowflake)
+    if source_channel is None:
+        raise commands.ChannelNotFound(str(source_channel_snowflake))
+    target_channel = guild.get_channel(target_channel_snowflake)
+    if target_channel is None:
+        raise commands.ChannelNotFound(str(target_channel_snowflake))
+    if source_channel_snowflake:
         stream = await database_factory.select(
-            guild_snowflake=target_channel.guild.id,
-            source_channel_snowflake=source.id,
-            target_channel_snowflake=target_channel.id,
+            guild_snowflake=guild_snowflake,
+            source_channel_snowflake=source_channel_snowflake,
+            target_channel_snowflake=target_channel_snowflake,
             singular=True,
         )
         if stream:
             await database_factory.delete(
-                guild_snowflake=target_channel.guild.id,
-                source_channel_snowflake=source.id,
-                target_channel_snowflake=target_channel.id,
+                guild_snowflake=guild_snowflake,
+                source_channel_snowflake=source_channel_snowflake,
+                target_channel_snowflake=target_channel_snowflake,
             )
-        source_text = f"from {source.mention}"
+        source_text = f"from {source_channel_snowflake}"
     else:
         stream = await database_factory.select(
-            guild_snowflake=target_channel.guild.id,
-            target_channel_snowflake=target_channel.id,
+            guild_snowflake=guild_snowflake,
+            target_channel_snowflake=target_channel_snowflake,
             singular=True,
         )
         if stream:
             await database_factory.delete(
-                guild_snowflake=target_channel.guild.id,
-                source_channel_snowflake=source.id,
+                guild_snowflake=target_channel_snowflake,
+                source_channel_snowflake=source_channel_snowflake,
             )
         source_text = "from all channels"
     if stream:
-        action = "deleted"
+        action = "disabled"
     else:
-        action = "created"
+        action = "enabled"
     embed = discord.Embed(
-        title=f"{emojis.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}",
+        title=f"{emojis.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}.",
         color=0x00FF00,
     )
     return embed

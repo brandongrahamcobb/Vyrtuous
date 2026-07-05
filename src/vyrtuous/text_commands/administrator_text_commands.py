@@ -32,9 +32,9 @@ from vyrtuous.listing import (
 from vyrtuous.models.category import Category
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
+    clear_service,
     server_mute_service,
     voice_mute_service,
 )
@@ -42,6 +42,7 @@ from vyrtuous.utils.users import (
     coordinator_service,
     moderator_service,
 )
+from vyrtuous.view.cancel_confirm_view import VerifyView
 
 
 class AdministratorTextCommands(commands.Cog):
@@ -103,53 +104,54 @@ class AdministratorTextCommands(commands.Cog):
             )
             return await tick.end(success=msg)
 
-    # @commands.command(name="clear", help="Reset database.")
-    # @skip_text_command_help_discovery()
-    # async def clear_channel_access_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     target: Union[
-    #         str, discord.Guild, discord.abc.GuildChannel, discord.Member
-    #     ] = commands.parameter(
-    #         converter=MultiConverter,
-    #         default=None,
-    #         description="Specify 'all', tag a channel/guild/member or include its ID",
-    #     ),
-    #     *,
-    #     category: Category = commands.parameter(
-    #         default="all",
-    #         description="Specify one of: `alias`, `arole`, `all`, `ban`, `coord`, "
-    #         "flag`, `mod`, `troom`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vroom`.",
-    #     ),
-    # ):
-    #     tick = Tick(bot=self.__bot, ctx=ctx)
-    #     context = SnowflakeContext(
-    #         channel_snowflake=ctx.channel.id,
-    #         guild_snowflake=ctx.guild.id,
-    #         member_snowflake=ctx.author.id,
-    #     )
-    #     if target == "all":
-    #         obj = None
-    #     else:
-    #         obj = target
-    #     view = VerifyView(
-    #         category=str(category),
-    #         obj=obj,
-    #         author_snowflake=ctx.author.id,
-    #     )
-    #     embed = view.build_embed()
-    #     await tick.end(success=embed, view=view)
-    #     await view.wait()
-    #     tick = Tick(bot=self.__bot, ctx=ctx)
-    #     msg = await self.__clear_service.clear(
-    #         category=category,
-    #         default_ctx=context,
-    #         obj=obj,
-    #         target=target,
-    #         view=view,
-    #         source=ctx,
-    #     )
-    #     return await tick.end(success=msg)
+    @commands.command(name="clear", help="Reset records.")
+    async def clear_channel_access_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, discord.Member
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify 'all', tag a channel/guild/member or include the ID.",
+        ),
+        *,
+        category: Category = commands.parameter(
+            default="all",
+            description="Specify one of: `alias`, `all`, `arole`, `automute`, `ban`, `coord`, "
+            "flag`, `mod`, `tmute`, `stream` or `vmute`.",
+        ),
+        scope: str = commands.parameter(
+            default="user", description="Specify one of: `auto`, `server` or `user`."
+        ),
+    ):
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if target == "all":
+            obj = None
+        else:
+            obj = target
+        view = VerifyView(
+            author_snowflake=ctx.author.id,
+            category=str(category),
+            obj=obj,
+        )
+        embed = view.build_embed()
+        await tick.end(success=embed, view=view)
+        await view.wait()
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        msg = await clear_service.clear(
+            author_snowflake=ctx.author.id,
+            category=str(category),
+            guild_snowflake=ctx.guild.id,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.channel.id,
+            obj=obj,
+            target=scope,
+            view=view,
+        )
+        return await tick.end(success=msg)
 
     @commands.command(name="coord", help="Grant/revoke coords.")
     async def toggle_coordinator_text_command(
@@ -172,7 +174,8 @@ class AdministratorTextCommands(commands.Cog):
             guild_snowflake=channel.guild.id,
         )
         msg = await coordinator_service.toggle_coordinator(
-            channel=channel,
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
         )
         return await tick.end(success=msg)
@@ -203,15 +206,22 @@ class AdministratorTextCommands(commands.Cog):
             description="Tag a channel or include its ID.",
         ),
         *,
+        duration: str = commands.parameter(
+            default="1h", description="Specify a duration m/h/d."
+        ),
         reason: str = commands.parameter(
             default="No reason provided.", description="Specify a reason."
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
         obj = channel or ctx.channel
         pages = await voice_mute_service.channel_mute(
-            author=ctx.author,
-            channel=obj,
+            author_snowflake=ctx.author.id,
+            channel_snowflake=obj.id,
+            duration_value=duration,
+            guild_snowflake=ctx.guild.id,
             reason=reason,
         )
         return await tick.end(success=pages)
@@ -293,13 +303,12 @@ class AdministratorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        context = SnowflakeContext(
+        msg = await server_mute_service.toggle_server_mute(
+            author_snowflake=ctx.author.id,
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-        )
-        msg = await server_mute_service.toggle_server_mute(
-            context=context, member=member, reason=reason
+            member_snowflake=member.id,
+            reason=reason,
         )
         return await tick.end(success=msg)
 
@@ -333,12 +342,9 @@ class AdministratorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a guild.")
-        context = SnowflakeContext(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
+        msg = await alias_service.delete_alias(
+            alias_name=alias_name, guild_snowflake=ctx.guild.id
         )
-        msg = await alias_service.delete_alias(alias_name=alias_name, context=context)
         return await tick.end(success=msg)
 
     @commands.command(name="xrmute", help="Unmute all.")
@@ -352,8 +358,15 @@ class AdministratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a guild.")
         obj = channel or ctx.channel
-        pages = await voice_mute_service.channel_unmute(channel=obj)
+        pages = await voice_mute_service.channel_unmute(
+            author_snowflake=ctx.author.id,
+            channel_snowflake=obj.id,
+            guild_snowflake=ctx.guild.id,
+            target="user",
+        )
         return await tick.end(success=pages)
 
 

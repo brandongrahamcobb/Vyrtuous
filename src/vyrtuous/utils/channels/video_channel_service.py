@@ -21,6 +21,7 @@ import asyncio
 from datetime import timedelta
 
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import ChannelState, VideoChannelState
@@ -32,24 +33,34 @@ MODEL = VideoChannel
 COOLDOWN = timedelta(minutes=30)
 
 
-async def toggle_video_channel(channel) -> str:
+async def toggle_video_channel(channel_snowflake: int, guild_snowflake: int) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
     video_channels = bot.registry.get(ChannelState).video
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     video_channel = await database_factory.select(
-        channel_snowflake=channel.id, singular=True
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        singular=True,
     )
     if video_channel:
-        action = "removed"
+        action = "disabled"
         video_channels.remove(video_channel.channel_snowflake)
-        await database_factory.delete(channel_snowflake=channel.id)
+        await database_factory.delete(
+            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+        )
     else:
         video_channel = MODEL(
-            channel_snowflake=channel.id, guild_snowflake=channel.guild.id
+            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
         )
         await database_factory.create(video_channel)
         video_channels.add(video_channel.channel_snowflake)
-        action = "created"
+        action = "enabled"
     return f"Video-only channel {action} in {channel.mention}."
 
 

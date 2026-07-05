@@ -17,256 +17,564 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import importlib.util
-import inspect
-from pathlib import Path
-
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.aliases import (
+    alias_service,
+    unban_alias_service,
+    unflag_alias_service,
+    untext_mute_alias_service,
+    unvoice_mute_alias_service,
+)
+from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.utils.channels import automute_channel_service, video_channel_service
+from vyrtuous.utils.moderation import (
+    ban_service,
+    flag_service,
+    text_mute_service,
+    voice_mute_service,
+)
+from vyrtuous.utils.tracking import stream_service
+from vyrtuous.utils.users import (
+    administrator_role_service,
+    coordinator_service,
+    developer_service,
+    moderator_service,
+    sysadmin_service,
+)
+
+INFRACTION_MODELS = [
+    ban_service.MODEL,
+    flag_service.MODEL,
+    text_mute_service.MODEL,
+    voice_mute_service.MODEL,
+]
+CHANNEL_MODELS = [
+    automute_channel_service.MODEL,
+    stream_service.MODEL,
+    video_channel_service.MODEL,
+]
+ALIAS_MODEL = [alias_service.MODEL]
+ROLE_MODELS = [
+    administrator_role_service.MODEL,
+    coordinator_service.MODEL,
+    developer_service.MODEL,
+    moderator_service.MODEL,
+]
 
 
-class ClearService:
-    def __init__(
-        self,
-        *,
-        ban_service=None,
-        database_factory=None,
-        flag_service=None,
-        moderator_service=None,
-        sysadmin_service=None,
-        text_mute_service=None,
-        voice_mute_service=None,
-    ):
-        self.__ban_service = ban_service
-        self.__database_factory = database_factory
-        self.__flag_service = flag_service
-        self.__moderator_service = moderator_service
-        self.__sysadmin_service = sysadmin_service
-        self.__text_mute_service = text_mute_service
-        self.__voice_mute_service = voice_mute_service
-
-    def dir_to_classes(self, dir_paths, *, attr=None):
-        bot: DiscordBot = DiscordBot.get_instance()
-        classes = []
-        for dir_path in dir_paths:
-            for py_file in dir_path.rglob("*.py"):
-                if py_file.name == "__init__.py":
-                    continue
-                module_name = py_file.stem
-                spec = importlib.util.spec_from_file_location(module_name, str(py_file))
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                for _, cls in inspect.getmembers(module, inspect.isclass):
-                    if cls.__module__ != module.__name__:
-                        continue
-                    if getattr(cls, "__skip_db_discovery__", False):
-                        continue
-                    if attr in cls.__annotations__ or not attr:
-                        bot.logger.info(cls.__name__)
-                        classes.append(cls)
-        return classes
-
-    async def clear(self, category, default_ctx, obj, target, view, source):
-        dir_paths = []
-        dir_paths.append(Path("/app/vyrtuous"))
-        if isinstance(obj, discord.Member):
-            await self.__moderator_service.check_minimum_role_at_all(
-                guild_snowflake=obj.guild.id,
-                member_snowflake=default_ctx.author.id,
-                lowest_role="Administrator",
-            )
-            await self.__moderator_service.has_equal_or_lower_role(
-                **default_ctx.to_dict(),
-                target_member_snowflake=obj.id,
-            )
-            if view.result:
-                for cls in self.dir_to_classes(
-                    dir_paths=dir_paths, attr="member_snowflake"
-                ):
+async def clear(
+    author_snowflake: int,
+    category: str,
+    guild_snowflake: int,
+    message_snowflake: int,
+    message_channel_snowflake: int,
+    obj,
+    view,
+    *,
+    target: str = "user",
+):
+    if isinstance(obj, discord.Member):
+        COMBINED_LIST = INFRACTION_MODELS + ROLE_MODELS
+        await moderator_service.check_minimum_role(
+            channel_snowflake=message_channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=author_snowflake,
+            lowest_role="Administrator",
+        )
+        await moderator_service.has_equal_or_lower_role(
+            channel_snowflake=message_channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=author_snowflake,
+            target_member_snowflake=obj.id,
+        )
+        msg = f"Deleted all associated {category} records for {obj.mention}."
+        if view.result:
+            for model in COMBINED_LIST:
+                database_factory = DatabaseFactory(model)
+                objects = await database_factory.select(
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=obj.id,
+                    singular=False,
+                )
+                for value in objects:
                     if category == "all":
                         msg = f"Deleted all database information for {obj.mention}."
-                    else:
-                        msg = f"Deleted all associated {category} records in {obj.mention}."
-                    if (
-                        hasattr(cls, "identifier")
-                        and str(category).lower() == cls.identifier
-                        or str(category).lower() == "all"
-                    ):
-                        if cls.__name__ == "Ban":
-                            await self.__ban_service.delete(
-                                author=default_ctx.author,
+                        await database_factory.delete_by_cls(value)
+                    match value.identifier:
+                        case "ban":
+                            if category == "ban":
+                                await database_factory.delete_by_cls(value)
+                            await unban_alias_service.unban(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
                                 member_snowflake=obj.id,
-                                source=source,
                             )
-                        elif cls.__name__ == "Flag":
-                            await self.__flag_service.delete(
-                                author=default_ctx.author,
+                            await unban_alias_service.log_unban(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
                                 member_snowflake=obj.id,
-                                source=source,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
                             )
-                        elif cls.__name__ == "TextMute":
-                            await self.__text_mute_service.delete(
-                                author=default_ctx.author,
+                        case "coord":
+                            if category == "coord":
+                                await database_factory.delete_by_cls(value)
+                            await coordinator_service.toggle_coordinator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
                                 member_snowflake=obj.id,
-                                source=source,
                             )
-                        elif cls.__name__ == "VoiceMute":
-                            await self.__voice_mute_service.delete(
-                                author=default_ctx.author,
+                        case "dev":
+                            if category == "dev":
+                                await database_factory.delete_by_cls(value)
+                            await developer_service.toggle_developer(
+                                member_snowflake=obj.id
+                            )
+                        case "flag":
+                            if category == "flag":
+                                await database_factory.delete_by_cls(value)
+                            await unflag_alias_service.log_unflag(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
                                 member_snowflake=obj.id,
-                                source=source,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
                             )
-                        else:
-                            await self.__database_factory.delete_by_cls(
-                                cls,
+                        case "mod":
+                            if category == "mod":
+                                await database_factory.delete_by_cls(value)
+                            await moderator_service.toggle_moderator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
                                 member_snowflake=obj.id,
-                                guild_snowflake=default_ctx.guild.id,
                             )
-        elif isinstance(obj, discord.abc.GuildChannel):
-            if (
-                obj.guild.owner_id != default_ctx.author.id
-                or obj.guild.id != default_ctx.guild.id
-            ):
-                await self.__moderator_service.check_minimum_role(
+                        case "tmute":
+                            if category == "tmute":
+                                await database_factory.delete_by_cls(value)
+                            await untext_mute_alias_service.log_untext_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=obj.id,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "vmute":
+                            if category == "vmute":
+                                await database_factory.delete_by_cls(value)
+                            await unvoice_mute_alias_service.log_unvoice_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
+                                is_channel_scope=False,
+                                member_snowflake=obj.id,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                                target=target,
+                            )
+    elif isinstance(obj, discord.abc.GuildChannel):
+        COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
+        await moderator_service.check_minimum_role(
+            channel_snowflake=obj.id,
+            guild_snowflake=obj.guild.id,
+            member_snowflake=author_snowflake,
+            lowest_role="Guild Owner",
+        )
+        msg = f"Deleted all associated {category} records in {obj.mention}."
+        if view.result:
+            for model in COMBINED_LIST:
+                database_factory = DatabaseFactory(model)
+                objects = await database_factory.select(
                     channel_snowflake=obj.id,
                     guild_snowflake=obj.guild.id,
-                    member_snowflake=default_ctx.author.id,
-                    lowest_role="Developer",
+                    singular=False,
                 )
-            if view.result:
-                for cls in self.dir_to_classes(
-                    dir_paths=dir_paths, attr="channel_snowflake"
-                ):
+                for value in objects:
+                    await moderator_service.has_equal_or_lower_role(
+                        channel_snowflake=obj.id,
+                        guild_snowflake=obj.guild.id,
+                        member_snowflake=author_snowflake,
+                        target_member_snowflake=value.member_snowflake,
+                    )
                     if category == "all":
                         msg = f"Deleted all database information for {obj.mention}."
-                    else:
-                        msg = f"Deleted all associated {category} records in {obj.mention}."
-                    if (
-                        hasattr(cls, "identifier")
-                        and str(category).lower() == cls.identifier
-                        or str(category).lower() == "all"
-                    ):
-                        if cls.__name__ == "Ban" and str(category).lower() == "ban":
-                            await self.__ban_service.delete(
-                                author=default_ctx.author,
-                                channel_snowflake=obj.id,
-                                source=source,
+                        await database_factory.delete_by_cls(value)
+                    match value.identifier:
+                        case "alias":
+                            if category == "alias":
+                                await database_factory.delete_by_cls(value)
+                            await alias_service.delete_alias(
+                                alias_name=value.alias_name,
+                                guild_snowflake=value.guild_snowflake,
                             )
-                        elif cls.__name__ == "Flag" and str(category).lower() == "flag":
-                            await self.__flag_service.delete(
-                                author=default_ctx.author,
+                        case "automute":
+                            if category == "automute":
+                                await database_factory.delete_by_cls(value)
+                            await automute_channel_service.toggle_automute(
+                                author_snowflake=author_snowflake,
                                 channel_snowflake=obj.id,
-                                source=source,
+                                guild_snowflake=obj.guild.id,
                             )
-                        elif (
-                            cls.__name__ == "TextMute"
-                            and str(category).lower() == "tmute"
-                        ):
-                            await self.__text_mute_service.delete(
-                                author=default_ctx.author,
+                        case "ban":
+                            if category == "ban":
+                                await database_factory.delete_by_cls(value)
+                            await unban_alias_service.unban(
                                 channel_snowflake=obj.id,
-                                source=source,
+                                guild_snowflake=obj.guild.id,
+                                member_snowflake=value.member_snowflake,
                             )
-                        elif (
-                            cls.__name__ == "VoiceMute"
-                            and str(category).lower() == "vmute"
-                        ):
-                            await self.__voice_mute_service.delete(
-                                author=default_ctx.author,
+                            await unban_alias_service.log_unban(
+                                author_snowflake=author_snowflake,
                                 channel_snowflake=obj.id,
-                                source=source,
+                                display=False,
+                                guild_snowflake=obj.guild.id,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
                             )
-                        else:
-                            await self.__database_factory.delete_by_cls(
-                                cls,
+                        case "coord":
+                            if category == "coord":
+                                await database_factory.delete_by_cls(value)
+                            await coordinator_service.toggle_coordinator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=obj.id,
+                            )
+                        case "dev":
+                            if category == "dev":
+                                await database_factory.delete_by_cls(value)
+                            await developer_service.toggle_developer(
+                                member_snowflake=obj.id
+                            )
+                        case "flag":
+                            if category == "flag":
+                                await database_factory.delete_by_cls(value)
+                            await unflag_alias_service.log_unflag(
+                                author_snowflake=author_snowflake,
                                 channel_snowflake=obj.id,
+                                display=False,
+                                guild_snowflake=obj.guild.id,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
                             )
-        elif isinstance(obj, discord.Guild):
-            await self.__moderator_service.check_minimum_role_at_all(
-                guild_snowflake=obj.id,
-                member_snowflake=default_ctx.author.id,
-                lowest_role="Developer",
-            )
-            if view.result:
-                attributes = [
-                    "channel_snowflake",
-                    "guild_snowflake",
-                    "member_snowflake",
-                ]
-                classes = [
-                    cls
-                    for attr in attributes
-                    for cls in self.dir_to_classes(dir_paths=dir_paths, attr=attr)
-                ]
-                for cls in classes:
+                        case "mod":
+                            if category == "mod":
+                                await database_factory.delete_by_cls(value)
+                            await moderator_service.toggle_moderator(
+                                channel_snowflake=obj.id,
+                                guild_snowflake=obj.guild.id,
+                                member_snowflake=value.member_snowflake,
+                            )
+                        case "stream":
+                            if category == "stream":
+                                await database_factory.delete_by_cls(value)
+                            await stream_service.toggle_stream(
+                                guild_snowflake=obj.guild.id,
+                                target_channel_snowflake=value.target_channel_snowflake,
+                                source_channel_snowflake=value.source_channel_snowflake,
+                            )
+                        case "tmute":
+                            if category == "tmute":
+                                await database_factory.delete_by_cls(value)
+                            await untext_mute_alias_service.log_untext_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=obj.id,
+                                display=False,
+                                guild_snowflake=obj.guild.id,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "video_channel":
+                            if category == "video_channel":
+                                await database_factory.delete_by_cls(value)
+                            await video_channel_service.toggle_video_channel(
+                                channel_snowflake=obj.id, guild_snowflake=obj.guild.id
+                            )
+                        case "vmute":
+                            if category == "vmute":
+                                await database_factory.delete_by_cls(value)
+                            await unvoice_mute_alias_service.log_unvoice_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=obj.id,
+                                display=False,
+                                guild_snowflake=obj.guild.id,
+                                is_channel_scope=False,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                                target=target,
+                            )
+    elif isinstance(obj, discord.Guild):
+        COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
+        await moderator_service.check_minimum_role(
+            channel_snowflake=message_channel_snowflake,
+            guild_snowflake=obj.id,
+            member_snowflake=author_snowflake,
+            lowest_role="Developer",
+        )
+        msg = f"Deleted all associated {category} records in {obj.name}."
+        if view.result:
+            for model in COMBINED_LIST:
+                database_factory = DatabaseFactory(model)
+                objects = await database_factory.select(
+                    guild_snowflake=obj.id,
+                    singular=False,
+                )
+                for value in objects:
+                    await moderator_service.has_equal_or_lower_role(
+                        channel_snowflake=message_channel_snowflake,
+                        guild_snowflake=obj.id,
+                        member_snowflake=author_snowflake,
+                        target_member_snowflake=value.member_snowflake,
+                    )
                     if category == "all":
-                        msg = f"Deleted all database information for {obj.mention}."
-                    else:
-                        msg = f"Deleted all associated {category} records in {obj.mention}."
-                    if (
-                        hasattr(cls, "identifier")
-                        and str(category).lower() == cls.identifier
-                        or str(category).lower() == "all"
-                    ):
-                        if cls.__name__ == "Ban":
-                            await self.__ban_service.delete(
-                                author=default_ctx.author,
-                                guild_snowflake=obj.guild.id,
-                                source=source,
+                        msg = f"Deleted all database information for {obj.name}."
+                        await database_factory.delete_by_cls(value)
+                    match value.identifier:
+                        case "arole":
+                            if category == "admin":
+                                await database_factory.delete_by_cls(value)
+                            await administrator_role_service.toggle_administrator_role(
+                                value.role_snowflake
                             )
-                        elif cls.__name__ == "Flag":
-                            await self.__flag_service.delete(
-                                author=default_ctx.author,
-                                guild_snowflake=obj.guild.id,
-                                source=source,
+                        case "alias":
+                            if category == "alias":
+                                await database_factory.delete_by_cls(value)
+                            await alias_service.delete_alias(
+                                alias_name=value.alias_name,
+                                guild_snowflake=value.guild_snowflake,
                             )
-                        elif cls.__name__ == "TextMute":
-                            await self.__text_mute_service.delete(
-                                author=default_ctx.author,
-                                guild_snowflake=obj.guild.id,
-                                source=source,
+                        case "automute":
+                            if category == "automute":
+                                await database_factory.delete_by_cls(value)
+                            await automute_channel_service.toggle_automute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=obj.id,
                             )
-                        elif cls.__name__ == "VoiceMute":
-                            await self.__voice_mute_service.delete(
-                                author=default_ctx.author,
-                                guild_snowflake=obj.guild.id,
-                                source=source,
+                        case "ban":
+                            if category == "ban":
+                                await database_factory.delete_by_cls(value)
+                            await unban_alias_service.log_unban(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=obj.id,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
                             )
-                        else:
-                            await self.__database_factory.delete_by_cls(
-                                cls, guild_snowflake=obj.guild.id
+                        case "coord":
+                            if category == "coord":
+                                await database_factory.delete_by_cls(value)
+                            await coordinator_service.toggle_coordinator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=obj.id,
                             )
-        elif target == "all" and await self.__sysadmin_service.is_sysadmin(
-            member_snowflake=default_ctx.to_dict().get("member_snowflake")
-        ):
-            if view.result:
-                for cls in self.dir_to_classes(
-                    dir_paths=dir_paths, attr="__tablename__"
-                ):
-                    if cls.__name__ == "Ban":
-                        await self.__ban_service.delete(
-                            author=default_ctx.author,
-                            source=source,
-                        )
-                    elif cls.__name__ == "Flag":
-                        await self.__flag_service.delete(
-                            author=default_ctx.author,
-                            source=source,
-                        )
-                    elif cls.__name__ == "TextMute":
-                        await self.__text_mute_service.delete(
-                            author=default_ctx.author,
-                            source=source,
-                        )
-                    elif cls.__name__ == "VoiceMute":
-                        await self.__voice_mute_service.delete(
-                            author=default_ctx.author,
-                            source=source,
-                        )
-                    else:
-                        await self.__database_factory.delete_by_cls(cls)
-                    msg = "Deleted all database entries."
-        else:
-            msg = f"Invalid target ({target})."
-        return msg
+
+                        case "dev":
+                            if category == "dev":
+                                await database_factory.delete_by_cls(value)
+                            await developer_service.toggle_developer(
+                                member_snowflake=value.member_snowflake
+                            )
+                        case "flag":
+                            if category == "flag":
+                                await database_factory.delete_by_cls(value)
+                            await unflag_alias_service.log_unflag(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=obj.id,
+                                member_snowflake=value.channel_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "mod":
+                            if category == "mod":
+                                await database_factory.delete_by_cls(value)
+                            await moderator_service.toggle_moderator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=obj.id,
+                                member_snowflake=value.member_snowflake,
+                            )
+                        case "stream":
+                            if category == "stream":
+                                await database_factory.delete_by_cls(value)
+                            await stream_service.toggle_stream(
+                                guild_snowflake=obj.id,
+                                target_channel_snowflake=value.target_channel_snowflake,
+                                source_channel_snowflake=value.source_channel_snowflake,
+                            )
+                        case "tmute":
+                            if category == "tmute":
+                                await database_factory.delete_by_cls(value)
+                            await untext_mute_alias_service.log_untext_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=obj.id,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "video_channel":
+                            if category == "video_channel":
+                                await database_factory.delete_by_cls(value)
+                            await video_channel_service.toggle_video_channel(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=obj.id,
+                            )
+                        case "vmute":
+                            if category == "vmute":
+                                await database_factory.delete_by_cls(value)
+                            await unvoice_mute_alias_service.log_unvoice_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=obj.id,
+                                is_channel_scope=False,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                                target=target,
+                            )
+    elif obj == "all" and await sysadmin_service.is_sysadmin(
+        member_snowflake=author_snowflake
+    ):
+        COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
+        msg = f"Deleted all associated {category} database entries."
+        if view.result:
+            for model in COMBINED_LIST:
+                database_factory = DatabaseFactory(model)
+                objects = await database_factory.select(
+                    singular=False,
+                )
+                for value in objects:
+                    if category == "all":
+                        msg = f"Deleted all database information."
+                        await database_factory.delete_by_cls(value)
+                    match value.identifier:
+                        case "arole":
+                            if category == "admin":
+                                await database_factory.delete_by_cls(value)
+                            await administrator_role_service.toggle_administrator_role(
+                                value.role_snowflake
+                            )
+                        case "alias":
+                            if category == "alias":
+                                await database_factory.delete_by_cls(value)
+                            await alias_service.delete_alias(
+                                alias_name=value.alias_name,
+                                guild_snowflake=value.guild_snowflake,
+                            )
+                        case "automute":
+                            if category == "automute":
+                                await database_factory.delete_by_cls(value)
+                            await automute_channel_service.toggle_automute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
+                            )
+                        case "ban":
+                            if category == "ban":
+                                await database_factory.delete_by_cls(value)
+                            await unban_alias_service.log_unban(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "coord":
+                            if category == "coord":
+                                await database_factory.delete_by_cls(value)
+                            await coordinator_service.toggle_coordinator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=value.member_snowflake,
+                            )
+
+                        case "dev":
+                            if category == "dev":
+                                await database_factory.delete_by_cls(value)
+                            await developer_service.toggle_developer(
+                                member_snowflake=value.member_snowflake
+                            )
+                        case "flag":
+                            if category == "flag":
+                                await database_factory.delete_by_cls(value)
+                            await unflag_alias_service.log_unflag(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "mod":
+                            if category == "mod":
+                                await database_factory.delete_by_cls(value)
+                            await moderator_service.toggle_moderator(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=value.member_snowflake,
+                            )
+                        case "stream":
+                            if category == "stream":
+                                await database_factory.delete_by_cls(value)
+                            await stream_service.toggle_stream(
+                                guild_snowflake=value.guild_snowflake,
+                                target_channel_snowflake=value.target_channel_snowflake,
+                                source_channel_snowflake=value.source_channel_snowflake,
+                            )
+
+                        case "tmute":
+                            if category == "tmute":
+                                await database_factory.delete_by_cls(value)
+                            await untext_mute_alias_service.log_untext_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                            )
+                        case "video_channel":
+                            if category == "video_channel":
+                                await database_factory.delete_by_cls(value)
+                            await video_channel_service.toggle_video_channel(
+                                channel_snowflake=value.channel_snowflake,
+                                guild_snowflake=value.guild_snowflake,
+                            )
+                        case "vmute":
+                            if category == "vmute":
+                                await database_factory.delete_by_cls(value)
+                            await unvoice_mute_alias_service.log_unvoice_mute(
+                                author_snowflake=author_snowflake,
+                                channel_snowflake=value.channel_snowflake,
+                                display=False,
+                                guild_snowflake=value.guild_snowflake,
+                                is_channel_scope=False,
+                                member_snowflake=value.member_snowflake,
+                                message_snowflake=message_snowflake,
+                                message_channel_snowflake=message_channel_snowflake,
+                                target=target,
+                            )
+    else:
+        msg = f"Invalid target ({obj})."
+    return msg

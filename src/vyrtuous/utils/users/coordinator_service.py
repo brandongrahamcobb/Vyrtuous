@@ -52,27 +52,17 @@ async def is_coordinator(
         return True
 
 
-async def toggle_coordinator(channel, member_snowflake) -> str:
+async def toggle_coordinator(
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(Coordinator)
-    coordinator = await database_factory.select(
-        singular=True,
-        channel_snowflake=channel.id,
-        member_snowflake=member_snowflake,
-    )
-    if coordinator:
-        await database_factory.delete(
-            channel_snowflake=channel.id, member_snowflake=member_snowflake
-        )
-        action = "revoked"
-    else:
-        coordinator = MODEL(
-            channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
-            member_snowflake=member_snowflake,
-        )
-        await database_factory.create(coordinator)
-        action = "granted"
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
     member = channel.guild.get_member(member_snowflake)
     if member:
         member_str = member.mention
@@ -81,8 +71,26 @@ async def toggle_coordinator(channel, member_snowflake) -> str:
             member_snowflake, None
         )
         if simplified_member is None:
-            raise commands.MemberNotFound(member_snowflake)
+            raise commands.MemberNotFound(str(member_snowflake))
         member_str = simplified_member[0]
+    coordinator = await database_factory.select(
+        singular=True,
+        channel_snowflake=channel_snowflake,
+        member_snowflake=member_snowflake,
+    )
+    if coordinator:
+        await database_factory.delete(
+            channel_snowflake=channel_snowflake, member_snowflake=member_snowflake
+        )
+        action = "revoked"
+    else:
+        coordinator = MODEL(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        await database_factory.create(coordinator)
+        action = "granted"
     return (
         f"Coordinator access has been {action} for {member_str} "
         f"in {channel.mention}."

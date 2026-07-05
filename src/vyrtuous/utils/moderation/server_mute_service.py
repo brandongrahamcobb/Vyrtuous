@@ -17,29 +17,46 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.server_mute import ServerMute
+from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.utils.users import moderator_service
 
-MODEL = ServerMute
+MODEL = VoiceMute
 
 
-async def toggle_server_mute(context, member, reason) -> str:
+async def toggle_server_mute(
+    author_snowflake: int,
+    channel_snowflake: int,
+    guild_snowflake: int,
+    member_snowflake: int,
+    reason: str,
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    member = guild.get_member(member_snowflake)
+    if member is None:
+        raise commands.MemberNotFound(str(member_snowflake))
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     await moderator_service.has_equal_or_lower_role(
-        **context.to_dict(),
-        target_member_snowflake=member.id,
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=author_snowflake,
+        target_member_snowflake=member_snowflake,
     )
     server_mute = await database_factory.select(
-        singular=True, guild_snowflake=context.guild.id, member_snowflake=member.id
+        singular=True,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
     )
     if not server_mute:
-        server_mute = MODEL(
-            guild_snowflake=context.guild.id,
-            member_snowflake=member.id,
+        server_mute = VoiceMute(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
             reason=reason,
         )
         await database_factory.create(server_mute)
@@ -47,38 +64,13 @@ async def toggle_server_mute(context, member, reason) -> str:
         should_be_muted = True
     else:
         await database_factory.delete(
-            guild_snowflake=context.guild.id, member_snowflake=member.id
+            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
         )
         action = "unmuted"
         should_be_muted = False
-
     if member.voice and member.voice.channel:
         await member.edit(mute=should_be_muted)
-    return f"Successfully server {action} {member.mention} in {context.guild.name}."
-
-
-async def enforce(after, member) -> None:
-    bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    server_mute = await database_factory.select(
-        member_snowflake=member.id, singular=True
-    )
-    if server_mute:
-        if member.guild.id == server_mute.guild_snowflake:
-            if not after.mute:
-                try:
-                    await member.edit(mute=True, reason="Server mute is active.")
-                except discord.Forbidden as e:
-                    bot.logger.warning(
-                        f"No permission to "
-                        f"edit mute for {member.display_name}. {str(e).capitalize()}"
-                    )
-                except discord.HTTPException as e:
-                    bot.logger.warning(
-                        f"Failed to edit mute for "
-                        f"{member.display_name}: "
-                        f"{str(e).capitalize()}"
-                    )
+    return f"Successfully server {action} {member.mention} in {guild.name}."
 
 
 async def is_server_muted(channel, member) -> bool:

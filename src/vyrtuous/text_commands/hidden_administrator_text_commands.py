@@ -27,15 +27,17 @@ from vyrtuous.inc.helpers import PATH_LOG, at_home
 from vyrtuous.listing import (
     list_administrator_roles,
     list_automute_channels,
+    list_caps,
     list_permissions,
     list_streams,
     list_video_channels,
 )
+from vyrtuous.models.category import Category
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.channels import video_channel_service
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import stream_service
 from vyrtuous.utils.users import (
     moderator_service,
@@ -85,6 +87,49 @@ class HiddenAdministratorTextCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @commands.command(name="cap", help="Cap alias duration for mods.")
+    @skip_text_command_help_discovery()
+    async def cap_text_command(
+        self,
+        ctx: commands.Context,
+        channel: discord.abc.GuildChannel = commands.parameter(
+            converter=commands.VoiceChannelConverter,
+            description="Tag a channel or include its ID.",
+        ),
+        category: Category = commands.parameter(
+            description="One of: `mute`, `ban`, `tmute`"
+        ),
+        *,
+        hours: int = commands.parameter(default=24, description="# of hours"),
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        msg = await cap_service.toggle_cap(
+            category=str(category), channel=channel, hours=hours
+        )
+        return await tick.end(success=msg)
+
+    @commands.command(name="caps", help="List caps.")
+    @skip_text_command_help_discovery()
+    async def list_caps_text_command(
+        self,
+        ctx: commands.Context,
+        target: Union[
+            str, discord.Guild, discord.abc.GuildChannel, None
+        ] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify one of: 'all', channel ID/mention or server ID.",
+        ),
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        if target == "all":
+            obj = None
+        else:
+            obj = target or ctx.channel
+        is_at_home = at_home(source=ctx)
+        pages = await list_caps.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
     @commands.command(name="debug", help="Shows the last `n` number of logging.")
     @skip_text_command_help_discovery()
     async def debug_text_command(
@@ -123,19 +168,14 @@ class HiddenAdministratorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        context = SnowflakeContext(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-        )
         if target == "all":
             obj = None
         else:
             obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         pages = await list_permissions.build_pages(
+            guild_snowflake=ctx.guild.id,
             obj=obj,
-            context=context,
             is_at_home=is_at_home,
         )
         return await tick.end(success=pages)
@@ -187,16 +227,19 @@ class HiddenAdministratorTextCommands(commands.Cog):
             converter=commands.TextChannelConverter,
             description="Tag a channel or include its ID.",
         ),
-        source: Union[str, discord.abc.GuildChannel] = commands.parameter(
+        source_channel: discord.abc.GuildChannel = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="`All` or tag a channel/include its ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
         pages = await stream_service.toggle_stream(
-            source=source,
-            target_channel=target_channel,
+            guild_snowflake=ctx.guild.id,
+            source_channel_snowflake=source_channel.id,
+            target_channel_snowflake=target_channel.id,
         )
         return await tick.end(success=pages)
 
@@ -223,7 +266,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
         pages = await list_streams.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)
 
-    @commands.command(name="vo", help="Start/stop video-only channel.")
+    @commands.command(name="v", help="Start/stop video-only channel.")
     @skip_text_command_help_discovery()
     async def toggle_video_channel_text_command(
         self,
@@ -240,7 +283,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
         return await tick.end(success=msg)
 
     @commands.command(
-        name="vos",
+        name="vs",
         help="List video channels.",
     )
     @skip_text_command_help_discovery()

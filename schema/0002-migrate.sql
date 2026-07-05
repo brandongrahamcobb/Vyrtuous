@@ -54,3 +54,4 @@ DROP TABLE temporary_rooms;
 ALTER TABLE vegans ADD COLUMN notes TEXT;
 ALTER TABLE active_members DROP COLUMN guild_snowflake;
 ALTER TABLE video_rooms RENAME TO active_video_only_channels;
+ALTER TABLE active_voice_mutes ALTER COLUMN channel_snowflake SET DEFAULT (-1)::bigint;

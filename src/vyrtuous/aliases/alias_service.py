@@ -78,10 +78,9 @@ CATEGORY_TO_PERMISSION_LEVEL = {
 }
 
 
-async def delete_alias(alias_name: str, context) -> str:
+async def delete_alias(alias_name: str, guild_snowflake: int) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    guild_snowflake = context.guild.id
     where_kwargs = {
         "alias_name": alias_name,
         "guild_snowflake": int(guild_snowflake),
@@ -91,7 +90,7 @@ async def delete_alias(alias_name: str, context) -> str:
         return f"No aliases found for `{alias_name}`."
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(guild_snowflake)
+        raise commands.GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(alias.channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(alias.channel_snowflake)

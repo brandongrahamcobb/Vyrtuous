@@ -1,5 +1,5 @@
 """!/bin/python3
-test_stages.py The purpose of this program is to be the integration test for the stages list command for Vyrtuous.
+test_vrs.py The purpose of this program is to be the integration test for the vrs list command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -24,9 +24,12 @@ from unittest.mock import patch
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 GUILD_SNOWFLAKE = 10000000000000500
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
@@ -36,40 +39,40 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Sysadmin", "!stages", "all"),
-        ("Administrator", "!stages", "{channel_snowflake}"),
-        ("Administrator", "!stages", "<#{channel_snowflake}>"),
-        ("Administrator", "!stages", "{guild_snowflake}"),
+        ("Sysadmin", "!vs", "all"),
+        ("Administrator", "!vs", "{channel_snowflake}"),
+        ("Administrator", "!vs", "<#{channel_snowflake}>"),
+        ("Administrator", "!vs", "{guild_snowflake}"),
     ],
 )
-async def test_stages(bot, command: str, target, permission_role):
+async def test_vs(bot, command: str, target, permission_role):
     """
     List channels which are registered in the PostgresSQL database
-    'vyrtuous' in the table 'stages'.
+    'vyrtuous' in the table 'video_channels'.
 
     Parameters
     ----------
     all : str, optional
-        Generic showing all temporary channels in all guilds
+        Generic showing all video channels in all guilds
     channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with stages
+        Mention or snowflake of a channel with vrs
         in any of the guilds Vyrtuous has access inside.
     guild_snowflake : int | str, optional
-        Snowflake of a guild where temporary channels are present.
+        Snowflake of a guild where video channels are present.
 
     Examples
     --------
-    >>> !stages "all"
-    [{emoji} Stages\n Guild1\n Guild2]
+    >>> !vrs "all"
+    [{emoji} Video Rooms\n Guild1\n Guild2]
 
-    >>> !stages 10000000000000500
-    [{emoji} Stages\n Guild1]
+    >>> !vrs 10000000000000500
+    [{emoji} Video Rooms\n Guild1]
 
-    >>> !stages <@10000000000000010>
-    [{emoji} Stages for Channel1]
+    >>> !vrs <@10000000000000010>
+    [{emoji} Video Rooms for Channel1]
 
-    >>> !stages 10000000000000010
-    [{emoji} Stages for Channel1]
+    >>> !vrs 10000000000000010
+    [{emoji} Video Rooms for Channel1]
     """
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
@@ -115,6 +118,8 @@ async def test_stages(bot, command: str, target, permission_role):
                 )
             )
             async with capture_command() as end_results:
-                command = await admin_commands.list_stages_text_command(ctx, target=t)
+                command = await admin_commands.list_video_channels_text_command(
+                    ctx, target=t
+                )
             for kind, content in end_results:
                 assert kind == "success"

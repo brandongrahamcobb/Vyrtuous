@@ -74,12 +74,14 @@ def build_dictionary(obj, me) -> dict[int, dict[str, dict[int, dict[str, list[st
     return dictionary
 
 
-async def build_pages(obj, context, is_at_home) -> str | list[discord.Embed]:
+async def build_pages(
+    guild_snowflake: int, obj, is_at_home
+) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    guild = bot.get_guild(context.guild.id)
+    guild = bot.get_guild(guild_snowflake)
     if guild is None:
         return "This command must be used in a server."
     obj_name = "All Servers"

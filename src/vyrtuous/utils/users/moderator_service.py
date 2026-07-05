@@ -183,28 +183,17 @@ async def survey(channel) -> list[discord.Embed]:
     return pages
 
 
-async def toggle_moderator(channel, member_snowflake: int) -> str:
+async def toggle_moderator(
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    moderator = await database_factory.select(
-        channel_snowflake=int(channel.id),
-        member_snowflake=int(member_snowflake),
-        singular=True,
-    )
-    if moderator:
-        await database_factory.delete(
-            channel_snowflake=int(channel.id),
-            member_snowflake=int(member_snowflake),
-        )
-        action = "revoked"
-    else:
-        moderator = MODEL(
-            channel_snowflake=int(channel.id),
-            guild_snowflake=int(channel.guild.id),
-            member_snowflake=int(member_snowflake),
-        )
-        await database_factory.create(moderator)
-        action = "granted"
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
     member = channel.guild.get_member(member_snowflake)
     if member:
         member_str = member.mention
@@ -212,10 +201,28 @@ async def toggle_moderator(channel, member_snowflake: int) -> str:
         simplified_member = bot.registry.get(MemberState).active.get(
             member_snowflake, None
         )
-        if simplified_member:
-            member_str = simplified_member[0]
-        else:
+        if simplified_member is None:
             raise commands.MemberNotFound(str(member_snowflake))
+        member_str = simplified_member[0]
+    moderator = await database_factory.select(
+        channel_snowflake=int(channel_snowflake),
+        member_snowflake=int(member_snowflake),
+        singular=True,
+    )
+    if moderator:
+        await database_factory.delete(
+            channel_snowflake=int(channel_snowflake),
+            member_snowflake=int(member_snowflake),
+        )
+        action = "revoked"
+    else:
+        moderator = MODEL(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+        )
+        await database_factory.create(moderator)
+        action = "granted"
     return (
         f"Moderator access for {member_str} has been " f"{action} in {channel.mention}."
     )

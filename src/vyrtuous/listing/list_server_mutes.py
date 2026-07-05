@@ -25,11 +25,11 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.server_mute import ServerMute
+from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
-MODEL = ServerMute
+MODEL = VoiceMute
 
 
 @dataclass
@@ -41,18 +41,19 @@ class ServerMuteDictionary:
 
 async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict[str, dict]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    target = "server"
     server_mutes = []
     dictionary: dict[int, dict[str, dict[int, dict[str, dict]]]] = {}
     if isinstance(obj, discord.Guild):
         server_mutes = await database_factory.select(
-            guild_snowflake=obj.id, singular=False
+            guild_snowflake=obj.id, target=target, singular=False
         )
     elif isinstance(obj, discord.Member):
         server_mutes = await database_factory.select(
-            member_snowflake=obj.id, singular=False
+            member_snowflake=obj.id, target=target, singular=False
         )
     else:
-        server_mutes = await database_factory.select(singular=False)
+        server_mutes = await database_factory.select(target=target, singular=False)
     if server_mutes:
         for server_mute in server_mutes:
             dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})

@@ -1,5 +1,5 @@
 """!/bin/python3
-test_vr.py The purpose of this program is to be the integration test for the vr command for Vyrtuous.
+test_stage.py The purpose of this program is to be the integration test for the stage command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -24,9 +24,12 @@ from unittest.mock import patch
 import pytest
 
 from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
@@ -35,32 +38,30 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel",
     [
-        ("Administrator", "!vr", "{channel_snowflake}"),
-        ("Administrator", "!vr", "{channel_snowflake}"),
+        ("Coordinator", "!automute", "{channel_snowflake}"),
+        ("Coordinator", "!automute", "{channel_snowflake}"),
     ],
 )
-async def test_vr(bot, command: str, channel, permission_role):
+async def test_automute(bot, command: str, channel, permission_role):
     """
-    Create or teardown a video channel by accessing
+    Create or teardown a stage by accessing
     the PostgresSQL database 'vyrtuous' in the table 'video_channels'.
 
     Parameters
     ----------
     channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with vr
+        Mention or snowflake of a channel with stage
         in any of the guilds Vyrtuous has access inside.
 
     Examples
     --------
-    >>> !vr <@10000000000000010>
-    [{emoji} Video Room has been created]
+    >>> !stage <@10000000000000010>
+    [{emoji} Stage Room has been created]
 
-    >>> !vr 10000000000000010
-    [{emoji} Video Rooms has been deleted]
+    >>> !stage 10000000000000010
+    [{emoji} Stage has been ended]
     """
-    c = channel.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
+    c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
     full = f"{command} {c}"
     if os.environ["TEST_MODE"].lower() == "integration":
         captured = await send_message(bot=bot, content=full)
@@ -81,29 +82,28 @@ async def test_vr(bot, command: str, channel, permission_role):
             message=msg,
             prefix="!",
         )
-        admin_commands = bot.get_cog("AdminTextCommands")
+        coord_commands = bot.get_cog("CoordinatorTextCommands")
         with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.administrator.administrator_service.administrator_predicator",
-                    return_value=True,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                    return_value=permission_role,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                    return_value=permission_role,
-                )
-            )
+            # stack.enter_context(
+            #     patch.object(
+            #         CoordinatorTextCommands,
+            #         "cog_check",
+            #         return_value=True,
+            #     )
+            # )
+            # stack.enter_context(
+            #     patch(
+            #         "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
+            #         return_value=permission_role,
+            #     )
+            # )
+            # stack.enter_context(
+            #     patch(
+            #         "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
+            #         return_value=permission_role,
+            #     )
+            # )
             async with capture_command() as end_results:
-                command = await admin_commands.toggle_video_channel_text_command(
-                    ctx, channel=c
-                )
+                command = await coord_commands.toggle_stage_text_command(ctx, channel=c)
             for kind, content in end_results:
                 assert kind == "success"

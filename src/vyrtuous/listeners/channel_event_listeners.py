@@ -27,13 +27,14 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.utils.channels import video_channel_service
+from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.moderation import (
     ban_service,
     flag_service,
     server_mute_service,
     voice_mute_service,
 )
+from vyrtuous.utils.users import moderator_service
 
 
 class ChannelEventListeners(commands.Cog):
@@ -48,25 +49,27 @@ class ChannelEventListeners(commands.Cog):
         after: discord.VoiceState,
     ) -> None:
         if member.bot:
-            return
+            return None
         self.__bot.registry.get(MemberState).active[member.id] = (
             member.display_name,
             datetime.now(timezone.utc),
         )
         if not after.channel:
-            return
+            return None
         if before.channel == after.channel:
             if before.mute == after.mute:
                 if before.self_mute == after.self_mute:
-                    return
-                return
+                    return None
+                return None
         await ban_service.is_banned_then_kick_and_reset_cooldown(
             channel=after.channel, member=member
         )
         if await server_mute_service.is_server_muted(
-            channel=after.channel, member=member
+            channel_snowflake=after.channel.id,
+            guild_snowflake=after.channel.guild.id,
+            member_snowflake=member.id,
         ):
-            return
+            return None
         if video_channel_service.is_active_video_channel(channel=after.channel):
             await video_channel_service.update_video_channel_tasks(
                 after=after, before=before, member=member
@@ -76,11 +79,6 @@ class ChannelEventListeners(commands.Cog):
             after.channel.guild.id,
             member.id,
         ) in self.__bot.registry.get(MemberState).invincible:
-            # embed = discord.Embed(
-            #     title=f"{member.display_name} is a hero!",
-            #     description=f"{member.display_name} cannot be muted.",
-            #     color=discord.Color.gold(),
-            # )
             await unvoice_mute_alias_service.unvoice_mute(
                 channel_snowflake=after.channel.id,
                 guild_snowflake=after.channel.guild.id,
@@ -98,44 +96,37 @@ class ChannelEventListeners(commands.Cog):
                 message_channel_snowflake=None,
                 target="user",
             )
-            return
-            # embed.set_thumbnail(url=member.display_avatar.url)
-            # return await after.channel.send(embed=embed)
-        # elif (
-        #     await automute_channel_service.is_active_automute_channel(
-        #         channel_snowflake=after.channel.id
-        #     )
-        #     and await moderator_service.resolve_highest_role(
-        #         channel_snowflake=after.channel.id,
-        #         member_snowflake=member.id,
-        #         guild_snowflake=after.channel.guild.id,
-        #     )
-        #     in "Everyone"
-        # ):
-        #     await voice_mute_alias_service.voice_mute(
-        #         channel_snowflake=after.channel.id,
-        #         duration_value="1h",
-        #         guild_snowflake=after.channel.guild.id,
-        #         member_snowflake=member.id,
-        #         target="room",
-        #     )
-        #     await voice_mute_alias_service.log_voice_mute(
-        #         author_snowflake=None,
-        #         channel_snowflake=after.channel.id,
-        #         display=True,
-        #         duration_value="1h",
-        #         guild_snowflake=after.channel.guild.id,
-        #         is_channel_scope=True,
-        #         member_snowflake=member.id,
-        #         message_snowflake=None,
-        #         message_channel_snowflake=None,
-        #         reason="Automute",
-        #         target="room",
-        #     )
-
+            return None
+        elif await automute_channel_service.is_active_automute_channel(
+            channel_snowflake=after.channel.id,
+            guild_snowflake=after.channel.guild.id,
+        ):
+            await voice_mute_alias_service.voice_mute(
+                channel_snowflake=after.channel.id,
+                duration_value="1h",
+                guild_snowflake=after.channel.guild.id,
+                member_snowflake=member.id,
+                reason="Right-click automute",
+                target="auto",
+            )
+            await voice_mute_alias_service.log_voice_mute(
+                author_snowflake=None,
+                channel_snowflake=after.channel.id,
+                display=True,
+                duration_value="1h",
+                guild_snowflake=after.channel.guild.id,
+                is_channel_scope=True,
+                member_snowflake=member.id,
+                message_snowflake=None,
+                message_channel_snowflake=None,
+                reason="Right-click automute",
+                target="auto",
+            )
         elif before.channel != after.channel:
             if await voice_mute_service.is_voice_muted(
-                channel=after.channel, member=member
+                channel_snowflake=after.channel.id,
+                guild_snowflake=after.channel.guild.id,
+                member_snowflake=member.id,
             ):
                 await voice_mute_alias_service.voice_mute(
                     channel_snowflake=after.channel.id,

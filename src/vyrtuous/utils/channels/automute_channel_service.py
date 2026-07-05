@@ -17,20 +17,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
-
 import discord
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.listing import list_service
 from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import voice_mute_service
-from vyrtuous.utils.users import moderator_service
 
 MODEL = AutoMute
 
@@ -51,111 +46,56 @@ MODEL = AutoMute
 #         embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
 #         await bot.get_channel(automute.channel_snowflake).send(embed=embed)
 
-# async def toggle_automute(channel_snowflake: int, guild_snowflake: int, context, duration_value):
-#     bot: DiscordBot = DiscordBot.get_instance()
-#     guild = bot.get_guild(guild_snowflake)
-#     if guild is None:
-#         raise commands.GuildNotFound(str(guild_snowflake))
-#     channel = guild.get_channel(channel_snowflake)
-#     if channel is None:
-#         raise commands.ChannelNotFound(str(channel_snowflake))
-#     database_factory = DatabaseFactory(MODEL)
-#     duration_builder = DurationBuilder()
-#     failed, pages, skipped, succeeded = [], [], [], []
-#     automute = await database_factory.select(
-#         channel_snowflake=channel_snowflake, singular=True
-#     )
-#     if automute:
-#         title = f"{emojis.get_random_emoji()} Stage Ended in {channel.mention}"
-#         await database_factory.delete(channel_snowflake=channel.id)
-#         for
-#         failed, succeeded = await voice_mute_service.off_automute(channel=channel)
-#         description_lines = [
-#             f"**Channel:** {channel.mention}",
-#             f"**Unmuted:** {len(succeeded)} users",
-#         ]
-#         if failed:
-#             description_lines.append(f"**Failed:** {len(failed)}")
-#         embed = discord.Embed(
-#             description="\n".join(description_lines),
-#             title=title,
-#             color=discord.Color.blurple(),
-#         )
-#         pages.append(embed)
-#     else:
-#         automute = MODEL(
-#             channel_snowflake=channel.id,
-#             guild_snowflake=channel.guild.id,
-#             expires_in=duration_builder.parse(value=duration_value).to_expires_in(),
-#         )
-#         await database_factory.create(automute)
-#         failed, skipped, succeeded = await voice_mute_service.on_stage(
-#             channel=channel,
-#             context=context,
-#             duration_value=duration_value,
-#         )
-#         description_lines = [
-#             f"**Channel:** {channel.mention}",
-#             f"**Expires:** {duration_builder.parse(value=duration_value).to_unix_ts()}",
-#             f"**Muted:** {len(succeeded)} users",
-#             f"**Skipped:** {len(skipped)}",
-#         ]
-#         if failed:
-#             description_lines.append(f"**Failed:** {len(failed)}")
-#         embed = discord.Embed(
-#             description="\n".join(description_lines),
-#             title=f"{emojis.get_random_emoji()} Stage Created in {channel.name}",
-#             color=discord.Color.blurple(),
-#         )
-#         pages.append(embed)
-#     return pages
-#
-#
-# async def toggle_automute_mute(channel, context, member):
-#     database_factory = DatabaseFactory(MODEL)
-#     await moderator_service.has_equal_or_lower_role(
-#         **context.to_dict(),
-#         target_member_snowflake=member.id,
-#     )
-#     automute = await database_factory.select(
-#         channel_snowflake=channel.id,
-#         guild_snowflake=channel.guild.id,
-#         singular=True,
-#     )
-#     if automute:
-#         await member.edit(mute=not member.voice.mute)
-#         return (
-#             f"Successfully toggled the mute for {member.mention} in {channel.mention}."
-#         )
+
+async def toggle_automute(
+    author_snowflake: int,
+    channel_snowflake: int,
+    guild_snowflake: int,
+    *,
+    duration_value: str = "1h",
+):
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    duration_builder = DurationBuilder()
+    pages: list[discord.Embed] = []
+    automute = await database_factory.select(
+        channel_snowflake=channel_snowflake, singular=True
+    )
+    if automute:
+        await database_factory.delete(
+            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+        )
+        embed = await voice_mute_service.channel_unmute(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            target="auto",
+        )
+        pages.extend(embed)
+    else:
+        automute = MODEL(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            expires_in=duration_builder.parse(value=duration_value).to_expires_in(),
+        )
+        await database_factory.create(automute)
+        embed = await voice_mute_service.channel_mute(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            duration_value=duration_value,
+            guild_snowflake=guild_snowflake,
+            reason=f"Automute enabled.",
+            target="auto",
+        )
+        pages.extend(embed)
+    return pages
 
 
-# async def enforce(after, member):
-#     bot: DiscordBot = DiscordBot.get_instance()
-#     database_factory = DatabaseFactory(MODEL)
-#     should_be_muted = False
-#     expires_in = None
-#     automute = await database_factory.select(
-#         channel_snowlfake=after.channel, singular=True
-#     )
-#     if automute:
-#         await send_automute_ask_to_speak_message(
-#             join_log=bot.join_log, member=member, automute=automute
-#         )
-#         highest_role = await moderator_service.resolve_highest_role(
-#             channel_snowflake=after.channel.id,
-#             guild_snowflake=after.channel.guild.id,
-#             member_snowflake=member.id,
-#         )
-#         if highest_role == "Everyone":
-#             should_be_muted = True
-#             expires_in = automute.expires_in
-#     return should_be_muted, expires_in
-
-
-async def is_active_automute_channel(channel):
+async def is_active_automute_channel(channel_snowflake: int, guild_snowflake: int):
     database_factory = DatabaseFactory(MODEL)
     automute_channel = await database_factory.select(
-        channel_snowflake=channel.id, singular=True
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        singular=True,
     )
     if automute_channel:
         return True

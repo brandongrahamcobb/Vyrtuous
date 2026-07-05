@@ -62,7 +62,10 @@ async def clean_expired_automutes() -> int:
             if not isinstance(channel, discord.VoiceChannel):
                 continue
             automutes = await voice_mute_database_factory.select(
-                channel_snowflake=channel_snowflake, target="auto", singular=False
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                target="auto",
+                singular=False,
             )
             for automute in automutes:
                 member_snowflake = automute.member_snowflake
@@ -72,6 +75,7 @@ async def clean_expired_automutes() -> int:
                 else:
                     await voice_mute_database_factory.delete(
                         channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
                         member_snowflake=member_snowflake,
                         target="auto",
                     )

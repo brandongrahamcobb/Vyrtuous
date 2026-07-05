@@ -23,7 +23,6 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.channels import automute_channel_service
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import (
     moderator_service,
@@ -76,7 +75,8 @@ class CoordinatorTextCommands(commands.Cog):
             guild_snowflake=channel.guild.id,
         )
         msg = await moderator_service.toggle_moderator(
-            channel=channel,
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
         )
         return await tick.end(success=msg)
@@ -137,11 +137,6 @@ class CoordinatorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be executed in a server.")
-        context = SnowflakeContext(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-        )
         resolved_channel = channel or ctx.channel
         await moderator_service.check_minimum_role(
             channel_snowflake=resolved_channel.id,
@@ -150,7 +145,10 @@ class CoordinatorTextCommands(commands.Cog):
             lowest_role="Coordinator",
         )
         pages = await automute_channel_service.toggle_automute(
-            channel=resolved_channel, context=context, duration_value=duration
+            author_snowflake=ctx.author.id,
+            channel_snowflake=resolved_channel.id,
+            guild_snowflake=ctx.guild.id,
+            duration_value=duration,
         )
         return await tick.end(success=pages)
 

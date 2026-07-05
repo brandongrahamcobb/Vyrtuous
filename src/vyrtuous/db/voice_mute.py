@@ -25,9 +25,9 @@ from datetime import datetime, timezone
 class VoiceMute:
     __tablename__ = "active_voice_mutes"
     identifier = "vmute"
-    channel_snowflake: int
     guild_snowflake: int
     member_snowflake: int
+    channel_snowflake: int | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_in: datetime | None = None
     reason: str = "No reason provided."
