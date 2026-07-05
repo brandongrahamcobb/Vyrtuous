@@ -84,9 +84,9 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
-    if not isinstance(obj, int):
+    if obj is not None and not isinstance(obj, (int, str)):
         obj_name = obj.name
-    else:
+    elif isinstance(obj, int):
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
         if simplified_member:
             obj_name = simplified_member[0]

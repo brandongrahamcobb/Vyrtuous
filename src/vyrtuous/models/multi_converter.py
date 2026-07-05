@@ -57,7 +57,7 @@ class MultiConverter(commands.Converter):
     ]:
         bot: DiscordBot = DiscordBot.get_instance()
         if argument and str(argument).lower() == "all":
-            return None
+            return argument
         try:
             uuid = UUID(argument)
             return uuid

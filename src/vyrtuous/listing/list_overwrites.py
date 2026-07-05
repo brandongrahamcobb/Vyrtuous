@@ -8,7 +8,7 @@ def build_embed(obj) -> discord.Embed:
     bot: DiscordBot = DiscordBot.get_instance()
     member_count, role_count, total_count = 0, 0, 0
     obj_name = "All Servers"
-    if not isinstance(obj, int):
+    if obj is not None and not isinstance(obj, (int, str)):
         obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Overwrites for {obj_name}"
     if obj == "all":

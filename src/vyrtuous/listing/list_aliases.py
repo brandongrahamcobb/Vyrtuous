@@ -82,7 +82,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     pages: list[discord.Embed] = []
 
     obj_name = "All Servers"
-    if obj and not isinstance(obj, str):
+    if obj is not None and not isinstance(obj, (int, str)):
         obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Command Aliases in {obj_name}"
 

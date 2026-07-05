@@ -85,7 +85,7 @@ async def build_pages(
     if guild is None:
         return "This command must be used in a server."
     obj_name = "All Servers"
-    if obj:
+    if obj is not None and not isinstance(obj, (int, str)):
         obj_name = obj.name
     if bot.user is None:
         return "The bot must be in a server."

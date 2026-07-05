@@ -576,5 +576,8 @@ async def clear(
                                 target=target,
                             )
     else:
-        msg = f"Invalid target ({obj})."
+        if obj is None:
+            msg = f"Clear command cancelled."
+        else:
+            msg = f"Invalid target ({obj})."
     return msg

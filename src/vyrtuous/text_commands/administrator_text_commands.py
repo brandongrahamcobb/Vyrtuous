@@ -109,7 +109,7 @@ class AdministratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, discord.Member
+            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
@@ -128,10 +128,7 @@ class AdministratorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        if target == "all":
-            obj = None
-        else:
-            obj = target
+        obj = target
         view = VerifyView(
             author_snowflake=ctx.author.id,
             category=str(category),

@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
+from discord.ext import commands
 
 
 class VerifyView(discord.ui.View):
@@ -58,7 +59,9 @@ class VerifyView(discord.ui.View):
             case "voice_channel":
                 self.__action = "Deletes all video channels."
             case _:
-                raise ValueError("Invalid action type specified for confirmation view.")
+                raise commands.CheckFailure(
+                    f"Invalid category specified for clear command: {category}."
+                )
         self.__author_snowflake = author_snowflake
         if isinstance(obj, discord.Guild):
             self._guild_snowflake = obj.id
