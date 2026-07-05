@@ -68,11 +68,11 @@ class GenericEventListeners(commands.Cog):
             and self.__bot.user is not None
             and message.author.id == self.__bot.user.id
         ):
-            return
+            return None
         if not isinstance(message.channel, discord.abc.GuildChannel):
-            return
+            return None
         if not isinstance(message.author, discord.Member):
-            return
+            return None
         await ban_service.is_banned_then_kick_and_reset_cooldown(
             channel=message.channel, member=message.author
         )
@@ -80,7 +80,7 @@ class GenericEventListeners(commands.Cog):
             channel=message.channel, member=message.author
         )
         if not message.content.startswith(self.__bot.config["discord_command_prefix"]):
-            return
+            return None
 
         tick = Tick(bot=self.__bot, message=message)
         try:
@@ -90,15 +90,15 @@ class GenericEventListeners(commands.Cog):
             )
             try:
                 if not await alias_ctx.setup():
-                    return
+                    return None
             except NotAlias:
-                return
+                return None
             invincible_members_in_guild = self.__bot.registry.get(
                 MemberState
             ).invincible.get(message.guild.id)
             if invincible_members_in_guild is not None:
                 if alias_ctx.member_snowflake in invincible_members_in_guild:
-                    return
+                    return None
             await moderator_service.has_equal_or_lower_role(
                 channel_snowflake=alias_ctx.channel_snowflake,
                 guild_snowflake=message.guild.id,
@@ -126,10 +126,6 @@ class GenericEventListeners(commands.Cog):
                         alias_ctx=alias_ctx, message=message
                     )
                     return await tick.end(success=embed)
-                # case "vegan":
-                #     await vegan_service.enforce_or_undo(
-                #         alias_ctx=alias_ctx, message=message
-                #     )
         except (
             commands.BadArgument,
             commands.CheckFailure,
@@ -143,6 +139,7 @@ class GenericEventListeners(commands.Cog):
 
                 traceback.print_exc()
                 return await tick.end(error=str(e))
+        return None
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error) -> discord.Message | None:
@@ -156,12 +153,14 @@ class GenericEventListeners(commands.Cog):
         elif isinstance(error, commands.MissingRequiredArgument):
             missing = error.param.name
             return await tick.end(error=f"Missing required argument: `{missing}`")
+        return None
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error) -> discord.Message | None:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if isinstance(error, app_commands.CheckFailure):
             return await tick.end(error=str(error))
+        return None
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:

@@ -39,7 +39,7 @@ async def enforce_or_undo(
     if member is None:
         raise commands.MemberNotFound(str(alias_ctx.member_snowflake))
     if role in member.roles:
-        ctx = unrole_alias_service.UnroleMessageContext(
+        unrole_ctx = unrole_alias_service.UnroleMessageContext(
             author_snowflake=message.author.id,
             guild_snowflake=alias_ctx.guild_snowflake,
             member_snowflake=alias_ctx.member_snowflake,
@@ -47,10 +47,12 @@ async def enforce_or_undo(
             message_channel_snowflake=message.channel.id,
             role_snowflake=alias_ctx.role_snowflake,
         )
-        embed = await unrole_alias_service.unrole_by_message(ctx=ctx, display=True)
+        embed = await unrole_alias_service.unrole_by_message(
+            ctx=unrole_ctx, display=True
+        )
         return embed
     else:
-        ctx = role_alias_service.EnroleMessageContext(
+        enrole_ctx = role_alias_service.EnroleMessageContext(
             author_snowflake=message.author.id,
             guild_snowflake=alias_ctx.guild_snowflake,
             member_snowflake=alias_ctx.member_snowflake,
@@ -58,7 +60,7 @@ async def enforce_or_undo(
             message_channel_snowflake=message.channel.id,
             role_snowflake=alias_ctx.role_snowflake,
         )
-        embed = await role_alias_service.enrole_by_message(ctx=ctx, display=True)
+        embed = await role_alias_service.enrole_by_message(ctx=enrole_ctx, display=True)
         return embed
 
 

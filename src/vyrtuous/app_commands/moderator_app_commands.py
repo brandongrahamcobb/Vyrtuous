@@ -38,10 +38,11 @@ from vyrtuous.utils.users import (
     moderator_service,
     sysadmin_service,
 )
-from vyrtuous.view.data_view import DataView
-from vyrtuous.view.infraction_view import InfractionView
-from vyrtuous.view.modify_infraction_view import ModifyInfractionView
-from vyrtuous.view.view_context import ViewContext
+
+# from vyrtuous.view.data_view import DataView
+# from vyrtuous.view.infraction_view import InfractionView
+# from vyrtuous.view.modify_infraction_view import ModifyInfractionView
+# from vyrtuous.view.view_context import ViewContext
 
 
 class ModeratorAppCommands(commands.Cog):
@@ -57,20 +58,17 @@ class ModeratorAppCommands(commands.Cog):
         self.__duration_builder = DurationBuilder()
 
     async def interaction_check(self, interaction: discord.Interaction):
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-            coordinator_service.is_coordinator_at_all_wrapper,
-            moderator_service.is_moderator_at_all_wrapper,
-        ):
-            try:
-                if await verify(interaction):
-                    return True
-            except app_commands.CheckFailure:
-                continue
-        raise NotAppModerator
+        if interaction.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
+        if interaction.channel is None:
+            raise commands.CheckFailure("This command must be used in a valid channel.")
+        await moderator_service.check_minimum_role(
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            member_snowflake=interaction.user.id,
+            lowest_role=self.PERMISSION_LEVEL,
+        )
+        return True
 
     # @app_commands.command(name="data", description="Create a chart.")
     # async def create_data_app_command(self, interaction: discord.Interaction):

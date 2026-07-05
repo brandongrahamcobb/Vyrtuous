@@ -93,11 +93,21 @@ class DataBuilder:
         self.__data = replace(self.__data, reason=reason)
         return self
 
-    async def set_highest_roles(self, author_snowflake: int, member_snowflake: int):
-        executor_highest_role = await moderator_service.resolve_highest_role_at_all(
+    async def set_highest_roles(
+        self,
+        author_snowflake: int,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
+    ):
+        executor_highest_role = await moderator_service.resolve_highest_role(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
             member_snowflake=int(author_snowflake),
         )
-        target_highest_role = await moderator_service.resolve_highest_role_at_all(
+        target_highest_role = await moderator_service.resolve_highest_role(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
             member_snowflake=int(member_snowflake),
         )
         self.__data = replace(self.__data, executor_highest_role=executor_highest_role)
@@ -105,7 +115,8 @@ class DataBuilder:
         return self
 
     def set_target(self, *, target: str | None = "user") -> Self:
-        self.__data = replace(self.__data, target=target)
+        if target:
+            self.__data = replace(self.__data, target=target)
         return self
 
     async def create(self):
@@ -169,9 +180,12 @@ async def save_data(
         data.set_snowflakes(target_snowflake=member_snowflake)
     else:
         data.set_snowflakes(target_snowflake=member_snowflake)
-    if author_snowflake:
+    if author_snowflake and channel_snowflake:
         await data.set_highest_roles(
-            author_snowflake=author_snowflake, member_snowflake=member_snowflake
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
         )
         data.set_snowflakes(author_snowflake=int(author_snowflake))
     if role_snowflake:

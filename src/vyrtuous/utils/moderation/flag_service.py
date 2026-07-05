@@ -41,7 +41,20 @@ async def enforce_or_undo(
         singular=True,
     )
     if obj:
-        ctx = flag_alias_service.FlagMessageContext(
+        unflag_ctx = unflag_alias_service.UnflagMessageContext(
+            author_snowflake=message.author.id,
+            channel_snowflake=alias_ctx.channel_snowflake,
+            guild_snowflake=alias_ctx.guild_snowflake,
+            member_snowflake=alias_ctx.member_snowflake,
+            message_snowflake=message.id,
+            message_channel_snowflake=message.channel.id,
+        )
+        embed = await unflag_alias_service.unflag_by_message(
+            ctx=unflag_ctx, display=True
+        )
+        return embed
+    else:
+        flag_ctx = flag_alias_service.FlagMessageContext(
             author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
             guild_snowflake=alias_ctx.guild_snowflake,
@@ -50,18 +63,7 @@ async def enforce_or_undo(
             message_channel_snowflake=message.channel.id,
             reason=alias_ctx.reason,
         )
-        embed = await flag_alias_service.flag_by_message(ctx=ctx, display=True)
-        return embed
-    else:
-        ctx = unflag_alias_service.UnflagMessageContext(
-            author_snowflake=message.author.id,
-            channel_snowflake=alias_ctx.channel_snowflake,
-            guild_snowflake=alias_ctx.guild_snowflake,
-            member_snowflake=alias_ctx.member_snowflake,
-            message_snowflake=message.id,
-            message_channel_snowflake=message.channel.id,
-        )
-        embed = await unflag_alias_service.unflag_by_message(ctx=ctx, display=True)
+        embed = await flag_alias_service.flag_by_message(ctx=flag_ctx, display=True)
         return embed
 
 

@@ -28,16 +28,9 @@ from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias import Alias
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.moderator import NotModerator
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import (
-    administrator_service,
-    coordinator_service,
-    developer_service,
-    guild_owner_service,
     moderator_service,
-    sysadmin_service,
 )
 
 
@@ -67,25 +60,13 @@ class HelpTextCommand(commands.Cog):
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-            coordinator_service.is_coordinator_at_all_wrapper,
-            moderator_service.is_moderator_at_all_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotModerator
+        return True
 
     async def get_channel_alias_help(
         self, channel_snowflake: int, guild_snowflake: int
@@ -164,7 +145,9 @@ class HelpTextCommand(commands.Cog):
     async def group_commands_by_permission(
         self, commands_list
     ) -> dict[str, list[commands.Command]]:
-        permission_groups = {level: [] for level in moderator_service.PERMISSION_TYPES}
+        permission_groups: dict[str, list[commands.Command]] = {
+            level: [] for level in moderator_service.PERMISSION_TYPES
+        }
         for command in commands_list:
             perm_level = await self.get_command_permission_level(command)
             if perm_level in permission_groups:
@@ -188,7 +171,8 @@ class HelpTextCommand(commands.Cog):
         return (None, None)
 
     def split_command_list(self, commands_list, max_length=1024) -> list[str]:
-        current_chunk, chunks = [], []
+        current_chunk: list[str] = []
+        chunks: list[str] = []
         current_length = 0
         for cmd in commands_list:
             cmd_line = f"**{self.__bot.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
@@ -240,6 +224,16 @@ class HelpTextCommand(commands.Cog):
         self, ctx, *, command_name: str | None = None
     ) -> discord.Message | None:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        guild = ctx.guild
+        if guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        channel = ctx.channel
+        if not isinstance(
+            channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+        ):
+            return await tick.end(
+                warning="This command must be used in a valid channel."
+            )
         database_factory: DatabaseFactory = DatabaseFactory(Alias)
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
@@ -251,7 +245,7 @@ class HelpTextCommand(commands.Cog):
             if kind == "command":
                 cmd = obj
                 if not isinstance(cmd, commands.Command):
-                    return
+                    return None
                 embed = discord.Embed(
                     title=f"{self.__bot.config['discord_command_prefix']}{cmd.name}",
                     description=cmd.help or "No description provided.",
@@ -294,7 +288,7 @@ class HelpTextCommand(commands.Cog):
             elif kind == "alias":
                 alias = obj
                 if not isinstance(alias, Alias):
-                    return
+                    return None
                 help_lines = alias_service.CATEGORY_TO_HELP.get(alias.category, None)
                 if not help_lines:
                     return await tick.end(
@@ -314,7 +308,9 @@ class HelpTextCommand(commands.Cog):
         all = False
         if command_name and command_name == "all":
             all = True
-        user_highest = await moderator_service.resolve_highest_role_at_all(
+        user_highest = await moderator_service.resolve_highest_role(
+            channel_snowflake=channel.id,
+            guild_snowflake=guild.id,
             member_snowflake=ctx.author.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(

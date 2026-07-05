@@ -49,18 +49,18 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
     member = guild.get_member(member_snowflake)
     if not member:
         raise commands.MemberNotFound(str(member_snowflake))
-    kwargs = {
-        "guild_snowflake": int(guild_snowflake),
-        "member_snowflake": member_snowflake,
-    }
     for model in INFRACTION_MODELS:
         database_factory: DatabaseFactory = DatabaseFactory(model)
-        objects = await database_factory.select(singular=False, **kwargs)
+        objects = await database_factory.select(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            singular=False,
+        )
         if objects:
-            match model.identifier:
-                case "ban":
-                    for ban in objects:
-                        channel = guild.get_channel(ban.channel_snowflake)
+            for obj in objects:
+                match obj.identifier:
+                    case "ban":
+                        channel = guild.get_channel(obj.channel_snowflake)
                         if channel:
                             try:
                                 await channel.set_permissions(member, overwrite=None)
@@ -68,9 +68,8 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
                                 bot.logger.warning(
                                     f"Unable to unban {member.name} ({member.id}) in {channel.name} ({channel.id})."
                                 )
-                case "tmute":
-                    for text_mute in objects:
-                        channel = guild.get_channel(text_mute.channel_snowflake)
+                    case "tmute":
+                        channel = guild.get_channel(obj.channel_snowflake)
                         if channel:
                             try:
                                 await channel.set_permissions(
@@ -80,9 +79,8 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
                                 bot.logger.warning(
                                     f"Unable to untmute {member.name} ({member.id}) in {channel.name} ({channel.id})."
                                 )
-                case "vmute":
-                    for voice_mute in objects:
-                        channel = guild.get_channel(voice_mute.channel_snowflake)
+                    case "vmute":
+                        channel = guild.get_channel(obj.channel_snowflake)
                         if channel and member.voice and member.voice.mute:
                             try:
                                 await member.edit(mute=False)
@@ -90,7 +88,9 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
                                 bot.logger.warning(
                                     f"Unable to unmute {member.name} ({member.id}) in {channel.name} ({channel.id})."
                                 )
-            await database_factory.delete(**kwargs)
+            await database_factory.delete(
+                guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            )
 
 
 async def add_invincible_member(guild_snowflake: int, member_snowflake: int) -> None:

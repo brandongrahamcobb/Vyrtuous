@@ -44,7 +44,7 @@ async def enforce_or_undo(
         singular=True,
     )
     if ban:
-        ctx = unban_alias_service.UnbanMessageContext(
+        unban_ctx = unban_alias_service.UnbanMessageContext(
             author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
             guild_snowflake=alias_ctx.guild_snowflake,
@@ -52,10 +52,10 @@ async def enforce_or_undo(
             message_channel_snowflake=message.channel.id,
             message_snowflake=message.id,
         )
-        embed = await unban_alias_service.unban_by_message(ctx=ctx, display=True)
+        embed = await unban_alias_service.unban_by_message(ctx=unban_ctx, display=True)
         return embed
     else:
-        ctx = ban_alias_service.BanMessageContext(
+        ban_ctx = ban_alias_service.BanMessageContext(
             author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
             duration_value=alias_ctx.duration_value,
@@ -66,7 +66,7 @@ async def enforce_or_undo(
             reason=alias_ctx.reason,
         )
         embed = await ban_alias_service.ban_by_message(
-            ctx=ctx,
+            ctx=ban_ctx,
             display=True,
         )
         return embed

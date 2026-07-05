@@ -23,16 +23,12 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.guild_owner import NotGuildOwner
 from vyrtuous.listing import list_developers
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import (
     administrator_role_service,
-    developer_service,
-    guild_owner_service,
-    sysadmin_service,
+    moderator_service,
 )
 
 
@@ -46,22 +42,13 @@ class GuildOwnerTextCommands(commands.Cog):
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotGuildOwner
+        return True
 
     @commands.command(name="admin", help="Toggle administrator role.")
     async def toggle_administrator_by_role_text_command(

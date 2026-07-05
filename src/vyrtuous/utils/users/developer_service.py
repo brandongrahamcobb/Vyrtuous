@@ -40,10 +40,6 @@ async def is_developer(member_snowflake: int) -> bool:
     return True
 
 
-async def is_developer_wrapper(context) -> bool:
-    return await is_developer(member_snowflake=int(context.member_snowflake))
-
-
 async def report_issue(author, message, reference) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)

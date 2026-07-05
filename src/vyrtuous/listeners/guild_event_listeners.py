@@ -21,6 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.utils.users import administrator_role_service, administrator_service
 
 
@@ -32,6 +33,7 @@ class GuildEventListeners(commands.Cog):
     async def on_member_update(
         self, before: discord.Member, after: discord.Member
     ) -> None:
+        bot: DiscordBot = DiscordBot.get_instance()
         if before.roles == after.roles:
             return
         guild_snowflake = before.guild.id
@@ -51,6 +53,22 @@ class GuildEventListeners(commands.Cog):
                         role_snowflake=int(added_role),
                     )
                     self.__bot.logger.info(f"Added roles: {', '.join(added_roles)}")
+            if bot.registry.get(MemberState).invincible.get(after.id, None):
+                try:
+                    roles = [
+                        role
+                        for role_snowflake in added_roles
+                        if (role := after.guild.get_role(int(role_snowflake)))
+                        is not None
+                    ]
+                    await after.remove_roles(
+                        *roles, reason="Hero restricts role addition"
+                    )
+                except discord.HTTPException:
+                    bot.logger.info(
+                        f"Unable to remove roles added to hero {after.display_name}."
+                    )
+
         elif removed_roles:
             for removed_role in removed_roles:
                 await administrator_service.removed_role(
@@ -58,8 +76,20 @@ class GuildEventListeners(commands.Cog):
                     member_snowflake=before.id,
                     role_snowflake=int(removed_role),
                 )
-
                 self.__bot.logger.info(f"Removed roles: {', '.join(removed_roles)}")
+            if bot.registry.get(MemberState).invincible.get(after.id, None):
+                try:
+                    roles = [
+                        role
+                        for role_snowflake in removed_roles
+                        if (role := after.guild.get_role(int(role_snowflake)))
+                        is not None
+                    ]
+                    await after.add_roles(*roles, reason="Hero restricts role removal")
+                except discord.HTTPException:
+                    bot.logger.info(
+                        f"Unable to add roles removed from hero {after.display_name}."
+                    )
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:

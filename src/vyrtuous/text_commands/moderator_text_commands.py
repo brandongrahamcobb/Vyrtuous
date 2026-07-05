@@ -24,7 +24,6 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.db.moderator import NotModerator
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import (
     list_aliases,
@@ -36,7 +35,6 @@ from vyrtuous.listing import (
     list_voice_mutes,
 )
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -46,12 +44,7 @@ from vyrtuous.utils.moderation import (
 )
 
 from vyrtuous.utils.users import (
-    administrator_service,
-    coordinator_service,
-    developer_service,
-    guild_owner_service,
     moderator_service,
-    sysadmin_service,
 )
 
 
@@ -65,25 +58,13 @@ class ModeratorTextCommands(commands.Cog):
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-            coordinator_service.is_coordinator_at_all_wrapper,
-            moderator_service.is_moderator_at_all_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotModerator
+        return True
 
     @commands.command(name="bans", help="List bans.")
     async def list_bans_text_command(
@@ -254,8 +235,6 @@ class ModeratorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        if ctx.channel.guild is None:
-            return await tick.end(warning="This command must target a server channel.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -267,18 +246,26 @@ class ModeratorTextCommands(commands.Cog):
             display_name = str(member.mention)
         else:
             member_snowflake = int(member)
-            display_name = self.__bot.registry.get(MemberState).active.get(
+            simplified_member = self.__bot.registry.get(MemberState).active.get(
                 member_snowflake, None
             )
+            if simplified_member:
+                display_name = simplified_member[0]
+            else:
+                raise commands.MemberNotFound(str(member))
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(member_snowflake),
             member_snowflake=ctx.author.id,
             channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.channel.guild.id,
+            guild_snowflake=ctx.guild.id,
         )
         target = channel or ctx.channel
+        if not isinstance(
+            target, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+        ):
+            return await tick.end(warning="This command must target a valid channel.")
         count = int(0)
-        async for msg in ctx.channel.history():
+        async for msg in target.history():
             if amount == count:
                 break
             if msg.author.id == member_snowflake:
@@ -299,7 +286,7 @@ class ModeratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         pages: list[discord.Embed] = []
-        obj = member or int(ctx.member)
+        obj = member
         is_at_home = at_home(source=ctx)
         services = []
         services.append(ban_service)

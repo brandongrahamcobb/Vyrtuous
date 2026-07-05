@@ -21,21 +21,14 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.coordinator import NotCoordinator
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_bans
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import ban_service
 from vyrtuous.utils.users import (
-    administrator_service,
-    coordinator_service,
-    developer_service,
-    guild_owner_service,
     moderator_service,
-    sysadmin_service,
 )
 
 
@@ -48,24 +41,13 @@ class HiddenCoordinatorTextCommands(commands.Cog):
     async def cog_check(self, ctx):
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-            coordinator_service.is_coordinator_at_all_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotCoordinator
+        return True
 
     @commands.command(name="blacklist", help="Blacklist overwrite cleanup.")
     @skip_text_command_help_discovery()
@@ -98,9 +80,13 @@ class HiddenCoordinatorTextCommands(commands.Cog):
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
         )
-        channel = channel or ctx.channel
+        target = channel or ctx.channel
+        if not isinstance(
+            target, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+        ):
+            return await tick.end(warning="This command must target a valid channel.")
         msg = await ban_service.toggle_blacklist(
-            channel=channel,
+            channel=target,
             member_snowflake=member.id,
         )
         return await tick.end(success=msg)

@@ -28,43 +28,28 @@ MODEL = Coordinator
 
 
 async def is_coordinator(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    guild_snowflake: int, member_snowflake: int, *, channel_snowflake: int | None
 ) -> bool:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    coordinator = await database_factory.select(
-        channel_snowflake=int(channel_snowflake),
-        guild_snowflake=int(guild_snowflake),
-        member_snowflake=int(member_snowflake),
-        singular=True,
-    )
-    if not coordinator:
-        raise NotCoordinator
-    return True
-
-
-async def is_coordinator_at_all(
-    member_snowflake: int,
-) -> bool:
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    coordinator = await database_factory.select(
-        member_snowflake=int(member_snowflake),
-        singular=True,
-    )
-    if not coordinator:
-        raise NotCoordinator
-    return True
-
-
-async def is_coordinator_at_all_wrapper(context) -> bool:
-    return await is_coordinator_at_all(member_snowflake=context.member_snowflake)
-
-
-async def is_coordinator_wrapper(context) -> bool:
-    return await is_coordinator(
-        channel_snowflake=int(context.channel_snowflake),
-        guild_snowflake=int(context.guild_snowflake),
-        member_snowflake=int(context.member_snowflake),
-    )
+    if channel_snowflake is None:
+        coordinator = await database_factory.select(
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            singular=True,
+        )
+        if not coordinator:
+            raise NotCoordinator
+        return True
+    else:
+        coordinator = await database_factory.select(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            singular=True,
+        )
+        if not coordinator:
+            raise NotCoordinator
+        return True
 
 
 async def toggle_coordinator(channel, member_snowflake) -> str:

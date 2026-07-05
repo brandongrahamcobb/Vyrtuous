@@ -179,7 +179,7 @@ class ChannelEventListeners(commands.Cog):
             await flag_service.warn(channel=after.channel, member=member)
         elif before.channel == after.channel:
             if before.mute and not after.mute:
-                database_factory = DatabaseFactory(VoiceMute)
+                database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
                 await database_factory.delete(
                     channel_snowflake=after.channel.id,
                     guild_snowflake=after.channel.guild.id,

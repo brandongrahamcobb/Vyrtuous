@@ -21,12 +21,10 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.sysadmin import NotSysadmin
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.upload import upload_service
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import developer_service, sysadmin_service
+from vyrtuous.utils.users import developer_service, moderator_service
 
 
 class SysadminTextCommands(commands.Cog):
@@ -39,14 +37,13 @@ class SysadminTextCommands(commands.Cog):
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        if await sysadmin_service.is_sysadmin_wrapper(context=context):
-            return True
-        raise NotSysadmin
+        return True
 
     @commands.command(name="assign", help="Assign developer.")
     @skip_text_command_help_discovery()

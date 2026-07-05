@@ -46,7 +46,7 @@ async def send_log(
     reason: str = "No reason provided",
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     embed = StreamEmbed(color=None, description=None, title=None, url=None)
     embed.set_title(identifier=identifier).set_action(
         duration_value=duration_value
@@ -55,30 +55,34 @@ async def send_log(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
-    if author_snowflake:
-        executor_role = await moderator_service.resolve_highest_role_at_all(
-            member_snowflake=int(author_snowflake),
-        )
-        embed.set_executor(
-            author_snowflake=author_snowflake,
-            guild_snowflake=guild_snowflake,
-            highest_role=executor_role,
-        )
-        author = guild.get_member(author_snowflake)
-        if author:
-            embed.set_tn(url=author.display_avatar.url)
-    else:
-        executor_role = "Unknown"
-    target_role = await moderator_service.resolve_highest_role_at_all(
-        member_snowflake=int(member_snowflake),
-    )
-    embed.set_target(
-        guild_snowflake=guild_snowflake,
-        target=target,
-        target_snowflake=member_snowflake,
-        highest_role=target_role,
-    )
     if channel_snowflake:
+        if author_snowflake:
+            executor_role = await moderator_service.resolve_highest_role(
+                channel_snowflake=int(channel_snowflake),
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(author_snowflake),
+            )
+            embed.set_executor(
+                author_snowflake=author_snowflake,
+                guild_snowflake=guild_snowflake,
+                highest_role=executor_role,
+            )
+            author = guild.get_member(author_snowflake)
+            if author:
+                embed.set_tn(url=author.display_avatar.url)
+        else:
+            executor_role = "Unknown"
+        target_role = await moderator_service.resolve_highest_role(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+        )
+        embed.set_target(
+            guild_snowflake=guild_snowflake,
+            target=target,
+            target_snowflake=member_snowflake,
+            highest_role=target_role,
+        )
         embed.set_description(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
@@ -122,7 +126,7 @@ async def toggle_stream(
     source,
     target_channel,
 ) -> discord.Embed:
-    database_factory = DatabaseFactory(MODEL)
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     if source:
         stream = await database_factory.select(
             guild_snowflake=target_channel.guild.id,

@@ -23,11 +23,9 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.developer import NotDeveloper
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.statistics import system_monitoring_service
-from vyrtuous.utils.users import developer_service, sysadmin_service
+from vyrtuous.utils.users import moderator_service
 
 
 class DeveloperTextCommands(commands.Cog):
@@ -40,21 +38,13 @@ class DeveloperTextCommands(commands.Cog):
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotDeveloper
+        return True
 
     @commands.command(name="ping", help="Ping me!")
     async def ping_text_command(self, ctx: commands.Context) -> discord.Message:

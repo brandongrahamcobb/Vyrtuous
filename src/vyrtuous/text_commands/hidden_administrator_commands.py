@@ -23,7 +23,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.administrator import NotAdministrator
 from vyrtuous.inc.helpers import PATH_LOG, at_home
 from vyrtuous.listing import (
     list_administrator_roles,
@@ -39,10 +38,7 @@ from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.tracking import stream_service
 from vyrtuous.utils.users import (
-    administrator_service,
-    developer_service,
-    guild_owner_service,
-    sysadmin_service,
+    moderator_service,
 )
 
 
@@ -56,23 +52,13 @@ class HiddenAdministratorTextCommands(commands.Cog):
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotAdministrator
+        return True
 
     @commands.command(name="aroles", help="Administrator roles.")
     @skip_text_command_help_discovery()

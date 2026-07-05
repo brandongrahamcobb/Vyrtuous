@@ -46,7 +46,7 @@ async def enforce_or_undo(
         singular=True,
     )
     if voice_mute:
-        ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
+        unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
             author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
             guild_snowflake=alias_ctx.guild_snowflake,
@@ -56,11 +56,11 @@ async def enforce_or_undo(
             target=target,
         )
         embed = await unvoice_mute_alias_service.unvoice_mute_by_message(
-            ctx=ctx, display=True
+            ctx=unvoice_mute_ctx, display=True
         )
         return embed
     else:
-        ctx = voice_mute_alias_service.VoiceMuteMessageContext(
+        voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
             author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
             duration_value=alias_ctx.duration_value,
@@ -72,7 +72,7 @@ async def enforce_or_undo(
             target=target,
         )
         embed = await voice_mute_alias_service.voice_mute_by_message(
-            ctx=ctx, display=True
+            ctx=voice_mute_ctx, display=True
         )
         return embed
 

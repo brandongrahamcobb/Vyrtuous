@@ -20,16 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import inspect
 
 import discord
-from discord import app_commands
+from discord import Interaction, app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.moderator import NotAppModerator
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (administrator_service, coordinator_service,
-                                  developer_service, guild_owner_service,
-                                  moderator_service, sysadmin_service)
+from vyrtuous.utils.users import (
+    moderator_service,
+)
 
 
 def skip_app_command_help_discovery():
@@ -55,26 +53,18 @@ class HelpAppCommand(commands.Cog):
             ("Everyone", "Commands available to everyone."),
         ]
 
-    async def interaction_check(self, interaction):
-        context = SnowflakeContext(
+    async def interaction_check(self, interaction: Interaction):
+        if interaction.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
+        if interaction.channel is None:
+            raise commands.CheckFailure("This command must be used in a valid channel.")
+        await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
             member_snowflake=interaction.user.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-            coordinator_service.is_coordinator_at_all_wrapper,
-            moderator_service.is_moderator_at_all_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except app_commands.CheckFailure:
-                continue
-        raise NotAppModerator
+        return True
 
     async def get_available_commands(self, user_highest):
         available = []
@@ -166,6 +156,16 @@ class HelpAppCommand(commands.Cog):
         self, interaction: discord.Interaction, *, command_name: str | None = None
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
+        guild = interaction.guild
+        if guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        channel = interaction.channel
+        if not isinstance(
+            channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+        ):
+            return await tick.end(
+                warning="This command must be used in a valid channel."
+            )
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":
             kind, obj = await self.resolve_app_command(interaction, command_name)
@@ -216,7 +216,9 @@ class HelpAppCommand(commands.Cog):
         all = False
         if command_name and command_name == "all":
             all = True
-        user_highest = await moderator_service.resolve_highest_role_at_all(
+        user_highest = await moderator_service.resolve_highest_role(
+            channel_snowflake=channel.id,
+            guild_snowflake=guild.id,
             member_snowflake=interaction.user.id,
         )
         all_commands, skipped_commands = await self.get_available_commands(

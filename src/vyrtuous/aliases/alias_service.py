@@ -114,9 +114,22 @@ async def delete_alias(alias_name: str, context) -> str:
     return msg
 
 
-async def create_alias(alias_name: str, category: str, channel, *, role=None) -> str:
+async def create_alias(
+    alias_name: str,
+    category: str,
+    channel_snowflake: int,
+    guild_snowflake: int,
+    *,
+    role_snowflake: int | None = None,
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    kwargs = {"channel_snowflake": channel.id, "guild_snowflake": channel.guild.id}
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
     msg = (
         f"Alias `{alias_name}` of type `{category}` "
         f"created successfully for channel {channel.mention}."
@@ -124,22 +137,38 @@ async def create_alias(alias_name: str, category: str, channel, *, role=None) ->
     alias = await database_factory.select(
         category=category,
         alias_name=alias_name,
-        guild_snowflake=channel.guild.id,
+        guild_snowflake=guild_snowflake,
         singular=True,
     )
     if alias and alias.category != "role":
         return (
             f"Alias of type `{category}` "
-            f"with the name `{alias_name} already exists in this server channel ({channel.guild.name})."
+            f"with the name `{alias_name} already exists in this server channel ({guild.name})."
         )
-    if role:
-        kwargs.update({"role_snowflake": role.id})
+    if role_snowflake:
+        role = guild.get_role(role_snowflake)
+        if role is None:
+            raise commands.RoleNotFound(str(role_snowflake))
         msg = (
             f"Alias `{alias_name}` of type `{category}` "
             f"created successfully for channel {channel.mention} with role {role.mention}."
         )
-    alias = MODEL(alias_name=alias_name, category=str(category), **kwargs)
-    await database_factory.create(alias)
+        alias = MODEL(
+            alias_name=alias_name,
+            category=category,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            role_snowflake=role_snowflake,
+        )
+        await database_factory.create(alias)
+    else:
+        alias = MODEL(
+            alias_name=alias_name,
+            category=category,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+        )
+        await database_factory.create(alias)
     return msg
 
 

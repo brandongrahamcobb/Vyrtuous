@@ -24,9 +24,9 @@ from discord.ext import commands
 
 from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.administrator import NotAdministrator
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import (
+    list_overwrites,
     list_server_mutes,
 )
 from vyrtuous.models.category import Category
@@ -39,12 +39,8 @@ from vyrtuous.utils.moderation import (
     voice_mute_service,
 )
 from vyrtuous.utils.users import (
-    administrator_service,
     coordinator_service,
-    developer_service,
-    guild_owner_service,
     moderator_service,
-    sysadmin_service,
 )
 
 
@@ -58,23 +54,13 @@ class AdministratorTextCommands(commands.Cog):
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-            guild_owner_service.is_guild_owner_wrapper,
-            administrator_service.is_administrator_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotAdministrator
+        return True
 
     @commands.command(
         name="alias",
@@ -84,7 +70,7 @@ class AdministratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         category: Category = commands.parameter(
-            description="Specify a category for a `ban`, `flag`, `role`, `tmute`, `vegan` or `vmute` action."
+            description="Specify a category for a `ban`, `flag`, `role`, `tmute`, or `vmute` action."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: discord.abc.GuildChannel = commands.parameter(
@@ -92,18 +78,30 @@ class AdministratorTextCommands(commands.Cog):
             description="Tag a channel or include the ID",
         ),
         *,
-        role: discord.Role = commands.parameter(
+        role: discord.Role | None = commands.parameter(
             converter=commands.RoleConverter,
             default=None,
             description="Tag a role or include the ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        kwargs = {"alias_name": alias_name, "category": category, "channel": channel}
-        if role:
-            kwargs.update({"role": role})
-        msg = await alias_service.create_alias(**kwargs)
-        return await tick.end(success=msg)
+        if role is None:
+            msg = await alias_service.create_alias(
+                alias_name=alias_name,
+                category=str(category),
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
+            )
+            return await tick.end(success=msg)
+        else:
+            msg = await alias_service.create_alias(
+                alias_name=alias_name,
+                category=str(category),
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
+                role_snowflake=role.id,
+            )
+            return await tick.end(success=msg)
 
     # @commands.command(name="clear", help="Reset database.")
     # @skip_text_command_help_discovery()
@@ -192,73 +190,8 @@ class AdministratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        member_count, role_count, total_count = 0, 0, 0
-        if isinstance(target, str):
-            for guild in self.__bot.guilds:
-                for channel in guild.channels:
-                    for target_obj, overwrite in channel.overwrites.items():
-                        if any(v is not None for v in overwrite):
-                            total_count += 1
-                            if isinstance(target_obj, discord.Member):
-                                member_count += 1
-                            else:
-                                role_count += 1
-            embed = discord.Embed(
-                title="All Servers Overwrites Summary", color=discord.Color.blue()
-            )
-            embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
-            embed.add_field(
-                name="Member overwrites", value=str(member_count), inline=False
-            )
-            embed.add_field(
-                name="Total overwrites", value=str(total_count), inline=False
-            )
-            return await tick.end(success=embed)
-        elif isinstance(target, discord.Guild):
-            for channel in target.channels:
-                for target_obj, overwrite in channel.overwrites.items():
-                    if any(v is not None for v in overwrite):
-                        total_count += 1
-                        if isinstance(target_obj, discord.Member):
-                            member_count += 1
-                        else:
-                            role_count += 1
-            embed = discord.Embed(
-                title=f"Server {target.name} Overwrites Summary",
-                color=discord.Color.blue(),
-            )
-            embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
-            embed.add_field(
-                name="Member overwrites", value=str(member_count), inline=False
-            )
-            embed.add_field(
-                name="Total overwrites", value=str(total_count), inline=False
-            )
-            return await tick.end(success=embed)
-        else:
-            obj = target or ctx.channel
-            if isinstance(obj, (discord.TextChannel, discord.VoiceChannel)):
-                for target_obj, overwrite in obj.overwrites.items():
-                    if any(v is not None for v in overwrite):
-                        total_count += 1
-                        if isinstance(target_obj, discord.Member):
-                            member_count += 1
-                        else:
-                            role_count += 1
-                embed = discord.Embed(
-                    title="Channel Overwrites", color=discord.Color.blue()
-                )
-                embed.add_field(name="Channel", value=obj.name, inline=False)
-                embed.add_field(
-                    name="Role overwrites", value=str(role_count), inline=False
-                )
-                embed.add_field(
-                    name="Member overwrites", value=str(member_count), inline=False
-                )
-                embed.add_field(
-                    name="Total overwrites", value=str(total_count), inline=False
-                )
-                return await tick.end(success=embed)
+        embed = list_overwrites.build_embed(obj=target)
+        return await tick.end(success=embed)
 
     @commands.command(name="rmute", help="Room mute (except yourself).")
     async def channel_mute_text_command(

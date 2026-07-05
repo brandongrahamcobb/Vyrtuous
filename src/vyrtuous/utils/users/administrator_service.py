@@ -36,27 +36,6 @@ async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
     return True
 
 
-async def is_administrator_wrapper(
-    context,
-) -> bool:
-    return await is_administrator(
-        guild_snowflake=int(context.guild_snowflake),
-        member_snowflake=int(context.member_snowflake),
-    )
-
-
-async def is_administrator_at_all(
-    member_snowflake: int,
-) -> bool:
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    administrator = await database_factory.select(
-        member_snowflake=int(member_snowflake), singular=True
-    )
-    if not administrator:
-        raise NotAdministrator
-    return True
-
-
 async def administrators_by_role(role_snowflake: int) -> list[Administrator]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     administrators = await database_factory.select(

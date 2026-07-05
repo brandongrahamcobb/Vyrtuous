@@ -24,16 +24,14 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
-from vyrtuous.db.developer import NotDeveloper
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES, at_home
 from vyrtuous.listing import list_bugs
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.tracking import bug_service
-from vyrtuous.utils.users import developer_service, sysadmin_service
+from vyrtuous.utils.users import moderator_service
 
 
 class HiddenDeveloperTextCommands(commands.Cog):
@@ -46,21 +44,13 @@ class HiddenDeveloperTextCommands(commands.Cog):
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             raise commands.CheckFailure("This command must be used inside a server.")
-        context = SnowflakeContext(
+        await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
             member_snowflake=ctx.author.id,
+            lowest_role=self.PERMISSION_LEVEL,
         )
-        for verify in (
-            sysadmin_service.is_sysadmin_wrapper,
-            developer_service.is_developer_wrapper,
-        ):
-            try:
-                if await verify(context=context):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise NotDeveloper
+        return True
 
     @commands.command(name="backup", help="DB backup.")
     @skip_text_command_help_discovery()

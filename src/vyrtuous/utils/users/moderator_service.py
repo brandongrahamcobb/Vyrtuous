@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
@@ -30,7 +28,6 @@ from vyrtuous.db.coordinator import NotCoordinator
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import NotDeveloper
 from vyrtuous.db.moderator import Moderator, NotModerator
-from vyrtuous.inc.helpers import resolve_author
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.users import (
     administrator_service,
@@ -59,43 +56,29 @@ class HasEqualOrLowerRole(commands.CheckFailure):
         )
 
 
-async def is_moderator_wrapper(context) -> bool:
-    return await is_moderator(
-        channel_snowflake=int(context.channel_snowflake),
-        guild_snowflake=int(context.guild_snowflake),
-        member_snowflake=int(context.member_snowflake),
-    )
-
-
 async def is_moderator(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    guild_snowflake: int, member_snowflake: int, *, channel_snowflake: int | None = None
 ) -> bool:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    moderator = await database_factory.select(
-        channel_snowflake=int(channel_snowflake),
-        guild_snowflake=int(guild_snowflake),
-        member_snowflake=int(member_snowflake),
-        singular=True,
-    )
-    if not moderator:
-        raise NotModerator
-    return True
-
-
-async def is_moderator_at_all_wrapper(context) -> bool:
-    return await is_moderator_at_all(member_snowflake=context.author.id)
-
-
-async def is_moderator_at_all(
-    member_snowflake: int,
-) -> bool:
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    moderator = await database_factory.select(
-        member_snowflake=int(member_snowflake), singular=True
-    )
-    if not moderator:
-        raise NotModerator
-    return True
+    if channel_snowflake is None:
+        moderator = await database_factory.select(
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            singular=True,
+        )
+        if not moderator:
+            raise NotModerator
+        return True
+    else:
+        moderator = await database_factory.select(
+            channel_snowflake=int(channel_snowflake),
+            guild_snowflake=int(guild_snowflake),
+            member_snowflake=int(member_snowflake),
+            singular=True,
+        )
+        if not moderator:
+            raise NotModerator
+        return True
 
 
 async def survey(channel) -> list[discord.Embed]:
@@ -244,74 +227,60 @@ async def check_minimum_role(
     member_snowflake,
     lowest_role: str,
 ) -> str:
-    verifications = (
-        ("Sysadmin", sysadmin_service.is_sysadmin),
-        ("Developer", developer_service.is_developer),
-        ("Guild Owner", guild_owner_service.is_guild_owner),
-        ("Administrator", administrator_service.is_administrator),
-        ("Coordinator", coordinator_service.is_coordinator),
-        ("Moderator", is_moderator),
+    role_names = (
+        "Sysadmin",
+        "Developer",
+        "Guild Owner",
+        "Administrator",
+        "Coordinator",
+        "Moderator",
     )
     passed_lowest = False
-    for role_name, verify in verifications:
-        if role_name == lowest_role:
+    for role_name in role_names:
+        if lowest_role == role_name:
             passed_lowest = True
+            break
         try:
-            if role_name in ("Sysadmin", "Developer"):
-                if await verify(member_snowflake=int(member_snowflake)):
-                    return role_name
-            elif role_name in ("Guild Owner", "Administrator"):
-                if await verify(
-                    guild_snowflake=int(guild_snowflake),
-                    member_snowflake=int(member_snowflake),
-                ):
-                    return role_name
-            else:
-                if await verify(
-                    channel_snowflake=int(channel_snowflake),
-                    guild_snowflake=int(guild_snowflake),
-                    member_snowflake=int(member_snowflake),
-                ):
-                    return role_name
+            match role_name:
+                case "Sysadmin":
+                    if await sysadmin_service.is_sysadmin(
+                        member_snowflake=int(member_snowflake)
+                    ):
+                        return role_name
+                case "Developer":
+                    if await developer_service.is_developer(
+                        member_snowflake=member_snowflake
+                    ):
+                        return role_name
+                case "Guild Owner":
+                    if await guild_owner_service.is_guild_owner(
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
+                case "Administrator":
+                    if await administrator_service.is_administrator(
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
+                case "Coordinator":
+                    if await coordinator_service.is_coordinator(
+                        channel_snowflake=int(channel_snowflake),
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
+                case "Moderator":
+                    if await is_moderator(
+                        channel_snowflake=int(channel_snowflake),
+                        guild_snowflake=int(guild_snowflake),
+                        member_snowflake=int(member_snowflake),
+                    ):
+                        return role_name
         except commands.CheckFailure:
             if lowest_role is not None and passed_lowest:
                 raise
-    return "Everyone"
-
-
-async def check_minimum_role_at_all(
-    guild_snowflake,
-    member_snowflake,
-    lowest_role: str,
-) -> str:
-    verifications = (
-        ("Sysadmin", sysadmin_service.is_sysadmin),
-        ("Developer", developer_service.is_developer),
-        ("Guild Owner", guild_owner_service.is_guild_owner),
-        ("Administrator", administrator_service.is_administrator),
-        ("Coordinator", coordinator_service.is_coordinator_at_all),
-        ("Moderator", is_moderator_at_all),
-    )
-    passed_lowest = False
-    for role_name, verify in verifications:
-        if role_name == lowest_role:
-            passed_lowest = True
-        try:
-
-            if role_name in ("Sysadmin", "Developer"):
-                if await verify(member_snowflake=int(member_snowflake)):
-                    return role_name
-            else:
-                if await verify(
-                    guild_snowflake=int(guild_snowflake),
-                    member_snowflake=int(member_snowflake),
-                ):
-                    return role_name
-        except commands.CheckFailure:
-            if lowest_role is not None and passed_lowest:
-                raise
-        if role_name == lowest_role:
-            passed_lowest = True
     return "Everyone"
 
 
@@ -320,7 +289,7 @@ async def has_equal_or_lower_role(
     guild_snowflake: int,
     member_snowflake: int,
     target_member_snowflake: int,
-) -> bool:
+) -> str:
     sender_name = await resolve_highest_role(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
@@ -388,51 +357,6 @@ async def resolve_highest_role(
                 return "Moderator"
         except NotModerator as e:
             bot.logger.warning(str(e).capitalize())
-    return "Everyone"
-
-
-async def resolve_highest_role_at_all(
-    member_snowflake: int,
-) -> str:
-    bot: DiscordBot = DiscordBot.get_instance()
-    try:
-        if await sysadmin_service.is_sysadmin(member_snowflake=int(member_snowflake)):
-            return "Sysadmin"
-    except sysadmin_service.NotSysadmin as e:
-        bot.logger.warning(str(e).capitalize())
-    try:
-        if await developer_service.is_developer(member_snowflake=int(member_snowflake)):
-            return "Developer"
-    except NotDeveloper as e:
-        bot.logger.warning(str(e).capitalize())
-    try:
-        if await guild_owner_service.is_guild_owner_at_all(
-            member_snowflake=int(member_snowflake),
-        ):
-            return "Guild Owner"
-    except NotGuildOwner as e:
-        bot.logger.warning(str(e).capitalize())
-    try:
-        if await administrator_service.is_administrator_at_all(
-            member_snowflake=int(member_snowflake),
-        ):
-            return "Administrator"
-    except NotAdministrator as e:
-        bot.logger.warning(str(e).capitalize())
-    try:
-        if await coordinator_service.is_coordinator_at_all(
-            member_snowflake=int(member_snowflake),
-        ):
-            return "Coordinator"
-    except NotCoordinator as e:
-        bot.logger.warning(str(e).capitalize())
-    try:
-        if await is_moderator_at_all(
-            member_snowflake=int(member_snowflake),
-        ):
-            return "Moderator"
-    except NotModerator as e:
-        bot.logger.warning(str(e).capitalize())
     return "Everyone"
 
 
