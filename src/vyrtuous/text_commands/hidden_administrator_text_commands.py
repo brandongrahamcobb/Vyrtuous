@@ -227,7 +227,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
             converter=commands.TextChannelConverter,
             description="Tag a channel or include its ID.",
         ),
-        source_channel: discord.abc.GuildChannel = commands.parameter(
+        source_channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="`All` or tag a channel/include its ID.",
@@ -236,9 +236,13 @@ class HiddenAdministratorTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
+        if source_channel is None:
+            source_channel_snowflake = source_channel
+        else:
+            source_channel_snowflake = source_channel.id
         pages = await stream_service.toggle_stream(
             guild_snowflake=ctx.guild.id,
-            source_channel_snowflake=source_channel.id,
+            source_channel_snowflake=source_channel_snowflake,
             target_channel_snowflake=target_channel.id,
         )
         return await tick.end(success=pages)
@@ -279,7 +283,9 @@ class HiddenAdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         obj = channel or ctx.channel
-        msg = await video_channel_service.toggle_video_channel(channel=obj)
+        msg = await video_channel_service.toggle_video_channel(
+            channel_snowflake=obj.id, guild_snowflake=obj.guild.id
+        )
         return await tick.end(success=msg)
 
     @commands.command(
