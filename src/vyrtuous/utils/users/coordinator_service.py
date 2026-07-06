@@ -23,6 +23,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.coordinator import Coordinator, NotCoordinator
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.utils.tracking import data_builder, stream_service
 
 MODEL = Coordinator
 
@@ -53,7 +54,12 @@ async def is_coordinator(
 
 
 async def toggle_coordinator(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    author_snowflake: int,
+    channel_snowflake: int,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int,
+    message_channel_snowflake: int,
 ) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(Coordinator)
@@ -82,6 +88,15 @@ async def toggle_coordinator(
         await database_factory.delete(
             channel_snowflake=channel_snowflake, member_snowflake=member_snowflake
         )
+        await log_xcoord(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            display=True,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+        )
         action = "revoked"
     else:
         coordinator = MODEL(
@@ -90,8 +105,101 @@ async def toggle_coordinator(
             member_snowflake=member_snowflake,
         )
         await database_factory.create(coordinator)
+        await log_coord(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            display=True,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+        )
         action = "granted"
     return (
         f"Coordinator access has been {action} for {member_str} "
         f"in {channel.mention}."
     )
+
+
+async def log_coord(
+    author_snowflake: int | None,
+    channel_snowflake: int,
+    display: bool,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+):
+    duration_value = None
+    is_channel_scope = None
+    reason = None
+    role_snowflake = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration_value=duration_value or None,
+        guild_snowflake=guild_snowflake,
+        identifier="coord",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier="coord",
+            duration_value=duration_value or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )
+
+
+async def log_xcoord(
+    author_snowflake: int | None,
+    channel_snowflake: int,
+    display: bool,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+):
+    duration_value = None
+    is_channel_scope = None
+    reason = None
+    role_snowflake = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration_value=duration_value or None,
+        guild_snowflake=guild_snowflake,
+        identifier="xcoord",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier="xcoord",
+            duration_value=duration_value or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )

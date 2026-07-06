@@ -68,7 +68,10 @@ class SysadminTextCommands(commands.Cog):
             else:
                 member_snowflake = member
         msg = await developer_service.toggle_developer(
+            author_snowflake=ctx.author.id,
             member_snowflake=member_snowflake,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.message.channel.id,
         )
         return await tick.end(success=msg)
 

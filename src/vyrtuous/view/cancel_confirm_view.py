@@ -56,7 +56,7 @@ class VerifyView(discord.ui.View):
                 self.__action = "Deletes all vegans."
             case "vmute":
                 self.__action = "Deletes all voice-mutes."
-            case "voice_channel":
+            case "video":
                 self.__action = "Deletes all video channels."
             case _:
                 raise commands.CheckFailure(

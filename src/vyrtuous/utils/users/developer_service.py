@@ -24,6 +24,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import Developer, NotDeveloper
+from vyrtuous.utils.tracking import data_builder, stream_service
 
 # from vyrtuous.models.duration import DurationBuilder
 # from vyrtuous.utils.tracking import bug_service
@@ -69,7 +70,12 @@ async def report_issue(author, message, reference) -> None:
     await author.send(msg)
 
 
-async def toggle_developer(member_snowflake: int) -> str:
+async def toggle_developer(
+    author_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int,
+    message_channel_snowflake: int,
+) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     found = False
@@ -77,13 +83,6 @@ async def toggle_developer(member_snowflake: int) -> str:
     found = any(
         developer.member_snowflake == member_snowflake for developer in developers
     )
-    if found:
-        await database_factory.delete(member_snowflake=member_snowflake)
-        action = "revoked"
-    else:
-        new_developer = MODEL(member_snowflake=member_snowflake)
-        await database_factory.create(new_developer)
-        action = "granted"
     member = bot.get_user(member_snowflake)
     if member:
         member_str = member.mention
@@ -95,62 +94,109 @@ async def toggle_developer(member_snowflake: int) -> str:
             member_str = simplified_member[0]
         else:
             raise commands.MemberNotFound(str(member_snowflake))
+    if found:
+        await database_factory.delete(member_snowflake=member_snowflake)
+        await log_xdev(
+            author_snowflake=author_snowflake,
+            display=True,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+        )
+        action = "revoked"
+    else:
+        new_developer = MODEL(member_snowflake=member_snowflake)
+        await database_factory.create(new_developer)
+        await log_dev(
+            author_snowflake=author_snowflake,
+            display=True,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+        )
+        action = "granted"
     return f"Developer access for {member_str} has been {action} globally."
 
 
-# async def ping_about_expired_bugs(
-#     channel,
-#     embed,
-#     member,
-#     member_snowflakes,
-#     msg,
-#     notes,
-#     updated_at,
-# ) -> None:
-#     bot: DiscordBot = DiscordBot.get_instance()
-#     duration_builder = DurationBuilder()
-#     assigned_developer_mentions = []
-#     for developer_snowflake in member_snowflakes:
-#         assigned_developer = bot.get_user(developer_snowflake)
-#         if assigned_developer:
-#             assigned_developer_mentions.append(assigned_developer.mention)
-#     embed.add_field(
-#         name=f"Updated: {duration_builder.from_timestamp(updated_at).to_unix_ts()}",
-#         value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {notes}",
-#         inline=False,
-#     )
-#     for developer_snowflake in member_snowflakes:
-#         member = bot.get_user(developer_snowflake)
-#         if member is None:
-#             bot.logger.info(
-#                 f"Unable to locate member {developer_snowflake} in channel {channel.name} ({channel.id}) not sending developer log."
-#             )
-#             continue
-#         try:
-#             await member.send(embed=embed)
-#             bot.logger.info(
-#                 f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id})."
-#             )
-#         except Exception as e:
-#             bot.logger.warning(
-#                 f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}). {str(e).capitalize()}"
-#             )
-#
-#
-# async def handle_developer_assignment(member, reference) -> discord.Embed:
-#     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-#     developers = await database_factory.select(singular=False)
-#     for developer in developers:
-#         if developer.member_snowflake == member.id:
-#             bug, state = await bug_service.handle_bug_assignment(
-#                 developer=developer, reference=reference
-#             )
-#             if not state:
-#                 action = "unassigned"
-#             else:
-#                 action = "assigned"
-#             return await bug_service.create_embed(
-#                 action=action,
-#                 bug=bug,
-#                 member=member,
-#             )
+async def log_dev(
+    author_snowflake: int | None,
+    display: bool,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+):
+    channel_snowflake = None
+    duration_value = None
+    guild_snowflake = None
+    is_channel_scope = None
+    reason = None
+    role_snowflake = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration_value=duration_value or None,
+        guild_snowflake=guild_snowflake,
+        identifier="dev",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier="dev",
+            duration_value=duration_value or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )
+
+
+async def log_xdev(
+    author_snowflake: int | None,
+    display: bool,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+):
+    channel_snowflake = None
+    duration_value = None
+    guild_snowflake = None
+    is_channel_scope = None
+    reason = None
+    role_snowflake = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration_value=duration_value or None,
+        guild_snowflake=guild_snowflake,
+        identifier="xdev",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier="xdev",
+            duration_value=duration_value or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )

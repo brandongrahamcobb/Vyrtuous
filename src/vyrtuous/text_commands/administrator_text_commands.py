@@ -118,7 +118,7 @@ class AdministratorTextCommands(commands.Cog):
         *,
         category: Category = commands.parameter(
             default="all",
-            description="Specify one of: `alias`, `all`, `arole`, `automute`, `ban`, `coord`, "
+            description="Specify one of: `admin`, `alias`, `all`, `automute`, `ban`, `coord`, "
             "flag`, `mod`, `tmute`, `stream` or `vmute`.",
         ),
         scope: str = commands.parameter(
@@ -164,6 +164,8 @@ class AdministratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(member.id),
             member_snowflake=ctx.author.id,
@@ -171,9 +173,12 @@ class AdministratorTextCommands(commands.Cog):
             guild_snowflake=channel.guild.id,
         )
         msg = await coordinator_service.toggle_coordinator(
+            author_snowflake=ctx.author.id,
             channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
+            guild_snowflake=ctx.guild.id,
             member_snowflake=member.id,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.message.channel.id,
         )
         return await tick.end(success=msg)
 

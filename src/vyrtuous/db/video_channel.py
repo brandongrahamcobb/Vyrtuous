@@ -27,7 +27,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 class VideoChannel(DatabaseFactory):
 
     __tablename__ = "active_video_only_channels"
-    category = "video_channel"
+    category = "video"
     channel_snowflake: int
     guild_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

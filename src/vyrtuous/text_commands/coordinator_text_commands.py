@@ -75,9 +75,12 @@ class CoordinatorTextCommands(commands.Cog):
             guild_snowflake=channel.guild.id,
         )
         msg = await moderator_service.toggle_moderator(
+            author_snowflake=ctx.author.id,
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.message.channel.id,
         )
         return await tick.end(success=msg)
 

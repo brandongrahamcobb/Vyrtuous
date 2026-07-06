@@ -59,8 +59,14 @@ class GuildOwnerTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
         pages = await administrator_role_service.toggle_administrator_role(
-            role=role,
+            author_snowflake=ctx.author.id,
+            guild_snowflake=ctx.guild.id,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.message.channel.id,
+            role_snowflake=role.id,
         )
         return await tick.end(success=pages)
 

@@ -29,6 +29,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import NotDeveloper
 from vyrtuous.db.moderator import Moderator, NotModerator
 from vyrtuous.utils.messaging import emojis
+from vyrtuous.utils.tracking import data_builder, stream_service
 from vyrtuous.utils.users import (
     administrator_service,
     coordinator_service,
@@ -184,7 +185,12 @@ async def survey(channel) -> list[discord.Embed]:
 
 
 async def toggle_moderator(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    author_snowflake: int,
+    channel_snowflake: int,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int,
+    message_channel_snowflake: int,
 ) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -214,6 +220,15 @@ async def toggle_moderator(
             channel_snowflake=int(channel_snowflake),
             member_snowflake=int(member_snowflake),
         )
+        await log_mod(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            display=True,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+        )
         action = "revoked"
     else:
         moderator = MODEL(
@@ -222,6 +237,15 @@ async def toggle_moderator(
             member_snowflake=int(member_snowflake),
         )
         await database_factory.create(moderator)
+        await log_xmod(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            display=True,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+        )
         action = "granted"
     return (
         f"Moderator access for {member_str} has been " f"{action} in {channel.mention}."
@@ -439,4 +463,88 @@ def compare_ranks(sender_rank, target_rank) -> bool:
 #         available_channels[gid] = list(
 #             {c.id: c for c in available_channels[gid]}.values()
 #         )
-#     return available_channels, available_guilds
+#     return available_channels, available_guildso
+
+
+async def log_mod(
+    author_snowflake: int | None,
+    channel_snowflake: int,
+    display: bool,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+):
+    duration_value = None
+    is_channel_scope = None
+    reason = None
+    role_snowflake = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration_value=duration_value or None,
+        guild_snowflake=guild_snowflake,
+        identifier="mod",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier="mod",
+            duration_value=duration_value or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )
+
+
+async def log_xmod(
+    author_snowflake: int | None,
+    channel_snowflake: int,
+    display: bool,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+):
+    duration_value = None
+    is_channel_scope = None
+    reason = None
+    role_snowflake = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration_value=duration_value or None,
+        guild_snowflake=guild_snowflake,
+        identifier="xmod",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier="xmod",
+            duration_value=duration_value or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )
