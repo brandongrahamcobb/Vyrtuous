@@ -75,7 +75,7 @@ async def warn(
     flags = await database_factory.select(singular=False)
     for flag in flags:
         if flag.channel_snowflake == channel.id and flag.member_snowflake == member.id:
-            if bot.registry.get(ChannelState).should_warn(channel.id, member.id):
+            if bot.registry.get(ChannelState).should_notify(channel.id, member.id):
                 embed = discord.Embed(
                     title=f"\u26a0\ufe0f {member.display_name} is flagged",
                     description=f"Channel: {channel.mention}\nReason: {flag.reason}",

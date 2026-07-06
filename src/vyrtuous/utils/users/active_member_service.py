@@ -37,9 +37,10 @@ async def populate() -> None:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     active_members = await database_factory.select(singular=False)
     for member in active_members:
-        bot.registry.get(MemberState).active[
-            member.member_snowflake
-        ] = member.display_name
+        bot.registry.get(MemberState).active[member.member_snowflake] = (
+            member.display_name,
+            member.last_active,
+        )
     bot.logger.info("Populated in-memory active members.")
 
 
@@ -51,6 +52,8 @@ async def save_and_update_active_members() -> None:
         active_member.member_snowflake for active_member in saved_members
     ]
     for member_snowflake, data in bot.registry.get(MemberState).active.items():
+        bot.logger.info(data[0])
+        bot.logger.info(data[1])
         if member_snowflake not in member_snowflakes:
             active_member = ActiveMember(
                 display_name=data[0],

@@ -47,7 +47,7 @@ class ChannelState:
     video: set[int] = field(default_factory=set)
     join_log_window: float = 300.0
 
-    def should_warn(self, channel_id: int, member_id: int) -> bool:
+    def should_notify(self, channel_id: int, member_id: int) -> bool:
         key = (channel_id, member_id)
         now = time.time()
         self.join_log[key] = [

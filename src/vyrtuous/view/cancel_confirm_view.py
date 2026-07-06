@@ -36,8 +36,8 @@ class VerifyView(discord.ui.View):
                 self.__action = "Deletes all aliases."
             case "all":
                 self.__action = "Deletes all of the above: administrators, administrator roles, aliases, automute channels, bans, coords, devs, flags, mods, text-mutes, vegans, voice-mutes and video channels."
-            case "arole":
-                self.__action = "Deletes all administrator roles."
+            case "admin":
+                self.__action = "Deletes all administrators."
             case "automute":
                 self.__action = "Deletes all automute channels."
             case "ban":

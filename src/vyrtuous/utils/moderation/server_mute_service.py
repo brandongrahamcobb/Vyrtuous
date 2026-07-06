@@ -73,10 +73,15 @@ async def toggle_server_mute(
     return f"Successfully server {action} {member.mention} in {guild.name}."
 
 
-async def is_server_muted(channel, member) -> bool:
+async def is_server_muted(
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+) -> bool:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     server_mute = await database_factory.select(
-        channel_snowflake=channel.id, member_snowflake=member.id, singular=False
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+        singular=False,
     )
     if server_mute:
         return True

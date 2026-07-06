@@ -34,7 +34,7 @@ from vyrtuous.utils.moderation import (
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import moderator_service
+from vyrtuous.utils.users import vegan_service
 
 
 class ChannelEventListeners(commands.Cog):
@@ -168,6 +168,7 @@ class ChannelEventListeners(commands.Cog):
                     target="user",
                 )
             await flag_service.warn(channel=after.channel, member=member)
+            await vegan_service.notify(channel=after.channel, member=member)
         elif before.channel == after.channel:
             if before.mute and not after.mute:
                 database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)

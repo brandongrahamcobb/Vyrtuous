@@ -21,7 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
 
@@ -135,3 +135,22 @@ async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
     if member:
         embed.set_thumbnail(url=member.display_avatar.url)
     return embed
+
+
+async def notify(
+    channel: discord.channel.VocalGuildChannel, member: discord.Member
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    vegans = await database_factory.select(singular=False)
+    for vegan in vegans:
+        if "Vegan" in channel.name and vegan.member_snowflake == member.id:
+            if bot.registry.get(ChannelState).should_notify(channel.id, member.id):
+                embed = discord.Embed(
+                    title=f"\u26a0\ufe0f {member.display_name} is a recent Vegan!",
+                    description=f"Channel: {channel.mention}\nNotes: {vegan.notes}",
+                    color=discord.Color.green(),
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                await channel.send(embed=embed)
+            bot.registry.get(ChannelState).record(channel.id, member.id)
