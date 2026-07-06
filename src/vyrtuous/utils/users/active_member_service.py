@@ -48,12 +48,11 @@ async def save_and_update_active_members() -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     saved_members = await database_factory.select(singular=False)
+    saved_member_snowflakes = {m.member_snowflake: m for m in saved_members}
     member_snowflakes = [
         active_member.member_snowflake for active_member in saved_members
     ]
     for member_snowflake, data in bot.registry.get(MemberState).active.items():
-        bot.logger.info(data[0])
-        bot.logger.info(data[1])
         if member_snowflake not in member_snowflakes:
             active_member = ActiveMember(
                 display_name=data[0],
@@ -63,13 +62,17 @@ async def save_and_update_active_members() -> None:
             await database_factory.create(active_member)
             bot.logger.info(f"Saved {data[0]} to active members database table.")
         else:
-            where_kwargs = {
-                "member_snowflake": member_snowflake,
-            }
-            set_kwargs = {"last_active": data[1]}
-            await database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-            bot.logger.info(
-                f"Updated {data[0]} last active timestamp in the active members database table."
-            )
+            saved_member = saved_member_snowflakes.get(member_snowflake)
+            if saved_member is not None and data[1] == saved_member.last_active:
+                continue
+            else:
+                where_kwargs = {
+                    "member_snowflake": member_snowflake,
+                }
+                set_kwargs = {"last_active": data[1]}
+                await database_factory.update(
+                    set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                )
+                bot.logger.info(
+                    f"Updated {data[0]} last active timestamp in the active members database table."
+                )

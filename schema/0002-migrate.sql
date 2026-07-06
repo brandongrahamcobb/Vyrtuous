@@ -24,7 +24,6 @@ ADD CONSTRAINT command_aliases_category_check
 CHECK (
     category = ANY (
         ARRAY[
-            'vegan',
             'vmute',
             'ban',
             'flag',
