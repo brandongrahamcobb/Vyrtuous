@@ -44,6 +44,9 @@ class GuildEventListeners(commands.Cog):
         after_role_snowflakes = {str(r.id) for r in after.roles}
         added_roles = after_role_snowflakes - before_role_snowflakes
         removed_roles = before_role_snowflakes - after_role_snowflakes
+        invincible_member_set = bot.registry.get(MemberState).invincible.get(
+            after.guild.id, None
+        )
         if added_roles:
             for added_role in added_roles:
                 if added_role in administrator_role_snowflakes:
@@ -53,7 +56,7 @@ class GuildEventListeners(commands.Cog):
                         role_snowflake=int(added_role),
                     )
                     self.__bot.logger.info(f"Added roles: {', '.join(added_roles)}")
-            if bot.registry.get(MemberState).invincible.get(after.id, None):
+            if invincible_member_set and after.id in invincible_member_set:
                 try:
                     roles = [
                         role
@@ -77,19 +80,6 @@ class GuildEventListeners(commands.Cog):
                     role_snowflake=int(removed_role),
                 )
                 self.__bot.logger.info(f"Removed roles: {', '.join(removed_roles)}")
-            if bot.registry.get(MemberState).invincible.get(after.id, None):
-                try:
-                    roles = [
-                        role
-                        for role_snowflake in removed_roles
-                        if (role := after.guild.get_role(int(role_snowflake)))
-                        is not None
-                    ]
-                    await after.add_roles(*roles, reason="Hero restricts role removal")
-                except discord.HTTPException:
-                    bot.logger.info(
-                        f"Unable to add roles removed from hero {after.display_name}."
-                    )
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:

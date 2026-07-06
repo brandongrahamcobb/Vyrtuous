@@ -66,7 +66,15 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        if member.id in (self.__bot.registry.get(MemberState).invincible[ctx.guild.id]):
+        if member_set := self.__bot.registry.get(MemberState).invincible.get(
+            ctx.guild.id
+        ):
+            pass
+        else:
+            member_set = self.__bot.registry.get(MemberState).invincible[
+                ctx.guild.id
+            ] = set()
+        if member.id not in member_set:
             await hero_service.add_invincible_member(member.guild.id, member.id)
             await hero_service.unrestrict(
                 guild_snowflake=member.guild.id, member_snowflake=member.id
@@ -77,9 +85,6 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
             )
         else:
             await hero_service.remove_invincible_member(member.guild.id, member.id)
-            self.__bot.registry.get(MemberState).invincible[ctx.guild.id].remove(
-                member.id
-            )
             msg = f"Invincibility has been disabled for {member.mention}"
         return await tick.end(success=msg)
 

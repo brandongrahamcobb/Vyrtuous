@@ -78,41 +78,6 @@ class HiddenModeratorTextCommands(commands.Cog):
         pages = await list_administrators.build_pages(is_at_home=is_at_home, obj=obj)
         return await tick.end(success=pages)
 
-    # @commands.command(name="mstage", help="Toggle stage mute/unmute.")
-    # @skip_text_command_help_discovery()
-    # async def stage_mute_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     member: discord.Member = commands.parameter(
-    #         converter=commands.MemberConverter,
-    #         description="Tag a member or include their ID",
-    #     ),
-    #     channel: discord.abc.GuildChannel = commands.parameter(
-    #         converter=commands.VoiceChannelConverter,
-    #         description="Tag a channel or include its ID.",
-    #     ),
-    # ):
-    #     tick = Tick(bot=self.__bot, ctx=ctx)
-    #     if ctx.guild is None:
-    #         return await tick.end(warning="This command must be used in a server.")
-    #     context = SnowflakeContext(
-    #         channel_snowflake=ctx.channel.id,
-    #         guild_snowflake=ctx.guild.id,
-    #         member_snowflake=ctx.author.id,
-    #     )
-    #     obj = channel or ctx.channel
-    #     await moderator_service.check_minimum_role(
-    #         channel_snowflake=obj.id,
-    #         guild_snowflake=ctx.guild.id,
-    #         member_snowflake=ctx.author.id,
-    #         lowest_role="Moderator",
-    #     )
-    #     msg = await automute_channel_service.toggle_stage_mute(
-    #         channel=obj,
-    #         context=context,
-    #         member=member,
-    #     )
-    #     return await tick.end(success=msg)
     @commands.command(name="survey", help="Survey stage members.")
     @skip_text_command_help_discovery()
     async def stage_survey_text_command(

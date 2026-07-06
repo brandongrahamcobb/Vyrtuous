@@ -24,6 +24,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
+from vyrtuous.utils.messaging import emojis
 
 MODEL = Vegan
 
@@ -147,8 +148,8 @@ async def notify(
         if "Vegan" in channel.name and vegan.member_snowflake == member.id:
             if bot.registry.get(ChannelState).should_notify(channel.id, member.id):
                 embed = discord.Embed(
-                    title=f"\u26a0\ufe0f {member.display_name} is a recent Vegan!",
-                    description=f"Channel: {channel.mention}\nNotes: {vegan.notes}",
+                    title=f"{emojis.get_random_emoji()}) {member.display_name} is a recent Vegan!",
+                    description=f"**Notes:** {vegan.notes}",
                     color=discord.Color.green(),
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)

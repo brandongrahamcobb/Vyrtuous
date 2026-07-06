@@ -54,3 +54,42 @@ ALTER TABLE vegans ADD COLUMN notes TEXT;
 ALTER TABLE active_members DROP COLUMN guild_snowflake;
 ALTER TABLE video_rooms RENAME TO active_video_only_channels;
 ALTER TABLE active_voice_mutes ALTER COLUMN channel_snowflake SET DEFAULT (-1)::bigint;
+INSERT INTO active_voice_mutes (
+    channel_snowflake,
+    created_at,
+    expires_in,
+    guild_snowflake,
+    member_snowflake,
+    reason,
+    target,
+    updated_at
+)
+SELECT
+    NULL,
+    created_at,
+    expires_in,
+    guild_snowflake,
+    member_snowflake,
+    reason,
+    'server',
+    updated_at
+FROM active_server_voice_mutes;
+ALTER TABLE ONLY active_voice_mutes
+DROP CONSTRAINT active_voice_mutes_pkey;
+ALTER TABLE ONLY active_voice_mutes
+ADD CONSTRAINT active_voice_mutes_pkey
+PRIMARY KEY (guild_snowflake, member_snowflake, target);
+ALTER TABLE active_voice_mutes
+ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_voice_mutes
+ALTER COLUMN channel_snowflake DROP NOT NULL;
+ALTER TABLE active_text_mutes
+ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE command_aliases 
+ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_bans 
+ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_caps 
+ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_flags 
+ALTER COLUMN channel_snowflake DROP DEFAULT;

@@ -95,19 +95,9 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
 
 async def add_invincible_member(guild_snowflake: int, member_snowflake: int) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    hero = Hero(
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-    )
-    await database_factory.create(hero)
     bot.registry.get(MemberState).invincible[guild_snowflake].add(member_snowflake)
 
 
 async def remove_invincible_member(guild_snowflake: int, member_snowflake: int) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    await database_factory.delete(
-        guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-    )
     bot.registry.get(MemberState).invincible[guild_snowflake].discard(member_snowflake)
