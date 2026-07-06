@@ -71,7 +71,6 @@ class GuildEventListeners(commands.Cog):
                     bot.logger.info(
                         f"Unable to remove roles added to hero {after.display_name}."
                     )
-
         elif removed_roles:
             for removed_role in removed_roles:
                 await administrator_service.removed_role(
