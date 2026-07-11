@@ -30,7 +30,7 @@ async def send_message(
     file: discord.File | None,
     embed: discord.Embed | None,
     allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
-    ephemeral: bool = True,
+    ephemeral: bool = False,
     view: discord.ui.View | None,
 ) -> discord.Message:
     if isinstance(source, commands.Context):

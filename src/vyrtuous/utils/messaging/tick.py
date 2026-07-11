@@ -117,6 +117,8 @@ class Tick:
     async def _add_reactions(
         self, response: discord.Message, show_error_emoji: bool, paginated: bool
     ) -> None:
+        if response.flags.ephemeral:
+            return None
         if paginated:
             await response.add_reaction("\u2b05\ufe0f")
             await response.add_reaction("\u27a1\ufe0f")
