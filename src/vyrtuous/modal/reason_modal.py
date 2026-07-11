@@ -134,7 +134,8 @@ class ReasonModal(discord.ui.Modal):
                     where_kwargs=where_kwargs, set_kwargs=set_kwargs
                 )
                 await self.__tick.end(
-                    success=f"Existing reason has been updated to {self.reason_selection.value}.",
+                    success=f"Reason has been updated to {self.reason_selection.value}.",
+                    ephemeral=True,
                 )
                 return None
             else:

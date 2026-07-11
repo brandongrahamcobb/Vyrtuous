@@ -140,7 +140,7 @@ class DurationModal(discord.ui.Modal):
                 where_kwargs=where_kwargs, set_kwargs=set_kwargs
             )
             await self.__tick.end(
-                success=f"Existing duration has been updated to {self.duration_selection.value}.",
+                success=f"Duration has been updated to {self.duration_selection.value}.",
                 ephemeral=True,
             )
             return None
