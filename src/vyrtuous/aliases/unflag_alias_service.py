@@ -40,6 +40,7 @@ class UnflagMessageContext:
     member_snowflake: int
     message_snowflake: int
     message_channel_snowflake: int
+    reason: str = "No reason provided."
 
 
 async def unflag_by_message(
@@ -58,8 +59,9 @@ async def unflag_by_message(
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
+        reason=ctx.reason,
     )
-    embed = await build_unflag_embed(
+    embed = build_unflag_embed(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
@@ -75,10 +77,10 @@ async def log_unflag(
     member_snowflake: int,
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
+    reason: str,
 ) -> None:
     duration_value = None
     is_channel_scope = None
-    reason = None
     role_snowflake = None
     target = None
     await data_builder.save_data(
@@ -88,7 +90,7 @@ async def log_unflag(
         guild_snowflake=guild_snowflake,
         identifier="unflag",
         member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
+        reason=reason,
         role_snowflake=role_snowflake or None,
         target=target or None,
     )
@@ -103,7 +105,7 @@ async def log_unflag(
             member_snowflake=member_snowflake,
             message_snowflake=message_snowflake or None,
             message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
+            reason=reason,
             role_snowflake=role_snowflake or None,
             target=target or None,
         )
@@ -134,7 +136,7 @@ async def unflag(
     )
 
 
-async def build_unflag_embed(
+def build_unflag_embed(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> discord.Embed:
     bot: DiscordBot = DiscordBot.get_instance()

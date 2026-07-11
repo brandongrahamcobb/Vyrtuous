@@ -68,7 +68,9 @@ async def is_moderator(
             singular=True,
         )
         if not moderator:
-            raise NotModerator
+            raise NotModerator(
+                channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            )
         return True
     else:
         moderator = await database_factory.select(
@@ -78,7 +80,9 @@ async def is_moderator(
             singular=True,
         )
         if not moderator:
-            raise NotModerator
+            raise NotModerator(
+                channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            )
         return True
 
 

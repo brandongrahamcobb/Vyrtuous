@@ -28,5 +28,5 @@ class Sysadmin:
 
 
 class NotSysadmin(commands.CheckFailure):
-    def __init__(self, message="Member is not a sysadmin."):
+    def __init__(self, message="You lack sufficient permissions of a sysadmin."):
         super().__init__(message)

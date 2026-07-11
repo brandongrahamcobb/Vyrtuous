@@ -214,6 +214,7 @@ class Tick:
         error=None,
         allowed_mentions=discord.AllowedMentions.none(),
         view=None,
+        ephemeral: bool = False,
     ) -> discord.Message:
         if self.source is None:
             raise commands.CheckFailure("Source not provided.")
@@ -228,6 +229,7 @@ class Tick:
         if isinstance(message_obj, list) and message_obj:
             paginator = Paginator()
             response = await paginator.start_by_message(
+                ephemeral=ephemeral,
                 pages=message_obj,
                 source=self.source,
             )
@@ -258,6 +260,7 @@ class Tick:
             file=file,
             view=view,
             allowed_mentions=allowed_mentions,
+            ephemeral=ephemeral,
         )
         message_history.cache[response.id] = self._build_record(is_success)
         await self._add_reactions(

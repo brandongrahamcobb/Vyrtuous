@@ -21,6 +21,8 @@ from dataclasses import dataclass
 
 from discord.ext import commands
 
+from vyrtuous.bot.discord_bot import DiscordBot
+
 
 @dataclass(frozen=True)
 class GuildOwner:
@@ -29,8 +31,12 @@ class GuildOwner:
 
 
 class NotGuildOwner(commands.CheckFailure):
-    def __init__(
-        self,
-        message="Member is not a guild owner in this server.",
-    ):
+    def __init__(self, guild_snowflake: int):
+        bot: DiscordBot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
+        message: str = (
+            f"You lack sufficient permissions of a guild owner in the requested server ({guild.name})."
+        )
         super().__init__(message)

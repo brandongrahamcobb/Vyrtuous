@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot, IsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
@@ -125,7 +125,7 @@ async def ban_by_message(
         message_channel_snowflake=ctx.message_channel_snowflake or None,
         reason=ctx.reason,
     )
-    embed = await build_ban_embed(
+    embed = build_ban_embed(
         channel_snowflake=ctx.channel_snowflake,
         duration_value=ctx.duration_value,
         guild_snowflake=ctx.guild_snowflake,
@@ -170,6 +170,8 @@ async def ban(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
+    if guild.me.id == member_snowflake:
+        raise IsBot
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -218,7 +220,7 @@ async def ban(
     return is_channel_scope
 
 
-async def build_ban_embed(
+def build_ban_embed(
     channel_snowflake: int,
     duration_value: str,
     guild_snowflake: int,

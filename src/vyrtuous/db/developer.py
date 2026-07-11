@@ -33,5 +33,5 @@ class Developer:
 
 
 class NotDeveloper(commands.CheckFailure):
-    def __init__(self, message="Member is not a developer."):
+    def __init__(self, message="You lack sufficient permissions of a developer."):
         super().__init__(message)

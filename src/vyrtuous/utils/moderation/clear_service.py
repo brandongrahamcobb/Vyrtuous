@@ -118,6 +118,7 @@ async def clear(
                                 member_snowflake=obj.id,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "coord":
                             if category == "coord":
@@ -155,6 +156,7 @@ async def clear(
                                 member_snowflake=obj.id,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "mod":
                             if category == "mod":
@@ -183,6 +185,7 @@ async def clear(
                                 member_snowflake=obj.id,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "vmute":
                             if category == "vmute":
@@ -202,6 +205,7 @@ async def clear(
                                 member_snowflake=obj.id,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                                 target=target,
                             )
     elif isinstance(obj, discord.abc.GuildChannel):
@@ -263,6 +267,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "coord":
                             if category == "coord":
@@ -291,6 +296,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "mod":
                             if category == "mod":
@@ -327,6 +333,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "video":
                             if category == "video":
@@ -352,6 +359,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                                 target=target,
                             )
     elif isinstance(obj, discord.Guild):
@@ -422,6 +430,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "coord":
                             if category == "coord":
@@ -450,6 +459,7 @@ async def clear(
                                 member_snowflake=value.channel_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "mod":
                             if category == "mod":
@@ -486,6 +496,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "video":
                             if category == "video":
@@ -512,6 +523,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                                 target=target,
                             )
     elif obj == "all" and await sysadmin_service.is_sysadmin(
@@ -571,6 +583,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "coord":
                             if category == "coord":
@@ -609,6 +622,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "mod":
                             if category == "mod":
@@ -645,6 +659,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                             )
                         case "video":
                             if category == "video":
@@ -671,6 +686,7 @@ async def clear(
                                 member_snowflake=value.member_snowflake,
                                 message_snowflake=message_snowflake,
                                 message_channel_snowflake=message_channel_snowflake,
+                                reason="Clear command.",
                                 target=target,
                             )
     else:

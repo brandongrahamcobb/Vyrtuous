@@ -44,6 +44,7 @@ class UnvoiceMuteMessageContext:
     message_snowflake: int
     message_channel_snowflake: int
     target: str
+    reason: str = "No reason provided."
 
 
 async def log_unvoice_mute(
@@ -55,10 +56,10 @@ async def log_unvoice_mute(
     member_snowflake: int,
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
+    reason: str,
     target: str,
 ) -> None:
     duration_value = None
-    reason = None
     role_snowflake = None
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
@@ -67,7 +68,7 @@ async def log_unvoice_mute(
         guild_snowflake=guild_snowflake,
         identifier="unvmute",
         member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
+        reason=reason,
         role_snowflake=role_snowflake or None,
         target=target,
     )
@@ -82,7 +83,7 @@ async def log_unvoice_mute(
             member_snowflake=member_snowflake,
             message_snowflake=message_snowflake or None,
             message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
+            reason=reason,
             role_snowflake=role_snowflake or None,
             target=target,
         )
@@ -162,6 +163,7 @@ async def unvoice_mute_by_message(
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
+        reason=ctx.reason,
         target=ctx.target,
     )
     embed = build_unvoice_mute_embed(

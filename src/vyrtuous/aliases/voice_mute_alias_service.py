@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import discord
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot, IsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
@@ -180,6 +180,8 @@ async def voice_mute(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
+    if guild.me.id == member_snowflake:
+        raise IsBot
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))

@@ -39,7 +39,9 @@ async def is_coordinator(
             singular=True,
         )
         if not coordinator:
-            raise NotCoordinator
+            raise NotCoordinator(
+                channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            )
         return True
     else:
         coordinator = await database_factory.select(
@@ -49,7 +51,9 @@ async def is_coordinator(
             singular=True,
         )
         if not coordinator:
-            raise NotCoordinator
+            raise NotCoordinator(
+                channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            )
         return True
 
 

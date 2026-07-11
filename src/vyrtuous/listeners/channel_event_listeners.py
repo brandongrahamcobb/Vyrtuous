@@ -94,6 +94,7 @@ class ChannelEventListeners(commands.Cog):
                 member_snowflake=member.id,
                 message_snowflake=None,
                 message_channel_snowflake=None,
+                reason="Right-click unmute",
                 target="user",
             )
             return None
@@ -165,6 +166,7 @@ class ChannelEventListeners(commands.Cog):
                     member_snowflake=member.id,
                     message_snowflake=None,
                     message_channel_snowflake=None,
+                    reason="Right-click unmute",
                     target="user",
                 )
             await flag_service.warn(channel=after.channel, member=member)

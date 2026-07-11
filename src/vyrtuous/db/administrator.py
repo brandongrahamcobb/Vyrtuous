@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 from discord.ext import commands
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 
 
@@ -49,8 +50,10 @@ class AdministratorRole(DatabaseFactory):
 
 
 class NotAdministrator(commands.CheckFailure):
-    def __init__(
-        self,
-        message="Member is not an administrator in this server.",
-    ):
+    def __init__(self, guild_snowflake: int):
+        bot: DiscordBot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
+        message = f"You lack sufficient permissions of an administrator in the requested server ({guild.name}."
         super().__init__(message)

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import discord
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot, IsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.flag import Flag
@@ -104,7 +104,7 @@ async def flag_by_message(
         message_channel_snowflake=ctx.message_channel_snowflake,
         reason=ctx.reason,
     )
-    embed = await build_flag_embed(
+    embed = build_flag_embed(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
@@ -124,6 +124,8 @@ async def flag(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
+    if guild.me.id == member_snowflake:
+        raise IsBot
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -143,7 +145,7 @@ async def flag(
     await database_factory.create(flag)
 
 
-async def build_flag_embed(
+def build_flag_embed(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,

@@ -28,4 +28,4 @@ async def is_guild_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     guild = bot.get_guild(guild_snowflake)
     if guild and guild.owner_id == member_snowflake:
         return True
-    raise NotGuildOwner
+    raise NotGuildOwner(guild_snowflake=guild_snowflake)

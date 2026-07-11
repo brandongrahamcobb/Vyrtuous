@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 
 from discord.ext import commands
 
+from vyrtuous.bot.discord_bot import DiscordBot
+
 
 @dataclass(frozen=True)
 class Coordinator:
@@ -37,6 +39,23 @@ class Coordinator:
 class NotCoordinator(commands.CheckFailure):
     def __init__(
         self,
-        message="Member is not a coordinator in this channel.",
+        channel_snowflake: int | None,
+        guild_snowflake: int,
     ):
-        super().__init__(message)
+        bot: DiscordBot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
+        if channel_snowflake is None:
+            message: str = (
+                f"You lack sufficient permissions of a coordinator in the requested server ({guild.name})."
+            )
+            super().__init__(message)
+        else:
+            channel = guild.get_channel(channel_snowflake)
+            if channel is None:
+                raise commands.ChannelNotFound(str(channel_snowflake))
+            message: str = (
+                f"You lack sufficient permissions of a coordinator in the requested channel ({channel.mention})."
+            )
+            super().__init__(message)

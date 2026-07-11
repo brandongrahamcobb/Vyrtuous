@@ -35,6 +35,14 @@ from vyrtuous.cache.registry import (
 )
 
 
+class IsBot(commands.CheckFailure):
+    def __init__(
+        self,
+        message="You cannot act on the bot.",
+    ):
+        super().__init__(message)
+
+
 class DiscordBot(commands.Bot):
     _instance = None
 

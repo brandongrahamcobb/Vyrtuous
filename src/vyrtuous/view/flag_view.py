@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
@@ -28,51 +26,37 @@ from vyrtuous.db.coordinator import Coordinator
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import Developer
 from vyrtuous.db.moderator import Moderator
-from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import (
-    ban_service,
-    flag_service,
-    text_mute_service,
-    voice_mute_service,
+from vyrtuous.utils.users import (
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
 )
-from vyrtuous.utils.users import guild_owner_service, sysadmin_service
 from vyrtuous.view.view_context import ViewContext
 
-INFRACTION_MODELS = [
-    ban_service.MODEL,
-    flag_service.MODEL,
-    text_mute_service.MODEL,
-    voice_mute_service.MODEL,
-]
 
-
-class ModifyInfractionView(discord.ui.View):
+class FlagView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
         ctx: ViewContext,
-        modal: str,
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
         self.__available_channels: list[discord.abc.GuildChannel | str] = []
         self.__available_guilds: list[discord.Guild | str] = []
-        self.__category: str
         self.__channel_snowflake: int
         self.__ctx = ctx
-        self.__duration_value: str | None = None
-        self.__guild_snowflake: int
         self.__is_channel_scope: bool = False
-        self.__modal = modal
         self.__tick = tick
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
 
     async def setup(self):
+        all = False
         guild_select_disabled = True
         bot: DiscordBot = DiscordBot.get_instance()
         database_factory: DatabaseFactory = DatabaseFactory(Developer)
@@ -83,6 +67,7 @@ class ModifyInfractionView(discord.ui.View):
             if developer is not None or sysadmin_service.is_sysadmin(
                 self.__author_snowflake
             ):
+                all = True
                 guild_select_disabled = False
                 self.__available_guilds.extend(bot.guilds)
                 self.__available_guilds.append("all")
@@ -94,6 +79,7 @@ class ModifyInfractionView(discord.ui.View):
                 guild_snowflake=self.__ctx.guild_snowflake,
                 member_snowflake=self.__author_snowflake,
             ):
+                all = True
                 guild = bot.get_guild(self.__ctx.guild_snowflake)
                 if guild is None:
                     raise commands.GuildNotFound(str(self.__ctx.guild_snowflake))
@@ -107,6 +93,7 @@ class ModifyInfractionView(discord.ui.View):
                 singular=False,
             )
             if administrators:
+                all = True
                 for administrator in administrators:
                     guild = bot.get_guild(administrator.guild_snowflake)
                     if guild is None:
@@ -152,21 +139,24 @@ class ModifyInfractionView(discord.ui.View):
         if guild_select_disabled:
             self.remove_item(self.guild_select)
             self.__available_channels = self.limit_available_to_top_25_by_member_count(
-                available=self.__available_channels
+                available=self.__available_channels, all=all
             )
             channel_options = self._build_channel_options()
             self.channel_select.options = channel_options
             self.channel_select.disabled = False
         else:
             self.__available_guilds = self.limit_available_to_top_25_by_member_count(
-                available=self.__available_guilds
+                available=self.__available_guilds, all=all
             )
             self.channel_select.disabled = True
             guild_options = self._build_guild_options()
             self.guild_select.options = guild_options
 
-    def limit_available_to_top_25_by_member_count(self, available):
+    def limit_available_to_top_25_by_member_count(self, available, all: bool):
+        all_key = "all"
         items = []
+        if all:
+            items.append(all_key)
         items.extend(available)
         items.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
         top_25 = items[:25]
@@ -178,6 +168,8 @@ class ModifyInfractionView(discord.ui.View):
             for g in self.__available_guilds
             if not isinstance(g, str) and g is not None
         ]
+        if "all" in self.__available_guilds:
+            guild_options.append(discord.SelectOption(label="All", value="all"))
         return guild_options
 
     def _build_channel_options(self):
@@ -190,45 +182,36 @@ class ModifyInfractionView(discord.ui.View):
             channel_options.append(discord.SelectOption(label="All", value="all"))
         return channel_options
 
-    async def _build_category_options(
-        self, channel_snowflake: int, guild_snowflake: int
-    ):
-        categories = []
-        for model in INFRACTION_MODELS:
-            database_factory: DatabaseFactory = DatabaseFactory(model)
-            infraction = await database_factory.select(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-                singular=True,
-            )
-            if infraction:
-                categories.append(model.identifier)
-        category_options = [
-            discord.SelectOption(label=c, value=str(c)) for c in categories
-        ]
-        return category_options
-
     @discord.ui.select(
         placeholder="Select a guild",
         options=[],
     )
     async def guild_select(self, interaction, select):
-        bot: DiscordBot = DiscordBot.get_instance()
-        guild = bot.get_guild(int(select.values[0]))
-        if guild is None:
-            raise commands.GuildNotFound(str(select.values[0]))
-        self.guild_select.placeholder = guild.name
-        self.__guild_snowflake = guild.id
-        available_channels = [
-            c
-            for c in self.__available_channels
-            if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
-            and c.guild.id == self.__guild_snowflake
-        ]
-        self.__available_channels = self.limit_available_to_top_25_by_member_count(
-            available=available_channels
-        )
+        if select.values[0] == "all":
+            self.guild_select.placeholder = "All"
+            available_channels = [
+                c
+                for c in self.__available_channels
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+            ]
+            self.__available_channels = self.limit_available_to_top_25_by_member_count(
+                available=available_channels, all=True
+            )
+        else:
+            bot: DiscordBot = DiscordBot.get_instance()
+            guild = bot.get_guild(int(select.values[0]))
+            if guild is None:
+                raise commands.GuildNotFound(str(select.values[0]))
+            self.guild_select.placeholder = guild.name
+            available_channels = [
+                c
+                for c in self.__available_channels
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                and c.guild.id == guild.id
+            ]
+            self.__available_channels = self.limit_available_to_top_25_by_member_count(
+                available=available_channels, all=True
+            )
         channel_options = self._build_channel_options()
         self.channel_select.options = channel_options
         self.channel_select.disabled = False
@@ -245,30 +228,16 @@ class ModifyInfractionView(discord.ui.View):
         self.channel_select.placeholder = channel.name
         self.__channel_snowflake = channel.id
         bot: DiscordBot = DiscordBot.get_instance()
-        channel = bot.get_channel(self.__channel_snowflake)
+        guild = bot.get_guild(self.__ctx.guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(self.__ctx.guild_snowflake))
+        channel = guild.get_channel(self.__channel_snowflake)
         if channel is None:
             raise commands.ChannelNotFound(str(self.__channel_snowflake))
         if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
             for member in channel.members:
                 if self.__ctx.member_snowflake == member.id:
                     self.__is_channel_scope = True
-        category_options = await self._build_category_options(
-            channel_snowflake=self.__channel_snowflake,
-            guild_snowflake=self.__guild_snowflake,
-        )
-        self.category_select.options = category_options
-        self.category_select.disabled = False
-        await interaction.response.defer()
-        await interaction.edit_original_response(view=self)
-
-    @discord.ui.select(
-        placeholder="Select a category",
-        options=[discord.SelectOption(label="Select a channel", value="None")],
-        disabled=True,
-    )
-    async def category_select(self, interaction, select):
-        self.category_select.placeholder = select.values[0]
-        self.__category = select.values[0]
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
@@ -278,32 +247,24 @@ class ModifyInfractionView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
-        match self.__modal:
-            case "duration":
-                modal = DurationModal(
-                    author_snowflake=self.__author_snowflake,
-                    category=self.__category,
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__ctx.guild_snowflake,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    tick=self.__tick,
-                )
-                await modal.setup()
-                await interaction.response.send_modal(modal)
-            case "reason":
-                modal = ReasonModal(
-                    author_snowflake=self.__author_snowflake,
-                    category=self.__category,
-                    channel_snowflake=self.__channel_snowflake,
-                    duration_value=self.__duration_value,
-                    guild_snowflake=self.__ctx.guild_snowflake,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    is_channel_scope=self.__is_channel_scope,
-                    is_modification=True,
-                    tick=self.__tick,
-                )
-                await modal.setup()
-                await interaction.response.send_modal(modal)
+        await moderator_service.has_equal_or_lower_role(
+            channel_snowflake=self.__channel_snowflake,
+            guild_snowflake=self.__ctx.guild_snowflake,
+            member_snowflake=self.__author_snowflake,
+            target_member_snowflake=self.__ctx.member_snowflake,
+        )
+        modal = ReasonModal(
+            author_snowflake=self.__author_snowflake,
+            category=self.__ctx.category,
+            channel_snowflake=self.__channel_snowflake,
+            duration_value=None,
+            guild_snowflake=self.__ctx.guild_snowflake,
+            member_snowflake=self.__ctx.member_snowflake,
+            is_channel_scope=self.__is_channel_scope,
+            tick=self.__tick,
+        )
+        await modal.setup()
+        await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

@@ -32,7 +32,7 @@ async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
         singular=True,
     )
     if not administrator:
-        raise NotAdministrator
+        raise NotAdministrator(guild_snowflake=guild_snowflake)
     return True
 
 
