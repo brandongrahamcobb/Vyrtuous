@@ -17,22 +17,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List
-
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
-
-
-@dataclass(frozen=True)
-class HeroDictionary:
-    data: Dict[int, Dict[str, Dict[int, bool]]] = field(default_factory=dict)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
-    skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
 def build_dictionary() -> dict[int, dict[str, dict[int, bool]]]:
@@ -59,8 +49,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Heroes for {obj_name}"
 
     dictionary = build_dictionary()
-    processed_dictionary: HeroDictionary = await list_service.process_dictionary(
-        cls=HeroDictionary, dictionary=dictionary
+    processed_dictionary: list_service.HeroDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.HeroDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():

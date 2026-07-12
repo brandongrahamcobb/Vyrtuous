@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List
-
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -29,13 +26,6 @@ from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
 MODEL = AdministratorRole
-
-
-@dataclass(frozen=True)
-class AdministratorRoleDictionary:
-    data: Dict[int, Dict[str, Dict[int, dict]]] = field(default_factory=dict)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
-    skipped_roles: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict]]]:
@@ -68,9 +58,9 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Administrator Roles in {obj_name}"
 
     full_dictionary = await build_dictionary(obj=obj)
-    processed_dictionary: AdministratorRoleDictionary = (
+    processed_dictionary: list_service.AdministratorRoleDictionary = (
         await list_service.process_dictionary(
-            cls=AdministratorRoleDictionary, dictionary=full_dictionary
+            cls=list_service.AdministratorRoleDictionary, dictionary=full_dictionary
         )
     )
 

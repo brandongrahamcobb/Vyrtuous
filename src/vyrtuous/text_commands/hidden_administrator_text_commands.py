@@ -39,9 +39,7 @@ from vyrtuous.utils.channels import video_channel_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import stream_service
-from vyrtuous.utils.users import (
-    moderator_service,
-)
+from vyrtuous.utils.users import moderator_service
 
 
 class HiddenAdministratorTextCommands(commands.Cog):
@@ -100,11 +98,11 @@ class HiddenAdministratorTextCommands(commands.Cog):
             description="One of: `mute`, `ban`, `tmute`"
         ),
         *,
-        hours: int = commands.parameter(default=24, description="# of hours"),
+        limit: str = commands.parameter(default="24h", description="Limit in m/h/d."),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         msg = await cap_service.toggle_cap(
-            category=str(category), channel=channel, hours=hours
+            category=str(category), channel=channel, duration_str=limit
         )
         return await tick.end(success=msg)
 

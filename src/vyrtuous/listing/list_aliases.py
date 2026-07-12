@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Union
-
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -29,15 +26,6 @@ from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
 MODEL = Alias
-
-
-@dataclass(frozen=True)
-class AliasDictionary:
-    data: Dict[
-        int, Dict[str, Dict[int, Dict[str, Dict[str, Dict[str, list | str]]]]]
-    ] = field(default_factory=dict)
-    skipped_channels: List[discord.Embed] = field(default_factory=list)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(obj) -> dict:
@@ -87,8 +75,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Command Aliases in {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary: AliasDictionary = await list_service.process_dictionary(
-        cls=AliasDictionary, dictionary=dictionary
+    processed_dictionary: list_service.AliasDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.AliasDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():

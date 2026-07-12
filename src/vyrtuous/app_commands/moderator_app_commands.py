@@ -22,17 +22,29 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.modal.duration_modal import DurationModal
-from vyrtuous.modal.reason_modal import ReasonModal
+from vyrtuous.inc.helpers import at_home
+from vyrtuous.listing import (
+    list_aliases,
+    list_bans,
+    list_coordinators,
+    list_flags,
+    list_moderators,
+    list_text_mutes,
+    list_voice_mutes,
+)
+from vyrtuous.models import multi_converter
 from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.moderation import (
+    ban_service,
+    flag_service,
+    text_mute_service,
+    voice_mute_service,
+)
 from vyrtuous.utils.users import moderator_service
 from vyrtuous.view.flag_view import FlagView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_infraction_view import ModifyInfractionView
 from vyrtuous.view.view_context import ViewContext
-
-# from vyrtuous.view.data_view import DataView
-# from vyrtuous.view.modify_infraction_view import ModifyInfractionView
 
 
 class ModeratorAppCommands(commands.Cog):
@@ -41,7 +53,6 @@ class ModeratorAppCommands(commands.Cog):
 
     def __init__(
         self,
-        *,
         bot: DiscordBot,
     ):
         self.__bot = bot
@@ -59,34 +70,20 @@ class ModeratorAppCommands(commands.Cog):
         )
         return True
 
-    # @app_commands.command(name="data", description="Create a chart.")
-    # async def create_data_app_command(self, interaction: discord.Interaction):
-    #     tick = Tick(bot=self.__bot, interaction=interaction)
-    #     view = DataView(
-    #         bot=self.__bot,
-    #         ban_service=self.__ban_service,
-    #         duration_builder=self.__duration_builder,
-    #         flag_service=self.__flag_service,
-    #         interaction=interaction,
-    #         moderator_service=self.__moderator_service,
-    #         text_mute_service=self.__text_mute_service,
-    #         voice_mute_service=self.__voice_mute_service,
-    #         tick=tick,
-    #     )
-    #     await view.setup()
-    #     await interaction.response.send_message(
-    #         content="Select a channel, duration and infraction",
-    #         view=view,
-    #         ephemeral=True,
-    #     )
-    #
     @app_commands.command(name="duration", description="Modify a duration.")
-    @app_commands.describe(member="The ID or mention of the member.")
+    @app_commands.describe(member="Specify a member ID/mention.")
     async def change_moderation_duration_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
+        self, interaction: discord.Interaction, member: str
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(interaction=interaction, member_snowflake=member.id)
+        target = multi_converter.transform(interaction=interaction, argument=member)
+        if isinstance(target, int):
+            member_snowflake = target
+        elif isinstance(target, discord.Member):
+            member_snowflake = target.id
+        else:
+            return await tick.end(warning=f"Member {member} was not found.")
+        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
         view = ModifyInfractionView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
@@ -99,12 +96,19 @@ class ModeratorAppCommands(commands.Cog):
         )
 
     @app_commands.command(name="reason", description="Modify a reason.")
-    @app_commands.describe(member="The ID or mention of the member.")
+    @app_commands.describe(member="Specify a member ID/mention.")
     async def change_moderation_reason_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
+        self, interaction: discord.Interaction, member: str
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(interaction=interaction, member_snowflake=member.id)
+        target = multi_converter.transform(interaction=interaction, argument=member)
+        if isinstance(target, int):
+            member_snowflake = target
+        elif isinstance(target, discord.Member):
+            member_snowflake = target.id
+        else:
+            return await tick.end(warning=f"Member {member} was not found.")
+        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
         view = ModifyInfractionView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
@@ -117,12 +121,19 @@ class ModeratorAppCommands(commands.Cog):
         )
 
     @app_commands.command(name="ban", description="Create a ban.")
-    @app_commands.describe(member="The ID or mention of the member.")
+    @app_commands.describe(member="Specify a member ID/mention.")
     async def create_ban_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
+        self, interaction: discord.Interaction, member: str
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(interaction=interaction, member_snowflake=member.id)
+        target = multi_converter.transform(interaction=interaction, argument=member)
+        if isinstance(target, int):
+            member_snowflake = target
+        elif isinstance(target, discord.Member):
+            member_snowflake = target.id
+        else:
+            return await tick.end(warning=f"Member {member} was not found.")
+        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
         ctx.category = "ban"
         view = InfractionView(
             author_snowflake=interaction.user.id,
@@ -135,12 +146,19 @@ class ModeratorAppCommands(commands.Cog):
         )
 
     @app_commands.command(name="flag", description="Create a flag.")
-    @app_commands.describe(member="The ID or mention of the member.")
+    @app_commands.describe(member="Specify a member ID/mention.")
     async def create_flag_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
+        self, interaction: discord.Interaction, member: str
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(interaction=interaction, member_snowflake=member.id)
+        target = multi_converter.transform(interaction=interaction, argument=member)
+        if isinstance(target, int):
+            member_snowflake = target
+        elif isinstance(target, discord.Member):
+            member_snowflake = target.id
+        else:
+            return await tick.end(warning=f"Member {member} was not found.")
+        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
         ctx.category = "flag"
         view = FlagView(
             author_snowflake=interaction.user.id,
@@ -152,13 +170,20 @@ class ModeratorAppCommands(commands.Cog):
             content="Select a channel", view=view, ephemeral=True
         )
 
-    @app_commands.command(name="mute", description="Create a mute.")
-    @app_commands.describe(member="The ID or mention of the member.")
+    @app_commands.command(name="mute", description="Create a voice mute.")
+    @app_commands.describe(member="Specify a member ID/mention.")
     async def create_voice_mute_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
+        self, interaction: discord.Interaction, member: str
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(interaction=interaction, member_snowflake=member.id)
+        target = multi_converter.transform(interaction=interaction, argument=member)
+        if isinstance(target, int):
+            member_snowflake = target
+        elif isinstance(target, discord.Member):
+            member_snowflake = target.id
+        else:
+            return await tick.end(warning=f"Member {member} was not found.")
+        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
         ctx.category = "vmute"
         view = InfractionView(
             author_snowflake=interaction.user.id,
@@ -171,12 +196,19 @@ class ModeratorAppCommands(commands.Cog):
         )
 
     @app_commands.command(name="tmute", description="Create a text-mute.")
-    @app_commands.describe(member="The ID or mention of the member.")
-    async def create_text_mute_app_command(
-        self, interaction: discord.Interaction, member: discord.Member
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def create_app_mute_app_command(
+        self, interaction: discord.Interaction, member: str
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        ctx = ViewContext(interaction=interaction, member_snowflake=member.id)
+        target = multi_converter.transform(interaction=interaction, argument=member)
+        if isinstance(target, int):
+            member_snowflake = target
+        elif isinstance(target, discord.Member):
+            member_snowflake = target.id
+        else:
+            return await tick.end(warning=f"Member {member} was not found.")
+        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
         ctx.category = "tmute"
         view = InfractionView(
             author_snowflake=interaction.user.id,
@@ -187,6 +219,172 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Select a channel and a duration", view=view, ephemeral=True
         )
+
+    @app_commands.command(name="bans", description="List bans.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+    )
+    async def list_bans_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_bans.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="cmds", description="List aliases.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, or server ID."
+    )
+    async def list_commands_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_aliases.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="coords", description="Lists coords.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+    )
+    async def list_coordinators_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_coordinators.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="flags", description="List flags.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+    )
+    async def list_flags_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_flags.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="mods", description="Lists mods.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+    )
+    async def list_moderators_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_moderators.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="mutes", description="List mutes.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+    )
+    async def list_mutes_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_voice_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="summary", description="List user moderation.")
+    @app_commands.describe(
+        member="Specify a member ID/mention.",
+    )
+    async def list_moderation_summary_app_command(
+        self, interaction: discord.Interaction, member: str
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        obj = multi_converter.transform(interaction=interaction, argument=member)
+        pages: list[discord.Embed] = []
+        is_at_home = at_home(source=interaction)
+        services = []
+        services.append(ban_service)
+        services.append(flag_service)
+        services.append(text_mute_service)
+        services.append(voice_mute_service)
+        for service in services:
+            summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
+            if isinstance(summary_pages, list):
+                for page in summary_pages:
+                    if isinstance(page, discord.Embed):
+                        pages.append(page)
+        if not pages:
+            return await tick.end(success="No infractions found")
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="tmutes", description="List text-mutes.")
+    @app_commands.describe(
+        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+    )
+    async def list_text_mutes_app_command(
+        self,
+        interaction: discord.Interaction,
+        target: str | None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = interaction.channel
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        is_at_home = at_home(source=interaction)
+        pages = await list_text_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        return await tick.end(success=pages)
 
 
 async def setup(bot: DiscordBot):

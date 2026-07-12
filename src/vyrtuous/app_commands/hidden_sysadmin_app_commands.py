@@ -21,13 +21,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.app_commands.help_app_command import skip_app_command_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.models import multi_converter
+from vyrtuous.upload import upload_service
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import developer_service, moderator_service
+from vyrtuous.utils.users import moderator_service
 
 
-class SysadminAppCommands(commands.Cog):
+class HiddenSysadminAppCommands(commands.Cog):
     PERMISSION_LEVEL = "Sysadmin"
 
     def __init__(self, bot: DiscordBot):
@@ -46,29 +47,12 @@ class SysadminAppCommands(commands.Cog):
         )
         return True
 
-    @app_commands.command(name="dev", description="Grant/revoke devs.")
-    @app_commands.describe(member="Specify a member ID/mention.")
-    async def toggle_developer_app_command(
-        self, interaction: discord.Interaction, member: str
-    ) -> discord.Message:
+    @app_commands.command(name="upload", description="Create the upload document.")
+    @skip_app_command_help_discovery()
+    async def uploads_app_command(self, interaction: discord.Interaction) -> None:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
-        else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        message = await interaction.original_response()
-        message_snowflake = message.id
-        msg = await developer_service.toggle_developer(
-            author_snowflake=interaction.user.id,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake,
-            message_channel_snowflake=message.channel.id,
-        )
-        return await tick.end(success=msg)
+        return await upload_service.build_latex_document()
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(SysadminAppCommands(bot=bot))
+    await bot.add_cog(HiddenSysadminAppCommands(bot=bot))

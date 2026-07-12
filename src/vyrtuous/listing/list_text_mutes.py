@@ -17,8 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 import discord
 
@@ -30,15 +29,6 @@ from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
 MODEL = TextMute
-
-
-@dataclass
-class TextMuteDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, Any]]]]]] = field(
-        default_factory=dict
-    )
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
-    skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(
@@ -98,8 +88,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Text Mutes for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary: TextMuteDictionary = await list_service.process_dictionary(
-        cls=TextMuteDictionary, dictionary=dictionary
+    processed_dictionary: list_service.TextMuteDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.TextMuteDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():

@@ -17,30 +17,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import re
 from typing import Union
 from uuid import UUID
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-
-
-class TargetIsBot(commands.CheckFailure):
-    def __init__(
-        self,
-        *,
-        ctx: commands.Context | None = None,
-        interaction: discord.Interaction | None = None,
-        message: discord.Message | None = None,
-    ):
-        self._source = ctx or interaction or message
-        if self._source is None or self._source.guild is None:
-            return
-        super().__init__(
-            message=f"You cannot execute actions on {self._source.guild.me.mention}."
-        )
 
 
 class MultiConverter(commands.Converter):
@@ -103,3 +89,67 @@ class MultiConverter(commands.Converter):
         raise commands.BadArgument(
             "Argument is not a channel, member, guild, role or UUID."
         )
+
+
+def transform(interaction: discord.Interaction, argument: str | None) -> Union[
+    discord.VoiceChannel,
+    discord.StageChannel,
+    discord.TextChannel,
+    discord.Guild,
+    discord.Member,
+    discord.Role,
+    UUID,
+    str,
+    int,
+    None,
+]:
+    id = None
+    bot: DiscordBot = DiscordBot.get_instance()
+    if argument is None:
+        return None
+    if argument and str(argument).lower() == "all":
+        return argument
+    try:
+        uuid = UUID(argument)
+        return uuid
+    except ValueError as e:
+        bot.logger.warning(e)
+    try:
+        id = int(argument)
+    except ValueError:
+        try:
+            match = re.search(r"\d+", argument)
+            if match:
+                id = int(match.group())
+        except ValueError:
+            raise app_commands.CheckFailure("Value is not a valid integer or mention.")
+    if id:
+        channel = bot.get_channel(id)
+        if isinstance(
+            channel, (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
+        ):
+            return channel
+        guild = bot.get_guild(id)
+        if guild:
+            return guild
+        else:
+            guild = interaction.guild
+            if guild is None:
+                raise app_commands.CheckFailure(
+                    "This command must be executed in a server."
+                )
+        member = guild.get_member(id)
+        if member:
+            return member
+        role = guild.get_role(id)
+        if role:
+            return role
+        try:
+            member = bot.registry.get(MemberState).active.get(id, None)
+            if member:
+                return id
+        except commands.MemberNotFound as e:
+            bot.logger.warning(e)
+    raise commands.BadArgument(
+        "Argument is not a channel, member, guild, role or UUID."
+    )

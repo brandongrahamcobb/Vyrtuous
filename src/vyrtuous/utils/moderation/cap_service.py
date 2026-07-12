@@ -24,9 +24,10 @@ from vyrtuous.models.duration import Duration, DurationBuilder
 MODEL = Cap
 
 
-async def toggle_cap(category: str, channel, hours: int) -> str:
+async def toggle_cap(category: str, channel, duration_str: str) -> str:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    seconds = int(hours) * 3600
+    duration_builder: DurationBuilder = DurationBuilder()
+    seconds = duration_builder.parse(duration_str).to_seconds()
     where_kwargs = {"channel_snowflake": channel.id, "category": category}
     cap = await database_factory.select(
         singular=True, channel_snowflake=channel.id, category=category

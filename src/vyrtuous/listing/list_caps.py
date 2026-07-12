@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List
-
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -30,15 +27,6 @@ from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 
 MODEL = Cap
-
-
-@dataclass
-class CapDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, int]]]]] = field(
-        default_factory=dict
-    )
-    skipped_channels: List[discord.Embed] = field(default_factory=list)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(
@@ -77,8 +65,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Caps for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary: CapDictionary = await list_service.process_dictionary(
-        cls=CapDictionary, dictionary=dictionary
+    processed_dictionary: list_service.CapDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.CapDictionary, dictionary=dictionary
+        )
     )
 
     cap_n = 0

@@ -17,8 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 import discord
 
@@ -31,15 +30,6 @@ from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 
 MODEL = Ban
-
-
-@dataclass
-class BanDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, Any]]]]]] = field(
-        default_factory=dict
-    )
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
-    skipped_members: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(
@@ -96,8 +86,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Bans for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary: BanDictionary = await list_service.process_dictionary(
-        cls=BanDictionary, dictionary=dictionary
+    processed_dictionary: list_service.BanDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.BanDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
@@ -214,8 +206,10 @@ async def build_blacklist_pages(is_at_home: bool, obj) -> str | list[discord.Emb
     title = f"{emojis.get_random_emoji()} Blacklists for {obj_name}"
 
     dictionary = await build_blacklist_dictionary(obj=obj)
-    processed_dictionary: BanDictionary = await list_service.process_dictionary(
-        cls=BanDictionary, dictionary=dictionary
+    processed_dictionary: list_service.BanDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.BanDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():

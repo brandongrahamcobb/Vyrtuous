@@ -18,33 +18,160 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import fields
-from typing import Any, Union
+from dataclasses import dataclass, field, fields
+from typing import Any, Dict, List, Union
 
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.listing.list_administrator_roles import AdministratorRoleDictionary
-from vyrtuous.listing.list_administrators import AdministratorDictionary
-from vyrtuous.listing.list_aliases import AliasDictionary
-from vyrtuous.listing.list_automute_channels import AutoMuteDictionary
-from vyrtuous.listing.list_bans import BanDictionary
-from vyrtuous.listing.list_caps import CapDictionary
-from vyrtuous.listing.list_coordinators import CoordinatorDictionary
-from vyrtuous.listing.list_flags import FlagDictionary
-from vyrtuous.listing.list_heroes import HeroDictionary
-from vyrtuous.listing.list_moderators import ModeratorDictionary
-from vyrtuous.listing.list_permissions import PermissionDictionary
-from vyrtuous.listing.list_server_mutes import ServerMuteDictionary
-from vyrtuous.listing.list_streams import StreamDictionary
-from vyrtuous.listing.list_text_mutes import TextMuteDictionary
-from vyrtuous.listing.list_vegans import VeganDictionary
-from vyrtuous.listing.list_video_channels import VideoChannelDictionary
-from vyrtuous.listing.list_voice_mutes import VoiceMuteDictionary
 
 CHUNK_SIZE = 12
 
 from typing import TypeVar, cast
+
+
+@dataclass(frozen=True)
+class AdministratorRoleDictionary:
+    data: Dict[int, Dict[str, Dict[int, dict]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_roles: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class AdministratorDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, bool]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class AliasDictionary:
+    data: Dict[
+        int, Dict[str, Dict[int, Dict[str, Dict[str, Dict[str, list | str]]]]]
+    ] = field(default_factory=dict)
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class AutoMuteDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, Any]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class BanDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, Any]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class CapDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[str, int]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class CoordinatorDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, str]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class FlagDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, str]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class HeroDictionary:
+    data: Dict[int, Dict[str, Dict[int, bool]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class ModeratorDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, str]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PermissionDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, List[str]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class ServerMuteDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, dict]]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class StreamDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, List[int]]]]] = field(
+        default_factory=dict
+    )
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class TextMuteDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, Any]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class VeganDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, dict]]]] = field(default_factory=dict)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class VideoChannelDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict]]] = field(default_factory=dict)
+    skipped_channels: List[discord.Embed] = field(default_factory=list)
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+
+
+@dataclass
+class VoiceMuteDictionary:
+    data: Dict[int, Dict[str, Dict[int, Dict[str, Dict[int, Dict[str, Any]]]]]] = field(
+        default_factory=dict
+    )
+    skipped_guilds: List[discord.Embed] = field(default_factory=list)
+    skipped_members: List[discord.Embed] = field(default_factory=list)
+
 
 DictT = TypeVar(
     "DictT",

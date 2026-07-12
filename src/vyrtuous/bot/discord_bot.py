@@ -35,12 +35,20 @@ from vyrtuous.cache.registry import (
 )
 
 
-class IsBot(commands.CheckFailure):
+class TargetIsBot(commands.CheckFailure):
     def __init__(
         self,
-        message="You cannot act on the bot.",
+        *,
+        ctx: commands.Context | None = None,
+        interaction: discord.Interaction | None = None,
+        message: discord.Message | None = None,
     ):
-        super().__init__(message)
+        self._source = ctx or interaction or message
+        if self._source is None or self._source.guild is None:
+            return
+        super().__init__(
+            message=f"You cannot execute actions on {self._source.guild.me.mention}."
+        )
 
 
 class DiscordBot(commands.Bot):

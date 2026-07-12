@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List
-
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -34,15 +31,6 @@ TARGET_PERMISSIONS = (
     "send_messages",
     "view_channel",
 )
-
-
-@dataclass(frozen=True)
-class PermissionDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, List[str]]]]] = field(
-        default_factory=dict
-    )
-    skipped_channels: List[discord.Embed] = field(default_factory=list)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 def build_dictionary(obj, me) -> dict[int, dict[str, dict[int, dict[str, list[str]]]]]:
@@ -92,8 +80,10 @@ async def build_pages(
     title = f"{emojis.get_random_emoji()} {bot.user.display_name} Missing Permissions in {obj_name}"
 
     dictionary = build_dictionary(obj=obj, me=guild.me)
-    processed_dictionary: PermissionDictionary = await list_service.process_dictionary(
-        cls=PermissionDictionary, dictionary=dictionary
+    processed_dictionary: list_service.PermissionDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.PermissionDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in dictionary.items():

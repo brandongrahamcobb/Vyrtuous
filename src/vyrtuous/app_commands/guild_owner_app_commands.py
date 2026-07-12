@@ -17,17 +17,114 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Literal, Optional, Union
+
+import discord
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.guild_owner import GuildOwner
+from vyrtuous.listing import list_developers
+from vyrtuous.models import multi_converter
+from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.users import administrator_role_service, moderator_service
 
 
 class GuildOwnerAppCommands(commands.Cog):
-    ROLE = GuildOwner
+    PERMISSION_LEVEL = "Guild Owner"
 
-    def __init__(self, *, bot: DiscordBot | None = None):
+    def __init__(self, bot: DiscordBot):
         self.__bot = bot
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        if interaction.guild is None:
+            raise commands.CheckFailure("This command must be used inside a server.")
+        if interaction.channel is None:
+            raise commands.CheckFailure("This command must be used in a valid channel.")
+        await moderator_service.check_minimum_role(
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            member_snowflake=interaction.user.id,
+            lowest_role=self.PERMISSION_LEVEL,
+        )
+        return True
+
+    @app_commands.command(name="admin", description="Toggle administrator role.")
+    @app_commands.describe(role="Specify a role ID/mention.")
+    async def toggle_administrator_by_role_app_commands(
+        self, interaction: discord.Interaction, role: discord.Role
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        message = await interaction.original_response()
+        message_snowflake = message.id
+        pages = await administrator_role_service.toggle_administrator_role(
+            author_snowflake=interaction.user.id,
+            guild_snowflake=interaction.guild.id,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=message.channel.id,
+            role_snowflake=role.id,
+        )
+        return await tick.end(success=pages)
+
+    @app_commands.command(name="devs", description="List devs.")
+    @app_commands.describe(target="Specify a member ID/mention.")
+    async def list_developers_app_commands(
+        self, interaction: discord.Interaction, target: str | None
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if target == "all":
+            obj = None
+        elif target is None:
+            obj = "all"
+        else:
+            obj = multi_converter.transform(interaction=interaction, argument=target)
+        pages = await list_developers.build_pages(obj=obj)
+        return await tick.end(success=pages)
+
+    # @app_commands.command(name="sync", description="Sync app commands.")
+    # async def sync_app_commands(
+    #     self,
+    #     interaction: discord.Interaction,
+    #     spec: Optional[Literal["~", "*", "^"]] = None,
+    #     *,
+    #     guilds: Union[commands.Greedy[discord.Object], None] = None,
+    # ) -> discord.Message:
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     synced = []
+    #     if not guilds:
+    #         if spec == "~":
+    #             synced = await self.__bot.tree.sync(guild=interaction.guild)
+    #         elif spec == "*":
+    #             if interaction.guild is None:
+    #                 return await tick.end(
+    #                     warning="This command must be executed in a server."
+    #                 )
+    #             self.__bot.tree.copy_global_to(guild=interaction.guild)
+    #             synced = await self.__bot.tree.sync(guild=interaction.guild)
+    #         elif spec == "^":
+    #             self.__bot.tree.clear_commands(guild=interaction.guild)
+    #             await self.__bot.tree.sync(guild=interaction.guild)
+    #         else:
+    #             synced = await self.__bot.tree.sync()
+    #         try:
+    #             if spec is None:
+    #                 msg = f"Synced {len(synced)} commands globally."
+    #             else:
+    #                 msg = f"Synced {len(synced)} commands to the current server."
+    #             return await tick.end(success=msg)
+    #         except Exception as e:
+    #             return await tick.end(warning=str(e).capitalize())
+    #     ret = 0
+    #     for guild in guilds:
+    #         try:
+    #             await self.__bot.tree.sync(guild=guild)
+    #         except discord.HTTPException:
+    #             pass
+    #         else:
+    #             ret += 1
+    #     return await tick.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
 
 async def setup(bot: DiscordBot):

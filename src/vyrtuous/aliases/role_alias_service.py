@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import discord
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot, IsBot
+from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
@@ -123,7 +123,7 @@ async def set_enrole_overwrite(
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
     if guild.me.id == member_snowflake:
-        raise IsBot
+        raise TargetIsBot
     role = guild.get_role(role_snowflake)
     if role is None:
         raise commands.RoleNotFound(str(role_snowflake))

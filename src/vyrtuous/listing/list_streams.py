@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List
-
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -29,15 +26,6 @@ from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
 MODEL = Stream
-
-
-@dataclass
-class StreamDictionary:
-    data: Dict[int, Dict[str, Dict[int, Dict[str, List[int]]]]] = field(
-        default_factory=dict
-    )
-    skipped_channels: List[discord.Embed] = field(default_factory=list)
-    skipped_guilds: List[discord.Embed] = field(default_factory=list)
 
 
 async def build_dictionary(
@@ -79,8 +67,10 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
     title = f"{emojis.get_random_emoji()} Streaming Routes for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
-    processed_dictionary: StreamDictionary = await list_service.process_dictionary(
-        cls=StreamDictionary, dictionary=dictionary
+    processed_dictionary: list_service.StreamDictionary = (
+        await list_service.process_dictionary(
+            cls=list_service.StreamDictionary, dictionary=dictionary
+        )
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
