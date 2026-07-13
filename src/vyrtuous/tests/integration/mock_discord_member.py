@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
+from vyrtuous.tests.integration.mock_discord_role import ROLE_SNOWFLAKE
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
 MEMBER_DATA = {

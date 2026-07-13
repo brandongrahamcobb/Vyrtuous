@@ -29,7 +29,7 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-ROLE_NAME = "Role Name"
+ROLE_NAME = "Vegan"
 
 
 @pytest.mark.asyncio
@@ -56,10 +56,16 @@ async def test_roleid(bot, command: str, role, permission_role):
     """
     r = role.format(role_name=ROLE_NAME)
     full = f"{command} {r}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    elif (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),

@@ -24,7 +24,7 @@ from vyrtuous.tests.integration.mock_discord_state import MockState
 
 GUILD_SNOWFLAKE = 10000000000000500
 ROLE_SNOWFLAKE = 10000000000000200
-ROLE_NAME = "Role Name"
+ROLE_NAME = "Vegan"
 ROLE_DATA = {
     "id": ROLE_SNOWFLAKE,
     "name": ROLE_NAME,
