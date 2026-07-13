@@ -39,9 +39,13 @@ class HiddenGuildOwnerAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -55,12 +59,12 @@ class HiddenGuildOwnerAppCommands(commands.Cog):
         member="Specify a member ID/mention.", server="Specify a server ID"
     )
     @skip_app_command_help_discovery()
-    async def invincibility_app_commands(
+    async def toggle_invincibility_app_command(
         self, interaction: discord.Interaction, member: str, server: str | None
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         target = multi_converter.transform(interaction=interaction, argument=member)
         if isinstance(target, int):
             member_snowflake = target
@@ -107,7 +111,7 @@ class HiddenGuildOwnerAppCommands(commands.Cog):
 
     @app_commands.command(name="heroes", description="List heroes.")
     @skip_app_command_help_discovery()
-    async def list_heroes_app_commands(
+    async def list_heroes_app_command(
         self,
         interaction: discord.Interaction,
         *,

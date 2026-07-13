@@ -54,7 +54,7 @@ class AdministratorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -127,7 +127,7 @@ class AdministratorTextCommands(commands.Cog):
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         obj = target
         view = VerifyView(
             author_snowflake=ctx.author.id,
@@ -165,7 +165,7 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(member.id),
             member_snowflake=ctx.author.id,
@@ -217,7 +217,7 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         obj = channel or ctx.channel
         pages = await voice_mute_service.channel_mute(
             author_snowflake=ctx.author.id,
@@ -247,7 +247,7 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used within a server.")
+            return await tick.end(warning="This command must be executed within a server.")
         failed, moved = [], []
         for member in source_channel.members:
             try:
@@ -304,7 +304,7 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         msg = await server_mute_service.toggle_server_mute(
             author_snowflake=ctx.author.id,
             channel_snowflake=ctx.channel.id,
@@ -343,7 +343,7 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a guild.")
+            return await tick.end(warning="This command must be executed in a guild.")
         msg = await alias_service.delete_alias(
             alias_name=alias_name, guild_snowflake=ctx.guild.id
         )
@@ -361,7 +361,7 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a guild.")
+            return await tick.end(warning="This command must be executed in a guild.")
         obj = channel or ctx.channel
         pages = await voice_mute_service.channel_unmute(
             author_snowflake=ctx.author.id,

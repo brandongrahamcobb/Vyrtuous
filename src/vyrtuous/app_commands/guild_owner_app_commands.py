@@ -38,9 +38,9 @@ class GuildOwnerAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure("This command must be executed in a valid channel.")
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -51,12 +51,17 @@ class GuildOwnerAppCommands(commands.Cog):
 
     @app_commands.command(name="admin", description="Toggle administrator role.")
     @app_commands.describe(role="Specify a role ID/mention.")
-    async def toggle_administrator_by_role_app_commands(
-        self, interaction: discord.Interaction, role: discord.Role
+    async def toggle_administrator_by_role_app_command(
+        self, interaction: discord.Interaction, role: str
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
+        obj = multi_converter.transform(interaction=interaction, argument=role)
+        if not isinstance(obj, discord.Role):
+            return await tick.end(
+                warning="This command must be executed with a valid role."
+            )
         message = await interaction.original_response()
         message_snowflake = message.id
         pages = await administrator_role_service.toggle_administrator_role(
@@ -64,13 +69,13 @@ class GuildOwnerAppCommands(commands.Cog):
             guild_snowflake=interaction.guild.id,
             message_snowflake=message_snowflake,
             message_channel_snowflake=message.channel.id,
-            role_snowflake=role.id,
+            role_snowflake=obj.id,
         )
         return await tick.end(success=pages)
 
     @app_commands.command(name="devs", description="List devs.")
     @app_commands.describe(target="Specify a member ID/mention.")
-    async def list_developers_app_commands(
+    async def list_developers_app_command(
         self, interaction: discord.Interaction, target: str | None
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
@@ -84,7 +89,7 @@ class GuildOwnerAppCommands(commands.Cog):
         return await tick.end(success=pages)
 
     # @app_commands.command(name="sync", description="Sync app commands.")
-    # async def sync_app_commands(
+    # async def sync_app_command(
     #     self,
     #     interaction: discord.Interaction,
     #     spec: Optional[Literal["~", "*", "^"]] = None,

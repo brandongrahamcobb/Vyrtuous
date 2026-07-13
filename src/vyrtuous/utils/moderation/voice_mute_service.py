@@ -143,7 +143,7 @@ async def channel_mute(
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-        raise commands.CheckFailure("This action must be used in a valid channel.")
+        raise commands.CheckFailure("This action must be executed in a valid channel.")
     muted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
         if member.id == author_snowflake:
@@ -228,7 +228,7 @@ async def channel_unmute(
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-        raise commands.CheckFailure("This command must be used in a valid channel.")
+        raise commands.CheckFailure("This command must be executed in a valid channel.")
     unmuted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
         voice_mute = await database_factory.select(

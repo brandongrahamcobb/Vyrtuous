@@ -26,7 +26,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.data import Data
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder
@@ -36,10 +35,8 @@ MODEL = Data
 
 
 class DataBuilder:
-    def __init__(self, guild_snowflake: int, target_snowflake: int):
-        self.__data = Data(
-            guild_snowflake=guild_snowflake, target_snowflake=target_snowflake
-        )
+    def __init__(self, target_snowflake: int):
+        self.__data = Data(target_snowflake=target_snowflake)
 
     def set_counts(
         self,
@@ -64,7 +61,6 @@ class DataBuilder:
         channel_snowflake=None,
         guild_snowflake=None,
         role_snowflake=None,
-        target_snowflake=None,
     ) -> Self:
         if author_snowflake:
             self.__data = replace(self.__data, author_snowflake=author_snowflake)
@@ -74,8 +70,6 @@ class DataBuilder:
             self.__data = replace(self.__data, guild_snowflake=guild_snowflake)
         if role_snowflake:
             self.__data = replace(self.__data, role_snowflake=role_snowflake)
-        if target_snowflake:
-            self.__data = replace(self.__data, target_snowflake=target_snowflake)
         return self
 
     def set_expires_at(self, *, expires_at=None) -> Self:
@@ -95,23 +89,30 @@ class DataBuilder:
 
     async def set_highest_roles(
         self,
-        author_snowflake: int,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        member_snowflake: int,
+        *,
+        author_snowflake=None,
+        channel_snowflake=None,
+        guild_snowflake=None,
+        member_snowflake=None,
     ):
-        executor_highest_role = await moderator_service.resolve_highest_role(
-            channel_snowflake=int(channel_snowflake),
-            guild_snowflake=int(guild_snowflake),
-            member_snowflake=int(author_snowflake),
-        )
-        target_highest_role = await moderator_service.resolve_highest_role(
-            channel_snowflake=int(channel_snowflake),
-            guild_snowflake=int(guild_snowflake),
-            member_snowflake=int(member_snowflake),
-        )
-        self.__data = replace(self.__data, executor_highest_role=executor_highest_role)
-        self.__data = replace(self.__data, target_highest_role=target_highest_role)
+        if author_snowflake and channel_snowflake and guild_snowflake:
+            executor_highest_role = await moderator_service.resolve_highest_role(
+                channel_snowflake=int(channel_snowflake),
+                guild_snowflake=int(guild_snowflake),
+                member_snowflake=int(author_snowflake),
+            )
+            self.__data = replace(
+                self.__data, executor_highest_role=executor_highest_role
+            )
+            if member_snowflake:
+                target_highest_role = await moderator_service.resolve_highest_role(
+                    channel_snowflake=int(channel_snowflake),
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(member_snowflake),
+                )
+                self.__data = replace(
+                    self.__data, target_highest_role=target_highest_role
+                )
         return self
 
     def set_target(self, *, target: str | None = "user") -> Self:
@@ -128,74 +129,60 @@ async def save_data(
     author_snowflake: int | None,
     channel_snowflake: int | None,
     duration_value: str | None,
-    guild_snowflake: int,
+    guild_snowflake: int | None,
     identifier: str,
     member_snowflake: int,
     reason: str,
     role_snowflake: int | None,
     target: str | None,
 ) -> None:
-    data = DataBuilder(
-        guild_snowflake=guild_snowflake, target_snowflake=member_snowflake
+    bot: DiscordBot = DiscordBot.get_instance()
+    data = DataBuilder(target_snowflake=member_snowflake)
+    data.set_snowflakes(
+        author_snowflake=author_snowflake,
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        role_snowflake=role_snowflake,
     )
     data.set_identifier(identifier=identifier)
-    if target:
-        data.set_target(target=target)
-    if reason:
-        data.set_reason(reason=reason)
-    bot: DiscordBot = DiscordBot.get_instance()
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
-    data.set_snowflakes(guild_snowflake=guild_snowflake)
-    total_guild_members = sum(1 for member in guild.members if not member.bot)
-    data.set_counts(total_guild_members=total_guild_members)
-    online_members = sum(
-        1
-        for member in guild.members
-        if not member.bot and member.status != discord.Status.offline
+    data.set_target(target=target)
+    data.set_reason(reason=reason)
+    await data.set_highest_roles(
+        author_snowflake=author_snowflake,
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
     )
-    data.set_counts(online_members=online_members)
-    total_voice_members = sum(
-        len([member for member in channel.members if not member.bot])
-        for channel in guild.voice_channels
-    )
-    data.set_counts(total_voice_members=total_voice_members)
-    if channel_snowflake:
-        channel = bot.get_channel(channel_snowflake)
-        if channel is None:
-            raise commands.ChannelNotFound(str(channel_snowflake))
-        if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-            current_channel_members = len(channel.members)
-            data.set_counts(current_channel_members=current_channel_members)
-    else:
-        data.set_counts(current_channel_members=0)
-    member = guild.get_member(member_snowflake)
-    if member is None:
-        simplified_member = bot.registry.get(MemberState).active.get(
-            member_snowflake, None
+    if guild_snowflake:
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
+        total_guild_members = sum(1 for member in guild.members if not member.bot)
+        data.set_counts(total_guild_members=total_guild_members)
+        online_members = sum(
+            1
+            for member in guild.members
+            if not member.bot and member.status != discord.Status.offline
         )
-        if simplified_member is None:
-            raise commands.MemberNotFound(str(member_snowflake))
-        data.set_snowflakes(target_snowflake=member_snowflake)
-    else:
-        data.set_snowflakes(target_snowflake=member_snowflake)
-    if author_snowflake and channel_snowflake:
-        await data.set_highest_roles(
-            author_snowflake=author_snowflake,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
+        data.set_counts(online_members=online_members)
+        total_voice_members = sum(
+            len([member for member in channel.members if not member.bot])
+            for channel in guild.voice_channels
         )
-        data.set_snowflakes(author_snowflake=int(author_snowflake))
-    if role_snowflake:
-        role = guild.get_role(role_snowflake)
-        if role is None:
-            raise commands.RoleNotFound(str(role_snowflake))
+        data.set_counts(
+            total_guild_members=total_guild_members,
+            online_members=online_members,
+            total_voice_members=total_voice_members,
+        )
+        if channel_snowflake:
+            channel = guild.get_channel(channel_snowflake)
+            if channel is None:
+                raise commands.ChannelNotFound(str(channel_snowflake))
+            if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+                current_channel_members = len(channel.members)
+                data.set_counts(current_channel_members=current_channel_members)
         else:
-            data.set_snowflakes(role_snowflake=role_snowflake)
-    else:
-        data.set_snowflakes(role_snowflake=None)
+            data.set_counts(current_channel_members=0)
     duration_builder = DurationBuilder()
     if duration_value is not None:
         expires_at = duration_builder.parse(value=duration_value).to_expires_in()

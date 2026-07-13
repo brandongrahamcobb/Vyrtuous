@@ -18,12 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from contextlib import ExitStack
-from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
+from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
@@ -63,10 +61,10 @@ async def test_automute(bot, command: str, channel, permission_role):
     """
     c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
     full = f"{command} {c}"
-    if os.environ["TEST_MODE"].lower() == "integration":
+    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "unit":
+    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -75,35 +73,15 @@ async def test_automute(bot, command: str, channel, permission_role):
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
+        inx = interaction(
             bot=bot,
             channel=objects.get("text_channel", None),
             guild=objects.get("guild", None),
             message=msg,
-            prefix="!",
         )
-        coord_commands = bot.get_cog("CoordinatorTextCommands")
-        with ExitStack() as stack:
-            # stack.enter_context(
-            #     patch.object(
-            #         CoordinatorTextCommands,
-            #         "cog_check",
-            #         return_value=True,
-            #     )
-            # )
-            # stack.enter_context(
-            #     patch(
-            #         "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-            #         return_value=permission_role,
-            #     )
-            # )
-            # stack.enter_context(
-            #     patch(
-            #         "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-            #         return_value=permission_role,
-            #     )
-            # )
-            async with capture_command() as end_results:
-                command = await coord_commands.toggle_stage_text_command(ctx, channel=c)
-            for kind, content in end_results:
-                assert kind == "success"
+        async with capture_command() as end_results:
+            cog = bot.get_cog("CoordinatorAppCommands")
+            command = cog.toggle_automute_app_command
+            await command.callback(cog, interaction=inx, channel=c)
+        for kind, content in end_results:
+            assert kind == "success"

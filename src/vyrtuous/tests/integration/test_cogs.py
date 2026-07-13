@@ -18,15 +18,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from contextlib import ExitStack
-from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.conftest import interaction
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 
 @pytest.mark.asyncio
@@ -50,46 +51,27 @@ async def test_cogs(bot, command: str, permission_role):
     >>> !cogs
     [{emoji} Cogs\n Cog1\n Cog2]
     """
-    if os.environ["TEST_MODE"].lower() == "integration":
+    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=command)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "unit":
+    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
             channel=objects.get("text_channel", None),
-            content=command,
+            content="",
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
+        inx = interaction(
             bot=bot,
             channel=objects.get("text_channel", None),
             guild=objects.get("guild", None),
             message=msg,
-            prefix="!",
         )
-        dev_commands = bot.get_cog("DevTextCommands")
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.developer.developer_service.developer_predicator",
-                    return_value=True,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                    return_value=permission_role,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                    return_value=permission_role,
-                )
-            )
-            async with capture_command() as end_results:
-                command = await dev_commands.list_cogs_text_command(ctx)
-            for kind, content in end_results:
-                assert kind == "success"
+        async with capture_command() as end_results:
+            cog = bot.get_cog("HiddenDeveloperAppCommands")
+            command = cog.list_cogs_app_command
+            await command.callback(cog, interaction=inx)
+        for kind, content in end_results:
+            assert kind == "success"

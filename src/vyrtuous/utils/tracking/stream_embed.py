@@ -240,7 +240,7 @@ class StreamEmbed(discord.Embed):
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
             raise commands.GuildNotFound(str(guild_snowflake))
-        channel = bot.get_channel(channel_snowflake)
+        channel = guild.get_channel(channel_snowflake)
         if channel is None or not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):

@@ -27,9 +27,7 @@ from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import ban_service
-from vyrtuous.utils.users import (
-    moderator_service,
-)
+from vyrtuous.utils.users import moderator_service
 
 
 class HiddenCoordinatorTextCommands(commands.Cog):
@@ -40,7 +38,7 @@ class HiddenCoordinatorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx):
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -49,6 +47,7 @@ class HiddenCoordinatorTextCommands(commands.Cog):
         )
         return True
 
+    # TODO: Make this guild agnostic
     @commands.command(name="blacklist", help="Blacklist overwrite cleanup.")
     @skip_text_command_help_discovery()
     async def toggle_blacklist_text_command(
@@ -86,7 +85,8 @@ class HiddenCoordinatorTextCommands(commands.Cog):
         ):
             return await tick.end(warning="This command must target a valid channel.")
         msg = await ban_service.toggle_blacklist(
-            channel=target,
+            channel_snowflake=target.id,
+            guild_snowflake=ctx.guild.id,
             member_snowflake=member.id,
         )
         return await tick.end(success=msg)

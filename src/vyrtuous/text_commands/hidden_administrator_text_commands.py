@@ -51,7 +51,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -85,6 +85,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    # TODO: Make guild agnostic
     @commands.command(name="cap", help="Cap alias duration for mods.")
     @skip_text_command_help_discovery()
     async def cap_text_command(
@@ -101,8 +102,13 @@ class HiddenAdministratorTextCommands(commands.Cog):
         limit: str = commands.parameter(default="24h", description="Limit in m/h/d."),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
         msg = await cap_service.toggle_cap(
-            category=str(category), channel=channel, duration_str=limit
+            category=str(category),
+            channel_snowflake=channel.id,
+            duration_str=limit,
+            guild_snowflake=ctx.guild.id,  # NOT AGNOSTIC
         )
         return await tick.end(success=msg)
 
@@ -165,7 +171,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         if target == "all":
             obj = None
         else:
@@ -185,7 +191,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used within a server.")
+            return await tick.end(warning="This command must be executed within a server.")
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
             return await tick.end(success=f"Role `{role.name}` has ID `{role.id}`.")
@@ -233,7 +239,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         if source_channel is None:
             source_channel_snowflake = source_channel
         else:

@@ -41,7 +41,7 @@ class GuildOwnerTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -60,7 +60,7 @@ class GuildOwnerTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         pages = await administrator_role_service.toggle_administrator_role(
             author_snowflake=ctx.author.id,
             guild_snowflake=ctx.guild.id,

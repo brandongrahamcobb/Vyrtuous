@@ -29,10 +29,7 @@ from vyrtuous.listing import list_heroes
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (
-    hero_service,
-    moderator_service,
-)
+from vyrtuous.utils.users import hero_service, moderator_service
 
 
 class HiddenGuildOwnerTextCommands(commands.Cog):
@@ -44,7 +41,9 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -55,7 +54,7 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
     @skip_text_command_help_discovery()
-    async def invincibility_text_command(
+    async def toggle_invincibility_text_command(
         self,
         ctx: commands.Context,
         member: discord.Member = commands.parameter(
@@ -65,7 +64,7 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         if member_set := self.__bot.registry.get(MemberState).invincible.get(
             ctx.guild.id
         ):

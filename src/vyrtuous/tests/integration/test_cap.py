@@ -18,27 +18,28 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from contextlib import ExitStack
-from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.conftest import interaction
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, channel, category, hours",
+    "permission_role, command, channel, category, limit",
     [
-        ("Administrator", "!cap", "{channel_snowflake}", "ban", "8"),
+        ("Administrator", "!cap", "{channel_snowflake}", "ban", "8h"),
     ],
 )
-async def test_cap(bot, command: str, channel, category, hours, permission_role):
+async def test_cap(bot, command: str, channel, category, limit, permission_role):
     """
     Set a expires in limit for a channel by populating the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.
@@ -57,11 +58,11 @@ async def test_cap(bot, command: str, channel, category, hours, permission_role)
     c = channel.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {c} {category} {hours}"
-    if os.environ["TEST_MODE"].lower() == "integration":
+    full = f"{command} {c} {category} {limit}"
+    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "unit":
+    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -70,37 +71,17 @@ async def test_cap(bot, command: str, channel, category, hours, permission_role)
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
+        inx = interaction(
             bot=bot,
             channel=objects.get("text_channel", None),
             guild=objects.get("guild", None),
             message=msg,
-            prefix="!",
         )
-        admin_commands = bot.get_cog("AdminTextCommands")
-
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.administrator.administrator_service.administrator_predicator",
-                    return_value=True,
-                )
+        async with capture_command() as end_results:
+            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            command = cog.cap_app_command
+            await command.callback(
+                cog, interaction=inx, channel=c, category=category, limit=limit
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                    return_value=permission_role,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                    return_value=permission_role,
-                )
-            )
-            async with capture_command() as end_results:
-                command = await admin_commands.cap_text_command(
-                    ctx, channel=c, category=category, hours=hours
-                )
-            for kind, content in end_results:
-                assert kind == "success"
+        for kind, content in end_results:
+            assert kind == "success"

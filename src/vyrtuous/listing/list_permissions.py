@@ -71,7 +71,7 @@ async def build_pages(
 
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        return "This command must be used in a server."
+        return "This command must be executed in a server."
     obj_name = "All Servers"
     if obj is not None and not isinstance(obj, (int, str)):
         obj_name = obj.name

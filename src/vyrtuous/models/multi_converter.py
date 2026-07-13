@@ -124,32 +124,31 @@ def transform(interaction: discord.Interaction, argument: str | None) -> Union[
         except ValueError:
             raise app_commands.CheckFailure("Value is not a valid integer or mention.")
     if id:
-        channel = bot.get_channel(id)
-        if isinstance(
-            channel, (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
-        ):
-            return channel
         guild = bot.get_guild(id)
         if guild:
             return guild
+        for guild in bot.guilds:
+            channel = guild.get_channel(id)
+            if isinstance(
+                channel,
+                (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+            ):
+                return channel
+            member = guild.get_member(id)
+            if member:
+                return member
         else:
             guild = interaction.guild
             if guild is None:
                 raise app_commands.CheckFailure(
                     "This command must be executed in a server."
                 )
-        member = guild.get_member(id)
-        if member:
-            return member
-        role = guild.get_role(id)
-        if role:
-            return role
-        try:
+            role = guild.get_role(id)
+            if role:
+                return role
             member = bot.registry.get(MemberState).active.get(id, None)
             if member:
                 return id
-        except commands.MemberNotFound as e:
-            bot.logger.warning(e)
     raise commands.BadArgument(
         "Argument is not a channel, member, guild, role or UUID."
     )

@@ -37,7 +37,7 @@ class DeveloperTextCommands(commands.Cog):
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,

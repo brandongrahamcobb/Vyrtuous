@@ -51,10 +51,10 @@ async def test_debug(bot, command: str, lines, permission_role):
     [{emoji} Logger Information]\n Scheduled blah blah blah.
     """
     full = f"{command} {lines}"
-    if os.environ["TEST_MODE"].lower() == "integration":
+    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "unit":
+    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),

@@ -38,9 +38,13 @@ class CoordinatorAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -49,6 +53,7 @@ class CoordinatorAppCommands(commands.Cog):
         )
         return True
 
+    # TODO: Make guild agnostic
     @app_commands.command(name="mod", description="Grant/revoke mods.")
     @app_commands.describe(
         member="Specify a member ID/mention.", channel="Specify a channel ID/mention."
@@ -57,33 +62,51 @@ class CoordinatorAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: str,
-        channel: discord.abc.GuildChannel,
+        channel: str | None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
             return await tick.end(warning="This command must be executed in a server.")
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        target_member = multi_converter.transform(
+            interaction=interaction, argument=member
+        )
+        if isinstance(target_member, int):
+            member_snowflake = target_member
+        elif isinstance(target_member, discord.Member):
+            member_snowflake = target_member.id
         else:
             return await tick.end(warning=f"Member {member} was not found.")
+        target_channel = multi_converter.transform(
+            interaction=interaction, argument=channel
+        )
+        if target_channel is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
+            channel_snowflake = interaction.channel.id
+        elif isinstance(
+            target_channel,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            channel_snowflake = target_channel.id
+        else:
+            return await tick.end(warning=f"This command must target a valid channel.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=member_snowflake,
             member_snowflake=interaction.user.id,
-            channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
         )
         message = await interaction.original_response()
         message_snowflake = message.id
         msg = await moderator_service.toggle_moderator(
             author_snowflake=interaction.user.id,
-            channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
             member_snowflake=member_snowflake,
             message_snowflake=message_snowflake,
-            message_channel_snowflake=message.channel.id,
+            message_channel_snowflake=channel_snowflake,
         )
         return await tick.end(success=msg)
 
@@ -129,13 +152,21 @@ class CoordinatorAppCommands(commands.Cog):
     async def toggle_automute_app_command(
         self,
         interaction: discord.Interaction,
-        channel: discord.abc.GuildChannel | None,
+        channel: str | None,
         duration: str | None = "1h",
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
             return await tick.end(warning="This command must be executed in a server.")
-        resolved_channel = channel or interaction.channel
+        target = multi_converter.transform(interaction=interaction, argument=channel)
+        if target is None:
+            resolved_channel = interaction.channel
+        elif isinstance(target, (discord.VoiceChannel, discord.StageChannel)):
+            resolved_channel = target
+        else:
+            return await tick.end(
+                warning="This command must be executed for a valid channel."
+            )
         if resolved_channel is None:
             return await tick.end(
                 warning="This command must be executed in a valid channel."

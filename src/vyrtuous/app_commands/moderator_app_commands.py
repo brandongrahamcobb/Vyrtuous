@@ -34,12 +34,6 @@ from vyrtuous.listing import (
 )
 from vyrtuous.models import multi_converter
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import (
-    ban_service,
-    flag_service,
-    text_mute_service,
-    voice_mute_service,
-)
 from vyrtuous.utils.users import moderator_service
 from vyrtuous.view.flag_view import FlagView
 from vyrtuous.view.infraction_view import InfractionView
@@ -59,9 +53,13 @@ class ModeratorAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -352,10 +350,10 @@ class ModeratorAppCommands(commands.Cog):
         pages: list[discord.Embed] = []
         is_at_home = at_home(source=interaction)
         services = []
-        services.append(ban_service)
-        services.append(flag_service)
-        services.append(text_mute_service)
-        services.append(voice_mute_service)
+        services.append(list_bans)
+        services.append(list_flags)
+        services.append(list_text_mutes)
+        services.append(list_voice_mutes)
         for service in services:
             summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
             if isinstance(summary_pages, list):

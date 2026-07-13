@@ -39,9 +39,9 @@ class HiddenDeveloperAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure("This command must be executed in a valid channel.")
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -71,7 +71,7 @@ class HiddenDeveloperAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{emojis.get_random_emoji()} Cogs for {interaction.guild.me.name}",

@@ -36,16 +36,7 @@ from vyrtuous.listing import (
 )
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import (
-    ban_service,
-    flag_service,
-    text_mute_service,
-    voice_mute_service,
-)
-
-from vyrtuous.utils.users import (
-    moderator_service,
-)
+from vyrtuous.utils.users import moderator_service
 
 
 class ModeratorTextCommands(commands.Cog):
@@ -57,7 +48,9 @@ class ModeratorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -139,7 +132,7 @@ class ModeratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if msg.channel.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=int(msg.author.id),
             member_snowflake=ctx.author.id,
@@ -234,7 +227,7 @@ class ModeratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -289,10 +282,10 @@ class ModeratorTextCommands(commands.Cog):
         obj = member
         is_at_home = at_home(source=ctx)
         services = []
-        services.append(ban_service)
-        services.append(flag_service)
-        services.append(text_mute_service)
-        services.append(voice_mute_service)
+        services.append(list_bans)
+        services.append(list_flags)
+        services.append(list_text_mutes)
+        services.append(list_voice_mutes)
         for service in services:
             summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
             if isinstance(summary_pages, list):

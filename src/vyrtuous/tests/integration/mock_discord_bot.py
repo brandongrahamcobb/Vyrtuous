@@ -23,9 +23,14 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from vyrtuous.cache.registry import (ChannelState, MemberState,
-                                     MessageHistoryState, Registry,
-                                     SystemResourcesState, VideoChannelState)
+from vyrtuous.cache.registry import (
+    ChannelState,
+    MemberState,
+    MessageHistoryState,
+    Registry,
+    SystemResourcesState,
+    VideoChannelState,
+)
 from vyrtuous.inc.helpers import DISCORD_COGS, PATH_LOG
 from vyrtuous.system.config import Config
 from vyrtuous.system.logger import logger, setup_logging
@@ -64,6 +69,12 @@ class MockBot(commands.Bot):
 
     def get_guild(self, guild_snowflake: int):
         return self._guilds.get(guild_snowflake, None)
+
+    def get_user(self, member_snowflake: int):
+        for guild_snowflake, guild in self._guilds.items():
+            for member in guild.members:
+                if member.id == member_snowflake:
+                    return member
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:

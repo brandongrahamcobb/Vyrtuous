@@ -86,8 +86,16 @@ async def is_moderator(
         return True
 
 
-async def survey(channel) -> list[discord.Embed]:
+async def survey(channel_snowflake: int, guild_snowflake: int) -> list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
+    if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+        raise commands.CheckFailure("This command must target a valid channel.")
     chunk_size, pages = 7, []
     (
         sysadmins,

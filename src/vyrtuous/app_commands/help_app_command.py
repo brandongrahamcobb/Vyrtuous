@@ -55,9 +55,9 @@ class HelpAppCommand(commands.Cog):
 
     async def interaction_check(self, interaction: Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure("This command must be executed inside a server.")
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure("This command must be executed in a valid channel.")
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -158,13 +158,13 @@ class HelpAppCommand(commands.Cog):
         tick = Tick(bot=self.__bot, interaction=interaction)
         guild = interaction.guild
         if guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         channel = interaction.channel
         if not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):
             return await tick.end(
-                warning="This command must be used in a valid channel."
+                warning="This command must be executed in a valid channel."
             )
         pages, param_details, parameters = [], [], []
         if command_name and command_name != "all":

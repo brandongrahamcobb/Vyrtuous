@@ -24,17 +24,11 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import at_home
-from vyrtuous.listing import (
-    list_administrators,
-    list_vegans,
-)
+from vyrtuous.listing import list_administrators, list_vegans
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (
-    moderator_service,
-    vegan_service,
-)
+from vyrtuous.utils.users import moderator_service, vegan_service
 
 
 class HiddenModeratorTextCommands(commands.Cog):
@@ -46,7 +40,9 @@ class HiddenModeratorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -78,9 +74,10 @@ class HiddenModeratorTextCommands(commands.Cog):
         pages = await list_administrators.build_pages(is_at_home=is_at_home, obj=obj)
         return await tick.end(success=pages)
 
+    # TODO: Make this guild agnostic
     @commands.command(name="survey", help="Survey stage members.")
     @skip_text_command_help_discovery()
-    async def stage_survey_text_command(
+    async def survey_text_command(
         self,
         ctx: commands.Context,
         channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
@@ -90,9 +87,11 @@ class HiddenModeratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be executed in a server")
         obj = channel or ctx.channel
         pages = await moderator_service.survey(
-            channel=obj,
+            channel_snowflake=obj.id, guild_snowflake=ctx.guild.id
         )
         return await tick.end(success=pages)
 
@@ -112,7 +111,7 @@ class HiddenModeratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server")
+            return await tick.end(warning="This command must be executed in a server")
         if not vegan_service.is_vegan(
             guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id
         ):

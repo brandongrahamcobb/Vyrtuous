@@ -46,9 +46,13 @@ class HiddenModeratorAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -99,18 +103,36 @@ class HiddenModeratorAppCommands(commands.Cog):
         pages = await list_administrators.build_pages(is_at_home=is_at_home, obj=obj)
         return await tick.end(success=pages)
 
+    # TODO: Make this guild agnostic
     @app_commands.command(name="survey", description="Survey stage members.")
     @app_commands.describe(
         channel="Specify channel ID/mention.",
     )
     @skip_app_command_help_discovery()
-    async def stage_survey_app_command(
-        self, interaction: discord.Interaction, channel: discord.abc.GuildChannel | None
+    async def survey_app_command(
+        self, interaction: discord.Interaction, channel: str | None
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        obj = channel or interaction.channel
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server")
+        target_channel = multi_converter.transform(
+            interaction=interaction, argument=channel
+        )
+        if target_channel is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = interaction.channel.id
+        elif isinstance(
+            target_channel,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            channel_snowflake = target_channel.id
+        else:
+            return await tick.end(warning="This command must target a valid channel.")
         pages = await moderator_service.survey(
-            channel=obj,
+            channel_snowflake=channel_snowflake, guild_snowflake=interaction.guild.id
         )
         return await tick.end(success=pages)
 
@@ -124,7 +146,7 @@ class HiddenModeratorAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server")
+            return await tick.end(warning="This command must be executed in a server")
         if not vegan_service.is_vegan(
             guild_snowflake=interaction.guild.id, member_snowflake=interaction.user.id
         ):

@@ -72,15 +72,24 @@ async def enforce_or_undo(
         return embed
 
 
-async def toggle_blacklist(channel, member_snowflake: int) -> str:
+async def toggle_blacklist(
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     ban = await database_factory.select(
-        channel_snowflake=channel.id,
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
         singular=True,
     )
-    member = channel.guild.get_member(member_snowflake)
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
+    member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
     else:

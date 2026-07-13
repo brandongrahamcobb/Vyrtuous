@@ -18,15 +18,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from contextlib import ExitStack
-from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.conftest import interaction
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 ROLE_SNOWFLAKE = 10000000000000200
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
@@ -72,10 +73,10 @@ async def test_rmute_xrmute(bot, command: str, channel, permission_role):
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {c} test_reason"
-    if os.environ["TEST_MODE"].lower() == "integration":
+    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "unit":
+    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -84,39 +85,19 @@ async def test_rmute_xrmute(bot, command: str, channel, permission_role):
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
+        inx = interaction(
             bot=bot,
             channel=objects.get("text_channel", None),
             guild=objects.get("guild", None),
             message=msg,
-            prefix="!",
         )
-        admin_commands = bot.get_cog("AdminTextCommands")
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.administrator.administrator_service.administrator_predicator",
-                    return_value=True,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                    return_value=permission_role,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                    return_value=permission_role,
-                )
-            )
-            async with capture_command() as end_results:
-                command = await admin_commands.channel_mute_text_command(
-                    ctx, channel=c, reason="test_reason"
-                )
-                for kind, content in end_results:
-                    assert kind == "success"
-                command = await admin_commands.channel_unmute_text_command(ctx, channel=c)
-                for kind, content in end_results:
-                    assert kind == "success"
+        async with capture_command() as end_results:
+            cog = bot.get_cog("AdministratorAppCommands")
+            command = cog.channel_mute_app_command
+            await command.callback(cog, interaction=inx, channel=c)
+            for kind, content in end_results:
+                assert kind == "success"
+            command = cog.channel_unmute_app_command
+            await command.callback(cog, interaction=inx, channel=c)
+            for kind, content in end_results:
+                assert kind == "success"

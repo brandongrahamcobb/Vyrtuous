@@ -18,29 +18,32 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from contextlib import ExitStack
-from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.conftest import interaction
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
-ROLE_SNOWFLAKE = 10000000000000200
+GUILD_SNOWFLAKE = 10000000000000500
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, channel",
+    "permission_role, command, target",
     [
-        ("Developer", "!ow", "{channel_snowflake}"),
-        ("Developer", "!ow", "<#{channel_snowflake}>"),
+        ("Administrator", "!ow", "{channel_snowflake}"),
+        ("Administrator", "!ow", "<#{channel_snowflake}>"),
+        ("Administrator", "!ow", "{guild_snowflake}"),
+        ("Administrator", "!ow", "all"),
     ],
 )
-async def test_overwrites(bot, command: str, channel, permission_role):
+async def test_overwrites(bot, command: str, target, permission_role):
     """
     Voice-mute a whole channel and undo it by adding and removing
     entries in the PostgreSQL database 'vyrtuous' in the table
@@ -66,14 +69,15 @@ async def test_overwrites(bot, command: str, channel, permission_role):
     >>> !xrmute <#10000000000000010>
     [{emoji} Room Unmuted\n Member1\n Member2]
     """
-    c = channel.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+    t = target.format(
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    full = f"{command} {c}"
-    if os.environ["TEST_MODE"].lower() == "integration":
+
+    full = f"{command} {t}"
+    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "unit":
+    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -82,36 +86,15 @@ async def test_overwrites(bot, command: str, channel, permission_role):
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
+        inx = interaction(
             bot=bot,
             channel=objects.get("text_channel", None),
             guild=objects.get("guild", None),
             message=msg,
-            prefix="!",
         )
-        dev_commands = bot.get_cog("DevTextCommands")
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.owner.guild_owner_service.guild_owner_predicator",
-                    return_value=True,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                    return_value=permission_role,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                    return_value=permission_role,
-                )
-            )
-            async with capture_command() as end_results:
-                command = await dev_commands.list_overwrites_text_command(
-                    ctx, channel=c
-                )
-            for kind, content in end_results:
-                assert kind == "success"
+        async with capture_command() as end_results:
+            cog = bot.get_cog("AdministratorAppCommands")
+            command = cog.list_overwrites_app_command
+            await command.callback(cog, interaction=inx, target=t)
+        for kind, content in end_results:
+            assert kind == "success"

@@ -49,9 +49,13 @@ class HiddenAdministratorAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be used inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be used in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -79,6 +83,7 @@ class HiddenAdministratorAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    # TODO: Make guild agnostic
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
     @app_commands.describe(
         channel="Specify a channel ID/mention.",
@@ -89,13 +94,31 @@ class HiddenAdministratorAppCommands(commands.Cog):
     async def cap_app_command(
         self,
         interaction: discord.Interaction,
-        channel: discord.abc.GuildChannel,
         category: str,
+        channel: str | None,
         limit: str | None = "24h",
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        target = multi_converter.transform(interaction=interaction, argument=channel)
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = interaction.channel.id
+        elif isinstance(
+            target, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
+        ):
+            channel_snowflake = target.id
+        else:
+            return await tick.end(warning="This command must target a valid channel.")
         msg = await cap_service.toggle_cap(
-            category=str(category), channel=channel, duration_str=limit or "24h"
+            category=str(category),
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
+            duration_str=limit or "24h",
         )
         return await tick.end(success=msg)
 
@@ -152,7 +175,7 @@ class HiddenAdministratorAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         if target == "all":
             obj = None
         elif target is None:
@@ -175,7 +198,9 @@ class HiddenAdministratorAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used within a server.")
+            return await tick.end(
+                warning="This command must be executed within a server."
+            )
         role = discord.utils.get(interaction.guild.roles, name=role_name)
         if role:
             return await tick.end(success=f"Role `{role.name}` has ID `{role.id}`.")
@@ -217,7 +242,7 @@ class HiddenAdministratorAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(warning="This command must be executed in a server.")
         target = multi_converter.transform(
             interaction=interaction, argument=target_channel
         )
@@ -235,16 +260,24 @@ class HiddenAdministratorAppCommands(commands.Cog):
             source = multi_converter.transform(
                 interaction=interaction, argument=source_channel
             )
-            if not isinstance(
+            if source is None:
+                if interaction.channel is None:
+                    return await tick.end(
+                        warning="This command must target a valid channel."
+                    )
+                source_channel_snowflake = interaction.channel.id
+            elif isinstance(
                 source,
                 (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
             ):
+                source_channel_snowflake = source.id
+            else:
                 return await tick.end(
                     warning="This command must source from a valid channel."
                 )
             pages = await stream_service.toggle_stream(
                 guild_snowflake=interaction.guild.id,
-                source_channel_snowflake=source.id,
+                source_channel_snowflake=source_channel_snowflake,
                 target_channel_snowflake=target.id,
             )
         return await tick.end(success=pages)
@@ -274,16 +307,26 @@ class HiddenAdministratorAppCommands(commands.Cog):
     @app_commands.describe(channel="Specify a channel ID/mention.")
     @skip_app_command_help_discovery()
     async def toggle_video_channel_app_command(
-        self, interaction: discord.Interaction, channel: discord.abc.GuildChannel | None
+        self, interaction: discord.Interaction, channel: str | None
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        obj = channel or interaction.channel
-        if not isinstance(obj, (discord.VoiceChannel, discord.StageChannel)):
-            return await tick.end(
-                warning="This command must be executed for a valid channel."
-            )
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        target = multi_converter.transform(interaction=interaction, argument=channel)
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = interaction.channel.id
+        elif isinstance(
+            target, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
+        ):
+            channel_snowflake = target.id
+        else:
+            return await tick.end(warning="This command must target a valid channel.")
         msg = await video_channel_service.toggle_video_channel(
-            channel_snowflake=obj.id, guild_snowflake=obj.guild.id
+            channel_snowflake=channel_snowflake, guild_snowflake=interaction.guild.id
         )
         return await tick.end(success=msg)
 

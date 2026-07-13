@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from discord.ext import commands
+
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.cap import Cap
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import Duration, DurationBuilder
@@ -24,13 +27,26 @@ from vyrtuous.models.duration import Duration, DurationBuilder
 MODEL = Cap
 
 
-async def toggle_cap(category: str, channel, duration_str: str) -> str:
+async def toggle_cap(
+    category: str, channel_snowflake: int, duration_str: str, guild_snowflake: int
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder: DurationBuilder = DurationBuilder()
     seconds = duration_builder.parse(duration_str).to_seconds()
-    where_kwargs = {"channel_snowflake": channel.id, "category": category}
+    where_kwargs = {
+        "channel_snowflake": channel_snowflake,
+        "category": category,
+        "guild_snowflake": guild_snowflake,
+    }
     cap = await database_factory.select(
-        singular=True, channel_snowflake=channel.id, category=category
+        singular=True, channel_snowflake=channel_snowflake, category=category
     )
     if cap and seconds:
         await database_factory.update(
@@ -38,7 +54,9 @@ async def toggle_cap(category: str, channel, duration_str: str) -> str:
         )
         return f"Cap `{category}` modified for {channel.mention}."
     elif cap:
-        await database_factory.delete(channel_snowflake=channel.id, category=category)
+        await database_factory.delete(
+            channel_snowflake=channel_snowflake, category=category
+        )
         return (
             f"Cap of type {category} "
             f"and channel {channel.mention} deleted successfully."
@@ -49,7 +67,7 @@ async def toggle_cap(category: str, channel, duration_str: str) -> str:
             channel_snowflake=channel.id,
             category=category,
             duration_seconds=seconds,
-            guild_snowflake=channel.guild.id,
+            guild_snowflake=guild_snowflake,
         )
         await database_factory.create(cap)
         return f"Cap `{category}` created for {channel.mention} successfully."

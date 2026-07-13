@@ -17,7 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import asyncpg
+import discord
 import pytest
 import pytest_asyncio
 from discord import Interaction
@@ -68,6 +71,22 @@ def context(bot, channel, guild, message, prefix):
     return ctx
 
 
-def interaction(context):
-    interaction = Interaction(context=context)
-    return interaction
+def interaction(bot, channel, guild, message):
+    inx = MagicMock(spec=discord.Interaction)
+    inx.channel = channel
+    inx.client = bot
+    inx.guild = guild
+    inx.message = message
+    inx.user = message.author
+    inx.original_response = AsyncMock(return_value=message)
+    inx.response = MagicMock()
+    inx.response.send_message = AsyncMock()
+    inx.response.defer = AsyncMock()
+    inx.followup = MagicMock()
+    inx.followup.send = AsyncMock()
+    return inx
+
+
+# def interaction(context):
+#     interaction = Interaction(context=context)
+#     return interaction
