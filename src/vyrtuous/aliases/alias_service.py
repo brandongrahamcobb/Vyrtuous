@@ -34,6 +34,7 @@ from vyrtuous.db.alias import Alias, NotAlias
 from vyrtuous.db.database_factory import DatabaseFactory
 
 MODEL = Alias
+ALIASES = [BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]
 CATEGORY_TO_HELP = {
     "ban": [
         "**member**: Tag a member or include their ID",
@@ -174,28 +175,7 @@ async def create_alias(
 def alias_category_to_alias(
     category: str,
 ) -> Union[BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]:
-    dir_paths = []
-    dir_paths.append(Path("/app/vyrtuous"))
-    typed_aliases = dir_to_classes(dir_paths=dir_paths)
-    for a in typed_aliases:
+    for a in ALIASES:
         if a.category == category:
             return a()
     raise NotAlias()
-
-
-def dir_to_classes(dir_paths, *, attr="ARGS_MAP"):
-    classes = []
-    for dir_path in dir_paths:
-        for py_file in dir_path.rglob("*.py"):
-            if py_file.name == "__init__.py":
-                continue
-            module_name = py_file.stem
-            spec = importlib.util.spec_from_file_location(module_name, str(py_file))
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            for _, cls in inspect.getmembers(module, inspect.isclass):
-                if cls.__module__ != module.__name__:
-                    continue
-                if attr in getattr(cls, "__annotations__", {}):
-                    classes.append(cls)
-    return classes

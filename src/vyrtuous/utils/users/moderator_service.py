@@ -265,10 +265,10 @@ async def toggle_moderator(
 
 
 async def check_minimum_role(
-    channel_snowflake,
-    guild_snowflake,
-    member_snowflake,
+    guild_snowflake: int,
+    member_snowflake: int,
     lowest_role: str,
+    channel_snowflake: int | None = None,
 ) -> str:
     role_names = (
         "Sysadmin",
@@ -308,19 +308,21 @@ async def check_minimum_role(
                     ):
                         return role_name
                 case "Coordinator":
-                    if await coordinator_service.is_coordinator(
-                        channel_snowflake=int(channel_snowflake),
-                        guild_snowflake=int(guild_snowflake),
-                        member_snowflake=int(member_snowflake),
-                    ):
-                        return role_name
+                    if channel_snowflake:
+                        if await coordinator_service.is_coordinator(
+                            channel_snowflake=int(channel_snowflake),
+                            guild_snowflake=int(guild_snowflake),
+                            member_snowflake=int(member_snowflake),
+                        ):
+                            return role_name
                 case "Moderator":
-                    if await is_moderator(
-                        channel_snowflake=int(channel_snowflake),
-                        guild_snowflake=int(guild_snowflake),
-                        member_snowflake=int(member_snowflake),
-                    ):
-                        return role_name
+                    if channel_snowflake:
+                        if await is_moderator(
+                            channel_snowflake=int(channel_snowflake),
+                            guild_snowflake=int(guild_snowflake),
+                            member_snowflake=int(member_snowflake),
+                        ):
+                            return role_name
         except commands.CheckFailure:
             if lowest_role is not None and passed_lowest:
                 raise

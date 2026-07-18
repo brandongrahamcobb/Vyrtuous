@@ -181,16 +181,16 @@ async def send_message(bot, content: str = None):
 
     msg = build_message(
         author=objects.get("author", None),
-        channel=objects.get("text_channel", None),
+        channel=objects.get("voice_channel", None),
         content=content,
         guild=objects.get("guild", None),
         state=objects.get("state", None),
     )
 
-    async with capture(objects.get("text_channel", None)):
+    async with capture(objects.get("voice_channel", None)):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-    return objects.get("text_channel", None)._end_result
+    return objects.get("voice_channel", None)._end_result
 
 
 @asynccontextmanager

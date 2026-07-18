@@ -30,6 +30,7 @@ MODEL = Administrator
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, bool]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -41,33 +42,38 @@ async def build_dictionary(
         )
     elif isinstance(obj, discord.Member):
         administrators = await database_factory.select(
-            member_snowflake=obj.id, singular=False
+            guild_snowflake=guild_snowflake, member_snowflake=obj.id, singular=False
         )
     else:
-        administrators = await database_factory.select(singular=False)
+        administrators = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if administrators:
         for administrator in administrators:
-            dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
-            dictionary[administrator.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 administrator.member_snowflake, {"administrators": {}}
             )
 
             for role_snowflake in administrator.role_snowflakes:
-                dictionary[administrator.guild_snowflake]["members"][
-                    administrator.member_snowflake
-                ]["administrators"].update({role_snowflake: True})
+                dictionary[guild_snowflake]["members"][administrator.member_snowflake][
+                    "administrators"
+                ].update({role_snowflake: True})
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No administrators found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
-    elif isinstance(obj, int):
+    else:
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
         if simplified_member:
             obj_name = simplified_member[0]
@@ -75,7 +81,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             return "No administrators found."
     title = f"{emojis.get_random_emoji()} Administrators for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.AdministratorDictionary = (
         await list_service.process_dictionary(
             cls=list_service.AdministratorDictionary,
@@ -138,9 +144,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({admin_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No administrators found."
     return pages

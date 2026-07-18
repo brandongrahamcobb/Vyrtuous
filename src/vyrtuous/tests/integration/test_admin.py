@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -29,18 +30,20 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
+GUILD_SNOWFLAKE = 10000000000000500
 ROLE_SNOWFLAKE = 10000000000000200
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, role",
+    "permission_role, command, role, guild",
     [
-        ("Guild Owner", "!admin", "{role_snowflake}"),
-        ("Guild Owner", "!admin", "<@&{role_snowflake}>"),
+        ("Guild Owner", "!admin", "{role_snowflake}", None),
+        ("Guild Owner", "!admin", "<@&{role_snowflake}>", None),
+        ("Guild Owner", "!admin", "{role_snowflake}", "{guild_snowflake}"),
     ],
 )
-async def test_admin(bot, command: str, role: str, permission_role):
+async def test_admin(bot, command: str, role: str, guild: str | None, permission_role):
     """
     List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.
@@ -63,11 +66,22 @@ async def test_admin(bot, command: str, role: str, permission_role):
     r = role.format(
         role_snowflake=ROLE_SNOWFLAKE,
     )
-    full = f"{command} {r}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if guild is None:
+        g = None
+        full = f"{command} {r}"
+    else:
+        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        full = f"{command} {r} {g}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -85,6 +99,14 @@ async def test_admin(bot, command: str, role: str, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("GuildOwnerAppCommands")
             command = cog.toggle_administrator_by_role_app_command
-            await command.callback(cog, interaction=inx, role=r)
+            transformer = AppTarget()
+            resolved_role = await transformer.transform(inx, r)
+            if g:
+                resolved_guild = await transformer.transform(inx, g)
+            else:
+                resolved_guild = None
+            await command.callback(
+                cog, interaction=inx, role=resolved_role, guild=resolved_guild
+            )
         for kind, content in end_results:
             assert kind == "success"

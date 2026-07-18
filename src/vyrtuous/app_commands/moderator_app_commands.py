@@ -32,7 +32,7 @@ from vyrtuous.listing import (
     list_text_mutes,
     list_voice_mutes,
 )
-from vyrtuous.models import multi_converter
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import moderator_service
 from vyrtuous.view.flag_view import FlagView
@@ -71,17 +71,36 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def change_moderation_duration_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        ctx = ViewContext(
+            interaction=interaction,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         view = ModifyInfractionView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
@@ -96,17 +115,36 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="reason", description="Modify a reason.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def change_moderation_reason_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        ctx = ViewContext(
+            interaction=interaction,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         view = ModifyInfractionView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
@@ -121,17 +159,36 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="ban", description="Create a ban.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_ban_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        ctx = ViewContext(
+            interaction=interaction,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         ctx.category = "ban"
         view = InfractionView(
             author_snowflake=interaction.user.id,
@@ -146,17 +203,36 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="flag", description="Create a flag.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_flag_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        ctx = ViewContext(
+            interaction=interaction,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         ctx.category = "flag"
         view = FlagView(
             author_snowflake=interaction.user.id,
@@ -171,17 +247,36 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="mute", description="Create a voice mute.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_voice_mute_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        ctx = ViewContext(
+            interaction=interaction,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         ctx.category = "vmute"
         view = InfractionView(
             author_snowflake=interaction.user.id,
@@ -196,17 +291,36 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="tmute", description="Create a text-mute.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_app_mute_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        ctx = ViewContext(interaction=interaction, member_snowflake=member_snowflake)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        ctx = ViewContext(
+            interaction=interaction,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         ctx.category = "tmute"
         view = InfractionView(
             author_snowflake=interaction.user.id,
@@ -225,17 +339,32 @@ class ModeratorAppCommands(commands.Cog):
     async def list_bans_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
-        is_at_home = at_home(source=interaction)
-        pages = await list_bans.build_pages(obj=obj, is_at_home=is_at_home)
+            obj = target.target
+        pages = await list_bans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
     @app_commands.command(name="cmds", description="List aliases.")
@@ -245,17 +374,35 @@ class ModeratorAppCommands(commands.Cog):
     async def list_commands_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_aliases.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_aliases.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
     @app_commands.command(name="coords", description="Lists coords.")
@@ -265,17 +412,35 @@ class ModeratorAppCommands(commands.Cog):
     async def list_coordinators_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_coordinators.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_coordinators.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
     @app_commands.command(name="flags", description="List flags.")
@@ -285,17 +450,35 @@ class ModeratorAppCommands(commands.Cog):
     async def list_flags_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_flags.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_flags.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
     @app_commands.command(name="mods", description="Lists mods.")
@@ -305,17 +488,35 @@ class ModeratorAppCommands(commands.Cog):
     async def list_moderators_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_moderators.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_moderators.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
     @app_commands.command(name="mutes", description="List mutes.")
@@ -325,17 +526,35 @@ class ModeratorAppCommands(commands.Cog):
     async def list_mutes_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_voice_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_voice_mutes.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
     @app_commands.command(name="summary", description="List user moderation.")
@@ -343,10 +562,31 @@ class ModeratorAppCommands(commands.Cog):
         member="Specify a member ID/mention.",
     )
     async def list_moderation_summary_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        obj = multi_converter.transform(interaction=interaction, argument=member)
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
         pages: list[discord.Embed] = []
         is_at_home = at_home(source=interaction)
         services = []
@@ -355,7 +595,11 @@ class ModeratorAppCommands(commands.Cog):
         services.append(list_text_mutes)
         services.append(list_voice_mutes)
         for service in services:
-            summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
+            summary_pages = await service.build_pages(
+                guild_snowflake=guild_snowflake,
+                obj=member_snowflake,
+                is_at_home=is_at_home,
+            )
             if isinstance(summary_pages, list):
                 for page in summary_pages:
                     if isinstance(page, discord.Embed):
@@ -371,17 +615,35 @@ class ModeratorAppCommands(commands.Cog):
     async def list_text_mutes_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_text_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_text_mutes.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
 

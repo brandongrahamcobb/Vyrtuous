@@ -21,6 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.channels import automute_channel_service
 from vyrtuous.utils.messaging.tick import Tick
@@ -139,26 +140,25 @@ class CoordinatorTextCommands(commands.Cog):
             description="Tag a channel or include its ID.",
         ),
         *,
-        duration: str = commands.parameter(
-            default="1h",
-            description="Options: (+|-)duration(m|h|d) 0 - permanent / 24h - default",
+        duration: DurationWrapper | None = commands.parameter(
+            converter=Duration,
+            default=None,
+            description="m/h/d",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be executed in a server.")
+        if duration is None:
+            duration_obj = DurationObject(number=1, prefix="+", sign=1, unit="h")
+        else:
+            duration_obj = duration.duration
         resolved_channel = channel or ctx.channel
-        await moderator_service.check_minimum_role(
-            channel_snowflake=resolved_channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-            lowest_role="Coordinator",
-        )
         pages = await automute_channel_service.toggle_automute(
             author_snowflake=ctx.author.id,
             channel_snowflake=resolved_channel.id,
             guild_snowflake=ctx.guild.id,
-            duration_value=duration,
+            duration=duration_obj,
         )
         return await tick.end(success=pages)
 

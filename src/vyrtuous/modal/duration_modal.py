@@ -79,7 +79,7 @@ class DurationModal(discord.ui.Modal):
         if record:
             default_duration_value = duration_builder.from_timestamp(
                 record.expires_in
-            ).build(as_str=True)
+            ).as_str()
             self.__record = record
             self.duration_selection = discord.ui.TextInput(
                 label="Type the duration",

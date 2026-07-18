@@ -23,7 +23,8 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.models import multi_converter
+from vyrtuous.models.duration import AppDuration, DurationObject, DurationWrapper
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.channels import automute_channel_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import moderator_service
@@ -53,75 +54,96 @@ class CoordinatorAppCommands(commands.Cog):
         )
         return True
 
-    # TODO: Make guild agnostic
     @app_commands.command(name="mod", description="Grant/revoke mods.")
     @app_commands.describe(
-        member="Specify a member ID/mention.", channel="Specify a channel ID/mention."
+        member="Specify a member ID/mention.",
+        channel="Specify a channel ID/mention.",
     )
     async def toggle_moderator_app_command(
         self,
         interaction: discord.Interaction,
-        member: str,
-        channel: str | None,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target_member = multi_converter.transform(
-            interaction=interaction, argument=member
-        )
-        if isinstance(target_member, int):
-            member_snowflake = target_member
-        elif isinstance(target_member, discord.Member):
-            member_snowflake = target_member.id
-        else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        target_channel = multi_converter.transform(
-            interaction=interaction, argument=channel
-        )
-        if target_channel is None:
+        if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning=f"This command must target a valid channel."
+                    warning="This command must target a valid channel."
                 )
             channel_snowflake = interaction.channel.id
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         elif isinstance(
-            target_channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = target_channel.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
-            return await tick.end(warning=f"This command must target a valid channel.")
+            return await tick.end(warning="This command must target a valid channel.")
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=member_snowflake,
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
+            guild_snowflake=guild_snowflake,
         )
         message = await interaction.original_response()
         message_snowflake = message.id
         msg = await moderator_service.toggle_moderator(
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
+            guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
             message_snowflake=message_snowflake,
-            message_channel_snowflake=channel_snowflake,
+            message_channel_snowflake=message.channel.id,
         )
         return await tick.end(success=msg)
 
     @app_commands.command(name="roles", description="List role members.")
-    @app_commands.describe(role="Specify a role ID/mention.")
+    @app_commands.describe(
+        role="Specify a role ID/mention.", guild="Specify a server ID."
+    )
     async def list_roles_app_command(
-        self, interaction: discord.Interaction, role: discord.Role
+        self,
+        interaction: discord.Interaction,
+        role: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            members = interaction.guild.members
+        else:
+            if isinstance(guild.target, discord.Guild):
+                members = guild.target.members
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(role.target, discord.Role):
+            role_name = role.target.name
+            color = (
+                role.target.color
+                if role.target.color.value
+                else discord.Color.blurple()
+            )
+        else:
+            return await tick.end(warning="This command must target a valid role.")
         embeds = []
-        members = [
-            member for member in interaction.guild.members if role in member.roles
-        ]
+        members = [member for member in members if role in member.roles]
         chunk_size = 12
         for index in range(0, len(members), chunk_size):
             chunk = members[index : index + chunk_size]
@@ -130,58 +152,61 @@ class CoordinatorAppCommands(commands.Cog):
                 for position, member in enumerate(chunk, start=index)
             )
             embed = discord.Embed(
-                title=f"{role.name} Members",
+                title=f"{role_name} Members",
                 description=description or "No members found.",
-                color=role.color if role.color.value else discord.Color.blurple(),
+                color=color,
             )
-
             embeds.append(embed)
         if not embeds:
             embed = discord.Embed(
-                title=f"{role.name} Members",
+                title=f"{role_name} Members",
                 description="No members found.",
-                color=role.color if role.color.value else discord.Color.blurple(),
+                color=color,
             )
             embeds.append(embed)
         return await tick.end(success=embeds)
 
     @app_commands.command(name="automute", description="Start/stop automute")
     @app_commands.describe(
-        channel="Specify a channel ID/mention.", duration="Specify duration as m/h/d"
+        channel="Specify a channel ID/mention.",
+        duration="Specify duration as m/h/d.",
     )
     async def toggle_automute_app_command(
         self,
         interaction: discord.Interaction,
-        channel: str | None,
-        duration: str | None = "1h",
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        duration: app_commands.Transform[DurationWrapper | None, AppDuration] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target = multi_converter.transform(interaction=interaction, argument=channel)
-        if target is None:
-            resolved_channel = interaction.channel
-        elif isinstance(target, (discord.VoiceChannel, discord.StageChannel)):
-            resolved_channel = target
+        if channel is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = interaction.channel.id
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        elif isinstance(
+            channel.target,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
-            return await tick.end(
-                warning="This command must be executed for a valid channel."
-            )
-        if resolved_channel is None:
-            return await tick.end(
-                warning="This command must be executed in a valid channel."
-            )
-        await moderator_service.check_minimum_role(
-            channel_snowflake=resolved_channel.id,
-            guild_snowflake=interaction.guild.id,
-            member_snowflake=interaction.user.id,
-            lowest_role="Coordinator",
-        )
+            return await tick.end(warning="This command must target a valid channel.")
+        if duration is None:
+            duration_obj = DurationObject(number=2, prefix="", sign=1, unit="h")
+        else:
+            duration_obj = duration.duration
+
         pages = await automute_channel_service.toggle_automute(
             author_snowflake=interaction.user.id,
-            channel_snowflake=resolved_channel.id,
-            guild_snowflake=interaction.guild.id,
-            duration_value=duration or "1h",
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            duration=duration_obj,
         )
         return await tick.end(success=pages)
 

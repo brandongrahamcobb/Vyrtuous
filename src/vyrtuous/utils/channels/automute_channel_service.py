@@ -23,7 +23,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import Duration, DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import voice_mute_service
 
@@ -50,9 +50,8 @@ MODEL = AutoMute
 async def toggle_automute(
     author_snowflake: int,
     channel_snowflake: int,
+    duration: DurationObject,
     guild_snowflake: int,
-    *,
-    duration_value: str = "1h",
 ):
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
@@ -75,13 +74,13 @@ async def toggle_automute(
         automute = MODEL(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            expires_in=duration_builder.parse(value=duration_value).to_expires_in(),
+            expires_in=duration_builder.load(duration=duration).to_expires_in(),
         )
         await database_factory.create(automute)
         embed = await voice_mute_service.channel_mute(
             author_snowflake=author_snowflake,
             channel_snowflake=channel_snowflake,
-            duration_value=duration_value,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             reason=f"Automute enabled.",
             target="auto",

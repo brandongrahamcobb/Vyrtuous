@@ -64,20 +64,26 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            str, discord.abc.GuildChannel, discord.Guild, discord.Member, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention or server ID.",
+            description="Specify one of: channel ID/mention, member ID/mention or server ID.",
+        ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            default=None,
+            description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_bans.build_pages(obj=obj, is_at_home=is_at_home)
+            guild_snowflake = guild.id
+        obj = target or ctx.channel
+        pages = await list_bans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
     @commands.command(name="cmds", help="List aliases.")
@@ -93,10 +99,13 @@ class ModeratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
+            guild_snowflake = guild.id
+        obj = target or ctx.channel
         is_at_home = at_home(source=ctx)
         pages = await list_aliases.build_pages(obj=obj, is_at_home=is_at_home)
         return await tick.end(success=pages)

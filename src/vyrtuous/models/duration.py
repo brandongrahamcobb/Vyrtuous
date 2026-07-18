@@ -18,8 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Self, overload
+from typing import Self
 
+import discord
+from discord import app_commands
 from discord.ext import commands
 
 DAYS_PER_WEEK = 7
@@ -57,7 +59,7 @@ UNIT_SECONDS = {
 }
 
 
-class Duration:
+class DurationObject:
     def __init__(
         self,
         number: int,
@@ -83,11 +85,15 @@ def _largest_unit(total_seconds: int):
 
 class DurationBuilder:
     def __init__(self):
-        self.__duration = Duration(number=8, prefix="", sign=1, unit="h")
+        self.__duration = DurationObject(number=8, prefix="", sign=1, unit="h")
+
+    def load(self, duration: DurationObject) -> Self:
+        self.__duration = duration
+        return self
 
     def parse(self, value) -> Self:
         if not value:
-            self.__duration = Duration(number=0, unit="", prefix="", sign=1)
+            self.__duration = DurationObject(number=0, unit="", prefix="", sign=1)
             return self
         s = value.lower().strip()
         if s == "0":
@@ -95,7 +101,7 @@ class DurationBuilder:
             unit = "h"
             prefix = ""
             sign = 1
-            self.__duration = Duration(
+            self.__duration = DurationObject(
                 number=number, prefix=prefix, sign=sign, unit=unit
             )
             return self
@@ -131,7 +137,9 @@ class DurationBuilder:
                 raise commands.BadArgument(f"Invalid duration unit in '{value}'")
             else:
                 unit = value
-        self.__duration = Duration(number=number, unit=unit, prefix=prefix, sign=sign)
+        self.__duration = DurationObject(
+            number=number, unit=unit, prefix=prefix, sign=sign
+        )
         return self
 
     def from_seconds(self, seconds) -> Self:
@@ -187,9 +195,10 @@ class DurationBuilder:
         self.parse(f"+{number}{unit}")
         return self
 
-    def build(self, *, as_str: bool = False) -> Duration | str:
-        if as_str:
-            return f"{self.__duration.prefix}{self.__duration.number}{self.__duration.unit}"
+    def as_str(self) -> str:
+        return f"{self.__duration.prefix}{self.__duration.number}{self.__duration.unit}"
+
+    def build(self) -> DurationObject:
         return self.__duration
 
     def to_unix_ts(self, base: datetime | None = None) -> str:
@@ -197,3 +206,53 @@ class DurationBuilder:
         if expires_in is None or self.__duration.number == 0:
             return "permanent"
         return f"<t:{int(expires_in.timestamp())}:R>"
+
+
+class DurationWrapper:
+
+    def __init__(self, duration: DurationObject):
+        self.__duration = duration
+
+    @property
+    def duration(self) -> DurationObject:
+        return self.__duration
+
+
+class Converter(commands.Converter):
+
+    def __init__(self, duration_cls=DurationWrapper):
+        self.duration_cls = duration_cls
+
+    async def convert(self, ctx: commands.Context, argument: str) -> DurationWrapper:
+        duration_builder = DurationBuilder()
+        try:
+            duration = duration_builder.parse(argument).build()
+            return self.duration_cls(duration)
+        except ValueError:
+            raise commands.CheckFailure("This command must input a valid duration.")
+
+
+class Transformer(app_commands.Transformer):
+
+    def __init__(self, duration_cls=DurationWrapper):
+        self.duration_cls = duration_cls
+
+    async def transform(
+        self, interaction: discord.Interaction, arg: str
+    ) -> DurationWrapper:
+        duration_builder = DurationBuilder()
+        try:
+            duration = duration_builder.parse(arg).build()
+            return self.duration_cls(duration)
+        except ValueError:
+            raise app_commands.CheckFailure("This command must input a valid duration.")
+
+
+class Duration(Converter):
+    def __init__(self):
+        super().__init__(DurationWrapper)
+
+
+class AppDuration(Transformer):
+    def __init__(self):
+        super().__init__(DurationWrapper)

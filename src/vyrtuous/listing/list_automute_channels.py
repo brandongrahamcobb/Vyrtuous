@@ -31,6 +31,7 @@ MODEL = AutoMute
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[str, Any]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -42,36 +43,36 @@ async def build_dictionary(
         )
     elif isinstance(obj, discord.abc.GuildChannel):
         automutes = await database_factory.select(
-            channel_snowflake=obj.id, singular=False
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
         )
     else:
-        automutes = await database_factory.select(singular=False)
+        automutes = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if automutes:
         for automute in automutes:
-            dictionary.setdefault(automute.guild_snowflake, {"channels": {}})
-            dictionary[automute.guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"channels": {}})
+            dictionary[guild_snowflake]["channels"].setdefault(
                 automute.channel_snowflake, {}
             )
-            dictionary[automute.guild_snowflake]["channels"][
+            dictionary[guild_snowflake]["channels"][
                 automute.channel_snowflake
             ].setdefault("automutes", {})
-            dictionary[automute.guild_snowflake]["channels"][
-                automute.channel_snowflake
-            ]["automutes"].update({"expires_in": automute.expires_in})
+            dictionary[guild_snowflake]["channels"][automute.channel_snowflake][
+                "automutes"
+            ].update({"expires_in": automute.expires_in})
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
-        obj_name = obj.name
+    obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Automute Rooms for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.AutoMuteDictionary = (
         await list_service.process_dictionary(
             cls=list_service.AutoMuteDictionary, dictionary=dictionary
@@ -117,9 +118,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({automute_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_channels)
-        pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
         return "No automute channels found."
     return pages

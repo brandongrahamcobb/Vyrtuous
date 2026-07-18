@@ -25,7 +25,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 
 
 class StreamEmbed(discord.Embed):
@@ -176,9 +176,9 @@ class StreamEmbed(discord.Embed):
         self.add_field(name="📱 Message Context", value=field, inline=True)
         return self
 
-    def set_action(self, *, duration_value) -> Self:
-        expiration = f"{self.__duration_builder.parse(duration_value).to_unix_ts()}"
-        if duration_value is not None:
+    def set_action(self, *, duration: DurationObject) -> Self:
+        expiration = f"{self.__duration_builder.load(duration=duration).to_unix_ts()}"
+        if duration.number != 0:
             dt = "⏱️ Temporary"
         else:
             dt = "♾️ Permanent"

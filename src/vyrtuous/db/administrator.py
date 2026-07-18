@@ -23,11 +23,10 @@ from datetime import datetime, timezone
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.database_factory import DatabaseFactory
 
 
 @dataclass(frozen=True)
-class Administrator(DatabaseFactory):
+class Administrator:
 
     __tablename__ = "administrators"
     identifier = "admin"
@@ -39,7 +38,7 @@ class Administrator(DatabaseFactory):
 
 
 @dataclass(frozen=True)
-class AdministratorRole(DatabaseFactory):
+class AdministratorRole:
 
     __tablename__ = "administrator_roles"
     identifier = "arole"

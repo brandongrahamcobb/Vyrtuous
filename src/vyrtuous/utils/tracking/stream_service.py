@@ -23,6 +23,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.stream import Stream
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.paginator import Paginator
 from vyrtuous.utils.tracking.stream_embed import StreamEmbed
@@ -34,7 +35,7 @@ MODEL = Stream
 async def send_log(
     author_snowflake: int | None,
     channel_snowflake: int | None,
-    duration_value: str | None,
+    duration: DurationObject | None,
     guild_snowflake: int,
     identifier: str,
     is_channel_scope: bool | None,
@@ -48,9 +49,9 @@ async def send_log(
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     embed = StreamEmbed(color=None, description=None, title=None, url=None)
-    embed.set_title(identifier=identifier).set_action(
-        duration_value=duration_value
-    ).set_reason(reason=reason)
+    embed.set_title(identifier=identifier).set_action(duration=duration).set_reason(
+        reason=reason
+    )
     pages: list[discord.Embed] = []
     guild = bot.get_guild(guild_snowflake)
     if guild is None:

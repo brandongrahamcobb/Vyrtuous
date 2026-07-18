@@ -191,9 +191,7 @@ async def untext_mute_by_message(
         member_snowflake=ctx.member_snowflake,
         singular=True,
     )
-    duration_value = duration_builder.from_timestamp(text_mute.expires_in).build(
-        as_str=True
-    )
+    duration_value = duration_builder.from_timestamp(text_mute.expires_in).as_str()
     exceeds_cap = await cap_service.exceeds_cap(
         category="tmute",
         channel_snowflake=ctx.channel_snowflake,

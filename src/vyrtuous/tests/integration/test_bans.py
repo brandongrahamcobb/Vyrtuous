@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -36,17 +37,16 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target",
+    "permission_role, command, target, guild",
     [
-        ("Sysadmin", "!bans", "all"),
-        ("Moderator", "!bans", "{channel_snowflake}"),
-        ("Moderator", "!bans", "<#{channel_snowflake}>"),
-        ("Administrator", "!bans", "{guild_snowflake}"),
-        ("Moderator", "!bans", "{member_snowflake}"),
-        ("Moderator", "!bans", "<@{member_snowflake}>"),
+        ("Moderator", "!bans", "{channel_snowflake}", None),
+        ("Moderator", "!bans", "<#{channel_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "!bans", "{guild_snowflake}", None),
+        ("Moderator", "!bans", "{member_snowflake}", None),
+        ("Moderator", "!bans", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_bans(bot, command: str, target, permission_role):
+async def test_bans(bot, command: str, target, guild, permission_role):
     """
     List bans on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
@@ -89,11 +89,22 @@ async def test_bans(bot, command: str, target, permission_role):
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {t}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if guild is None:
+        g = None
+        full = f"{command} {t}"
+    else:
+        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        full = f"{command} {t} {g}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -111,6 +122,17 @@ async def test_bans(bot, command: str, target, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("ModeratorAppCommands")
             command = cog.list_bans_app_command
-            await command.callback(cog, interaction=inx, target=t)
+            transformer = AppTarget()
+            if t:
+                resolved = await transformer.transform(inx, t)
+            else:
+                resolved = None
+            if g:
+                resolved_guild = await transformer.transform(inx, g)
+            else:
+                resolved_guild = None
+            await command.callback(
+                cog, interaction=inx, target=resolved, guild=resolved_guild
+            )
         for kind, content in end_results:
             assert kind == "success"

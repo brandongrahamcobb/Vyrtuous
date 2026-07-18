@@ -25,7 +25,10 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_overwrites, list_server_mutes
-from vyrtuous.models import multi_converter
+from vyrtuous.models.category import AppCategory, CategoryObject
+from vyrtuous.models.duration import AppDuration, DurationObject
+from vyrtuous.models.scope import AppScope, ScopeObject
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
@@ -65,25 +68,34 @@ class AdministratorAppCommands(commands.Cog):
         category="Specify one of: `admin`, `alias`, `all`, `automute`, `ban`, `coord`, `flag`, `mod`, `tmute`, `stream` or `vmute`.",
         scope="Specify one of: `auto`, `server`, `user`",
         target="Specify one of: channel ID/mention, member ID/mention, or server ID.",
+        guild="Specify a server ID.",
     )
     async def clear_channel_access_app_command(
         self,
         interaction: discord.Interaction,
-        target: str,
-        category: str | None = "all",
-        scope: str | None = "user",
+        target: app_commands.Transform[TargetObject, AppTarget],
+        category: app_commands.Transform[CategoryObject, AppCategory],
+        scope: app_commands.Transform[ScopeObject, AppScope],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        if target == "all":
-            obj = None
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
         view = VerifyView(
             author_snowflake=interaction.user.id,
             category=str(category),
-            obj=obj,
+            obj=target,
         )
         embed = view.build_embed()
         await tick.end(success=embed, view=view)
@@ -93,17 +105,16 @@ class AdministratorAppCommands(commands.Cog):
         message_snowflake = message.id
         msg = await clear_service.clear(
             author_snowflake=interaction.user.id,
-            category=str(category),
-            guild_snowflake=interaction.guild.id,
+            category=category.category,
+            guild_snowflake=guild_snowflake,
             message_snowflake=message_snowflake,
             message_channel_snowflake=message.channel.id,
-            obj=obj,
-            target=scope or "user",
+            obj=target,
+            target=scope.scope,
             view=view,
         )
         return await tick.end(success=msg)
 
-    # TODO: Make guild agnostic
     @app_commands.command(name="coord", description="Grant/revoke coords.")
     @app_commands.describe(
         channel="Specify a channel ID/mention",
@@ -112,71 +123,87 @@ class AdministratorAppCommands(commands.Cog):
     async def toggle_coordinator_app_command(
         self,
         interaction: discord.Interaction,
-        member: str,
-        channel: str | None,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target_member = multi_converter.transform(
-            interaction=interaction, argument=member
-        )
-        if isinstance(target_member, int):
-            member_snowflake = target_member
-        elif isinstance(target_member, discord.Member):
-            member_snowflake = target_member.id
-        else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        target_channel = multi_converter.transform(
-            interaction=interaction, argument=channel
-        )
-        if target_channel is None:
+        if channel is None:
             if interaction.channel is None:
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
             channel_snowflake = interaction.channel.id
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         elif isinstance(
-            target_channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = target_channel.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=member_snowflake,
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,
+            guild_snowflake=guild_snowflake,
         )
         message = await interaction.original_response()
         message_snowflake = message.id
         msg = await coordinator_service.toggle_coordinator(
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,
+            guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
             message_snowflake=message_snowflake,
-            message_channel_snowflake=channel_snowflake,
+            message_channel_snowflake=message.channel.id,
         )
         return await tick.end(success=msg)
 
     @app_commands.command(name="ow", description="Overwrite stats.")
-    @app_commands.describe(target="Specify one of: a channel ID/mention or server ID.")
+    @app_commands.describe(
+        target="Specify one of: a channel ID/mention or server ID.",
+        guild="Specify a server ID.",
+    )
     async def list_overwrites_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        obj = multi_converter.transform(interaction=interaction, argument=target)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
-        embed = list_overwrites.build_embed(obj=obj)
+            obj = target.target
+        embed = list_overwrites.build_embed(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=embed)
 
     @app_commands.command(name="rmute", description="Room mute (except yourself).")
@@ -188,184 +215,226 @@ class AdministratorAppCommands(commands.Cog):
     async def channel_mute_app_command(
         self,
         interaction: discord.Interaction,
-        channel: str | None,
-        duration: str | None = "1h",
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        duration: app_commands.Transform[DurationObject | None, AppDuration] = None,
         reason: str | None = "No reason provided.",
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target_channel = multi_converter.transform(
-            interaction=interaction, argument=channel
-        )
-        if target_channel is None:
+        if channel is None:
             if interaction.channel is None:
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
             channel_snowflake = interaction.channel.id
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         elif isinstance(
-            target_channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = target_channel.id
+            channel_snowflake = channel.target.id
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+
         else:
             return await tick.end(warning="This command must target a valid channel.")
         pages = await voice_mute_service.channel_mute(
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            duration_value=duration or "1h",
-            guild_snowflake=interaction.guild.id,
+            duration=duration or "1h",
+            guild_snowflake=guild_snowflake,
             reason=reason or "No reason provided.",
         )
         return await tick.end(success=pages)
 
     @app_commands.command(name="rmv", description="VC move.")
     @app_commands.describe(
-        source_channel="Specify a `from` channel ID/mention.",
         target_channel="Specify a `to` channel ID/mention.",
+        source_channel="Specify a `from` channel ID/mention.",
+        guild="Specify a server ID",
     )
     async def channel_move_all_app_command(
         self,
         interaction: discord.Interaction,
-        source_channel: str,
-        target_channel: str,
+        target_channel: app_commands.Transform[TargetObject, AppTarget],
+        source_channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(
-                warning="This command must be executed within a server."
-            )
-        target = multi_converter.transform(
-            interaction=interaction, argument=target_channel
-        )
-        if target is None:
-            if interaction.channel is None:
+        if guild is None:
+            if interaction.guild is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must target a valid server."
                 )
-            target_channel_obj = interaction.channel
-        elif isinstance(
-            target,
-            (discord.VoiceChannel, discord.StageChannel),
-        ):
-            target_channel_obj = target
+            guild_snowflake = interaction.guild.id
+            guild_name = interaction.guild.name
         else:
-            return await tick.end(warning="This command must target a valid channel.")
-        source = multi_converter.transform(
-            interaction=interaction, argument=source_channel
-        )
-        if source is None:
-            if interaction.channel is None:
-                return await tick.end(
-                    warning="This command must target a valid channel."
-                )
-            source_channel_obj = interaction.channel
-        elif isinstance(
-            source,
-            (discord.VoiceChannel, discord.StageChannel),
-        ):
-            source_channel_obj = source
-        else:
-            return await tick.end(warning="This command must target a valid channel.")
-        if isinstance(
-            target_channel_obj, (discord.VoiceChannel, discord.StageChannel)
-        ) and isinstance(
-            source_channel_obj, (discord.VoiceChannel, discord.StageChannel)
-        ):
-            failed, moved = [], []
-            for member in source_channel_obj.members:
-                try:
-                    await member.move_to(target_channel_obj)
-                    moved.append(member)
-                except discord.Forbidden as e:
-                    failed.append(member)
-                    self.__bot.logger.warning(
-                        f"Unable to move member "
-                        f"{member.display_name} ({member.id}) from channel "
-                        f"{source_channel_obj.name} ({source_channel_obj.id}) to channel "
-                        f"{target_channel_obj.name} ({target_channel_obj.id}) in guild "
-                        f"{interaction.guild.name} ({interaction.guild.id}). "
-                        f"{str(e).capitalize()}"
-                    )
-            embed = discord.Embed(
-                title=f"{emojis.get_random_emoji()} "
-                f"Moved {source_channel_obj.mention} to "
-                f"{target_channel_obj.mention}",
-                color=discord.Color.green(),
-            )
-            if moved:
-                embed.add_field(
-                    name=f"Successfully Moved (`{len(moved)}`)",
-                    value="\n".join(member.mention for member in moved),
-                    inline=False,
-                )
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+                guild_name = guild.target.name
             else:
-                embed.add_field(name="Successfully Moved", value="None", inline=False)
-            if failed:
-                embed.add_field(
-                    name=f"Failed to Move ({len(failed)})",
-                    value="\n".join(member.mention for member in failed),
-                    inline=False,
+                return await tick.end(
+                    warning="This command must target a valid server."
                 )
-            embed.set_footer(
-                text=f"Moved from {source_channel_obj.name} to {target_channel_obj.name}"
+        if isinstance(
+            target_channel.target,
+            (discord.VoiceChannel, discord.StageChannel),
+        ):
+            target_channel_snowflake = target_channel.target.id
+            target_channel_name = target_channel.target.name
+            target_channel_obj = target_channel.target
+            target_channel_mention = target_channel.target.mention
+        else:
+            return await tick.end(
+                warning="This command must target a valid target channel."
             )
-            return await tick.end(success=embed)
-        return await tick.end(warning="No members moved.")
+        if source_channel is None:
+            if interaction.channel is None or not isinstance(
+                interaction.channel, (discord.VoiceChannel, discord.StageChannel)
+            ):
+                return await tick.end(
+                    warning="This command must target a valid source channel."
+                )
+            source_channel_snowflake = interaction.channel.id
+            source_channel_name = interaction.channel.name
+            source_channel_members = interaction.channel.members
+            source_channel_mention = interaction.channel.mention
+        elif isinstance(
+            source_channel.target,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            source_channel_snowflake = source_channel.target.id
+            source_channel_name = source_channel.target.name
+            source_channel_members = source_channel.target.members
+            source_channel_mention = source_channel.target.mention
+        else:
+            return await tick.end(
+                warning="This command must target a valid source channel."
+            )
+        failed, moved = [], []
+        for member in source_channel_members:
+            try:
+                await member.move_to(target_channel_obj)
+                moved.append(member)
+            except discord.Forbidden as e:
+                failed.append(member)
+                self.__bot.logger.warning(
+                    f"Unable to move member "
+                    f"{member.display_name} ({member.id}) from channel "
+                    f"{source_channel_name} ({source_channel_snowflake}) to channel "
+                    f"{target_channel_name} ({target_channel_snowflake}) in guild "
+                    f"{guild_name} ({guild_snowflake}). "
+                    f"{str(e).capitalize()}"
+                )
+        embed = discord.Embed(
+            title=f"{emojis.get_random_emoji()} "
+            f"Moved {source_channel_mention} to "
+            f"{target_channel_mention}",
+            color=discord.Color.green(),
+        )
+        if moved:
+            embed.add_field(
+                name=f"Successfully Moved (`{len(moved)}`)",
+                value="\n".join(member.mention for member in moved),
+                inline=False,
+            )
+        else:
+            embed.add_field(name="Successfully Moved", value="None", inline=False)
+        if failed:
+            embed.add_field(
+                name=f"Failed to Move ({len(failed)})",
+                value="\n".join(member.mention for member in failed),
+                inline=False,
+            )
+        embed.set_footer(
+            text=f"Moved from {source_channel_name} to {target_channel_name}"
+        )
+        return await tick.end(success=embed)
 
     @app_commands.command(name="smute", description="Server mute/server unmute.")
     @app_commands.describe(
-        member="Specify a member ID/mention.", reason="Specify a reason."
+        member="Specify a member ID/mention.",
+        reason="Specify a reason.",
+        guild="Specify a server ID.",
     )
     async def toggle_server_mute_app_command(
         self,
         interaction: discord.Interaction,
-        member: str,
+        member: app_commands.Transform[TargetObject, AppTarget],
         reason: str | None = "No reason provided.",
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        if not isinstance(
-            interaction.channel,
-            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
-        ):
-            return await tick.end(
-                warning="This command must be executed in a valid channel."
-            )
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
         msg = await server_mute_service.toggle_server_mute(
             author_snowflake=interaction.user.id,
-            channel_snowflake=interaction.channel.id,
-            guild_snowflake=interaction.guild.id,
+            guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
             reason=reason or "No reason provided.",
         )
         return await tick.end(success=msg)
 
     @app_commands.command(name="smutes", description="List mutes.")
-    @app_commands.describe(target="Specify one of: a member ID/mention or a server ID.")
+    @app_commands.describe(
+        target="Specify one of: a member ID/mention or a server ID.",
+        guild="Specify a server ID.",
+    )
     async def list_server_mutes_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
-            obj = interaction.guild
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            obj = interaction.channel
+        else:
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_server_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_server_mutes.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+        )
         return await tick.end(success=pages)
 
     @app_commands.command(name="xrmute", description="Unmute all.")
@@ -373,31 +442,32 @@ class AdministratorAppCommands(commands.Cog):
         channel="Specify a channel ID/mention.",
     )
     async def channel_unmute_app_command(
-        self, interaction: discord.Interaction, channel: str | None
+        self,
+        interaction: discord.Interaction,
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a guild.")
-        target_channel = multi_converter.transform(
-            interaction=interaction, argument=channel
-        )
-        if target_channel is None:
+        if channel is None:
             if interaction.channel is None:
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
             channel_snowflake = interaction.channel.id
+            if interaction.guild is None:
+                return await tick.end(warning="This command must target a valid guild.")
+            guild_snowflake = interaction.guild.id
         elif isinstance(
-            target_channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = target_channel.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         pages = await voice_mute_service.channel_unmute(
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,
+            guild_snowflake=guild_snowflake,
             target="user",
         )
         return await tick.end(success=pages)

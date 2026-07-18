@@ -22,7 +22,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.models import multi_converter
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import developer_service, moderator_service
 
@@ -35,9 +35,13 @@ class SysadminAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be executed in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -49,16 +53,17 @@ class SysadminAppCommands(commands.Cog):
     @app_commands.command(name="dev", description="Grant/revoke devs.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def toggle_developer_app_command(
-        self, interaction: discord.Interaction, member: str
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
+            return await tick.end(warning=f"This command must target a valid member")
         message = await interaction.original_response()
         message_snowflake = message.id
         msg = await developer_service.toggle_developer(

@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Union
+
 import discord
 from discord.ext import commands
 
@@ -38,7 +40,9 @@ class HiddenCoordinatorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx):
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -47,47 +51,47 @@ class HiddenCoordinatorTextCommands(commands.Cog):
         )
         return True
 
-    # TODO: Make this guild agnostic
     @commands.command(name="blacklist", help="Blacklist overwrite cleanup.")
     @skip_text_command_help_discovery()
     async def toggle_blacklist_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
+        member: int | discord.Member = commands.parameter(
             converter=MultiConverter,
-            description="Tag a member or include their ID",
+            description="Tag a member or include their ID.",
         ),
-        *,
-        channel: discord.abc.GuildChannel = commands.parameter(
+        channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=commands.VoiceChannelConverter,
             default=None,
             description="Tag a channel or include its ID.",
         ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        await moderator_service.check_minimum_role(
-            channel_snowflake=channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-            lowest_role="Coordinator",
-        )
-        await moderator_service.has_equal_or_lower_role(
-            target_member_snowflake=int(member.id),
-            member_snowflake=ctx.author.id,
-            channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
-        )
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
+        else:
+            guild_snowflake = guild.id
+        if isinstance(member, int):
+            member_snowflake = member
+        else:
+            member_snowflake = member.id
         target = channel or ctx.channel
-        if not isinstance(
-            target, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
-        ):
-            return await tick.end(warning="This command must target a valid channel.")
+        await moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=member_snowflake,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=target.id,
+            guild_snowflake=guild_snowflake,
+        )
         msg = await ban_service.toggle_blacklist(
             channel_snowflake=target.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=member.id,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
         )
         return await tick.end(success=msg)
 

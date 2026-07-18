@@ -93,7 +93,7 @@ async def test_text_mutes(bot, command: str, target, permission_role):
     if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),

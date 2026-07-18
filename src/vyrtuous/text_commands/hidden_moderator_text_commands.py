@@ -56,22 +56,35 @@ class HiddenModeratorTextCommands(commands.Cog):
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            int, discord.Guild, discord.Role, discord.Member, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: `all`, channel ID/mention or server ID.",
+            description="Specify one of: member ID/mention or server ID.",
+        ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            default=None,
+            description="Specify one a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None or not isinstance(guild, discord.Guild):
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.guild
-        is_at_home = at_home(source=ctx)
-        pages = await list_administrators.build_pages(is_at_home=is_at_home, obj=obj)
+            guild_snowflake = guild.id
+        if ctx.guild.id != guild_snowflake:
+            await moderator_service.check_minimum_role(
+                guild_snowflake=guild_snowflake,
+                member_snowflake=ctx.author.id,
+                lowest_role="Developer",
+            )
+        obj = target or ctx.guild
+        pages = await list_administrators.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
     # TODO: Make this guild agnostic

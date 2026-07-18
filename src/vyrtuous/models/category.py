@@ -17,60 +17,91 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pathlib import Path
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.dir_to_classes import dir_to_classes
+from vyrtuous.db.active_member import ActiveMember
+from vyrtuous.db.administrator import Administrator, AdministratorRole
+from vyrtuous.db.alias import Alias
+from vyrtuous.db.automute import AutoMute
+from vyrtuous.db.ban import Ban
+from vyrtuous.db.bug import Bug
+from vyrtuous.db.cap import Cap
+from vyrtuous.db.coordinator import Coordinator
+from vyrtuous.db.data import Data
+from vyrtuous.db.developer import Developer
+from vyrtuous.db.flag import Flag
+from vyrtuous.db.moderator import Moderator
+from vyrtuous.db.stream import Stream
+from vyrtuous.db.text_mute import TextMute
+from vyrtuous.db.vegan import Vegan
+from vyrtuous.db.video_channel import VideoChannel
+from vyrtuous.db.voice_mute import VoiceMute
+
+CLASSES = [
+    ActiveMember,
+    Administrator,
+    AdministratorRole,
+    Alias,
+    AutoMute,
+    Ban,
+    Bug,
+    Cap,
+    Coordinator,
+    Data,
+    Developer,
+    Flag,
+    Moderator,
+    Stream,
+    TextMute,
+    Vegan,
+    VideoChannel,
+    VoiceMute,
+]
+EXTRA_CATEGORIES = ["all"]
 
 
 class CategoryObject:
 
-    EXTRA_CATEGORIES = ["all"]
-
-    def __init__(self, category=None):
+    def __init__(self, category: str):
         self.__category = category
 
     @property
-    def category(self) -> None:
+    def category(self) -> str:
         return self.__category
-
-    @category.setter
-    def category(self, new_cat) -> None:
-        bot: DiscordBot = DiscordBot.get_instance()
-        dir_paths = []
-        dir_paths.append(Path("/app/vyrtuous/db"))
-        classes = dir_to_classes(dir_paths=dir_paths, parent=DatabaseFactory)
-        categories = [obj.identifier for obj in classes if obj.identifier is not None]
-        for extra in self.EXTRA_CATEGORIES:
-            categories.append(extra)
-        if new_cat not in categories:
-            bot.logger.warning(f"Invalid category type ({str(new_cat)}).")
-        self.__category = new_cat
 
 
 class Converter(commands.Converter):
 
     def __init__(self, category_cls=CategoryObject):
         self.category_cls = category_cls
+        self.__identifiers = [obj.identifier for obj in CLASSES]
 
-    async def convert(self, ctx: commands.Context, argument) -> CategoryObject | None:
-        return self.category_cls(argument).category
+    async def convert(self, ctx: commands.Context, argument: str) -> CategoryObject:
+        categories = self.__identifiers
+        for extra in EXTRA_CATEGORIES:
+            categories.append(extra)
+        if argument not in categories:
+            raise commands.CheckFailure(f"Invalid category specified: ({argument}).")
+        return self.category_cls(argument)
 
 
 class Transformer(app_commands.Transformer):
 
     def __init__(self, category_cls=CategoryObject):
         self.category_cls = category_cls
+        self.__identifiers = [obj.identifier for obj in CLASSES]
 
     async def transform(
-        self, interaction: discord.Interaction, arg
-    ) -> CategoryObject | None:
-        return self.category_cls(arg).category
+        self, interaction: discord.Interaction, arg: str
+    ) -> CategoryObject:
+        categories = self.__identifiers
+        for extra in EXTRA_CATEGORIES:
+            categories.append(extra)
+        if arg not in categories:
+            raise app_commands.CheckFailure(f"Invalid category specified: ({arg}).")
+        return self.category_cls(arg)
 
 
 class Category(Converter):

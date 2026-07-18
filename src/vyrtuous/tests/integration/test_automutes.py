@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -35,15 +36,14 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target",
+    "permission_role, command, target, guild",
     [
-        ("Sysadmin", "!ams", "all"),
-        ("Administrator", "!ams", "{channel_snowflake}"),
-        ("Administrator", "!ams", "<#{channel_snowflake}>"),
-        ("Administrator", "!ams", "{guild_snowflake}"),
+        ("Administrator", "!automutes", "{channel_snowflake}", None),
+        ("Administrator", "!automutes", "<#{channel_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "!automutes", "{guild_snowflake}", None),
     ],
 )
-async def test_ams(bot, command: str, target, permission_role):
+async def test_ams(bot, command: str, target, guild, permission_role):
     """
     List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'stages'.
@@ -75,11 +75,22 @@ async def test_ams(bot, command: str, target, permission_role):
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    full = f"{command} {t}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if guild is None:
+        g = None
+        full = f"{command} {t}"
+    else:
+        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        full = f"{command} {t} {g}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -97,6 +108,14 @@ async def test_ams(bot, command: str, target, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenAdministratorAppCommands")
             command = cog.list_automute_channels_app_command
-            await command.callback(cog, interaction=inx, target=t)
+            transformer = AppTarget()
+            resolved_target = await transformer.transform(inx, t)
+            if g:
+                resolved_guild = await transformer.transform(inx, g)
+            else:
+                resolved_guild = None
+            await command.callback(
+                cog, interaction=inx, target=resolved_target, guild=resolved_guild
+            )
         for kind, content in end_results:
             assert kind == "success"

@@ -20,13 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from vyrtuous.db.database_factory import DatabaseFactory
-
 
 @dataclass(frozen=True)
-class VideoChannel(DatabaseFactory):
+class VideoChannel:
 
     __tablename__ = "active_video_only_channels"
+    identifier = "video_channel"
     category = "video"
     channel_snowflake: int
     guild_snowflake: int

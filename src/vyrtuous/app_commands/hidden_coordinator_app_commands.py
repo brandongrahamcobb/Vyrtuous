@@ -26,7 +26,7 @@ from vyrtuous.app_commands.help_app_command import skip_app_command_help_discove
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_bans
-from vyrtuous.models import multi_converter
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import ban_service
 from vyrtuous.utils.users import moderator_service
@@ -41,9 +41,13 @@ class HiddenCoordinatorAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be executed in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -52,55 +56,63 @@ class HiddenCoordinatorAppCommands(commands.Cog):
         )
         return True
 
-    # TODO: Make this guild agnostic
     @app_commands.command(name="blacklist", description="Blacklist overwrite cleanup.")
     @app_commands.describe(
-        member="Specify a member ID/mention.", channel="Specify a channel ID/mention."
+        member="Specify a member ID/mention.",
+        channel="Specify a channel ID/mention.",
+        guild="Specify a server ID.",
     )
     @skip_app_command_help_discovery()
     async def toggle_blacklist_app_command(
         self,
         interaction: discord.Interaction,
-        member: str,
-        channel: str | None,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target_member = multi_converter.transform(
-            interaction=interaction, argument=member
-        )
-        if isinstance(target_member, int):
-            member_snowflake = target_member
-        elif isinstance(target_member, discord.Member):
-            member_snowflake = target_member.id
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        target_channel = multi_converter.transform(
-            interaction=interaction, argument=channel
-        )
-        if target_channel is None:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if channel is None:
             if interaction.channel is None:
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
             channel_snowflake = interaction.channel.id
         elif isinstance(
-            target_channel,
-            (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
+            channel.target,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = target_channel.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target valid member.")
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=member_snowflake,
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
+            guild_snowflake=guild_snowflake,
         )
         msg = await ban_service.toggle_blacklist(
             channel_snowflake=channel_snowflake,
-            guild_snowflake=interaction.guild.id,  # NOT AGNOSTIC
+            guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
         return await tick.end(success=msg)
@@ -113,17 +125,35 @@ class HiddenCoordinatorAppCommands(commands.Cog):
     async def list_blacklists_app_command(
         self,
         interaction: discord.Interaction,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
             obj = interaction.channel
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
-        pages = await list_bans.build_blacklist_pages(is_at_home=is_at_home, obj=obj)
+        pages = await list_bans.build_blacklist_pages(
+            is_at_home=is_at_home, guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
 

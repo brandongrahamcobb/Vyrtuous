@@ -32,7 +32,8 @@ from vyrtuous.listing import (
     list_streams,
     list_video_channels,
 )
-from vyrtuous.models.category import Category
+from vyrtuous.models.category import Category, CategoryObject
+from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.channels import video_channel_service
@@ -51,7 +52,9 @@ class HiddenAdministratorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -66,49 +69,73 @@ class HiddenAdministratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Union[
-            str, discord.Guild, discord.abc.GuildChannel
-        ] = commands.parameter(
-            converter=MultiConverter,
+        guild: Union[discord.Guild, None] = commands.parameter(
             default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
+            description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.guild
-        is_at_home = at_home(source=ctx)
+            guild_snowflake = guild.id
+        if ctx.guild.id != guild_snowflake:
+            await moderator_service.check_minimum_role(
+                guild_snowflake=guild_snowflake,
+                member_snowflake=ctx.author.id,
+                lowest_role="Developer",
+            )
         pages = await list_administrator_roles.build_pages(
-            obj=obj, is_at_home=is_at_home
+            guild_snowflake=guild_snowflake,
         )
         return await tick.end(success=pages)
 
-    # TODO: Make guild agnostic
     @commands.command(name="cap", help="Cap alias duration for mods.")
     @skip_text_command_help_discovery()
     async def cap_text_command(
         self,
         ctx: commands.Context,
-        channel: discord.abc.GuildChannel = commands.parameter(
+        category: CategoryObject = commands.parameter(
+            converter=Category, description="One of: `mute`, `ban`, `tmute`"
+        ),
+        channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=commands.VoiceChannelConverter,
+            default=None,
             description="Tag a channel or include its ID.",
         ),
-        category: Category = commands.parameter(
-            description="One of: `mute`, `ban`, `tmute`"
+        limit: DurationWrapper = commands.parameter(
+            converter=Duration, default=None, description="m/h/d."
         ),
-        *,
-        limit: str = commands.parameter(default="24h", description="Limit in m/h/d."),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must target a valid server.")
+        if channel is None:
+            if ctx.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = ctx.channel.id
+            guild_snowflake = ctx.guild.id
+        elif isinstance(
+            channel,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            channel_snowflake = channel.id
+            guild_snowflake = channel.guild.id
+        else:
+            return await tick.end(warning="This command must target a valid channel.")
+        if limit is None:
+            duration = DurationObject(number=24, prefix="", sign=1, unit="h")
+        else:
+            duration = limit.duration
         msg = await cap_service.toggle_cap(
-            category=str(category),
-            channel_snowflake=channel.id,
-            duration_str=limit,
-            guild_snowflake=ctx.guild.id,  # NOT AGNOSTIC
+            category=category.category,
+            channel_snowflake=channel_snowflake,
+            duration=duration,
+            guild_snowflake=guild_snowflake,
         )
         return await tick.end(success=msg)
 
@@ -124,14 +151,20 @@ class HiddenAdministratorTextCommands(commands.Cog):
             default=None,
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_caps.build_pages(obj=obj, is_at_home=is_at_home)
+            guild_snowflake = guild.id
+        obj = target or ctx.channel
+        pages = await list_caps.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
     @commands.command(name="debug", help="Shows the last `n` number of logging.")
@@ -191,7 +224,9 @@ class HiddenAdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed within a server.")
+            return await tick.end(
+                warning="This command must be executed within a server."
+            )
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
             return await tick.end(success=f"Role `{role.name}` has ID `{role.id}`.")
@@ -200,26 +235,34 @@ class HiddenAdministratorTextCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
-    @commands.command(name="ams", help="List automute channels.")
+    @commands.command(name="automutes", help="List automute channels.")
     @skip_text_command_help_discovery()
     async def list_automute_channels_text_command(
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
+            discord.Guild, discord.abc.GuildChannel, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
+            description="Specify one of: channel ID/mention, or server ID.",
+        ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            default=None,
+            description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_automute_channels.build_pages(obj=obj, is_at_home=is_at_home)
+            guild_snowflake = guild.id
+        obj = target or ctx.guild
+        pages = await list_automute_channels.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
     @commands.command(name="stream", help="Setup streaming.")

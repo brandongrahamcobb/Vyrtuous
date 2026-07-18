@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 @dataclass(frozen=True)
 class ActiveMember:
     __tablename__ = "active_members"
+    identifier = "active_member"
     display_name: str
     member_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

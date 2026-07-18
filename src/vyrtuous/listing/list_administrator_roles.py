@@ -28,36 +28,35 @@ from vyrtuous.utils.messaging import emojis
 MODEL = AdministratorRole
 
 
-async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict]]]:
+async def build_dictionary(
+    guild_snowflake: int,
+) -> dict[int, dict[str, dict[int, dict]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    administrator_roles = []
     dictionary: dict[int, dict[str, dict[int, dict]]] = {}
-    if isinstance(obj, discord.Guild):
-        administrator_roles = await database_factory.select(
-            guild_snowflake=obj.id, singular=False
-        )
-    else:
-        administrator_roles = await database_factory.select(singular=False)
+    administrator_roles = await database_factory.select(
+        guild_snowflake=guild_snowflake, singular=False
+    )
     if administrator_roles:
         for administrator_role in administrator_roles:
-            dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
-            dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"roles": {}})
+            dictionary[guild_snowflake]["roles"].setdefault(
                 administrator_role.role_snowflake, {}
             )
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(
+    guild_snowflake: int,
+) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No administrator roles found."
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
-        obj_name = obj.name
+    title = f"{emojis.get_random_emoji()} Administrator Roles in {guild.name}"
 
-    title = f"{emojis.get_random_emoji()} Administrator Roles in {obj_name}"
-
-    full_dictionary = await build_dictionary(obj=obj)
+    full_dictionary = await build_dictionary(guild_snowflake=guild_snowflake)
     processed_dictionary: list_service.AdministratorRoleDictionary = (
         await list_service.process_dictionary(
             cls=list_service.AdministratorRoleDictionary, dictionary=full_dictionary
@@ -85,9 +84,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({admin_role_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_roles)
     if not pages:
         return "No administrator roles found."
     return pages

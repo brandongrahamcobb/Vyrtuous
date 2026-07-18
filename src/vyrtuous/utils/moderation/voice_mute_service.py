@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.users import moderator_service
 
@@ -127,7 +127,7 @@ async def enforce_or_undo(
 async def channel_mute(
     author_snowflake: int,
     channel_snowflake: int,
-    duration_value: str,
+    duration: DurationObject,
     guild_snowflake: int,
     reason: str,
     *,
@@ -171,7 +171,7 @@ async def channel_mute(
                         f"{str(e).capitalize()}"
                     )
                     failed_members.append(member)
-        expires_in = duration_builder.parse(duration_value).to_expires_in()
+        expires_in = duration_builder.load(duration=duration).to_expires_in()
         voice_mute = MODEL(
             channel_snowflake=channel.id,
             expires_in=expires_in,
@@ -185,7 +185,7 @@ async def channel_mute(
             author_snowflake=author_snowflake,
             channel_snowflake=channel_snowflake,
             display=True,
-            duration_value=duration_value,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=True,
             member_snowflake=member.id,
@@ -215,8 +215,8 @@ async def channel_mute(
 async def channel_unmute(
     channel_snowflake: int,
     guild_snowflake: int,
-    *,
     author_snowflake: int | None,
+    reason: str | None = "No reason provided.",
     target: str = "user",
 ) -> list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
@@ -268,6 +268,7 @@ async def channel_unmute(
             member_snowflake=member.id,
             message_snowflake=None,
             message_channel_snowflake=None,
+            reason=reason or "No reason provided.",
             target=target,
         )
         unmuted_members.append(member)

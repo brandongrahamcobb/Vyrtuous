@@ -28,7 +28,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.data import Data
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.users import moderator_service
 
 MODEL = Data
@@ -128,7 +128,7 @@ class DataBuilder:
 async def save_data(
     author_snowflake: int | None,
     channel_snowflake: int | None,
-    duration_value: str | None,
+    duration: DurationObject | None,
     guild_snowflake: int | None,
     identifier: str,
     member_snowflake: int,
@@ -184,8 +184,8 @@ async def save_data(
         else:
             data.set_counts(current_channel_members=0)
     duration_builder = DurationBuilder()
-    if duration_value is not None:
-        expires_at = duration_builder.parse(value=duration_value).to_expires_in()
+    if duration is not None:
+        expires_at = duration_builder.load(duration=duration).to_expires_in()
         data.set_expires_at(expires_at=expires_at)
     else:
         expires_at = None

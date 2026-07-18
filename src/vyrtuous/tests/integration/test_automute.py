@@ -21,6 +21,8 @@ import os
 
 import pytest
 
+from vyrtuous.models.duration import AppDuration
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -34,13 +36,14 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, channel",
+    "permission_role, command, channel, duration",
     [
-        ("Coordinator", "!automute", "{channel_snowflake}"),
-        ("Coordinator", "!automute", "{channel_snowflake}"),
+        ("Coordinator", "!automute", None, None),
+        ("Coordinator", "!automute", "{channel_snowflake}", None),
+        ("Coordinator", "!automute", "{channel_snowflake}", "1h"),
     ],
 )
-async def test_automute(bot, command: str, channel, permission_role):
+async def test_automute(bot, command: str, channel, duration, permission_role):
     """
     Create or teardown a stage by accessing
     the PostgresSQL database 'vyrtuous' in the table 'video_channels'.
@@ -59,12 +62,26 @@ async def test_automute(bot, command: str, channel, permission_role):
     >>> !stage 10000000000000010
     [{emoji} Stage has been ended]
     """
-    c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-    full = f"{command} {c}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    c = None
+    d = None
+    full = command
+    if channel and duration is None:
+        c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+        full = f"{command} {c}"
+    elif channel and duration:
+        c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+        d = duration
+        full = f"{command} {c} {d}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    elif os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -75,13 +92,28 @@ async def test_automute(bot, command: str, channel, permission_role):
         )
         inx = interaction(
             bot=bot,
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             guild=objects.get("guild", None),
             message=msg,
         )
         async with capture_command() as end_results:
             cog = bot.get_cog("CoordinatorAppCommands")
             command = cog.toggle_automute_app_command
-            await command.callback(cog, interaction=inx, channel=c)
+            channel_transformer = AppTarget()
+            if c:
+                resolved_channel = await channel_transformer.transform(inx, c)
+            else:
+                resolved_channel = None
+            duration_transformer = AppDuration()
+            if d:
+                resolved_duration = await duration_transformer.transform(inx, d)
+            else:
+                resolved_duration = None
+            await command.callback(
+                cog,
+                interaction=inx,
+                channel=resolved_channel,
+                duration=resolved_duration,
+            )
         for kind, content in end_results:
             assert kind == "success"

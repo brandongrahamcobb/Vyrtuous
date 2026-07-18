@@ -22,11 +22,9 @@ from datetime import datetime, timezone
 
 from discord.ext import commands
 
-from vyrtuous.db.database_factory import DatabaseFactory
-
 
 @dataclass(frozen=True)
-class Alias(DatabaseFactory):
+class Alias:
     __tablename__ = "command_aliases"
     identifier = "alias"
     alias_name: str

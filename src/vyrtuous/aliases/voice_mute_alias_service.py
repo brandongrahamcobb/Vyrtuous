@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import data_builder, stream_service
@@ -52,7 +52,7 @@ async def log_voice_mute(
     author_snowflake: int | None,
     channel_snowflake: int,
     display: bool,
-    duration_value: str | None,
+    duration: DurationObject | None,
     guild_snowflake: int,
     is_channel_scope: bool,
     member_snowflake: int,
@@ -65,7 +65,7 @@ async def log_voice_mute(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration or None,
         guild_snowflake=guild_snowflake,
         identifier="vmute",
         member_snowflake=member_snowflake,
@@ -78,7 +78,7 @@ async def log_voice_mute(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="vmute",
-            duration_value=duration_value or None,
+            duration=duration or None,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,
@@ -123,6 +123,8 @@ async def set_voice_mute_overwrite(
 async def voice_mute_by_message(
     ctx: VoiceMuteMessageContext, display: bool = True
 ) -> discord.Embed:
+    duration_builder = DurationBuilder()
+    duration = duration_builder.parse(value=ctx.duration_value).build()
     if await cap_service.exceeds_cap(
         category="vmute",
         channel_snowflake=ctx.channel_snowflake,
@@ -147,7 +149,7 @@ async def voice_mute_by_message(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
-        duration_value=ctx.duration_value,
+        duration=duration,
         guild_snowflake=ctx.guild_snowflake,
         is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,

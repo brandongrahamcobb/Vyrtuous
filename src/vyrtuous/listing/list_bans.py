@@ -33,6 +33,7 @@ MODEL = Ban
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -43,21 +44,27 @@ async def build_dictionary(
     if isinstance(obj, discord.Guild):
         bans = await database_factory.select(guild_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.abc.GuildChannel):
-        bans = await database_factory.select(channel_snowflake=obj.id, singular=False)
+        bans = await database_factory.select(
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     elif isinstance(obj, discord.Member):
-        bans = await database_factory.select(member_snowflake=obj.id, singular=False)
+        bans = await database_factory.select(
+            member_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     else:
-        bans = await database_factory.select(singular=False)
+        bans = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if bans:
         for ban in bans:
-            dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-            dictionary[ban.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 ban.member_snowflake, {"bans": {}}
             )
-            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+            dictionary[guild_snowflake]["members"][ban.member_snowflake][
                 "bans"
             ].setdefault(ban.channel_snowflake, {})
-            dictionary[ban.guild_snowflake]["members"][ban.member_snowflake]["bans"][
+            dictionary[guild_snowflake]["members"][ban.member_snowflake]["bans"][
                 ban.channel_snowflake
             ] = {
                 "reason": ban.reason,
@@ -67,15 +74,18 @@ async def build_dictionary(
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No active bans found."
     duration_builder = DurationBuilder()
     lines: list[str] = []
     pages: list[discord.Embed] = []
     thumbnail = False
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
     elif isinstance(obj, int):
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
@@ -85,7 +95,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             return "No active bans found."
     title = f"{emojis.get_random_emoji()} Bans for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.BanDictionary = (
         await list_service.process_dictionary(
             cls=list_service.BanDictionary, dictionary=dictionary
@@ -151,15 +161,13 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({ban_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
-        return "No bans found."
+        return "No active bans found."
     return pages
 
 
 async def build_blacklist_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -170,31 +178,40 @@ async def build_blacklist_dictionary(
     if isinstance(obj, discord.Guild):
         bans = await database_factory.select(guild_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.abc.GuildChannel):
-        bans = await database_factory.select(channel_snowflake=obj.id, singular=False)
+        bans = await database_factory.select(
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     elif isinstance(obj, discord.Member):
-        bans = await database_factory.select(member_snowflake=obj.id, singular=False)
+        bans = await database_factory.select(
+            member_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     else:
-        bans = await database_factory.select(singular=False)
+        bans = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if bans:
         for ban in bans:
             if ban.blacklisted:
-                dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-                dictionary[ban.guild_snowflake]["members"].setdefault(
+                dictionary.setdefault(guild_snowflake, {"members": {}})
+                dictionary[guild_snowflake]["members"].setdefault(
                     ban.member_snowflake, {"bans": {}}
                 )
-                dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
+                dictionary[guild_snowflake]["members"][ban.member_snowflake][
                     "bans"
                 ].setdefault(ban.channel_snowflake, {})
     return dictionary
 
 
-async def build_blacklist_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_blacklist_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No active blacklists found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
     thumbnail = False
 
-    obj_name = "All Servers"
+    obj_name = guild.name
     if not isinstance(obj, int):
         obj_name = obj.name
     else:
@@ -202,10 +219,12 @@ async def build_blacklist_pages(is_at_home: bool, obj) -> str | list[discord.Emb
         if simplified_member:
             obj_name = simplified_member[0]
         else:
-            return "No active bans found."
+            return "No active blacklists found."
     title = f"{emojis.get_random_emoji()} Blacklists for {obj_name}"
 
-    dictionary = await build_blacklist_dictionary(obj=obj)
+    dictionary = await build_blacklist_dictionary(
+        guild_snowflake=guild_snowflake, obj=obj
+    )
     processed_dictionary: list_service.BanDictionary = (
         await list_service.process_dictionary(
             cls=list_service.BanDictionary, dictionary=dictionary
@@ -263,9 +282,6 @@ async def build_blacklist_pages(is_at_home: bool, obj) -> str | list[discord.Emb
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({ban_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No blacklists found."
     return pages

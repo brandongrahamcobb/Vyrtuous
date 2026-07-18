@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_heroes
-from vyrtuous.models import multi_converter
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import hero_service, moderator_service
 
@@ -56,76 +56,100 @@ class HiddenGuildOwnerAppCommands(commands.Cog):
 
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")
     @app_commands.describe(
-        member="Specify a member ID/mention.", server="Specify a server ID"
+        member="Specify a member ID/mention.",
+        enabled="Speficy True or False.",
+        target="Specify `all` or a server ID.",
     )
     @skip_app_command_help_discovery()
     async def toggle_invincibility_app_command(
-        self, interaction: discord.Interaction, member: str, server: str | None
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        enabled: bool,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        target = multi_converter.transform(interaction=interaction, argument=member)
-        if isinstance(target, int):
-            member_snowflake = target
-        elif isinstance(target, discord.Member):
-            member_snowflake = target.id
-        else:
-            return await tick.end(warning=f"Member {member} was not found.")
-        if server == "all":
-            guilds = self.__bot.guilds
-        elif server is None:
+        bot: DiscordBot = DiscordBot.get_instance()
+        if target is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
             guilds = [interaction.guild]
         else:
-            guild = multi_converter.transform(interaction=interaction, argument=server)
-            if not isinstance(guild, discord.Guild):
-                return await tick.end(
-                    warning="This command must be executed for a valid server."
-                )
-            guilds = [guild]
-        msg = "No hero granted."
-        for guild in guilds:
-            resolved = guild.get_member(member_snowflake)
-            if member_set := self.__bot.registry.get(MemberState).invincible.get(
-                guild.id
-            ):
-                pass
+            if isinstance(target.target, discord.Guild):
+                guilds = [target.target]
             else:
-                member_set = self.__bot.registry.get(MemberState).invincible[
-                    guild.id
-                ] = set()
-            if member_snowflake not in member_set:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+            member_name = "Unknown"
+            simplified_member = self.__bot.registry.get(MemberState).active.get(
+                member_snowflake
+            )
+            if simplified_member:
+                member_name = simplified_member[0]
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+            member_name = member.mention
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        if enabled:
+            header = f"All moderation events have been forgiven and invincibility has been enabled for {member_name} in "
+        else:
+            header = f"Invincibility has been disabled for {member_name} in "
+        guild_names = []
+        for guild in guilds:
+            if enabled:
                 await hero_service.add_invincible_member(guild.id, member_snowflake)
                 await hero_service.unrestrict(
                     guild_snowflake=guild.id, member_snowflake=member_snowflake
                 )
-                resolved = guild.get_member(member_snowflake)
-                msg = (
-                    f"All moderation events have been forgiven "
-                    f"and invincibility has been enabled for {resolved.mention if resolved else member_snowflake}."
-                )
+                guild_names.append(guild.name)
             else:
                 await hero_service.remove_invincible_member(guild.id, member_snowflake)
-                msg = f"Invincibility has been disabled for {resolved.mention if resolved else member_snowflake}."
+                guild_names.append(guild.name)
+        msg = header + ", ".join(guild_names) + "."
         return await tick.end(success=msg)
 
     @app_commands.command(name="heroes", description="List heroes.")
+    @app_commands.describe(
+        target="Specify a member ID/mention or server ID.", guild="Specify a server ID."
+    )
     @skip_app_command_help_discovery()
     async def list_heroes_app_command(
         self,
         interaction: discord.Interaction,
-        *,
-        target: str | None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
             obj = interaction.guild
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
+            obj = target.target
         is_at_home = at_home(source=interaction)
         pages = await list_heroes.build_pages(
+            guild_snowflake=guild_snowflake,
             is_at_home=is_at_home,
             obj=obj,
         )

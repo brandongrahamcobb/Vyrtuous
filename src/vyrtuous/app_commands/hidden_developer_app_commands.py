@@ -25,6 +25,7 @@ from vyrtuous.app_commands.help_app_command import skip_app_command_help_discove
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
+from vyrtuous.models.module import AppModule, ModuleObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import moderator_service
@@ -39,9 +40,13 @@ class HiddenDeveloperAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be executed in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -98,46 +103,52 @@ class HiddenDeveloperAppCommands(commands.Cog):
     @app_commands.describe(module="Specify the full path of the cog.")
     @skip_app_command_help_discovery()
     async def load_app_command(
-        self, interaction: discord.Interaction, module: str
+        self,
+        interaction: discord.Interaction,
+        module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         try:
-            await self.__bot.load_extension(module)
+            await self.__bot.load_extension(module.module)
         except commands.ExtensionError as e:
             return await tick.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        return await tick.end(success=f"Successfully loaded {module}.")
+        return await tick.end(success=f"Successfully loaded {module.module}.")
 
     @app_commands.command(name="reload", description="Reloads a cog by name.")
     @app_commands.describe(module="Specify the full path of the cog.")
     @skip_app_command_help_discovery()
     async def reload_app_command(
-        self, interaction: discord.Interaction, module: str
+        self,
+        interaction: discord.Interaction,
+        module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         try:
-            await self.__bot.reload_extension(module)
+            await self.__bot.reload_extension(module.module)
         except commands.ExtensionError as e:
             return await tick.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        return await tick.end(success=f"Successfully reloaded {module}.")
+        return await tick.end(success=f"Successfully reloaded {module.module}.")
 
     @app_commands.command(name="unload", description="Unloads a cog by name`.")
     @app_commands.describe(module="Specify the full path of the cog.")
     @skip_app_command_help_discovery()
     async def unload_app_command(
-        self, interaction: discord.Interaction, *, module: str
+        self,
+        interaction: discord.Interaction,
+        module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         try:
-            await self.__bot.unload_extension(module)
+            await self.__bot.unload_extension(module.module)
         except commands.ExtensionError as e:
             return await tick.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        return await tick.end(success=f"Successfully unloaded {module}.")
+        return await tick.end(success=f"Successfully unloaded {module.module}.")
 
 
 async def setup(bot: DiscordBot):

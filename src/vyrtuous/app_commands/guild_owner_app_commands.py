@@ -17,15 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Literal, Optional, Union
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.listing import list_developers
-from vyrtuous.models import multi_converter
+from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import administrator_role_service, moderator_service
 
@@ -38,9 +36,13 @@ class GuildOwnerAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be executed in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -50,42 +52,77 @@ class GuildOwnerAppCommands(commands.Cog):
         return True
 
     @app_commands.command(name="admin", description="Toggle administrator role.")
-    @app_commands.describe(role="Specify a role ID/mention.")
+    @app_commands.describe(
+        role="Specify a role ID/mention.", guild="Specify a server ID."
+    )
     async def toggle_administrator_by_role_app_command(
-        self, interaction: discord.Interaction, role: str
+        self,
+        interaction: discord.Interaction,
+        role: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        obj = multi_converter.transform(interaction=interaction, argument=role)
-        if not isinstance(obj, discord.Role):
-            return await tick.end(
-                warning="This command must be executed with a valid role."
-            )
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(role.target, discord.Role):
+            role_snowflake = role.target.id
+        else:
+            return await tick.end(warning="This command must target a valid role.")
         message = await interaction.original_response()
         message_snowflake = message.id
         pages = await administrator_role_service.toggle_administrator_role(
             author_snowflake=interaction.user.id,
-            guild_snowflake=interaction.guild.id,
+            guild_snowflake=guild_snowflake,
             message_snowflake=message_snowflake,
             message_channel_snowflake=message.channel.id,
-            role_snowflake=obj.id,
+            role_snowflake=role_snowflake,
         )
         return await tick.end(success=pages)
 
     @app_commands.command(name="devs", description="List devs.")
     @app_commands.describe(target="Specify a member ID/mention.")
     async def list_developers_app_command(
-        self, interaction: discord.Interaction, target: str | None
+        self,
+        interaction: discord.Interaction,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if target == "all":
-            obj = None
-        elif target is None:
-            obj = "all"
+        if guild is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = interaction.guild.id
         else:
-            obj = multi_converter.transform(interaction=interaction, argument=target)
-        pages = await list_developers.build_pages(obj=obj)
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if target is None:
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            obj = interaction.channel
+        else:
+            obj = target.target
+        pages = await list_developers.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
     # @app_commands.command(name="sync", description="Sync app commands.")

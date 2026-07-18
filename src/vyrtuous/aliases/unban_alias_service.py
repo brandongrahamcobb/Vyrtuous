@@ -101,9 +101,7 @@ async def unban_by_message(
         singular=True,
     )
     if not ban.blacklisted:
-        duration_value = duration_builder.from_timestamp(ban.expires_in).build(
-            as_str=True
-        )
+        duration_value = duration_builder.from_timestamp(ban.expires_in).as_str()
         exceeds_cap = await cap_service.exceeds_cap(
             category="ban",
             channel_snowflake=ctx.channel_snowflake,

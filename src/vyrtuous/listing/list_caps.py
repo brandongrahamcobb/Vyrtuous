@@ -30,6 +30,7 @@ MODEL = Cap
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[str, int]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -38,33 +39,41 @@ async def build_dictionary(
     if isinstance(obj, discord.Guild):
         caps = await database_factory.select(guild_snowflake=obj.id, singular=False)
     elif isinstance(obj, discord.abc.GuildChannel):
-        caps = await database_factory.select(channel_snowflake=obj.id, singular=False)
+        caps = await database_factory.select(
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     else:
-        caps = await database_factory.select(singular=False)
+        caps = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if caps:
         for cap in caps:
-            dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
-            dictionary[cap.guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"channels": {}})
+            dictionary[guild_snowflake]["channels"].setdefault(
                 cap.channel_snowflake, {"caps": {}}
             )
-            dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
+            dictionary[guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
                 cap.category
             ] = cap.duration_seconds
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No caps found."
+
     duration_builder = DurationBuilder()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Caps for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.CapDictionary = (
         await list_service.process_dictionary(
             cls=list_service.CapDictionary, dictionary=dictionary
@@ -89,7 +98,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
                 "caps", {}
             ).items():
                 lines.append(
-                    f"  ↳ {moderation_type} ({duration_builder.from_seconds(duration_seconds).build(as_str=True)})"
+                    f"  ↳ {moderation_type} ({duration_builder.from_seconds(duration_seconds).as_str()})"
                 )
                 cap_n += 1
                 field_count += 1
@@ -111,9 +120,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({cap_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_channels)
-        pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
         return "No caps found."
     return pages
