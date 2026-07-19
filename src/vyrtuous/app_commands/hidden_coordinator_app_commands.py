@@ -60,7 +60,6 @@ class HiddenCoordinatorAppCommands(commands.Cog):
     @app_commands.describe(
         member="Specify a member ID/mention.",
         channel="Specify a channel ID/mention.",
-        guild="Specify a server ID.",
     )
     @skip_app_command_help_discovery()
     async def toggle_blacklist_app_command(
@@ -68,28 +67,19 @@ class HiddenCoordinatorAppCommands(commands.Cog):
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
             channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
         elif isinstance(
             channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),

@@ -121,14 +121,31 @@ class ModeratorTextCommands(commands.Cog):
             default=None,
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if guild is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_coordinators.build_pages(obj=obj, is_at_home=is_at_home)
+            guild_snowflake = guild.id
+        if target is None:
+            if ctx.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
+            obj = ctx.channel
+        else:
+            obj = target
+        pages = await list_coordinators.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
     @commands.command(name="del", help="Delete message.")

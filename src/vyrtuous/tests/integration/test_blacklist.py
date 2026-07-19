@@ -37,13 +37,18 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member, channel, guild",
+    "permission_role, command, member, channel",
     [
         (
             "Coordinator",
             "!blacklist",
             "{member_snowflake}",
             "{channel_snowflake}",
+        ),
+        (
+            "Coordinator",
+            "!blacklist",
+            "<@{member_snowflake}>",
             None,
         ),
         (
@@ -51,11 +56,10 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
             "!blacklist",
             "<@{member_snowflake}>",
             "<#{channel_snowflake}>",
-            "{guild_snowflake}",
         ),
     ],
 )
-async def test_blacklist(bot, command: str, member, channel, guild, permission_role):
+async def test_blacklist(bot, command: str, member, channel, permission_role):
     """
     Blacklist or unlisted a member's ban in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
@@ -81,15 +85,13 @@ async def test_blacklist(bot, command: str, member, channel, guild, permission_r
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    c = channel.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
-    if guild is None:
-        g = None
+    full = f"{command} {m}"
+    c = None
+    if channel:
+        c = channel.format(
+            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+        )
         full = f"{command} {m} {c}"
-    else:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {m} {c} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -119,17 +121,15 @@ async def test_blacklist(bot, command: str, member, channel, guild, permission_r
             command = cog.toggle_blacklist_app_command
             transformer = AppTarget()
             resolved_member = await transformer.transform(inx, m)
-            resolved_channel = await transformer.transform(inx, c)
-            if g:
-                resolved_guild = await transformer.transform(inx, g)
+            if c:
+                resolved_channel = await transformer.transform(inx, c)
             else:
-                resolved_guild = None
+                resolved_channel = None
             await command.callback(
                 cog,
                 interaction=inx,
                 member=resolved_member,
                 channel=resolved_channel,
-                guild=resolved_guild,
             )
         for kind, content in end_results:
             assert kind == "success"

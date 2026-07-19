@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -64,10 +65,16 @@ async def test_dev(bot, command: str, member, permission_role):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {m}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -85,6 +92,8 @@ async def test_dev(bot, command: str, member, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("SysadminAppCommands")
             command = cog.toggle_developer_app_command
-            await command.callback(cog, interaction=inx, member=m)
+            transformer = AppTarget()
+            resolved_member = await transformer.transform(inx, argument=m)
+            await command.callback(cog, interaction=inx, member=resolved_member)
         for kind, content in end_results:
             assert kind == "success"

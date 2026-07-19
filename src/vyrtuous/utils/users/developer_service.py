@@ -24,7 +24,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import Developer, NotDeveloper
-from vyrtuous.utils.tracking import data_builder
+from vyrtuous.models.duration import DurationObject
+from vyrtuous.utils.tracking import data_builder, stream_service
 
 # from vyrtuous.models.duration import DurationBuilder
 # from vyrtuous.utils.tracking import bug_service
@@ -98,7 +99,10 @@ async def toggle_developer(
         await database_factory.delete(member_snowflake=member_snowflake)
         await log_xdev(
             author_snowflake=author_snowflake,
+            display=True,
             member_snowflake=member_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+            message_snowflake=message_snowflake,
         )
         action = "revoked"
     else:
@@ -106,53 +110,94 @@ async def toggle_developer(
         await database_factory.create(new_developer)
         await log_dev(
             author_snowflake=author_snowflake,
+            display=True,
             member_snowflake=member_snowflake,
+            message_channel_snowflake=message_channel_snowflake,
+            message_snowflake=message_snowflake,
         )
         action = "granted"
     return f"Developer access for {member_str} has been {action} globally."
 
 
 async def log_dev(
-    author_snowflake: int | None,
+    author_snowflake: int,
+    display: bool,
     member_snowflake: int,
+    message_channel_snowflake: int,
+    message_snowflake: int,
 ):
     channel_snowflake = None
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     guild_snowflake = None
-    reason = None
+    is_channel_scope = False
+    reason = "No reason provided."
     role_snowflake = None
     target = None
     await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
-        guild_snowflake=guild_snowflake,
+        author_snowflake=author_snowflake,
+        channel_snowflake=channel_snowflake or None,
+        duration=duration,
+        guild_snowflake=guild_snowflake or None,
         identifier="dev",
         member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
+        reason=reason,
         role_snowflake=role_snowflake or None,
         target=target or None,
     )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            identifier="dev",
+            duration=duration,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason,
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )
 
 
 async def log_xdev(
-    author_snowflake: int | None,
+    author_snowflake: int,
+    display: bool,
     member_snowflake: int,
+    message_channel_snowflake: int,
+    message_snowflake: int,
 ):
     channel_snowflake = None
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     guild_snowflake = None
-    reason = None
+    is_channel_scope = False
+    reason = "No reason provided."
     role_snowflake = None
     target = None
     await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
-        guild_snowflake=guild_snowflake,
+        author_snowflake=author_snowflake,
+        channel_snowflake=channel_snowflake or None,
+        duration=duration,
+        guild_snowflake=guild_snowflake or None,
         identifier="xdev",
         member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
+        reason=reason,
         role_snowflake=role_snowflake or None,
         target=target or None,
     )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake,
+            channel_snowflake=channel_snowflake,
+            identifier="xdev",
+            duration=duration,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason,
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )

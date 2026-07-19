@@ -65,31 +65,37 @@ class HiddenCoordinatorTextCommands(commands.Cog):
             default=None,
             description="Tag a channel or include its ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            default=None,
-            description="Specify a server ID.",
-        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must target a valid server.")
-        if guild is None:
+        if channel is None:
+            if ctx.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
+        elif isinstance(
+            channel,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            channel_snowflake = channel.id
+            guild_snowflake = channel.guild.id
         else:
-            guild_snowflake = guild.id
+            return await tick.end(warning="This command must target a valid channel.")
         if isinstance(member, int):
             member_snowflake = member
         else:
             member_snowflake = member.id
-        target = channel or ctx.channel
         await moderator_service.has_equal_or_lower_role(
             target_member_snowflake=member_snowflake,
             member_snowflake=ctx.author.id,
-            channel_snowflake=target.id,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
         )
         msg = await ban_service.toggle_blacklist(
-            channel_snowflake=target.id,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )

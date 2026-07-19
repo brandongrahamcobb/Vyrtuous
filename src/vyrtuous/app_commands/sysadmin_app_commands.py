@@ -58,12 +58,12 @@ class SysadminAppCommands(commands.Cog):
         member: app_commands.Transform[TargetObject, AppTarget],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
-            return await tick.end(warning=f"This command must target a valid member")
+            return await tick.end(warning=f"This command must target a valid member.")
         message = await interaction.original_response()
         message_snowflake = message.id
         msg = await developer_service.toggle_developer(

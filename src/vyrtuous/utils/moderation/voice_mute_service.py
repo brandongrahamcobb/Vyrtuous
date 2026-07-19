@@ -213,9 +213,9 @@ async def channel_mute(
 
 
 async def channel_unmute(
+    author_snowflake: int,
     channel_snowflake: int,
     guild_snowflake: int,
-    author_snowflake: int | None,
     reason: str | None = "No reason provided.",
     target: str = "user",
 ) -> list[discord.Embed]:
@@ -231,6 +231,18 @@ async def channel_unmute(
         raise commands.CheckFailure("This command must be executed in a valid channel.")
     unmuted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
+        if member.id == author_snowflake:
+            continue
+        try:
+            await moderator_service.has_equal_or_lower_role(
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
+                member_snowflake=author_snowflake,
+                target_member_snowflake=member.id,
+            )
+        except moderator_service.HasEqualOrLowerRole:
+            skipped_members.append(member)
+            continue
         voice_mute = await database_factory.select(
             channel_snowflake=channel_snowflake,
             member_snowflake=member.id,

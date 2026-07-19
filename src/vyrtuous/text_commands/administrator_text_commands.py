@@ -25,10 +25,7 @@ from discord.ext import commands
 from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import at_home
-from vyrtuous.listing import (
-    list_overwrites,
-    list_server_mutes,
-)
+from vyrtuous.listing import list_overwrites, list_server_mutes
 from vyrtuous.models.category import Category
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging import emojis
@@ -38,10 +35,7 @@ from vyrtuous.utils.moderation import (
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import (
-    coordinator_service,
-    moderator_service,
-)
+from vyrtuous.utils.users import coordinator_service, moderator_service
 from vyrtuous.view.cancel_confirm_view import VerifyView
 
 
@@ -54,7 +48,9 @@ class AdministratorTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -154,29 +150,49 @@ class AdministratorTextCommands(commands.Cog):
     async def toggle_coordinator_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
+        member: int | discord.Member = commands.parameter(
             converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
-        channel: discord.abc.GuildChannel = commands.parameter(
+        channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=commands.VoiceChannelConverter,
+            default=None,
             description="Tag a channel or include its ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must be executed in a server.")
+        if channel is None:
+            if ctx.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = ctx.channel.id
+            guild_snowflake = ctx.guild.id
+        elif isinstance(
+            channel,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            channel_snowflake = channel.id
+            guild_snowflake = channel.guild.id
+        else:
+            return await tick.end(warning="This command must target a valid channel.")
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
         await moderator_service.has_equal_or_lower_role(
-            target_member_snowflake=int(member.id),
+            target_member_snowflake=member_snowflake,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel.id,
-            guild_snowflake=channel.guild.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
         )
         msg = await coordinator_service.toggle_coordinator(
             author_snowflake=ctx.author.id,
-            channel_snowflake=channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=member.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
             message_snowflake=ctx.message.id,
             message_channel_snowflake=ctx.message.channel.id,
         )
@@ -247,7 +263,9 @@ class AdministratorTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed within a server.")
+            return await tick.end(
+                warning="This command must be executed within a server."
+            )
         failed, moved = [], []
         for member in source_channel.members:
             try:

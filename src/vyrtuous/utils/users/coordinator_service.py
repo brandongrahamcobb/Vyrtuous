@@ -23,6 +23,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.coordinator import Coordinator, NotCoordinator
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.tracking import data_builder, stream_service
 
 MODEL = Coordinator
@@ -134,7 +135,7 @@ async def log_coord(
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
 ):
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     reason = None
     role_snowflake = None
@@ -142,7 +143,7 @@ async def log_coord(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="coord",
         member_snowflake=member_snowflake,
@@ -155,7 +156,7 @@ async def log_coord(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="coord",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,
@@ -176,7 +177,7 @@ async def log_xcoord(
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
 ):
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     reason = None
     role_snowflake = None
@@ -184,7 +185,7 @@ async def log_xcoord(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="xcoord",
         member_snowflake=member_snowflake,
@@ -197,7 +198,7 @@ async def log_xcoord(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="xcoord",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,

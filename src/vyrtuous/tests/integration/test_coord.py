@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -31,6 +32,7 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
+GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
@@ -39,8 +41,18 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, member, channel",
     [
-        ("Administrator", "!coord", "{member_snowflake}", "{channel_snowflake}"),
-        ("Administrator", "!coord", "<@{member_snowflake}>", "<#{channel_snowflake}>"),
+        (
+            "Administrator",
+            "!coord",
+            "{member_snowflake}",
+            "{channel_snowflake}",
+        ),
+        (
+            "Administrator",
+            "!coord",
+            "<@{member_snowflake}>",
+            "<#{channel_snowflake}>",
+        ),
     ],
 )
 async def test_coord(bot, command: str, member, channel, permission_role):
@@ -69,16 +81,29 @@ async def test_coord(bot, command: str, member, channel, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    c = channel.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
+    c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
     full = f"{command} {m} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        objects = setup(bot)
+        msg = build_message(
+            author=objects.get("author", None),
+            channel=objects.get("text_channel", None),
+            content=full,
+            guild=objects.get("guild", None),
+            state=objects.get("state", None),
+        )
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.tests.integration.mock_discord_channel.MockVoiceChannel.fetch_message",
+                    new=AsyncMock(return_value=msg),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     elif (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -107,6 +132,17 @@ async def test_coord(bot, command: str, member, channel, permission_role):
             async with capture_command() as end_results:
                 cog = bot.get_cog("AdministratorAppCommands")
                 command = cog.toggle_coordinator_app_command
-                await command.callback(cog, interaction=inx, member=m, channel=c)
+                transformer = AppTarget()
+                resolved_member = await transformer.transform(inx, m)
+                if c:
+                    resolved_channel = await transformer.transform(inx, c)
+                else:
+                    resolved_channel = None
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    member=resolved_member,
+                    channel=resolved_channel,
+                )
             for kind, content in end_results:
                 assert kind == "success"

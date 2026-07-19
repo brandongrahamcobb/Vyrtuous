@@ -408,6 +408,7 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="coords", description="Lists coords.")
     @app_commands.describe(
         target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+        guild="Specify a server ID.",
     )
     async def list_coordinators_app_command(
         self,
@@ -437,9 +438,8 @@ class ModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_coordinators.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+            guild_snowflake=guild_snowflake, obj=obj
         )
         return await tick.end(success=pages)
 

@@ -36,7 +36,7 @@ async def send_log(
     author_snowflake: int | None,
     channel_snowflake: int | None,
     duration: DurationObject | None,
-    guild_snowflake: int,
+    guild_snowflake: int | None,
     identifier: str,
     is_channel_scope: bool | None,
     member_snowflake: int,
@@ -49,67 +49,70 @@ async def send_log(
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     embed = StreamEmbed(color=None, description=None, title=None, url=None)
-    embed.set_title(identifier=identifier).set_action(duration=duration).set_reason(
-        reason=reason
-    )
+    embed.set_title(identifier=identifier)
+    if duration:
+        embed.set_action(duration=duration).set_reason(reason=reason)
     pages: list[discord.Embed] = []
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
-    if channel_snowflake:
-        if author_snowflake:
-            executor_role = await moderator_service.resolve_highest_role(
+    if guild_snowflake:
+        guild = bot.get_guild(guild_snowflake)
+        if guild is None:
+            raise commands.GuildNotFound(str(guild_snowflake))
+        if channel_snowflake:
+            if author_snowflake:
+                executor_role = await moderator_service.resolve_highest_role(
+                    channel_snowflake=int(channel_snowflake),
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(author_snowflake),
+                )
+                embed.set_executor(
+                    author_snowflake=author_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    highest_role=executor_role,
+                )
+                author = guild.get_member(author_snowflake)
+                if author:
+                    embed.set_tn(url=author.display_avatar.url)
+            else:
+                executor_role = "Unknown"
+            target_role = await moderator_service.resolve_highest_role(
                 channel_snowflake=int(channel_snowflake),
                 guild_snowflake=int(guild_snowflake),
-                member_snowflake=int(author_snowflake),
+                member_snowflake=int(member_snowflake),
             )
-            embed.set_executor(
-                author_snowflake=author_snowflake,
+            embed.set_target(
                 guild_snowflake=guild_snowflake,
-                highest_role=executor_role,
+                target=target,
+                target_snowflake=member_snowflake,
+                highest_role=target_role,
             )
-            author = guild.get_member(author_snowflake)
-            if author:
-                embed.set_tn(url=author.display_avatar.url)
-        else:
-            executor_role = "Unknown"
-        target_role = await moderator_service.resolve_highest_role(
-            channel_snowflake=int(channel_snowflake),
-            guild_snowflake=int(guild_snowflake),
-            member_snowflake=int(member_snowflake),
-        )
-        embed.set_target(
-            guild_snowflake=guild_snowflake,
-            target=target,
-            target_snowflake=member_snowflake,
-            highest_role=target_role,
-        )
-        embed.set_description(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            target_snowflake=member_snowflake,
-        )
-        if is_channel_scope is not None:
-            embed.set_channel_ctx(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                is_channel_scope=is_channel_scope,
-            )
-        if message_snowflake and message_channel_snowflake:
-            await embed.set_message_ctx(
-                guild_snowflake=guild_snowflake,
-                identifier=identifier,
-                message_snowflake=message_snowflake,
-                message_channel_snowflake=message_channel_snowflake,
-            )
-            embed.set_reference(
+            embed.set_description(
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=guild_snowflake,
                 target_snowflake=member_snowflake,
-                message_snowflake=message_snowflake,
             )
-    if role_snowflake:
-        embed.set_role(guild_snowflake=guild_snowflake, role_snowflake=role_snowflake)
+            if is_channel_scope is not None:
+                embed.set_channel_ctx(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    is_channel_scope=is_channel_scope,
+                )
+            if message_snowflake and message_channel_snowflake:
+                await embed.set_message_ctx(
+                    guild_snowflake=guild_snowflake,
+                    identifier=identifier,
+                    message_snowflake=message_snowflake,
+                    message_channel_snowflake=message_channel_snowflake,
+                )
+                embed.set_reference(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    target_snowflake=member_snowflake,
+                    message_snowflake=message_snowflake,
+                )
+        if role_snowflake:
+            embed.set_role(
+                guild_snowflake=guild_snowflake, role_snowflake=role_snowflake
+            )
     pages.append(embed)
 
     streaming = await database_factory.select(singular=False)
