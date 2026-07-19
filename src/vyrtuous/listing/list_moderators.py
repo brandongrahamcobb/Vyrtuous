@@ -29,7 +29,7 @@ from vyrtuous.utils.messaging import emojis
 MODEL = Moderator
 
 
-async def build_dictionary(obj) -> dict:
+async def build_dictionary(guild_snowflake: int, obj) -> dict:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     moderators = []
     dictionary: dict[
@@ -39,40 +39,44 @@ async def build_dictionary(obj) -> dict:
         moderators = await database_factory.select(
             guild_snowflake=obj.id, singular=False
         )
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         moderators = await database_factory.select(
-            channel_snowflake=obj.id, singular=False
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
         )
     elif isinstance(obj, discord.Member):
         moderators = await database_factory.select(
-            member_snowflake=obj.id, singular=False
+            guild_snowflake=guild_snowflake, member_snowflake=obj.id, singular=False
         )
     else:
-        moderators = await database_factory.select(singular=False)
+        moderators = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if moderators:
         for moderator in moderators:
-            dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
-            dictionary[moderator.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 moderator.member_snowflake, {"moderators": {}}
             )
-            dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"].setdefault(moderator.channel_snowflake, {})
-            dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"][moderator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
+            dictionary[guild_snowflake]["members"][moderator.member_snowflake][
+                "moderators"
+            ].setdefault(moderator.channel_snowflake, {})
+            dictionary[guild_snowflake]["members"][moderator.member_snowflake][
+                "moderators"
+            ][moderator.channel_snowflake].update({"placeholder": "placeholder"})
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No moderators found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
     elif isinstance(obj, int):
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
@@ -82,7 +86,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             return "No moderators found."
     title = f"{emojis.get_random_emoji()} Moderators for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.ModeratorDictionary = (
         await list_service.process_dictionary(
             cls=list_service.ModeratorDictionary, dictionary=dictionary
@@ -146,9 +150,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({mod_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No moderators found."
     return pages

@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -35,13 +36,14 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, server",
+    "permission_role, command, member, target",
     [
-        ("Guild Owner", "!hero", "{member_snowflake}", "{guild_snowflake}"),
+        ("Guild Owner", "!hero", "{member_snowflake}", None),
+        ("Guild Owner", "!hero", "{member_snowflake}", "all"),
         ("Guild Owner", "!hero", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_hero(bot, command: str, target, server, permission_role):
+async def test_hero(bot, command: str, member, target, permission_role):
     """
     Promote or demote member to 'Hero' in memory (lost on reload).
 
@@ -60,15 +62,24 @@ async def test_hero(bot, command: str, target, server, permission_role):
     >>> !hero 10000000000000003
     [{emoji} Invincibility granted for Member1]
     """
-    m = target.format(
+    m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    s = server.format(guild_snowflake=GUILD_SNOWFLAKE)
     full = f"{command} {m}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    t = None
+    if target:
+        t = target.format(guild_snowflake=GUILD_SNOWFLAKE)
+        full = f"{command} {m} {t}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -86,6 +97,14 @@ async def test_hero(bot, command: str, target, server, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenGuildOwnerAppCommands")
             command = cog.toggle_invincibility_app_command
-            await command.callback(cog, interaction=inx, member=m, server=s)
+            transformer = AppTarget()
+            resolved_member = await transformer.transform(inx, m)
+            if t:
+                resolved_target = await transformer.transform(inx, t)
+            else:
+                resolved_target = None
+            await command.callback(
+                cog, interaction=inx, member=resolved_member, target=resolved_target
+            )
         for kind, content in end_results:
             assert kind == "success"

@@ -59,32 +59,79 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
         ctx: commands.Context,
         member: discord.Member = commands.parameter(
             converter=commands.MemberConverter,
-            description="Tag a member or include their ID",
+            description="Tag a member or include their ID.",
+        ),
+        target: Union[str, discord.Guild, None] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify `all` or a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        if member_set := self.__bot.registry.get(MemberState).invincible.get(
-            ctx.guild.id
-        ):
-            pass
+        bot: DiscordBot = DiscordBot.get_instance()
+        singular = True
+        if target is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guilds = [ctx.guild]
         else:
-            member_set = self.__bot.registry.get(MemberState).invincible[
-                ctx.guild.id
-            ] = set()
-        if member.id not in member_set:
-            await hero_service.add_invincible_member(member.guild.id, member.id)
-            await hero_service.unrestrict(
-                guild_snowflake=member.guild.id, member_snowflake=member.id
+            if isinstance(target, discord.Guild):
+                guilds = [target]
+            elif target == "all":
+                guilds = bot.guilds
+                singular = False
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if isinstance(member, int):
+            member_snowflake = member
+            member_name = "Unknown"
+            simplified_member = self.__bot.registry.get(MemberState).active.get(
+                member_snowflake
             )
-            msg = (
-                f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member.mention}."
-            )
+            if simplified_member:
+                member_name = simplified_member[0]
         else:
-            await hero_service.remove_invincible_member(member.guild.id, member.id)
-            msg = f"Invincibility has been disabled for {member.mention}"
+            member_snowflake = member.id
+            member_name = member.mention
+        if not singular:
+            if any(
+                member_snowflake in member_set
+                for member_set in self.__bot.registry.get(
+                    MemberState
+                ).invincible.values()
+            ):
+                enabled = False
+            else:
+                enabled = True
+        else:
+            guild_snowflake = guilds[0].id
+            if member_snowflake in self.__bot.registry.get(MemberState).invincible.get(
+                guild_snowflake, set()
+            ):
+                enabled = False
+            else:
+                enabled = True
+        if enabled:
+            header = f"All moderation events have been forgiven and invincibility has been enabled for {member_name} in "
+        else:
+            header = f"Invincibility has been disabled for {member_name} in "
+        guild_names = []
+        for g in guilds:
+            if enabled:
+                await hero_service.add_invincible_member(g.id, member_snowflake)
+                await hero_service.unrestrict(
+                    guild_snowflake=g.id, member_snowflake=member_snowflake
+                )
+                guild_names.append(g.name)
+            else:
+                header = f"Invincibility has been disabled for {member_name} in "
+                await hero_service.remove_invincible_member(g.id, member_snowflake)
+                guild_names.append(g.name)
+        msg = header + ", ".join(guild_names) + "."
         return await tick.end(success=msg)
 
     @commands.command(name="heroes", help="List heroes.")
@@ -92,18 +139,28 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
     async def list_heroes_text_command(
         self,
         ctx: commands.Context,
-        *,
-        target: Union[str, discord.Member] = commands.parameter(
+        target: Union[discord.Member, discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="'all', or user mention/ID",
+            description="Specify a member mention/ID or server ID.",
+        ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        is_at_home = at_home(source=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
+        else:
+            guild_snowflake = guild.id
+        obj = target or ctx.guild
         pages = await list_heroes.build_pages(
-            is_at_home=is_at_home,
-            obj=target,
+            guild_snowflake=guild_snowflake,
+            obj=obj,
         )
         return await tick.end(success=pages)
 

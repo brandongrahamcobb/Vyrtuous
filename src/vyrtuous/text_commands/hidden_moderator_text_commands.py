@@ -64,6 +64,7 @@ class HiddenModeratorTextCommands(commands.Cog):
             description="Specify one of: member ID/mention or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
             default=None,
             description="Specify one a server ID.",
         ),

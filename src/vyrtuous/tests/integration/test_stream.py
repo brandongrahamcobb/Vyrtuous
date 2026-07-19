@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -29,13 +30,14 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
+GUILD_SNOWFLAKE = 10000000000000500
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, source_channel",
+    "permission_role, command, target, source",
     [
         (
             "Administrator",
@@ -49,12 +51,11 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
             "{target_channel_snowflake}",
             "{source_channel_snowflake}",
         ),
-        ("Administrator", "!stream", "{target_channel_snowflake}", None),
         (
             "Administrator",
             "!stream",
-            "<#{target_channel_snowflake}>",
-            None,
+            "{target_channel_snowflake}",
+            "{source_guild_snowflake}",
         ),
         (
             "Administrator",
@@ -67,6 +68,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
             "!stream",
             "<#{target_channel_snowflake}>",
             None,
+        ),
+        (
+            "Administrator",
+            "!stream",
+            "<#{target_channel_snowflake}>",
+            "{source_guild_snowflake}",
         ),
         (
             "Administrator",
@@ -76,7 +83,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ),
     ],
 )
-async def test_stream(bot, command: str, source_channel, target, permission_role):
+async def test_stream(bot, command: str, source, target, permission_role):
     """
     Setup, modify or teardown a streaming route, modifying the
     the PostgresSQL database 'vyrtuous' in the table 'streaming'.
@@ -105,14 +112,23 @@ async def test_stream(bot, command: str, source_channel, target, permission_role
         target_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
     )
     full = f"{command} {tc}"
-    sc = None
-    if source_channel:
-        sc = source_channel.format(source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-        full = f"{command} {tc} {sc}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    s = None
+    if source:
+        s = source.format(
+            source_guild_snowflake=GUILD_SNOWFLAKE,
+            source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+        )
+        full = f"{command} {tc} {s}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -130,11 +146,17 @@ async def test_stream(bot, command: str, source_channel, target, permission_role
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenAdministratorAppCommands")
             command = cog.modify_streaming_app_command
+            transformer = AppTarget()
+            resolved_target = await transformer.transform(inx, tc)
+            if s:
+                resolved = await transformer.transform(inx, s)
+            else:
+                resolved = None
             await command.callback(
                 cog,
                 interaction=inx,
-                target_channel=tc,
-                source_channel=sc if source_channel else None,
+                target_channel=resolved_target,
+                source=resolved,
             )
         for kind, content in end_results:
             assert kind == "success"

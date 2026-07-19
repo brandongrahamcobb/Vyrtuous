@@ -85,8 +85,3 @@ def interaction(bot, channel, guild, message):
     inx.followup = MagicMock()
     inx.followup.send = AsyncMock()
     return inx
-
-
-# def interaction(context):
-#     interaction = Interaction(context=context)
-#     return interaction

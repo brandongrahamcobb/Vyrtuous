@@ -32,6 +32,7 @@ MODEL = VoiceMute
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -44,40 +45,52 @@ async def build_dictionary(
         voice_mutes = await database_factory.select(
             guild_snowflake=obj.id, tagret=target, singular=False
         )
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         voice_mutes = await database_factory.select(
-            channel_snowflake=obj.id, target=target, singular=False
+            channel_snowflake=obj.id,
+            guild_snowflake=guild_snowflake,
+            target=target,
+            singular=False,
         )
     elif isinstance(obj, discord.Member):
         voice_mutes = await database_factory.select(
-            member_snowflake=obj.id, target=target, singular=False
+            member_snowflake=obj.id,
+            guild_snowflake=guild_snowflake,
+            target=target,
+            singular=False,
         )
     else:
-        voice_mutes = await database_factory.select(singular=False)
+        voice_mutes = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if voice_mutes:
         for voice_mute in voice_mutes:
-            dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
-            dictionary[voice_mute.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 voice_mute.member_snowflake, {"voice_mutes": {}}
             )
-            dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
-            dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"][voice_mute.channel_snowflake].update(
+            dictionary[guild_snowflake]["members"][voice_mute.member_snowflake][
+                "voice_mutes"
+            ].setdefault(voice_mute.channel_snowflake, {})
+            dictionary[guild_snowflake]["members"][voice_mute.member_snowflake][
+                "voice_mutes"
+            ][voice_mute.channel_snowflake].update(
                 {"reason": voice_mute.reason, "expires_in": voice_mute.expires_in}
             )
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No active voice-mutes found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
     elif isinstance(obj, int):
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
@@ -87,7 +100,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             return "No active voice-mutes found."
     title = f"{emojis.get_random_emoji()} Voice Mutes for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.VoiceMuteDictionary = (
         await list_service.process_dictionary(
             cls=list_service.VoiceMuteDictionary, dictionary=dictionary
@@ -154,9 +167,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({vmute_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No voice mutes found."
     return pages

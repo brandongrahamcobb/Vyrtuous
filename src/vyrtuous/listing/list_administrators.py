@@ -40,6 +40,7 @@ async def build_dictionary(
         administrators = await database_factory.select(
             guild_snowflake=obj.id, singular=False
         )
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.Member):
         administrators = await database_factory.select(
             guild_snowflake=guild_snowflake, member_snowflake=obj.id, singular=False

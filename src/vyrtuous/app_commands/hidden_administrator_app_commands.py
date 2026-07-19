@@ -207,29 +207,14 @@ class HiddenAdministratorAppCommands(commands.Cog):
     @app_commands.command(name="pc", description="View permissions.")
     @app_commands.describe(
         target="Specify one of: channel ID/mention or server ID.",
-        guild="Specify a server ID.",
     )
     @skip_app_command_help_discovery()
     async def list_permissions_app_command(
         self,
         interaction: discord.Interaction,
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
         if target is None:
             if interaction.guild is None:
                 return await tick.end(
@@ -238,11 +223,8 @@ class HiddenAdministratorAppCommands(commands.Cog):
             obj = interaction.guild
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_permissions.build_pages(
-            guild_snowflake=guild_snowflake,
             obj=obj,
-            is_at_home=is_at_home,
         )
         return await tick.end(success=pages)
 
@@ -324,57 +306,42 @@ class HiddenAdministratorAppCommands(commands.Cog):
     @app_commands.command(name="stream", description="Setup streaming.")
     @app_commands.describe(
         target_channel="Specify a channel ID/mention where logs will be streamed.",
-        source_guild="Specify a servr ID where logs will come from.",
-        source_channel="Specify a channel ID/mention where logs will come from.",
+        source="Specify a channel ID/mention or server ID where logs will come from.",
     )
     @skip_app_command_help_discovery()
     async def modify_streaming_app_command(
         self,
         interaction: discord.Interaction,
         target_channel: app_commands.Transform[TargetObject, AppTarget],
-        source_guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        source_channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        source: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if source_guild is None:
+        if source is None:
             if interaction.guild is None:
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-            source_guild_obj = interaction.guild
-        elif source_guild.target == "all":
-            source_guild_obj = source_guild.target
+            source_obj = interaction.guild
+        elif isinstance(source.target, str):
+            await moderator_service.check_minimum_role(
+                member_snowflake=interaction.user.id,
+                lowest_role="Developer",
+            )
+            source_obj = None
         else:
-            if isinstance(source_guild.target, discord.Guild):
-                source_guild_obj = source_guild.target
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+            source_obj = source.target
         if isinstance(
             target_channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            target_channel_snowflake = target_channel.target.id
+            target_channel_obj = target_channel.target
         else:
             return await tick.end(
                 warning="This command must target a valid target channel."
             )
-        if source_channel is None:
-            source_channel_obj = "all"
-        elif isinstance(
-            source_channel.target,
-            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
-        ):
-            source_channel_obj = source_channel.target
-        else:
-            return await tick.end(
-                warning="This command must target a valid source channel."
-            )
         pages = await stream_service.toggle_stream(
-            target_channel_snowflake=target_channel_snowflake,
-            source_guild_obj=source_guild_obj,
-            source_channel_obj=source_channel_obj,
+            target_channel=target_channel_obj,
+            source=source_obj,
         )
         return await tick.end(success=pages)
 

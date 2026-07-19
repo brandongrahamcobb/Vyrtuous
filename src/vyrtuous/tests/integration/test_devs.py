@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -35,13 +36,13 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target",
+    "permission_role, command, member",
     [
         ("Guild Owner", "!devs", "{member_snowflake}"),
         ("Guild Owner", "!devs", "<@{member_snowflake}>"),
     ],
 )
-async def test_devs(bot, command: str, target, permission_role):
+async def test_devs(bot, command: str, member, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -70,14 +71,18 @@ async def test_devs(bot, command: str, target, permission_role):
     >>> !devs 10000000000000003
     [{emoji} Developers for Member1\n Guild1\n Guild2]
     """
-    t = target.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
-    )
-    full = f"{command} {t}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    m = member.format(member_snowflake=DUMMY_MEMBER_SNOWFLAKE)
+    full = f"{command} {m}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -95,6 +100,11 @@ async def test_devs(bot, command: str, target, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("GuildOwnerAppCommands")
             command = cog.list_developers_app_command
-            await command.callback(cog, interaction=inx, target=t)
+            transformer = AppTarget()
+            if m:
+                resolved = await transformer.transform(inx, m)
+            else:
+                resolved = None
+            await command.callback(cog, interaction=inx, member=resolved)
         for kind, content in end_results:
             assert kind == "success"

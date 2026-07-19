@@ -91,38 +91,18 @@ class GuildOwnerAppCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @app_commands.command(name="devs", description="List devs.")
-    @app_commands.describe(target="Specify a member ID/mention.")
+    @app_commands.describe(member="Specify a member ID/mention.")
     async def list_developers_app_command(
         self,
         interaction: discord.Interaction,
-        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        member: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
+        if member is None:
+            obj = None
         else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-        if target is None:
-            if interaction.channel is None:
-                return await tick.end(
-                    warning="This command must target a valid channel."
-                )
-            obj = interaction.channel
-        else:
-            obj = target.target
-        pages = await list_developers.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj
-        )
+            obj = member.target
+        pages = await list_developers.build_pages(obj=obj)
         return await tick.end(success=pages)
 
     # @app_commands.command(name="sync", description="Sync app commands.")

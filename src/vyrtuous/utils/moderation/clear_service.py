@@ -249,6 +249,7 @@ async def clear(
                             await automute_channel_service.toggle_automute(
                                 author_snowflake=author_snowflake,
                                 channel_snowflake=obj.id,
+                                duration=None,
                                 guild_snowflake=obj.guild.id,
                             )
                         case "ban":
@@ -412,6 +413,7 @@ async def clear(
                             await automute_channel_service.toggle_automute(
                                 author_snowflake=author_snowflake,
                                 channel_snowflake=value.channel_snowflake,
+                                duration=None,
                                 guild_snowflake=obj.id,
                             )
                         case "ban":
@@ -565,6 +567,7 @@ async def clear(
                             await automute_channel_service.toggle_automute(
                                 author_snowflake=author_snowflake,
                                 channel_snowflake=value.channel_snowflake,
+                                duration=None,
                                 guild_snowflake=value.guild_snowflake,
                             )
                         case "ban":

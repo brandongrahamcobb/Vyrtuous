@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_overwrites, list_server_mutes
 from vyrtuous.models.category import AppCategory, CategoryObject
-from vyrtuous.models.duration import AppDuration, DurationObject
+from vyrtuous.models.duration import AppDuration, DurationObject, DurationWrapper
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging import emojis
@@ -173,28 +173,13 @@ class AdministratorAppCommands(commands.Cog):
     @app_commands.command(name="ow", description="Overwrite stats.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention or server ID.",
-        guild="Specify a server ID.",
     )
     async def list_overwrites_app_command(
         self,
         interaction: discord.Interaction,
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
         if target is None:
             if interaction.channel is None:
                 return await tick.end(
@@ -203,7 +188,7 @@ class AdministratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        embed = list_overwrites.build_embed(guild_snowflake=guild_snowflake, obj=obj)
+        embed = list_overwrites.build_embed(obj=obj)
         return await tick.end(success=embed)
 
     @app_commands.command(name="rmute", description="Room mute (except yourself).")
@@ -216,7 +201,7 @@ class AdministratorAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        duration: app_commands.Transform[DurationObject | None, AppDuration] = None,
+        duration: app_commands.Transform[DurationWrapper | None, AppDuration] = None,
         reason: str | None = "No reason provided.",
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
@@ -244,10 +229,14 @@ class AdministratorAppCommands(commands.Cog):
 
         else:
             return await tick.end(warning="This command must target a valid channel.")
+        if duration is None:
+            duration_obj = DurationObject(number=1, prefix="", sign=1, unit="h")
+        else:
+            duration_obj = duration.duration
         pages = await voice_mute_service.channel_mute(
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
-            duration=duration or "1h",
+            duration=duration_obj,
             guild_snowflake=guild_snowflake,
             reason=reason or "No reason provided.",
         )
@@ -257,35 +246,20 @@ class AdministratorAppCommands(commands.Cog):
     @app_commands.describe(
         target_channel="Specify a `to` channel ID/mention.",
         source_channel="Specify a `from` channel ID/mention.",
-        guild="Specify a server ID",
     )
     async def channel_move_all_app_command(
         self,
         interaction: discord.Interaction,
         target_channel: app_commands.Transform[TargetObject, AppTarget],
         source_channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-            guild_name = interaction.guild.name
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-                guild_name = guild.target.name
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
         if isinstance(
             target_channel.target,
             (discord.VoiceChannel, discord.StageChannel),
         ):
+            target_guild_snowflake = target_channel.target.guild.id
+            target_guild_name = target_channel.target.guild.name
             target_channel_snowflake = target_channel.target.id
             target_channel_name = target_channel.target.name
             target_channel_obj = target_channel.target
@@ -301,6 +275,8 @@ class AdministratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid source channel."
                 )
+            source_guild_snowflake = interaction.channel.guild.id
+            source_guild_name = interaction.channel.guild.name
             source_channel_snowflake = interaction.channel.id
             source_channel_name = interaction.channel.name
             source_channel_members = interaction.channel.members
@@ -309,6 +285,8 @@ class AdministratorAppCommands(commands.Cog):
             source_channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
+            source_guild_snowflake = source_channel.target.guild.id
+            source_guild_name = source_channel.target.guild.name
             source_channel_snowflake = source_channel.target.id
             source_channel_name = source_channel.target.name
             source_channel_members = source_channel.target.members
@@ -327,9 +305,10 @@ class AdministratorAppCommands(commands.Cog):
                 self.__bot.logger.warning(
                     f"Unable to move member "
                     f"{member.display_name} ({member.id}) from channel "
-                    f"{source_channel_name} ({source_channel_snowflake}) to channel "
+                    f"{source_channel_name} ({source_channel_snowflake}) in guild "
+                    f"{source_guild_name} ({source_guild_snowflake}) to channel "
                     f"{target_channel_name} ({target_channel_snowflake}) in guild "
-                    f"{guild_name} ({guild_snowflake}). "
+                    f"{target_guild_name} ({target_guild_snowflake}) to channel "
                     f"{str(e).capitalize()}"
                 )
         embed = discord.Embed(
@@ -431,9 +410,8 @@ class AdministratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_server_mutes.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+            guild_snowflake=guild_snowflake, obj=obj
         )
         return await tick.end(success=pages)
 

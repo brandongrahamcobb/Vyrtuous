@@ -68,8 +68,8 @@ class HiddenAdministratorTextCommands(commands.Cog):
     async def list_administrator_roles_text_command(
         self,
         ctx: commands.Context,
-        *,
         guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
             default=None,
             description="Specify a server ID.",
         ),
@@ -152,6 +152,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
             default=None,
             description="Specify a server ID.",
         ),
@@ -196,38 +197,47 @@ class HiddenAdministratorTextCommands(commands.Cog):
     async def list_permissions_text_command(
         self,
         ctx: commands.Context,
-        target: Union[str, discord.Guild, None] = commands.parameter(
+        target: Union[
+            discord.abc.GuildChannel, discord.Guild, None
+        ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: `all`, channel ID/mention or server ID.",
+            description="Specify one of: channel ID/mention or server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        if target == "all":
-            obj = None
+        if target is None:
+            if ctx.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            obj = ctx.channel
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
+            obj = target
         pages = await list_permissions.build_pages(
-            guild_snowflake=ctx.guild.id,
             obj=obj,
-            is_at_home=is_at_home,
         )
         return await tick.end(success=pages)
 
     @commands.command(name="roleid", help="Get role by name.")
     @skip_text_command_help_discovery()
     async def get_role_id_text_command(
-        self, ctx: commands.Context, *, role_name: str
+        self,
+        ctx: commands.Context,
+        role_name: str,
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(
-                warning="This command must be executed within a server."
-            )
-        role = discord.utils.get(ctx.guild.roles, name=role_name)
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            role = discord.utils.get(ctx.guild.roles, name=role_name)
+        else:
+            role = discord.utils.get(guild.roles, name=role_name)
         if role:
             return await tick.end(success=f"Role `{role.name}` has ID `{role.id}`.")
         else:
@@ -248,6 +258,7 @@ class HiddenAdministratorTextCommands(commands.Cog):
             description="Specify one of: channel ID/mention, or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
             default=None,
             description="Specify a server ID.",
         ),
@@ -274,23 +285,41 @@ class HiddenAdministratorTextCommands(commands.Cog):
             converter=commands.TextChannelConverter,
             description="Tag a channel or include its ID.",
         ),
-        source_channel: discord.abc.GuildChannel | None = commands.parameter(
+        source: (
+            str | discord.abc.GuildChannel | discord.Guild | None
+        ) = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="`All` or tag a channel/include its ID.",
+            description="Specify `all` a channel ID/mention or server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
-        if source_channel is None:
-            source_channel_snowflake = source_channel
+        if source is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            source_obj = ctx.guild
+        elif isinstance(source, str):
+            await moderator_service.check_minimum_role(
+                member_snowflake=ctx.author.id,
+                lowest_role="Developer",
+            )
+            source_obj = None
         else:
-            source_channel_snowflake = source_channel.id
+            source_obj = source
+        if isinstance(
+            target_channel,
+            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+        ):
+            target_channel_obj = target_channel
+        else:
+            return await tick.end(
+                warning="This command must target a valid target channel."
+            )
         pages = await stream_service.toggle_stream(
-            guild_snowflake=ctx.guild.id,
-            source_channel_snowflake=source_channel_snowflake,
-            target_channel_snowflake=target_channel.id,
+            target_channel=target_channel_obj,
+            source=source_obj,
         )
         return await tick.end(success=pages)
 

@@ -29,7 +29,9 @@ from vyrtuous.utils.messaging import emojis
 MODEL = VoiceMute
 
 
-async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict[str, dict]]]]:
+async def build_dictionary(
+    guild_snowflake: int, obj
+) -> dict[int, dict[str, dict[int, dict[str, dict]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     target = "server"
     server_mutes = []
@@ -38,30 +40,40 @@ async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict[str, dict]
         server_mutes = await database_factory.select(
             guild_snowflake=obj.id, target=target, singular=False
         )
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.Member):
         server_mutes = await database_factory.select(
-            member_snowflake=obj.id, target=target, singular=False
+            guild_snowflake=guild_snowflake,
+            member_snowflake=obj.id,
+            target=target,
+            singular=False,
         )
     else:
-        server_mutes = await database_factory.select(target=target, singular=False)
+        server_mutes = await database_factory.select(
+            guild_snowflake=guild_snowflake, target=target, singular=False
+        )
     if server_mutes:
         for server_mute in server_mutes:
-            dictionary.setdefault(server_mute.guild_snowflake, {"members": {}})
-            dictionary[server_mute.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 server_mute.member_snowflake, {"server_mutes": {}}
             )
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No active server-mutes found."
+
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
-    elif isinstance(obj, int):
+    else:
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
         if simplified_member:
             obj_name = simplified_member[0]
@@ -70,7 +82,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
 
     title = f"{emojis.get_random_emoji()} Server Mutes for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.ServerMuteDictionary = (
         await list_service.process_dictionary(
             cls=list_service.ServerMuteDictionary, dictionary=dictionary
@@ -126,9 +138,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({smute_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No server mutes found."
     return pages

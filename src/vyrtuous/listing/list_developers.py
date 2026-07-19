@@ -33,11 +33,7 @@ async def build_dictionary(obj) -> dict[str, dict[int, dict[str, dict[str, str]]
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     developers = []
     dictionary: dict[str, dict[int, dict[str, dict[str, str]]]] = {}
-    if isinstance(obj, discord.Guild):
-        developers = await database_factory.select(
-            guild_snowflake=obj.id, singular=False
-        )
-    elif isinstance(obj, discord.Member):
+    if isinstance(obj, discord.Member):
         developers = await database_factory.select(
             member_snowflake=obj.id, singular=False
         )
@@ -60,8 +56,8 @@ async def build_pages(obj) -> str | list[discord.Embed]:
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = "All Members"
+    if obj is not None and not isinstance(obj, int):
         obj_name = obj.name
     elif isinstance(obj, int):
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)

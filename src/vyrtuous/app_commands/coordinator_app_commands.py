@@ -85,10 +85,10 @@ class CoordinatorAppCommands(commands.Cog):
             guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         await moderator_service.has_equal_or_lower_role(

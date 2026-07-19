@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -30,16 +31,18 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 ROLE_NAME = "Vegan"
+GUILD_SNOWFLAKE = 10000000000000500
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, role",
+    "permission_role, command, role, guild",
     [
-        ("Administrator", "!roleid", "{role_name}"),
+        ("Administrator", "!roleid", "{role_name}", None),
+        ("Administrator", "!roleid", "{role_name}", "{guild_snowflake}"),
     ],
 )
-async def test_roleid(bot, command: str, role, permission_role):
+async def test_roleid(bot, command: str, role, guild, permission_role):
     """
     Fetch a role snowflake in a guild
 
@@ -55,7 +58,11 @@ async def test_roleid(bot, command: str, role, permission_role):
 
     """
     r = role.format(role_name=ROLE_NAME)
+    g = None
     full = f"{command} {r}"
+    if guild:
+        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        full = f"{command} {r} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -83,6 +90,13 @@ async def test_roleid(bot, command: str, role, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenAdministratorAppCommands")
             command = cog.get_role_id_app_command
-            await command.callback(cog, interaction=inx, role_name=r)
+            transformer = AppTarget()
+            if g:
+                resolved_guild = await transformer.transform(inx, g)
+            else:
+                resolved_guild = None
+            await command.callback(
+                cog, interaction=inx, role_name=r, guild=resolved_guild
+            )
         for kind, content in end_results:
             assert kind == "success"

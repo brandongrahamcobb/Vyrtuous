@@ -134,48 +134,68 @@ async def send_log(
 
 
 async def toggle_stream(
-    target_channel_snowflake: int,
-    guild_snowflake: int,
-    *,
-    source_channel_snowflake: int | None = None,
+    target_channel: discord.abc.GuildChannel,
+    source: discord.Guild | discord.abc.GuildChannel | None,
 ) -> discord.Embed:
-    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
-    target_channel = guild.get_channel(target_channel_snowflake)
-    if target_channel is None:
-        raise commands.ChannelNotFound(str(target_channel_snowflake))
-    if source_channel_snowflake:
-        source_channel = guild.get_channel(source_channel_snowflake)
-        if source_channel is None:
-            raise commands.ChannelNotFound(str(source_channel_snowflake))
-        stream = await database_factory.select(
-            guild_snowflake=guild_snowflake,
-            source_channel_snowflake=source_channel_snowflake,
-            target_channel_snowflake=target_channel_snowflake,
-            singular=True,
-        )
-        if stream:
-            await database_factory.delete(
-                guild_snowflake=guild_snowflake,
-                source_channel_snowflake=source_channel_snowflake,
-                target_channel_snowflake=target_channel_snowflake,
+    if source:
+        if isinstance(source, discord.Guild):
+            stream = await database_factory.select(
+                source_guild_snowflake=source.id,
+                target_channel_snowflake=target_channel.id,
+                singular=True,
             )
-        source_text = f"from {source_channel_snowflake}"
+            if stream:
+                await database_factory.delete(
+                    source_guild_snowflake=source.id,
+                    target_channel_snowflake=target_channel.id,
+                )
+            else:
+                stream = Stream(
+                    target_channel_snowflake=target_channel.id,
+                    source_guild_snowflake=source.id,
+                )
+                await database_factory.create(stream)
+            source_text = f"from {source.name}"
+        else:
+            stream = await database_factory.select(
+                target_channel_snowflake=target_channel.id,
+                source_channel_snowflake=source.id,
+                singular=True,
+            )
+            if stream:
+                await database_factory.delete(
+                    source_channel_snowflake=source.id,
+                    target_channel_snowflake=target_channel.id,
+                )
+            else:
+                stream = Stream(
+                    source_channel_snowflake=source.id,
+                    target_channel_snowflake=target_channel.id,
+                )
+                await database_factory.create(stream)
+            source_text = f"from {source.mention}"
     else:
         stream = await database_factory.select(
-            guild_snowflake=guild_snowflake,
-            target_channel_snowflake=target_channel_snowflake,
+            source_guild_snowflake=None,
+            source_channel_snowflake=None,
+            target_channel_snowflake=target_channel.id,
             singular=True,
         )
         if stream:
             await database_factory.delete(
-                guild_snowflake=target_channel_snowflake,
-                source_channel_snowflake=source_channel_snowflake,
+                source_guild_snowflake=None,
+                source_channel_snowflake=None,
+                target_channel_snowflake=target_channel.id,
             )
-        source_text = "from all channels"
+        else:
+            stream = Stream(
+                source_guild_snowflake=None,
+                source_channel_snowflake=None,
+                target_channel_snowflake=target_channel.id,
+            )
+            await database_factory.create(stream)
+        source_text = f"from all servers"
     if stream:
         action = "disabled"
     else:

@@ -50,7 +50,7 @@ MODEL = AutoMute
 async def toggle_automute(
     author_snowflake: int,
     channel_snowflake: int,
-    duration: DurationObject,
+    duration: DurationObject | None,
     guild_snowflake: int,
 ):
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -71,21 +71,22 @@ async def toggle_automute(
         )
         pages.extend(embed)
     else:
-        automute = MODEL(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            expires_in=duration_builder.load(duration=duration).to_expires_in(),
-        )
-        await database_factory.create(automute)
-        embed = await voice_mute_service.channel_mute(
-            author_snowflake=author_snowflake,
-            channel_snowflake=channel_snowflake,
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            reason=f"Automute enabled.",
-            target="auto",
-        )
-        pages.extend(embed)
+        if duration:
+            automute = MODEL(
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                expires_in=duration_builder.load(duration=duration).to_expires_in(),
+            )
+            await database_factory.create(automute)
+            embed = await voice_mute_service.channel_mute(
+                author_snowflake=author_snowflake,
+                channel_snowflake=channel_snowflake,
+                duration=duration,
+                guild_snowflake=guild_snowflake,
+                reason=f"Automute enabled.",
+                target="auto",
+            )
+            pages.extend(embed)
     return pages
 
 

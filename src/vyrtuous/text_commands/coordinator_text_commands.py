@@ -139,7 +139,6 @@ class CoordinatorTextCommands(commands.Cog):
             default=None,
             description="Tag a channel or include its ID.",
         ),
-        *,
         duration: DurationWrapper | None = commands.parameter(
             converter=Duration,
             default=None,

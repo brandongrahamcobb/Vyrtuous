@@ -28,6 +28,7 @@ from vyrtuous.db.coordinator import NotCoordinator
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import NotDeveloper
 from vyrtuous.db.moderator import Moderator, NotModerator
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 from vyrtuous.utils.users import (
@@ -265,10 +266,10 @@ async def toggle_moderator(
 
 
 async def check_minimum_role(
-    guild_snowflake: int,
     member_snowflake: int,
     lowest_role: str,
     channel_snowflake: int | None = None,
+    guild_snowflake: int | None = None,
 ) -> str:
     role_names = (
         "Sysadmin",
@@ -296,19 +297,21 @@ async def check_minimum_role(
                     ):
                         return role_name
                 case "Guild Owner":
-                    if await guild_owner_service.is_guild_owner(
-                        guild_snowflake=int(guild_snowflake),
-                        member_snowflake=int(member_snowflake),
-                    ):
-                        return role_name
+                    if guild_snowflake:
+                        if await guild_owner_service.is_guild_owner(
+                            guild_snowflake=int(guild_snowflake),
+                            member_snowflake=int(member_snowflake),
+                        ):
+                            return role_name
                 case "Administrator":
-                    if await administrator_service.is_administrator(
-                        guild_snowflake=int(guild_snowflake),
-                        member_snowflake=int(member_snowflake),
-                    ):
-                        return role_name
+                    if guild_snowflake:
+                        if await administrator_service.is_administrator(
+                            guild_snowflake=int(guild_snowflake),
+                            member_snowflake=int(member_snowflake),
+                        ):
+                            return role_name
                 case "Coordinator":
-                    if channel_snowflake:
+                    if channel_snowflake and guild_snowflake:
                         if await coordinator_service.is_coordinator(
                             channel_snowflake=int(channel_snowflake),
                             guild_snowflake=int(guild_snowflake),
@@ -316,7 +319,7 @@ async def check_minimum_role(
                         ):
                             return role_name
                 case "Moderator":
-                    if channel_snowflake:
+                    if channel_snowflake and guild_snowflake:
                         if await is_moderator(
                             channel_snowflake=int(channel_snowflake),
                             guild_snowflake=int(guild_snowflake),
@@ -330,7 +333,7 @@ async def check_minimum_role(
 
 
 async def has_equal_or_lower_role(
-    channel_snowflake: int,
+    channel_snowflake: int | None,
     guild_snowflake: int,
     member_snowflake: int,
     target_member_snowflake: int,
@@ -352,7 +355,7 @@ async def has_equal_or_lower_role(
 
 
 async def resolve_highest_role(
-    channel_snowflake: int,
+    channel_snowflake: int | None,
     member_snowflake: int,
     guild_snowflake: int,
 ) -> str:
@@ -414,74 +417,8 @@ def compare_ranks(sender_rank, target_rank) -> bool:
     return True
 
 
-# async def can_list(
-#     source=Union[commands.Context, discord.Interaction, discord.Message]
-# ) -> tuple[list[discord.], list[int]]:
-#     bot: DiscordBot = DiscordBot.get_instance()
-#     available_channels = {}
-#     available_guilds = {}
-#     member_snowflake = resolve_author(source=source).id
-#     verifications = (
-#         ("all", sysadmin_service.is_sysadmin),
-#         ("all", developer_service.is_developer),
-#         ("guild", guild_owner_service.is_guild_owner),
-#         ("guild", administrator_service.is_administrator),
-#         ("channel", coordinator_service.is_coordinator),
-#         ("channel", is_moderator),
-#     )
-#     for role_scope, verify in verifications:
-#         if role_scope == "all":
-#             try:
-#                 if await verify(member_snowflake=int(member_snowflake)):
-#                     available_guilds["all"] = bot.guilds
-#                     available_channels["all"] = []
-#                     for guild in bot.guilds:
-#                         available_guilds[guild.id] = guild
-#                         available_channels.setdefault(guild.id, [])
-#                         for channel in guild.channels:
-#                             if isinstance(channel, discord.VoiceChannel):
-#                                 available_channels[guild.id].append(channel)
-#                                 available_channels["all"].append(channel)
-#             except commands.CheckFailure:
-#                 pass
-#         elif role_scope == "guild":
-#             try:
-#                 for guild in bot.guilds:
-#                     if await verify(
-#                         guild_snowflake=int(guild.id),
-#                         member_snowflake=int(member_snowflake),
-#                     ):
-#                         available_guilds[guild.id] = guild
-#                         available_channels.setdefault(guild.id, [])
-#                         for channel in guild.channels:
-#                             if isinstance(channel, discord.VoiceChannel):
-#                                 available_channels[guild.id].append(channel)
-#             except commands.CheckFailure:
-#                 pass
-#         elif role_scope == "channel":
-#             try:
-#                 for guild in bot.guilds:
-#                     for channel in guild.channels:
-#                         if await verify(
-#                             channel_snowflake=int(channel.id),
-#                             guild_snowflake=int(guild.id),
-#                             member_snowflake=int(member_snowflake),
-#                         ):
-#                             available_guilds[guild.id] = guild
-#                             available_channels.setdefault(guild.id, [])
-#                             if isinstance(channel, discord.VoiceChannel):
-#                                 available_channels[guild.id].append(channel)
-#             except commands.CheckFailure:
-#                 pass
-#     for gid in list(available_channels):
-#         available_channels[gid] = list(
-#             {c.id: c for c in available_channels[gid]}.values()
-#         )
-#     return available_channels, available_guildso
-
-
 async def log_mod(
-    author_snowflake: int | None,
+    author_snowflake: int,
     channel_snowflake: int,
     display: bool,
     guild_snowflake: int,
@@ -489,15 +426,15 @@ async def log_mod(
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
 ):
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     reason = None
     role_snowflake = None
     target = None
     await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
+        author_snowflake=author_snowflake,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="mod",
         member_snowflake=member_snowflake,
@@ -507,10 +444,10 @@ async def log_mod(
     )
     if display:
         await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
+            author_snowflake=author_snowflake,
             channel_snowflake=channel_snowflake,
             identifier="mod",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,
@@ -523,7 +460,7 @@ async def log_mod(
 
 
 async def log_xmod(
-    author_snowflake: int | None,
+    author_snowflake: int,
     channel_snowflake: int,
     display: bool,
     guild_snowflake: int,
@@ -531,7 +468,7 @@ async def log_xmod(
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
 ):
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     reason = None
     role_snowflake = None
@@ -539,7 +476,7 @@ async def log_xmod(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="xmod",
         member_snowflake=member_snowflake,
@@ -552,7 +489,7 @@ async def log_xmod(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="xmod",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,

@@ -53,8 +53,8 @@ class Converter(commands.Converter):
     def __init__(self, module_cls=ModuleObject):
         self.module_cls = module_cls
 
-    async def convert(self, ctx: commands.Context, argument) -> str:
-        return self.module_cls(argument).module
+    async def convert(self, ctx: commands.Context, argument) -> ModuleObject:
+        return self.module_cls(argument)
 
 
 class Transformer(app_commands.Transformer):
@@ -62,8 +62,8 @@ class Transformer(app_commands.Transformer):
     def __init__(self, module_cls=ModuleObject):
         self.module_cls = module_cls
 
-    async def transform(self, interaction: discord.Interaction, arg) -> str:
-        return self.module_cls(arg).module
+    async def transform(self, interaction: discord.Interaction, arg) -> ModuleObject:
+        return self.module_cls(arg)
 
 
 class Module(Converter):

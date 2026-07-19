@@ -29,7 +29,6 @@ MODEL = VoiceMute
 
 async def toggle_server_mute(
     author_snowflake: int,
-    channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
@@ -43,7 +42,7 @@ async def toggle_server_mute(
         raise commands.MemberNotFound(str(member_snowflake))
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     await moderator_service.has_equal_or_lower_role(
-        channel_snowflake=channel_snowflake,
+        channel_snowflake=None,
         guild_snowflake=guild_snowflake,
         member_snowflake=author_snowflake,
         target_member_snowflake=member_snowflake,

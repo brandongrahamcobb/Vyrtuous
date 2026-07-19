@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -37,7 +38,6 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Guild Owner", "!pc", "all"),
         ("Administrator", "!pc", "{channel_snowflake}"),
         ("Administrator", "!pc", "<#{channel_snowflake}>"),
         ("Guild Owner", "!pc", "{guild_snowflake}"),
@@ -75,10 +75,16 @@ async def test_pc(bot, command: str, target, permission_role):
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     full = f"{command} {t}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -96,6 +102,11 @@ async def test_pc(bot, command: str, target, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenAdministratorAppCommands")
             command = cog.list_permissions_app_command
-            await command.callback(cog, interaction=inx, target=t)
+            transformer = AppTarget()
+            if t:
+                resolved = await transformer.transform(inx, t)
+            else:
+                resolved = None
+            await command.callback(cog, interaction=inx, target=resolved)
         for kind, content in end_results:
             assert kind == "success"

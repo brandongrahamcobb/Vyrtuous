@@ -33,18 +33,17 @@ TARGET_PERMISSIONS = (
 )
 
 
-def build_dictionary(obj, me) -> dict[int, dict[str, dict[int, dict[str, list[str]]]]]:
-    bot: DiscordBot = DiscordBot.get_instance()
+def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict[str, list[str]]]]]:
     channels = []
     dictionary: dict[int, dict[str, dict[int, dict[str, list[str]]]]] = {}
-    if isinstance(obj, discord.Guild):
-        channels = [channel for channel in obj.channels]
-    elif isinstance(
+    if isinstance(
         obj, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
     ):
+        me = obj.guild.me
         channels = [obj]
     else:
-        channels = [channel for guild in bot.guilds for channel in guild.channels]
+        me = obj.me
+        channels = [channel for channel in obj.channels]
     if channels:
         for channel in channels:
             permissions = channel.permissions_for(me)
@@ -63,30 +62,25 @@ def build_dictionary(obj, me) -> dict[int, dict[str, dict[int, dict[str, list[st
 
 
 async def build_pages(
-    guild_snowflake: int, obj, is_at_home
+    obj,
 ) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        return "This command must be executed in a server."
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
-        obj_name = obj.name
+    obj_name = obj.name
     if bot.user is None:
         return "The bot must be in a server."
     title = f"{emojis.get_random_emoji()} {bot.user.display_name} Missing Permissions in {obj_name}"
 
-    dictionary = build_dictionary(obj=obj, me=guild.me)
+    dictionary = build_dictionary(obj=obj)
     processed_dictionary: list_service.PermissionDictionary = (
         await list_service.process_dictionary(
             cls=list_service.PermissionDictionary, dictionary=dictionary
         )
     )
 
-    for guild_snowflake, guild_data in dictionary.items():
+    for guild_snowflake, guild_data in processed_dictionary.data.items():
         perm_n = 0
         field_count = 0
         guild = bot.get_guild(guild_snowflake)
@@ -122,7 +116,4 @@ async def build_pages(
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({perm_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_channels)
-        pages.extend(processed_dictionary.skipped_guilds)
     return pages

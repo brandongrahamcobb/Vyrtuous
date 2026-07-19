@@ -47,14 +47,12 @@ CATEGORY_TO_HELP = {
     ],
     "role": [
         "**member**: Tag a member or include their ID",
-        "**role**: Tag a role or include its ID",
     ],
     "tmute": [
         "**member**: Tag a member or include their ID",
         "**duration**: m/h/d",
         "**reason**: Reason for text-mute",
     ],
-    "vegan": ["**member**: Tag a member or include their ID"],
     "vmute": [
         "**member**: Tag a member or include their ID",
         "**duration**: m/h/d",
@@ -66,7 +64,6 @@ CATEGORY_TO_DESCRIPTION = {
     "flag": "Toggles a moderation flag.",
     "role": "Toggles a role to a user.",
     "tmute": "Toggles a mute in text channels.",
-    "vegan": "Toggles a going vegan flag.",
     "vmute": "Toggles a mute in voice channels.",
 }
 CATEGORY_TO_PERMISSION_LEVEL = {
@@ -74,7 +71,6 @@ CATEGORY_TO_PERMISSION_LEVEL = {
     "flag": "Moderator",
     "role": "Coordinator",
     "tmute": "Moderator",
-    "vegan": "Moderator",
     "vmute": "Moderator",
 }
 

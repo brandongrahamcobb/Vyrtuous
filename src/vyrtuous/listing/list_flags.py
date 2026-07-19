@@ -30,6 +30,7 @@ MODEL = Flag
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, str]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -39,22 +40,29 @@ async def build_dictionary(
     ] = {}
     if isinstance(obj, discord.Guild):
         flags = await database_factory.select(guild_snowflake=obj.id, singular=False)
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
-        flags = await database_factory.select(channel_snowflake=obj.id, singular=False)
+        flags = await database_factory.select(
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     elif isinstance(obj, discord.Member):
-        flags = await database_factory.select(member_snowflake=obj.id, singular=False)
+        flags = await database_factory.select(
+            member_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+        )
     else:
-        flags = await database_factory.select(singular=False)
+        flags = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if flags:
         for flag in flags:
-            dictionary.setdefault(flag.guild_snowflake, {"members": {}})
-            dictionary[flag.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 flag.member_snowflake, {"flags": {}}
             )
-            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
+            dictionary[guild_snowflake]["members"][flag.member_snowflake][
                 "flags"
             ].setdefault(flag.channel_snowflake, {})
-            dictionary[flag.guild_snowflake]["members"][flag.member_snowflake]["flags"][
+            dictionary[guild_snowflake]["members"][flag.member_snowflake]["flags"][
                 flag.channel_snowflake
             ].update(
                 {
@@ -64,15 +72,18 @@ async def build_dictionary(
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No active flags found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
-    elif isinstance(obj, int):
+    else:
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
         if simplified_member:
             obj_name = simplified_member[0]
@@ -80,7 +91,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             return "No active flags found."
     title = f"{emojis.get_random_emoji()} Flags for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.FlagDictionary = (
         await list_service.process_dictionary(
             cls=list_service.FlagDictionary, dictionary=dictionary
@@ -140,9 +151,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({flag_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No flags found."
     return pages

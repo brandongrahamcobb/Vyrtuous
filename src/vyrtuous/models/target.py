@@ -37,6 +37,7 @@ ResolvedTarget = Union[
     discord.Role,
     UUID,
     int,
+    str,
 ]
 
 
@@ -63,6 +64,8 @@ class Converter(commands.Converter):
         self, ctx: commands.Context, argument: str
     ) -> TargetObject | None:
         bot: DiscordBot = DiscordBot.get_instance()
+        if argument.lower() == "all":
+            return self.target_cls("all")
         try:
             return self.target_cls(UUID(argument))
         except ValueError:
@@ -108,6 +111,8 @@ class Transformer(app_commands.Transformer):
         self, interaction: discord.Interaction, argument: str
     ) -> TargetObject | None:
         bot: DiscordBot = DiscordBot.get_instance()
+        if argument.lower() == "all":
+            return self.target_cls("all")
         try:
             return self.target_cls(UUID(argument))
         except ValueError:

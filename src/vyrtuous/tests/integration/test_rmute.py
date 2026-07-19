@@ -1,5 +1,5 @@
 """!/bin/python3
-test_mutes.py The purpose of this program is to be the integration test for the mutes list command for Vyrtuous.
+test_rmute_xrmute.py The purpose of this program is to be the integration test for the rmute and xrmute commands for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.duration import AppDuration
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -30,69 +31,57 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-GUILD_SNOWFLAKE = 10000000000000500
-DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
+ROLE_SNOWFLAKE = 10000000000000200
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, guild",
+    "permission_role, command, channel, duration, reason",
     [
-        ("Administrator", "!smutes", "{guild_snowflake}", None),
-        ("Administrator", "!smutes", "{member_snowflake}", None),
-        ("Administrator", "!smutes", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "!rmute", "{channel_snowflake}", None, None),
+        ("Administrator", "!rmute", "<#{channel_snowflake}>", "1h", None),
+        ("Administrator", "!rmute", "<#{channel_snowflake}>", "1h", "test reason"),
     ],
 )
-async def test_server_mutes(bot, command: str, target, guild, permission_role):
+async def test_rmute_xrmute(
+    bot, command: str, channel, duration, reason, permission_role
+):
     """
-    List voice-mutes on members which are registered in the PostgresSQL database
-    'vyrtuous' in the table 'active_voice_mutes'.
+    Voice-mute a whole channel and undo it by adding and removing
+    entries in the PostgreSQL database 'vyrtuous' in the table
+    'active_voice_mutes'.
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all voice mutes in all guilds
     channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with voice-mutes on members
-        in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where mutes are present.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who has been voice-muted
+        Mention or snowflake of a channel
         in any of the guilds Vyrtuous has access inside.
 
     Examples
     --------
-    >>> !smutes "all"
-    [{emoji} Voice Mutes\n Guild1\n Guild2]
+    >>> !rmute 10000000000000010
+    [{emoji} Room Muted\n Member1\n Member2]
 
-    >>> !smutes <#10000000000000010>
-    [{emoji} Voice Mutes for Channel1\n Member1\n Member2]
+    >>> !xrmute 10000000000000010
+    [{emoji} Room Unmuted\n Member1\n Member2]
 
-    >>> !smutes 10000000000000010
-    [{emoji} Voice Mutes for Channel1\n Member1\n Member2]
+    >>> !rmute <#10000000000000010>
+    [{emoji} Room Muted\n Member1\n Member2]
 
-    >>> !smutes 10000000000000500
-    [{emoji} Voice Mutes\n Guild1]
-
-    >>> !smutes <@10000000000000003>
-    [{emoji} Voice Mutes for Member1\n Guild1\n Guild2]
-
-    >>> !smutes 10000000000000003
-    [{emoji} Voice Mutes for Member1\n Guild1\n Guild2]
+    >>> !xrmute <#10000000000000010>
+    [{emoji} Room Unmuted\n Member1\n Member2]
     """
-    t = target.format(
-        guild_snowflake=GUILD_SNOWFLAKE,
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+    c = channel.format(
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    if guild is None:
-        g = None
-        full = f"{command} {t}"
-    else:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {t} {g}"
-    full = f"{command} {t}"
+    d = duration
+    r = reason
+    full = f"{command} {c}"
+    if d and not r:
+        full = f"{command} {c} {d}"
+    elif d and r:
+        full = f"{command} {c} {d} {r}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -119,18 +108,23 @@ async def test_server_mutes(bot, command: str, target, guild, permission_role):
         )
         async with capture_command() as end_results:
             cog = bot.get_cog("AdministratorAppCommands")
-            command = cog.list_server_mutes_app_command
+            command = cog.channel_mute_app_command
             transformer = AppTarget()
-            if t:
-                resolved = await transformer.transform(inx, t)
+            if c:
+                resolved = await transformer.transform(inx, c)
             else:
                 resolved = None
-            if g:
-                resolved_guild = await transformer.transform(inx, g)
+            duration_transformer = AppDuration()
+            if d:
+                resolved_duration = await duration_transformer.transform(inx, d)
             else:
-                resolved_guild = None
+                resolved_duration = None
             await command.callback(
-                cog, interaction=inx, target=resolved, guild=resolved_guild
+                cog,
+                interaction=inx,
+                channel=resolved,
+                duration=resolved_duration,
+                reason=r,
             )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"

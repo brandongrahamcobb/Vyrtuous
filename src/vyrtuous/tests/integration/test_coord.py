@@ -104,21 +104,21 @@ async def test_coord(bot, command: str, member, channel, permission_role):
             )
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
-    elif (
+    if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             content=full,
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
         inx = interaction(
             bot=bot,
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             guild=objects.get("guild", None),
             message=msg,
         )

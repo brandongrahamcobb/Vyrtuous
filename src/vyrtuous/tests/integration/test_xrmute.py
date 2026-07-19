@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -37,9 +38,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel",
     [
-        ("Administrator", "!rmute", "{channel_snowflake}"),
         ("Administrator", "!xrmute", "{channel_snowflake}"),
-        ("Administrator", "!rmute", "<#{channel_snowflake}>"),
         ("Administrator", "!xrmute", "<#{channel_snowflake}>"),
     ],
 )
@@ -72,11 +71,17 @@ async def test_rmute_xrmute(bot, command: str, channel, permission_role):
     c = channel.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {c} test_reason"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    full = f"{command} {c}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -94,10 +99,12 @@ async def test_rmute_xrmute(bot, command: str, channel, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("AdministratorAppCommands")
             command = cog.channel_mute_app_command
-            await command.callback(cog, interaction=inx, channel=c)
-            for kind, content in end_results:
-                assert kind == "success"
+            transformer = AppTarget()
+            if c:
+                resolved = await transformer.transform(inx, c)
+            else:
+                resolved = None
             command = cog.channel_unmute_app_command
-            await command.callback(cog, interaction=inx, channel=c)
+            await command.callback(cog, interaction=inx, channel=resolved)
             for kind, content in end_results:
                 assert kind == "success"

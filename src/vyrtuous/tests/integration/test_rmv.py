@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -35,13 +36,19 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, source_channel, target_channel",
+    "permission_role, command, target_channel, source_channel",
     [
         (
             "Administrator",
             "!rmv",
-            "{source_channel_snowflake}",
             "{target_channel_snowflake}",
+            "{source_channel_snowflake}",
+        ),
+        (
+            "Administrator",
+            "!rmv",
+            "{target_channel_snowflake}",
+            None,
         ),
     ],
 )
@@ -63,36 +70,54 @@ async def test_rmv(bot, command: str, source_channel, target_channel, permission
     [{emoji} Members moved succesfully to Voice Channel One\n Member1\b Member2]
 
     """
-    sc = source_channel.format(
-        source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
     tc = target_channel.format(
         target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {sc} {tc}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    full = f"{command} {tc}"
+    sc = None
+    if source_channel:
+        sc = source_channel.format(
+            source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+        )
+        full = f"{command} {sc} {tc}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             content=full,
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
         inx = interaction(
             bot=bot,
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             guild=objects.get("guild", None),
             message=msg,
         )
         async with capture_command() as end_results:
             cog = bot.get_cog("AdministratorAppCommands")
             command = cog.channel_move_all_app_command
+            transformer = AppTarget()
+            resolved_target = await transformer.transform(inx, tc)
+            if sc:
+                resolved_source = await transformer.transform(inx, sc)
+            else:
+                resolved_source = None
             await command.callback(
-                cog, interaction=inx, source_channel=sc, target_channel=tc
+                cog,
+                interaction=inx,
+                target_channel=resolved_target,
+                source_channel=resolved_source,
             )
         for kind, content in end_results:
             assert kind == "success"

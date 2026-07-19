@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.module import AppModule
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -62,10 +63,18 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
     """
     c = cog.format(cog="vyrtuous.listeners.scheduled_tasks")
     full = f"{command} {c}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if command == "!load":
+        await bot.unload_extension(c)
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -82,15 +91,23 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
         )
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenDeveloperAppCommands")
-            command = cog.unload_app_command
-            await command.callback(cog, interaction=inx, module=c)
-            for kind, content in end_results:
-                assert kind == "success"
-            command = cog.load_app_command
-            await command.callback(cog, interaction=inx, module=c)
-            for kind, content in end_results:
-                assert kind == "success"
-            command = cog.reload_app_command
-            await command.callback(cog, interaction=inx, module=c)
-            for kind, content in end_results:
-                assert kind == "success"
+            transformer = AppModule()
+            resolved = await transformer.transform(inx, c)
+            if command == "!reload":
+                command = cog.reload_app_command
+                await command.callback(cog, interaction=inx, module=resolved)
+                for kind, content in end_results:
+                    assert kind == "success"
+            elif command == "!load":
+                await bot.unload_extension(c)
+                command = cog.load_app_command
+                await command.callback(cog, interaction=inx, module=resolved)
+                for kind, content in end_results:
+                    assert kind == "success"
+            elif command == "!unload":
+                await bot.load_extension(c)
+                command = cog.unload_app_command
+                await command.callback(cog, interaction=inx, module=resolved)
+                for kind, content in end_results:
+                    print(content)
+                    assert kind == "success"

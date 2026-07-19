@@ -25,30 +25,45 @@ from vyrtuous.listing import list_service
 from vyrtuous.utils.messaging import emojis
 
 
-def build_dictionary() -> dict[int, dict[str, dict[int, bool]]]:
+def build_dictionary(
+    guild_snowflake: int, obj
+) -> dict[int, dict[str, dict[int, bool]]]:
     bot: DiscordBot = DiscordBot.get_instance()
     dictionary: dict[int, dict[str, dict[int, bool]]] = {}
-    for (
-        guild_snowflake,
-        member_snowflakes,
-    ) in bot.registry.get(MemberState).invincible.items():
-        dictionary.setdefault(guild_snowflake, {"members": {}})
-        for member_snowflake in member_snowflakes:
-            dictionary[guild_snowflake]["members"][member_snowflake] = True
+    if isinstance(obj, discord.Member):
+        heroes = bot.registry.get(MemberState).invincible.get(guild_snowflake, set())
+    elif isinstance(obj, discord.Guild):
+        heroes = bot.registry.get(MemberState).invincible.get(obj.id, set())
+        guild_snowflake = obj.id
+    else:
+        heroes = bot.registry.get(MemberState).invincible.get(guild_snowflake, set())
+    dictionary.setdefault(guild_snowflake, {"members": {}})
+    for member_snowflake in heroes:
+        dictionary[guild_snowflake]["members"][member_snowflake] = True
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No heroes found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
+    else:
+        simplified_member = bot.registry.get(MemberState).active.get(obj, None)
+        if simplified_member:
+            obj_name = simplified_member[0]
+        else:
+            return "No heroes found."
+
     title = f"{emojis.get_random_emoji()} Heroes for {obj_name}"
 
-    dictionary = build_dictionary()
+    dictionary = build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.HeroDictionary = (
         await list_service.process_dictionary(
             cls=list_service.HeroDictionary, dictionary=dictionary
@@ -90,7 +105,4 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({hero_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     return pages

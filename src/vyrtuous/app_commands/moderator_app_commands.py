@@ -475,10 +475,7 @@ class ModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
-        pages = await list_flags.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
-        )
+        pages = await list_flags.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
     @app_commands.command(name="mods", description="Lists mods.")
@@ -513,15 +510,16 @@ class ModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_moderators.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+            guild_snowflake=guild_snowflake,
+            obj=obj,
         )
         return await tick.end(success=pages)
 
     @app_commands.command(name="mutes", description="List mutes.")
     @app_commands.describe(
-        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+        target="Specify one of: a channel ID/mention, member ID/mention or server ID.",
+        guild="Specify a server ID.",
     )
     async def list_mutes_app_command(
         self,
@@ -551,9 +549,8 @@ class ModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_voice_mutes.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+            guild_snowflake=guild_snowflake, obj=obj
         )
         return await tick.end(success=pages)
 

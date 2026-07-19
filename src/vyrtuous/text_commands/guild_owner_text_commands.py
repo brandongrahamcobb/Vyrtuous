@@ -26,10 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.listing import list_developers
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (
-    administrator_role_service,
-    moderator_service,
-)
+from vyrtuous.utils.users import administrator_role_service, moderator_service
 
 
 class GuildOwnerTextCommands(commands.Cog):
@@ -41,7 +38,9 @@ class GuildOwnerTextCommands(commands.Cog):
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -74,16 +73,14 @@ class GuildOwnerTextCommands(commands.Cog):
     async def list_developers_text_command(
         self,
         ctx: commands.Context,
-        *,
-        target: Union[str, discord.Member, None] = commands.parameter(
+        member: Union[int, discord.Member, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="'all', or user mention/ID",
+            description="Specify a member ID/mention.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        obj = target or "all"
-        pages = await list_developers.build_pages(obj=obj)
+        pages = await list_developers.build_pages(obj=member)
         return await tick.end(success=pages)
 
     @commands.command(name="sync", help="Sync app commands.")

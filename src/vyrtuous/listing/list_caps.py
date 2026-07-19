@@ -38,6 +38,7 @@ async def build_dictionary(
     dictionary: dict[int, dict[str, dict[int, dict[str, dict[str, int]]]]] = {}
     if isinstance(obj, discord.Guild):
         caps = await database_factory.select(guild_snowflake=obj.id, singular=False)
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         caps = await database_factory.select(
             channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False

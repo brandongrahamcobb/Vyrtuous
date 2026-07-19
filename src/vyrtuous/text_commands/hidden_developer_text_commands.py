@@ -23,6 +23,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database import Database
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
+from vyrtuous.models.module import Module, ModuleObject
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
@@ -38,7 +39,9 @@ class HiddenDeveloperTextCommands(commands.Cog):
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
@@ -87,48 +90,54 @@ class HiddenDeveloperTextCommands(commands.Cog):
             embed.add_field(name="No cogs available.", value=None, inline=False)
         return await tick.end(success=embed)
 
-    @commands.command(
-        name="load", help="Loads a cog by name `vyrtuous.cog.<cog_name>.`"
-    )
+    @commands.command(name="load", help="Loads a cog by name.")
     @skip_text_command_help_discovery()
     async def load_text_command(
-        self, ctx: commands.Context, *, module: str
+        self,
+        ctx: commands.Context,
+        module: ModuleObject = commands.parameter(
+            converter=Module, default=None, description="Specify a cog."
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         try:
-            await self.__bot.load_extension(module)
+            await self.__bot.load_extension(module.module)
         except commands.ExtensionError as e:
             return await tick.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
         return await tick.end(success=f"Successfully loaded {module}.")
 
-    @commands.command(
-        name="reload", help="Reloads a cog by name `vyrtuous.cog.<cog_name>`."
-    )
+    @commands.command(name="reload", help="Reloads a cog by name.")
     @skip_text_command_help_discovery()
     async def reload_text_command(
-        self, ctx: commands.Context, *, module: str
+        self,
+        ctx: commands.Context,
+        module: ModuleObject = commands.parameter(
+            converter=Module, default=None, description="Specify a cog."
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         try:
-            await self.__bot.reload_extension(module)
+            await self.__bot.reload_extension(module.module)
         except commands.ExtensionError as e:
             return await tick.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
         return await tick.end(success=f"Successfully reloaded {module}.")
 
-    @commands.command(
-        name="unload", help="Unloads a cog by name `vyrtuous.cog.<cog_name>`."
-    )
+    @commands.command(name="unload", help="Unloads a cog by name.")
     @skip_text_command_help_discovery()
     async def unload_text_command(
-        self, ctx: commands.Context, *, module: str
+        self,
+        ctx: commands.Context,
+        module: ModuleObject = commands.parameter(
+            converter=Module, default=None, description="Specify a cog."
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         try:
-            await self.__bot.unload_extension(module)
+            await self.__bot.unload_extension(module.module)
         except commands.ExtensionError as e:
             return await tick.end(
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"

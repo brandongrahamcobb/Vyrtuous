@@ -43,6 +43,7 @@ async def build_dictionary(
     ] = {}
     if isinstance(obj, discord.Guild):
         bans = await database_factory.select(guild_snowflake=obj.id, singular=False)
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         bans = await database_factory.select(
             channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
