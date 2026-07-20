@@ -23,7 +23,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_bans
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
@@ -108,20 +107,32 @@ class HiddenCoordinatorTextCommands(commands.Cog):
         ctx: commands.Context,
         *,
         target: (
-            str | discord.Member | discord.Guild | discord.abc.GuildChannel
+            int | discord.Member | discord.Guild | discord.abc.GuildChannel | None
         ) = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="Tag a channel, guild, member, all or include their ID.",
         ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_bans.build_blacklist_pages(is_at_home=is_at_home, obj=obj)
+            guild_snowflake = guild.id
+        if target == None:
+            obj = ctx.channel
+        else:
+            obj = target.target
+        pages = await list_bans.build_blacklist_pages(
+            guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
 

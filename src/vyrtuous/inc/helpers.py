@@ -106,24 +106,6 @@ DISCORD_COMMAND_PREFIX = "!"
 PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
 
 
-def at_home_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message],
-) -> bool:
-    bot: DiscordBot = DiscordBot.get_instance()
-    if source.guild is None:
-        return False
-    if source.guild.id == int(bot.config["discord_testing_guild_snowflake"]):
-        return True
-    return False
-
-
-def at_home(guild_snowflake: int) -> bool:
-    bot: DiscordBot = DiscordBot.get_instance()
-    if guild_snowflake == int(bot.config["discord_testing_guild_snowflake"]):
-        return True
-    return False
-
-
 def resolve_author(source) -> discord.User | discord.Member:
     if isinstance(source, discord.Interaction):
         member = source.user

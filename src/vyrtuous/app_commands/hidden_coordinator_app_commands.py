@@ -24,7 +24,6 @@ from discord.ext import commands
 
 from vyrtuous.app_commands.help_app_command import skip_app_command_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_bans
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
@@ -109,7 +108,7 @@ class HiddenCoordinatorAppCommands(commands.Cog):
 
     @app_commands.command(name="blacklists", description="List blacklists.")
     @app_commands.describe(
-        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID."
+        target="Specify a channel ID/mention, member ID/mention or server ID."
     )
     @skip_app_command_help_discovery()
     async def list_blacklists_app_command(
@@ -140,9 +139,8 @@ class HiddenCoordinatorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_bans.build_blacklist_pages(
-            is_at_home=is_at_home, guild_snowflake=guild_snowflake, obj=obj
+            guild_snowflake=guild_snowflake, obj=obj
         )
         return await tick.end(success=pages)
 

@@ -23,7 +23,6 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_administrators, list_vegans
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
@@ -164,22 +163,31 @@ class HiddenModeratorTextCommands(commands.Cog):
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            int, discord.Member, discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+            description="Specify a channel ID/mention, member ID/mention, or server ID.",
+        ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify one a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None or not isinstance(guild, discord.Guild):
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.guild
-        is_at_home = at_home(source=ctx)
-        pages = await list_vegans.build_pages(obj=obj, is_at_home=is_at_home)
+            guild_snowflake = guild.id
+        if target is None:
+            obj = ctx.guild
+        else:
+            obj = target
+        pages = await list_vegans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
 

@@ -26,6 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.flag import Flag
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 
@@ -53,14 +54,14 @@ async def log_flag(
     message_channel_snowflake: int | None,
     reason: str | None,
 ) -> None:
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     role_snowflake = None
     target = None
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="flag",
         member_snowflake=member_snowflake,
@@ -72,7 +73,7 @@ async def log_flag(
         await stream_service.send_log(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             identifier="flag",
             is_channel_scope=is_channel_scope or None,

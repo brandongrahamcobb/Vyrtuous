@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import data_builder, stream_service
@@ -45,14 +45,14 @@ async def log_unban(
     message_channel_snowflake: int | None,
     reason: str,
 ) -> None:
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = False
     role_snowflake = None
     target = None
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="unban",
         member_snowflake=member_snowflake,
@@ -64,7 +64,7 @@ async def log_unban(
         await stream_service.send_log(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             identifier="unban",
             is_channel_scope=is_channel_scope or False,
@@ -101,11 +101,11 @@ async def unban_by_message(
         singular=True,
     )
     if not ban.blacklisted:
-        duration_value = duration_builder.from_timestamp(ban.expires_in).as_str()
+        duration = duration_builder.from_timestamp(ban.expires_in).build()
         exceeds_cap = await cap_service.exceeds_cap(
             category="ban",
             channel_snowflake=ctx.channel_snowflake,
-            duration_value=str(duration_value),
+            duration=duration,
             guild_snowflake=ctx.guild_snowflake,
         )
         if exceeds_cap:

@@ -24,6 +24,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 
@@ -107,7 +108,7 @@ async def log_unrole(
     role_snowflake: int,
 ) -> None:
     channel_snowflake = None
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     reason = None
     target = None

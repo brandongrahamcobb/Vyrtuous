@@ -23,7 +23,6 @@ from discord.ext import commands
 
 from vyrtuous.app_commands.help_app_command import skip_app_command_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_administrators, list_vegans
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
@@ -228,10 +227,7 @@ class HiddenModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
-        pages = await list_vegans.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
-        )
+        pages = await list_vegans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
 

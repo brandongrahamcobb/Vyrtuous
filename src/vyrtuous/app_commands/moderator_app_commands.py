@@ -22,9 +22,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import (
-    list_aliases,
     list_bans,
     list_coordinators,
     list_flags,
@@ -90,10 +88,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
@@ -134,10 +132,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
@@ -178,10 +176,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
@@ -222,10 +220,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
@@ -266,10 +264,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
@@ -310,10 +308,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(

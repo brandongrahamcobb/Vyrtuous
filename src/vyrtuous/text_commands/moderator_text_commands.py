@@ -24,7 +24,6 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import (
     list_aliases,
     list_bans,
@@ -64,7 +63,7 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, discord.Member, None
+            int, discord.abc.GuildChannel, discord.Guild, discord.Member, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
@@ -111,11 +110,11 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            int, discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: `all`, channel ID/mention, or server ID.",
+            description="Specify a channel ID/mention, member ID/mention or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=commands.GuildConverter,
@@ -210,11 +209,11 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            int, discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
+            description="Specify a channel ID/mention, member ID/mention or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=commands.GuildConverter,
@@ -249,11 +248,11 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            int, discord.Member, discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+            description="Specify a channel ID/mention, member ID/mention, or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=commands.GuildConverter,

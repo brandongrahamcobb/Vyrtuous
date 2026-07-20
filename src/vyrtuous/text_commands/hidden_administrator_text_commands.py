@@ -23,7 +23,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import PATH_LOG, at_home
+from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.listing import (
     list_administrator_roles,
     list_automute_channels,
@@ -145,11 +145,11 @@ class HiddenAdministratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, None
+            discord.Guild, discord.abc.GuildChannel, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention or server ID.",
+            description="Specify a channel ID/mention or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=commands.GuildConverter,

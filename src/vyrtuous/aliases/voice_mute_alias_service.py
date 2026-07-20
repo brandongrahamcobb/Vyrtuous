@@ -39,7 +39,7 @@ MODEL = VoiceMute
 class VoiceMuteMessageContext:
     author_snowflake: int
     channel_snowflake: int
-    duration_value: str
+    duration: DurationObject
     guild_snowflake: int
     member_snowflake: int
     message_snowflake: int
@@ -52,7 +52,7 @@ async def log_voice_mute(
     author_snowflake: int | None,
     channel_snowflake: int,
     display: bool,
-    duration: DurationObject | None,
+    duration: DurationObject,
     guild_snowflake: int,
     is_channel_scope: bool,
     member_snowflake: int,
@@ -65,7 +65,7 @@ async def log_voice_mute(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration=duration or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="vmute",
         member_snowflake=member_snowflake,
@@ -78,7 +78,7 @@ async def log_voice_mute(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="vmute",
-            duration=duration or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,
@@ -124,11 +124,11 @@ async def voice_mute_by_message(
     ctx: VoiceMuteMessageContext, display: bool = True
 ) -> discord.Embed:
     duration_builder = DurationBuilder()
-    duration = duration_builder.parse(value=ctx.duration_value).build()
+    duration = duration_builder.parse(value=ctx.duration).build()
     if await cap_service.exceeds_cap(
         category="vmute",
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
     ):
         await moderator_service.check_minimum_role(
@@ -139,7 +139,7 @@ async def voice_mute_by_message(
         )
     is_channel_scope = await voice_mute(
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         reason=ctx.reason,
@@ -160,7 +160,7 @@ async def voice_mute_by_message(
     )
     embed = build_voice_mute_embed(
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         reason=ctx.reason,
@@ -170,7 +170,7 @@ async def voice_mute_by_message(
 
 async def voice_mute(
     channel_snowflake: int,
-    duration_value: str,
+    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
@@ -200,7 +200,7 @@ async def voice_mute(
             reason=reason,
         )
     duration_builder = DurationBuilder()
-    expires_in = duration_builder.parse(duration_value).to_expires_in()
+    expires_in = duration_builder.load(duration=duration).to_expires_in()
     voice_mute = MODEL(
         channel_snowflake=channel_snowflake,
         expires_in=expires_in,
@@ -215,7 +215,7 @@ async def voice_mute(
 
 def build_voice_mute_embed(
     channel_snowflake: int,
-    duration_value: str,
+    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
@@ -245,7 +245,7 @@ def build_voice_mute_embed(
         description=(
             f"**User:** {member_str}\n"
             f"**Channel:** {channel.mention}\n"
-            f"**Expires:** {duration_builder.parse(duration_value).to_unix_ts()}\n"
+            f"**Expires:** {duration_builder.load(duration=duration).to_unix_ts()}\n"
             f"**Reason:** {reason}"
         ),
         color=discord.Color.blue(),

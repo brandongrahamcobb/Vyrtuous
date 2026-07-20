@@ -32,6 +32,7 @@ from vyrtuous.aliases import (
 )
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -55,7 +56,7 @@ class ReasonModal(discord.ui.Modal):
         author_snowflake: int,
         category: str,
         channel_snowflake: int,
-        duration_value: str | None,
+        duration: DurationObject | None,
         guild_snowflake: int,
         member_snowflake: int,
         tick: Tick,
@@ -72,11 +73,11 @@ class ReasonModal(discord.ui.Modal):
         self.__is_channel_scope = is_channel_scope
         self.__is_modification = is_modification
         self.__member_snowflake = member_snowflake
+        self.__record = None
         self.__tick = tick
-        if duration_value:
-            self.__duration_value = duration_value
+        self.__duration = duration
 
-    async def setup(self):
+    async def setup(self, is_new: bool):
         model = next(
             (
                 model
@@ -94,14 +95,7 @@ class ReasonModal(discord.ui.Modal):
         )
         if record:
             self.__record = record
-            self.reason_selection = discord.ui.TextInput(
-                label="Type the reason",
-                style=discord.TextStyle.paragraph,
-                required=True,
-                default=(self.__record.reason if self.__record else ""),
-            )
-            self.add_item(self.reason_selection)
-        else:
+        if not is_new and not record:
             bot: DiscordBot = DiscordBot.get_instance()
             guild = bot.get_guild(self.__guild_snowflake)
             if guild is None:
@@ -113,6 +107,14 @@ class ReasonModal(discord.ui.Modal):
                 warning="No infraction exists under this category ({self.__category}) for channel ({channel.mention}) in guild ({guild.name}).",
                 ephemeral=True,
             )
+        else:
+            self.reason_selection = discord.ui.TextInput(
+                label="Type the reason",
+                style=discord.TextStyle.paragraph,
+                required=True,
+                default=(self.__record.reason if self.__record else ""),
+            )
+            self.add_item(self.reason_selection)
 
     async def on_submit(self, interaction) -> None:
         await interaction.response.defer()
@@ -169,9 +171,11 @@ class ReasonModal(discord.ui.Modal):
                         member_snowflake=self.__member_snowflake,
                     )
                 else:
+                    if self.__duration is None:
+                        return
                     await ban_alias_service.ban(
                         channel_snowflake=self.__channel_snowflake,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,
@@ -180,7 +184,7 @@ class ReasonModal(discord.ui.Modal):
                         author_snowflake=interaction.user.id,
                         channel_snowflake=self.__channel_snowflake,
                         display=True,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         is_channel_scope=self.__is_channel_scope,
                         member_snowflake=self.__member_snowflake,
@@ -190,7 +194,7 @@ class ReasonModal(discord.ui.Modal):
                     )
                     embed = ban_alias_service.build_ban_embed(
                         channel_snowflake=self.__channel_snowflake,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,
@@ -263,9 +267,11 @@ class ReasonModal(discord.ui.Modal):
                         member_snowflake=self.__member_snowflake,
                     )
                 else:
+                    if self.__duration is None:
+                        return
                     await text_mute_alias_service.text_mute(
                         channel_snowflake=self.__channel_snowflake,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,
@@ -274,7 +280,7 @@ class ReasonModal(discord.ui.Modal):
                         author_snowflake=interaction.user.id,
                         channel_snowflake=self.__channel_snowflake,
                         display=True,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         message_snowflake=None,
@@ -283,7 +289,7 @@ class ReasonModal(discord.ui.Modal):
                     )
                     embed = text_mute_alias_service.build_text_mute_embed(
                         channel_snowflake=self.__channel_snowflake,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,
@@ -315,9 +321,11 @@ class ReasonModal(discord.ui.Modal):
                         member_snowflake=self.__member_snowflake,
                     )
                 else:
+                    if self.__duration is None:
+                        return
                     await voice_mute_alias_service.voice_mute(
                         channel_snowflake=self.__channel_snowflake,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,
@@ -327,7 +335,7 @@ class ReasonModal(discord.ui.Modal):
                         author_snowflake=interaction.user.id,
                         channel_snowflake=self.__channel_snowflake,
                         display=True,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         is_channel_scope=self.__is_channel_scope,
                         member_snowflake=self.__member_snowflake,
@@ -338,7 +346,7 @@ class ReasonModal(discord.ui.Modal):
                     )
                     embed = voice_mute_alias_service.build_voice_mute_embed(
                         channel_snowflake=self.__channel_snowflake,
-                        duration_value=self.__duration_value,
+                        duration=self.__duration,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,

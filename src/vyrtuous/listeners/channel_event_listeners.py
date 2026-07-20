@@ -27,6 +27,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -74,7 +75,7 @@ class ChannelEventListeners(commands.Cog):
             await video_channel_service.update_video_channel_tasks(
                 after=after, before=before, member=member
             )
-        duration_value = "1h"
+        duration = duration = (DurationObject(number=1, prefix="", sign=1, unit="h"),)
         if (
             after.channel.guild.id,
             member.id,
@@ -114,7 +115,7 @@ class ChannelEventListeners(commands.Cog):
                 author_snowflake=None,
                 channel_snowflake=after.channel.id,
                 display=True,
-                duration_value="1h",
+                duration=DurationObject(number=1, prefix="", sign=1, unit="h"),
                 guild_snowflake=after.channel.guild.id,
                 is_channel_scope=True,
                 member_snowflake=member.id,
@@ -141,7 +142,7 @@ class ChannelEventListeners(commands.Cog):
                     author_snowflake=None,
                     channel_snowflake=after.channel.id,
                     display=True,
-                    duration_value="1h",
+                    duration=DurationObject(number=1, prefix="", sign=1, unit="h"),
                     guild_snowflake=after.channel.guild.id,
                     is_channel_scope=True,
                     member_snowflake=member.id,
@@ -193,7 +194,7 @@ class ChannelEventListeners(commands.Cog):
                     author_snowflake=None,
                     channel_snowflake=after.channel.id,
                     display=True,
-                    duration_value="1h",
+                    duration=DurationObject(number=1, prefix="", sign=1, unit="h"),
                     guild_snowflake=after.channel.guild.id,
                     is_channel_scope=True,
                     member_snowflake=member.id,

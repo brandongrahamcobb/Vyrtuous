@@ -29,38 +29,48 @@ from vyrtuous.utils.messaging import emojis
 MODEL = Vegan
 
 
-async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict[str, dict]]]]:
+async def build_dictionary(
+    guild_snowflake: int, obj
+) -> dict[int, dict[str, dict[int, dict[str, dict]]]]:
 
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     vegans = []
     dictionary: dict[int, dict[str, dict[int, dict[str, dict]]]] = {}
     if isinstance(obj, discord.Guild):
         vegans = await database_factory.select(guild_snowflake=obj.id, singular=False)
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.Member):
-        vegans = await database_factory.select(member_snowflake=obj.id, singular=False)
+        vegans = await database_factory.select(
+            guild_snowflake=guild_snowflake, member_snowflake=obj.id, singular=False
+        )
     else:
-        vegans = await database_factory.select(singular=False)
+        vegans = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if vegans:
         for vegan in vegans:
-            dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-            dictionary[vegan.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 vegan.member_snowflake, {"vegans": {}}
             )
-            dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
+            dictionary[guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
             ].setdefault("notes", vegan.notes)
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No vegans found"
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
-    elif isinstance(obj, int):
+    else:
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
         if simplified_member:
             obj_name = simplified_member[0]
@@ -68,7 +78,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
             return "No vegans found."
     title = f"{emojis.get_random_emoji()} Vegans for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.VeganDictionary = (
         await list_service.process_dictionary(
             cls=list_service.VeganDictionary, dictionary=dictionary
@@ -122,9 +132,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({vegan_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No vegans found."
     return pages

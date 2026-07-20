@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.text_mute import TextMute
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import data_builder, stream_service
@@ -90,14 +90,14 @@ async def log_untext_mute(
     message_channel_snowflake: int | None,
     reason: str,
 ) -> None:
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     role_snowflake = None
     target = None
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="untmute",
         member_snowflake=member_snowflake,
@@ -110,7 +110,7 @@ async def log_untext_mute(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="untmute",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope or None,
             member_snowflake=member_snowflake,
@@ -191,11 +191,11 @@ async def untext_mute_by_message(
         member_snowflake=ctx.member_snowflake,
         singular=True,
     )
-    duration_value = duration_builder.from_timestamp(text_mute.expires_in).as_str()
+    duration = duration_builder.from_timestamp(text_mute.expires_in).build()
     exceeds_cap = await cap_service.exceeds_cap(
         category="tmute",
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=str(duration_value),
+        duration=duration,
         guild_snowflake=ctx.guild_snowflake,
     )
     if exceeds_cap:

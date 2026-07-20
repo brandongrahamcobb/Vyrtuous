@@ -24,7 +24,6 @@ from discord.ext import commands
 from vyrtuous.app_commands.help_app_command import skip_app_command_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_heroes
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick

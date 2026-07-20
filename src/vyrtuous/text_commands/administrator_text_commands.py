@@ -24,7 +24,6 @@ from discord.ext import commands
 
 from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_overwrites, list_server_mutes
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
@@ -106,14 +105,15 @@ class AdministratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.Guild, discord.abc.GuildChannel, discord.Member, None
+            int, discord.Guild, discord.abc.GuildChannel, discord.Member, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify 'all', tag a channel/guild/member or include the ID.",
+            description="Specify 'all', a channel ID/mention, a member ID/mention or server ID.",
         ),
         *,
-        category: Category = commands.parameter(
+        category: CategoryObject = commands.parameter(
+            converter=Category,
             default="all",
             description="Specify one of: `admin`, `alias`, `all`, `automute`, `ban`, `coord`, "
             "flag`, `mod`, `tmute`, `stream` or `vmute`.",
@@ -204,11 +204,11 @@ class AdministratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify the ID or mention.",
+            description="Specify a channel ID/mention or server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)

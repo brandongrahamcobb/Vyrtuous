@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import data_builder, stream_service
@@ -59,12 +59,12 @@ async def log_unvoice_mute(
     reason: str,
     target: str,
 ) -> None:
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     role_snowflake = None
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="unvmute",
         member_snowflake=member_snowflake,
@@ -77,7 +77,7 @@ async def log_unvoice_mute(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="unvmute",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope,
             member_snowflake=member_snowflake,
@@ -132,11 +132,11 @@ async def unvoice_mute_by_message(
         member_snowflake=ctx.member_snowflake,
         singular=True,
     )
-    duration_value = duration_builder.from_timestamp(voice_mute.expires_in).as_str()
+    duration = duration_builder.from_timestamp(voice_mute.expires_in).build()
     exceeds_cap = await cap_service.exceeds_cap(
         category="vmute",
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=str(duration_value),
+        duration=duration,
         guild_snowflake=ctx.guild_snowflake,
     )
     if exceeds_cap:

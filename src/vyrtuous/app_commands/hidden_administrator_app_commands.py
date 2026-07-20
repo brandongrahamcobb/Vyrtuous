@@ -19,12 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord import VoiceChannel, app_commands
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.app_commands.help_app_command import skip_app_command_help_discovery
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import PATH_LOG, at_home
+from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.listing import (
     list_administrator_roles,
     list_automute_channels,

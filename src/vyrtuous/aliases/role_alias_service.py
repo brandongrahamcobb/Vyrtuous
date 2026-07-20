@@ -24,6 +24,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 
@@ -83,14 +84,14 @@ async def log_enrole(
     role_snowflake: int,
 ) -> None:
     channel_snowflake = None
-    duration_value = None
+    duration = DurationObject(number=0, prefix="", sign=1, unit="")
     is_channel_scope = None
     reason = None
     target = None
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake or None,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="role",
         member_snowflake=member_snowflake,
@@ -102,7 +103,7 @@ async def log_enrole(
         await stream_service.send_log(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake or None,
-            duration_value=duration_value or None,
+            duration=duration,
             identifier="role",
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope or None,

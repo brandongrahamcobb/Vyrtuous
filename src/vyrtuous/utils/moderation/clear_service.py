@@ -26,6 +26,7 @@ from vyrtuous.aliases import (
     untext_mute_alias_service,
     unvoice_mute_alias_service,
 )
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.moderation import (
@@ -313,11 +314,21 @@ async def clear(
                         case "stream":
                             if category == "stream":
                                 await database_factory.delete_by_cls(value)
-                            await stream_service.toggle_stream(
-                                guild_snowflake=obj.guild.id,
-                                target_channel_snowflake=value.target_channel_snowflake,
-                                source_channel_snowflake=value.source_channel_snowflake,
-                            )
+                            bot: DiscordBot = DiscordBot.get_instance()
+                            target_channel = bot.get_channel(value.channel_snowflake)
+                            if isinstance(
+                                target_channel,
+                                (
+                                    discord.VoiceChannel,
+                                    discord.TextChannel,
+                                    discord.StageChannel,
+                                ),
+                            ):
+                                guild = bot.get_guild(value.guild_snowflake)
+                                await stream_service.toggle_stream(
+                                    target_channel=target_channel,
+                                    source=guild,
+                                )
                         case "tmute":
                             if category == "tmute":
                                 await database_factory.delete_by_cls(value)
@@ -477,11 +488,21 @@ async def clear(
                         case "stream":
                             if category == "stream":
                                 await database_factory.delete_by_cls(value)
-                            await stream_service.toggle_stream(
-                                guild_snowflake=obj.id,
-                                target_channel_snowflake=value.target_channel_snowflake,
-                                source_channel_snowflake=value.source_channel_snowflake,
-                            )
+                            bot: DiscordBot = DiscordBot.get_instance()
+                            target_channel = bot.get_channel(value.channel_snowflake)
+                            if isinstance(
+                                target_channel,
+                                (
+                                    discord.VoiceChannel,
+                                    discord.TextChannel,
+                                    discord.StageChannel,
+                                ),
+                            ):
+                                guild = bot.get_guild(value.guild_snowflake)
+                                await stream_service.toggle_stream(
+                                    target_channel=target_channel,
+                                    source=guild,
+                                )
                         case "tmute":
                             if category == "tmute":
                                 await database_factory.delete_by_cls(value)
@@ -641,11 +662,21 @@ async def clear(
                         case "stream":
                             if category == "stream":
                                 await database_factory.delete_by_cls(value)
-                            await stream_service.toggle_stream(
-                                guild_snowflake=value.guild_snowflake,
-                                target_channel_snowflake=value.target_channel_snowflake,
-                                source_channel_snowflake=value.source_channel_snowflake,
-                            )
+                            bot: DiscordBot = DiscordBot.get_instance()
+                            target_channel = bot.get_channel(value.channel_snowflake)
+                            if isinstance(
+                                target_channel,
+                                (
+                                    discord.VoiceChannel,
+                                    discord.TextChannel,
+                                    discord.StageChannel,
+                                ),
+                            ):
+                                guild = bot.get_guild(value.guild_snowflake)
+                                await stream_service.toggle_stream(
+                                    target_channel=target_channel,
+                                    source=guild,
+                                )
                         case "tmute":
                             if category == "tmute":
                                 await database_factory.delete_by_cls(value)

@@ -28,6 +28,7 @@ from vyrtuous.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias import Alias, NotAlias
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 
 MODEL = Alias
 
@@ -41,7 +42,7 @@ class AliasContext:
         self.__kwargs: dict[str, tuple] = {}
         self.category: str
         self.channel_snowflake: int
-        self.duration_value: str
+        self.duration: DurationObject
         self.guild_snowflake: int = guild_snowflake
         self.member_snowflake: int
         self.role_snowflake: int
@@ -107,9 +108,11 @@ class AliasContext:
             value = tuple[1]
             if field == "duration":
                 if not value:
-                    self.duration_value = "8h"
+                    duration_value = "8h"
                 else:
-                    self.duration_value = value
+                    duration_value = value
+                duration_builder = DurationBuilder()
+                self.duration = duration_builder.parse(value=duration_value).build()
             elif field == "member":
                 self.member_snowflake = int(value.replace("<@", "").replace(">", ""))
             elif field == "reason":

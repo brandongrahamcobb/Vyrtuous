@@ -58,7 +58,7 @@ async def enforce_or_undo(
         ban_ctx = ban_alias_service.BanMessageContext(
             author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
-            duration_value=alias_ctx.duration_value,
+            duration=alias_ctx.duration,
             guild_snowflake=alias_ctx.guild_snowflake,
             member_snowflake=alias_ctx.member_snowflake,
             message_snowflake=message.id,

@@ -71,7 +71,7 @@ async def enforce_or_undo(
             voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
                 author_snowflake=message.author.id,
                 channel_snowflake=alias_ctx.channel_snowflake,
-                duration_value=alias_ctx.duration_value,
+                duration=alias_ctx.duration,
                 guild_snowflake=alias_ctx.guild_snowflake,
                 member_snowflake=alias_ctx.member_snowflake,
                 message_snowflake=message.id,
@@ -110,7 +110,7 @@ async def enforce_or_undo(
             voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
                 author_snowflake=message.author.id,
                 channel_snowflake=alias_ctx.channel_snowflake,
-                duration_value=alias_ctx.duration_value,
+                duration=alias_ctx.duration,
                 guild_snowflake=alias_ctx.guild_snowflake,
                 member_snowflake=alias_ctx.member_snowflake,
                 message_snowflake=message.id,

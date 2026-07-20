@@ -97,7 +97,7 @@ class DurationModal(discord.ui.Modal):
             if channel is None:
                 raise commands.ChannelNotFound(str(self.__channel_snowflake))
             await self.__tick.end(
-                warning="No infraction exists under this category ({self.__category}) for channel ({channel.mention}) in guild ({guild.name}).",
+                warning=f"No infraction exists under this category ({self.__category}) for channel ({channel.mention}) in guild ({guild.name}).",
                 ephemeral=True,
             )
 
@@ -107,6 +107,7 @@ class DurationModal(discord.ui.Modal):
         expires_in = duration_builder.parse(
             self.duration_selection.value
         ).to_expires_in()
+        duration = duration_builder.parse(self.duration_selection.value).build()
         await moderator_service.has_equal_or_lower_role(
             channel_snowflake=self.__channel_snowflake,
             guild_snowflake=self.__guild_snowflake,
@@ -116,7 +117,7 @@ class DurationModal(discord.ui.Modal):
         if await cap_service.exceeds_cap(
             category=self.__category,
             channel_snowflake=self.__channel_snowflake,
-            duration_value=self.duration_selection.value,
+            duration=duration,
             guild_snowflake=self.__guild_snowflake,
         ):
             role = await moderator_service.resolve_highest_role(

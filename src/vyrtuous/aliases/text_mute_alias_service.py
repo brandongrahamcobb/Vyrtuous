@@ -26,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.text_mute import TextMute
-from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.tracking import data_builder, stream_service
@@ -39,7 +39,7 @@ MODEL = TextMute
 class TextMuteMessageContext:
     author_snowflake: int
     channel_snowflake: int
-    duration_value: str
+    duration: DurationObject
     guild_snowflake: int
     member_snowflake: int
     message_snowflake: int
@@ -51,7 +51,7 @@ async def log_text_mute(
     author_snowflake: int | None,
     channel_snowflake: int,
     display: bool,
-    duration_value: str | None,
+    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     message_snowflake: int | None,
@@ -64,7 +64,7 @@ async def log_text_mute(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="tmute",
         member_snowflake=member_snowflake,
@@ -77,7 +77,7 @@ async def log_text_mute(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake,
             identifier="tmute",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope or None,
             member_snowflake=member_snowflake,
@@ -120,7 +120,7 @@ async def text_mute_by_message(
     if await cap_service.exceeds_cap(
         category="tmute",
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
     ):
         await moderator_service.check_minimum_role(
@@ -131,7 +131,7 @@ async def text_mute_by_message(
         )
     await text_mute(
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         reason=ctx.reason,
@@ -140,7 +140,7 @@ async def text_mute_by_message(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
@@ -149,7 +149,7 @@ async def text_mute_by_message(
     )
     embed = build_text_mute_embed(
         channel_snowflake=ctx.channel_snowflake,
-        duration_value=ctx.duration_value,
+        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         reason=ctx.reason,
@@ -159,7 +159,7 @@ async def text_mute_by_message(
 
 async def text_mute(
     channel_snowflake: int,
-    duration_value: str,
+    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
@@ -187,7 +187,7 @@ async def text_mute(
             reason=reason,
         )
     duration_builder = DurationBuilder()
-    expires_in = duration_builder.parse(duration_value).to_expires_in()
+    expires_in = duration_builder.load(duration).to_expires_in()
     text_mute = MODEL(
         channel_snowflake=channel_snowflake,
         expires_in=expires_in,
@@ -200,7 +200,7 @@ async def text_mute(
 
 def build_text_mute_embed(
     channel_snowflake: int,
-    duration_value: str,
+    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
@@ -230,7 +230,7 @@ def build_text_mute_embed(
         description=(
             f"**User:** {member_str}\n"
             f"**Channel:** {channel.mention}\n"
-            f"**Expires:** {duration_builder.parse(duration_value).to_unix_ts()}\n"
+            f"**Expires:** {duration_builder.load(duration=duration).to_unix_ts()}\n"
             f"**Reason:** {reason}"
         ),
         color=discord.Color.blue(),

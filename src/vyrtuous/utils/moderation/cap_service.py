@@ -22,7 +22,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.cap import Cap
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.models.duration import Duration, DurationBuilder, DurationObject
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 
 MODEL = Cap
 
@@ -77,10 +77,14 @@ async def toggle_cap(
 
 
 async def exceeds_cap(
-    category: str, channel_snowflake: int, duration_value: str, guild_snowflake: int
+    category: str,
+    channel_snowflake: int,
+    duration: DurationObject,
+    guild_snowflake: int,
 ) -> bool:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
+    duration_seconds = duration_builder.load(duration=duration).to_seconds()
     exceeds_cap = False
     cap = await database_factory.select(
         channel_snowflake=channel_snowflake,
@@ -88,16 +92,12 @@ async def exceeds_cap(
         category=category,
         singular=True,
     )
-    duration = duration_builder.parse(value=duration_value)
-    value = duration.build()
-    if isinstance(value, Duration):
-        number = value.number
-        duration_seconds = duration.to_seconds()
-        if cap:
-            if duration_seconds > cap.duration_seconds or number == 0:
-                exceeds_cap = True
-        else:
-            cap_duration_seconds = duration_builder.parse(value="8h").to_seconds()
-            if duration_seconds > cap_duration_seconds or number == 0:
-                exceeds_cap = True
+    number = duration.number
+    if cap:
+        if duration_seconds > cap.duration_seconds or number == 0:
+            exceeds_cap = True
+    else:
+        cap_duration_seconds = duration_builder.parse(value="8h").to_seconds()
+        if duration_seconds > cap_duration_seconds or number == 0:
+            exceeds_cap = True
     return exceeds_cap

@@ -24,7 +24,6 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_heroes
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
@@ -61,10 +60,10 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
             converter=commands.MemberConverter,
             description="Tag a member or include their ID.",
         ),
-        target: Union[str, discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        target: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
             default=None,
-            description="Specify `all` or a server ID.",
+            description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
@@ -139,7 +138,7 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
     async def list_heroes_text_command(
         self,
         ctx: commands.Context,
-        target: Union[discord.Member, discord.Guild, None] = commands.parameter(
+        target: Union[int, discord.Member, discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="Specify a member mention/ID or server ID.",
