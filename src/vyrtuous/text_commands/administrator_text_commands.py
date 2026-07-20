@@ -26,7 +26,7 @@ from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import at_home
 from vyrtuous.listing import list_overwrites, list_server_mutes
-from vyrtuous.models.category import Category
+from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging import emojis
@@ -67,15 +67,15 @@ class AdministratorTextCommands(commands.Cog):
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
-        category: Category = commands.parameter(
-            description="Specify a category for a `ban`, `flag`, `role`, `tmute`, or `vmute` action."
+        category: CategoryObject = commands.parameter(
+            converter=Category,
+            description="Specify a category for a `ban`, `flag`, `role`, `tmute`, or `vmute` action.",
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: discord.abc.GuildChannel = commands.parameter(
             converter=commands.VoiceChannelConverter,
             description="Tag a channel or include the ID",
         ),
-        *,
         role: discord.Role | None = commands.parameter(
             converter=commands.RoleConverter,
             default=None,
@@ -86,7 +86,7 @@ class AdministratorTextCommands(commands.Cog):
         if role is None:
             msg = await alias_service.create_alias(
                 alias_name=alias_name,
-                category=str(category),
+                category=category.category,
                 channel_snowflake=channel.id,
                 guild_snowflake=channel.guild.id,
             )
@@ -94,7 +94,7 @@ class AdministratorTextCommands(commands.Cog):
         else:
             msg = await alias_service.create_alias(
                 alias_name=alias_name,
-                category=str(category),
+                category=category.category,
                 channel_snowflake=channel.id,
                 guild_snowflake=channel.guild.id,
                 role_snowflake=role.id,

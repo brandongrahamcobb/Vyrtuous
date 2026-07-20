@@ -328,22 +328,24 @@ class HiddenAdministratorTextCommands(commands.Cog):
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Union[
-            str, discord.Guild, discord.abc.GuildChannel
+            discord.Guild, discord.abc.GuildChannel, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: `all`, channel ID/mention, or server ID.",
+            description="Specify a channel ID/mention or server a ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if target is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            obj = ctx.guild
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_streams.build_pages(obj=obj, is_at_home=is_at_home)
+            obj = target
+        pages = await list_streams.build_pages(obj=obj)
         return await tick.end(success=pages)
 
     @commands.command(name="v", help="Start/stop video-only channel.")
@@ -372,22 +374,24 @@ class HiddenAdministratorTextCommands(commands.Cog):
     async def list_video_channels_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Include `all`, channel or server ID.",
+            description="Specify a channel ID/mention or server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if target is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            obj = ctx.guild
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_video_channels.build_pages(obj=obj, is_at_home=is_at_home)
+            obj = target
+        pages = await list_video_channels.build_pages(obj=obj)
         return await tick.end(success=pages)
 
 

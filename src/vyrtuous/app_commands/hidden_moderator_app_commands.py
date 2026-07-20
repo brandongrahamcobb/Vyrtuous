@@ -129,33 +129,25 @@ class HiddenModeratorAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
+        if channel is None:
             if interaction.guild is None:
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-            guild_snowflake = interaction.guild.id
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-        if channel is None:
             if interaction.channel is None:
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
             channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
         elif isinstance(
             channel.target,
             (discord.VoiceChannel, discord.StageChannel),
         ):
             channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         pages = await moderator_service.survey(

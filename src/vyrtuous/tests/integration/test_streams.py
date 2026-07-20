@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -39,10 +40,10 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Sysadmin", "!streams", "all"),
         ("Administrator", "!streams", "{channel_snowflake}"),
         ("Administrator", "!streams", "<#{channel_snowflake}>"),
         ("Administrator", "!streams", "{guild_snowflake}"),
+        ("Administrator", "!streams", None),
     ],
 )
 async def test_streams(bot, command: str, target, permission_role):
@@ -74,14 +75,23 @@ async def test_streams(bot, command: str, target, permission_role):
     >>> !streams 10000000000000010
     [{emoji} Streaming Channels for Channel1]
     """
-    t = target.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
-    )
-    full = f"{command} {t}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    t = None
+    full = f"{command}"
+    if target:
+        t = target.format(
+            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
+        )
+        full = f"{command} {t}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -99,6 +109,11 @@ async def test_streams(bot, command: str, target, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenAdministratorAppCommands")
             command = cog.list_streaming_app_command
-            await command.callback(cog, interaction=inx, target=t)
+            transformer = AppTarget()
+            if t:
+                resolved_target = await transformer.transform(inx, t)
+            else:
+                resolved_target = None
+            await command.callback(cog, interaction=inx, target=resolved_target)
         for kind, content in end_results:
             assert kind == "success"

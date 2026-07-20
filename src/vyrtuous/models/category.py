@@ -59,7 +59,7 @@ CLASSES = [
     VideoChannel,
     VoiceMute,
 ]
-EXTRA_CATEGORIES = ["all"]
+EXTRA_CATEGORIES = ["all", "role"]
 
 
 class CategoryObject:

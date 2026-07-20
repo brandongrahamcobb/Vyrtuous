@@ -51,14 +51,12 @@ async def build_dictionary(obj) -> dict[int, dict[str, dict[int, dict]]]:
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
-        obj_name = obj.name
+    obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Video Rooms in {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
@@ -118,9 +116,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         pages.append(embed)
         original_description = embed.description or ""
         embed.description = f"**{original_description}** **({vc_n})**"
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_channels)
-        pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
         return "No video channels found."
     return pages

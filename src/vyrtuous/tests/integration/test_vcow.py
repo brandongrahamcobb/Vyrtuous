@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -32,17 +33,18 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
+GUILD_SNOWFLAKE = 10000000000000500
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member",
+    "permission_role, command, member, guild",
     [
-        ("Moderator", "!vcow", "{member_snowflake}"),
-        ("Moderator", "!vcow", "<@{member_snowflake}>"),
+        ("Moderator", "!vcow", "{member_snowflake}", None),
+        ("Moderator", "!vcow", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_vcow(bot, command: str, member, permission_role):
+async def test_vcow(bot, command: str, member, guild, permission_role):
     """
     Promote or demote a member with 'Coordinator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'coordinators'.
@@ -68,7 +70,10 @@ async def test_vcow(bot, command: str, member, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {m}"
+    g = None
+    full = f"{command} {m} {GUILD_SNOWFLAKE}"
+    if guild:
+        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -103,7 +108,19 @@ async def test_vcow(bot, command: str, member, permission_role):
             async with capture_command() as end_results:
                 cog = bot.get_cog("HiddenModeratorAppCommands")
                 command = cog.toggle_vegan_app_command
-                await command.callback(cog, interaction=inx, member=m, notes="")
+                transformer = AppTarget()
+                resolved_member = await transformer.transform(inx, m)
+                if g:
+                    resolved_guild = await transformer.transform(inx, g)
+                else:
+                    resolved_guild = None
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    member=resolved_member,
+                    guild=resolved_guild,
+                    notes="",
+                )
             for kind, content in end_results:
                 print(content)
                 assert kind == "success"

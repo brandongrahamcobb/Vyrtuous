@@ -33,7 +33,6 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Sysadmin", "!cmds", "all"),
         ("Moderator", "!cmds", "{channel_snowflake}"),
         ("Moderator", "!cmds", "<#{channel_snowflake}>"),
         ("Administrator", "!cmds", "{guild_snowflake}"),
@@ -72,6 +71,9 @@ async def test_cmds(bot, command: str, target, permission_role):
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     full = f"{command} {t}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]

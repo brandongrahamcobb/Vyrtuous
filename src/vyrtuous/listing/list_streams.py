@@ -36,7 +36,7 @@ async def build_dictionary(
     dictionary: dict[int, dict[str, dict[int, dict[str, list[int]]]]] = {}
     if isinstance(obj, discord.Guild):
         streaming = await database_factory.select(
-            guild_snowflake=obj.id, singular=False
+            target_guild_snowflake=obj.id, singular=False
         )
     elif isinstance(obj, discord.abc.GuildChannel):
         streaming = await database_factory.select(
@@ -46,24 +46,22 @@ async def build_dictionary(
         streaming = await database_factory.select(singular=False)
     if streaming:
         for stream in streaming:
-            dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
-            dictionary[stream.guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(stream.target_guild_snowflake, {"channels": {}})
+            dictionary[stream.target_guild_snowflake]["channels"].setdefault(
                 stream.target_channel_snowflake, {"sources": []}
             )
-            dictionary[stream.guild_snowflake]["channels"][
+            dictionary[stream.target_guild_snowflake]["channels"][
                 stream.target_channel_snowflake
             ]["sources"].append(stream.source_channel_snowflake)
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
-        obj_name = obj.name
+    obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Streaming Routes for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)
@@ -117,9 +115,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({stream_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_channels)
-        pages.extend(processed_dictionary.skipped_guilds)
     if not pages:
         return "No streaming channels found."
     return pages

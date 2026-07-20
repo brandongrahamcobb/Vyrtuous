@@ -92,7 +92,6 @@ async def test_server_mutes(bot, command: str, target, guild, permission_role):
     else:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
         full = f"{command} {t} {g}"
-    full = f"{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

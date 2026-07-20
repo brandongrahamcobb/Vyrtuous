@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -36,6 +37,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel",
     [
+        ("Moderator", "!survey", None),
         ("Moderator", "!survey", "{channel_snowflake}"),
         ("Moderator", "!survey", "<#{channel_snowflake}>"),
     ],
@@ -58,31 +60,45 @@ async def test_survey(bot, command: str, channel, permission_role):
     >>> !survey 10000000000000010
     [{emoji} Survey results for Channel1]
     """
-    c = channel.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
-    full = f"{command} {c}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    full = f"{command}"
+    c = None
+    if channel:
+        c = channel.format(
+            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+        )
+        full = f"{command} {c}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             content=full,
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
         inx = interaction(
             bot=bot,
-            channel=objects.get("text_channel", None),
+            channel=objects.get("voice_channel", None),
             guild=objects.get("guild", None),
             message=msg,
         )
         async with capture_command() as end_results:
             cog = bot.get_cog("HiddenModeratorAppCommands")
             command = cog.survey_app_command
-            await command.callback(cog, interaction=inx, channel=c)
+            transformer = AppTarget()
+            if c:
+                resolved_channel = await transformer.transform(inx, c)
+            else:
+                resolved_channel = None
+            await command.callback(cog, interaction=inx, channel=resolved_channel)
         for kind, content in end_results:
             assert kind == "success"

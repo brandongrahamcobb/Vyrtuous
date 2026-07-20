@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -30,17 +31,18 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
+GUILD_SNOWFLAKE = 10000000000000500
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member",
+    "permission_role, command, member, guild",
     [
-        ("Moderator", "!summary", "{member_snowflake}"),
-        ("Moderator", "!summary", "<@{member_snowflake}>"),
+        ("Moderator", "!summary", "{member_snowflake}", None),
+        ("Moderator", "!summary", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_summary(bot, command: str, member, permission_role):
+async def test_summary(bot, command: str, member, guild, permission_role):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
@@ -69,11 +71,22 @@ async def test_summary(bot, command: str, member, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {m}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    if guild is None:
+        g = None
+        full = f"{command} {m}"
+    else:
+        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        full = f"{command} {m} {g}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -91,6 +104,14 @@ async def test_summary(bot, command: str, member, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("ModeratorAppCommands")
             command = cog.list_moderation_summary_app_command
-            await command.callback(cog, interaction=inx, member=m)
+            transformer = AppTarget()
+            resolved_member = await transformer.transform(inx, m)
+            if g:
+                resolved_guild = await transformer.transform(inx, g)
+            else:
+                resolved_guild = None
+            await command.callback(
+                cog, interaction=inx, member=resolved_member, guild=resolved_guild
+            )
         for kind, content in end_results:
             assert kind == "success"

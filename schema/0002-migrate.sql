@@ -94,3 +94,9 @@ ALTER TABLE active_flags
 ALTER COLUMN channel_snowflake DROP DEFAULT;
 ALTER TABLE moderation_logs
 ALTER COLUMN guild_snowflake DROP NOT NULL;
+ALTER TABLE streaming
+RENAME COLUMN guild_snowflake to source_guild_snowflake;
+ALTER TABLE streaming
+ALTER COLUMN source_guild_snowflake DROP NOT NULL;
+ALTER TABLE streaming
+ADD COLUMN target_guild_snowflake BIGINT NOT NULL;

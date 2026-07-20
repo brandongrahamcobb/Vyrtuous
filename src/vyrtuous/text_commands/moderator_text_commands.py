@@ -92,23 +92,18 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
+            description="Specify channel ID/mention, or server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
             return await tick.end(warning="This command must target a valid server.")
-        if guild is None:
-            guild_snowflake = ctx.guild.id
-        else:
-            guild_snowflake = guild.id
         obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_aliases.build_pages(obj=obj, is_at_home=is_at_home)
+        pages = await list_aliases.build_pages(obj=obj)
         return await tick.end(success=pages)
 
     @commands.command(name="coords", help="Lists coords.")
@@ -356,18 +351,30 @@ class ModeratorTextCommands(commands.Cog):
             converter=commands.MemberConverter,
             description="Specify a member ID/mention.",
         ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
+        else:
+            guild_snowflake = guild.id
         pages: list[discord.Embed] = []
         obj = member
-        is_at_home = at_home(source=ctx)
         services = []
         services.append(list_bans)
         services.append(list_flags)
         services.append(list_text_mutes)
         services.append(list_voice_mutes)
         for service in services:
-            summary_pages = await service.build_pages(obj=obj, is_at_home=is_at_home)
+            summary_pages = await service.build_pages(
+                guild_snowflake=guild_snowflake, obj=obj
+            )
             if isinstance(summary_pages, list):
                 for page in summary_pages:
                     if isinstance(page, discord.Embed):
@@ -381,20 +388,36 @@ class ModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Union[
-            str, discord.abc.GuildChannel, discord.Guild, None
+            int, discord.Member, discord.abc.GuildChannel, discord.Guild, None
         ] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
+            description="Specify a channel ID/mention, member ID/mention or server ID.",
+        ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if target == "all":
-            obj = None
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
         else:
-            obj = target or ctx.channel
-        is_at_home = at_home(source=ctx)
-        pages = await list_text_mutes.build_pages(obj=obj, is_at_home=is_at_home)
+            guild_snowflake = guild.id
+        if target is None:
+            if ctx.channel is None:
+                return await tick.end(
+                    warning=f"This command must target a valid channel."
+                )
+            obj = ctx.channel
+        else:
+            obj = target
+        pages = await list_text_mutes.build_pages(
+            guild_snowflake=guild_snowflake, obj=obj
+        )
         return await tick.end(success=pages)
 
 

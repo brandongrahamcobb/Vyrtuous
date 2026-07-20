@@ -88,7 +88,6 @@ class HiddenModeratorTextCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
-    # TODO: Make this guild agnostic
     @commands.command(name="survey", help="Survey stage members.")
     @skip_text_command_help_discovery()
     async def survey_text_command(
@@ -101,11 +100,22 @@ class HiddenModeratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server")
-        obj = channel or ctx.channel
+        if channel is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            if ctx.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = ctx.channel.id
+            guild_snowflake = ctx.guild.id
+        else:
+            channel_snowflake = channel.id
+            guild_snowflake = channel.guild.id
         pages = await moderator_service.survey(
-            channel_snowflake=obj.id, guild_snowflake=ctx.guild.id
+            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
         )
         return await tick.end(success=pages)
 
@@ -114,20 +124,28 @@ class HiddenModeratorTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: int | discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
+            converter=MultiConverter,
             description="Tag a member or include their ID.",
         ),
-        *,
         notes: str | None = commands.parameter(
             default=None,
             description="Include notes.",
         ),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=commands.GuildConverter,
+            default=None,
+            description="Specify one a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server")
+            return await tick.end(warning="This command must target a valid server.")
+        if guild is None or not isinstance(guild, discord.Guild):
+            guild_snowflake = ctx.guild.id
+        else:
+            guild_snowflake = guild.id
         if not vegan_service.is_vegan(
-            guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id
+            guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id
         ):
             return await tick.end(warning="Author is not a vegan.")
         if isinstance(member, discord.Member):
@@ -135,7 +153,9 @@ class HiddenModeratorTextCommands(commands.Cog):
         else:
             member_snowflake = member
         embed = await vegan_service.toggle_vegan(
-            guild_snowflake=ctx.guild.id, member_snowflake=member_snowflake, notes=notes
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            notes=notes,
         )
         return await tick.end(success=embed)
 

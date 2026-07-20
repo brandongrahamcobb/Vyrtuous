@@ -32,6 +32,7 @@ MODEL = TextMute
 
 
 async def build_dictionary(
+    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -43,42 +44,48 @@ async def build_dictionary(
         text_mutes = await database_factory.select(
             guild_snowflake=obj.id, singular=False
         )
+        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         text_mutes = await database_factory.select(
-            channel_snowflake=obj.id, singular=False
+            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
         )
     elif isinstance(obj, discord.Member):
         text_mutes = await database_factory.select(
-            member_snowflake=obj.id, singular=False
+            guild_snowflake=guild_snowflake, member_snowflake=obj.id, singular=False
         )
     else:
-        text_mutes = await database_factory.select(singular=False)
+        text_mutes = await database_factory.select(
+            guild_snowflake=guild_snowflake, singular=False
+        )
     if text_mutes:
         for text_mute in text_mutes:
-            dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
-            dictionary[text_mute.guild_snowflake]["members"].setdefault(
+            dictionary.setdefault(guild_snowflake, {"members": {}})
+            dictionary[guild_snowflake]["members"].setdefault(
                 text_mute.member_snowflake, {"text_mutes": {}}
             )
-            dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"].setdefault(text_mute.channel_snowflake, {})
-            dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"][text_mute.channel_snowflake].update(
+            dictionary[guild_snowflake]["members"][text_mute.member_snowflake][
+                "text_mutes"
+            ].setdefault(text_mute.channel_snowflake, {})
+            dictionary[guild_snowflake]["members"][text_mute.member_snowflake][
+                "text_mutes"
+            ][text_mute.channel_snowflake].update(
                 {"reason": text_mute.reason, "expires_in": text_mute.expires_in}
             )
     return dictionary
 
 
-async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
+async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return "No active text-mutes found."
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = "All Servers"
-    if obj is not None and not isinstance(obj, (int, str)):
+    obj_name = guild.name
+    if not isinstance(obj, int):
         obj_name = obj.name
-    elif isinstance(obj, int):
+    else:
         simplified_member = bot.registry.get(MemberState).active.get(obj, None)
         if simplified_member:
             obj_name = simplified_member[0]
@@ -87,7 +94,7 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
 
     title = f"{emojis.get_random_emoji()} Text Mutes for {obj_name}"
 
-    dictionary = await build_dictionary(obj=obj)
+    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.TextMuteDictionary = (
         await list_service.process_dictionary(
             cls=list_service.TextMuteDictionary, dictionary=dictionary
@@ -156,9 +163,6 @@ async def build_pages(is_at_home: bool, obj) -> str | list[discord.Embed]:
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({tmute_n})**"
         pages.append(embed)
-    if is_at_home:
-        pages.extend(processed_dictionary.skipped_guilds)
-        pages.extend(processed_dictionary.skipped_members)
     if not pages:
         return "No text mutes found."
     return pages

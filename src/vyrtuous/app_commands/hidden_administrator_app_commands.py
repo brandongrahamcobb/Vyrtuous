@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord import app_commands
+from discord import VoiceChannel, app_commands
 from discord.ext import commands
 
 from vyrtuous.app_commands.help_app_command import skip_app_command_help_discovery
@@ -328,8 +328,20 @@ class HiddenAdministratorAppCommands(commands.Cog):
                 lowest_role="Developer",
             )
             source_obj = None
-        else:
+        elif isinstance(
+            source.target,
+            (
+                discord.Guild,
+                discord.VoiceChannel,
+                discord.TextChannel,
+                discord.StageChannel,
+            ),
+        ):
             source_obj = source.target
+        else:
+            return await tick.end(
+                warning="This command must target a valid channel or server."
+            )
         if isinstance(
             target_channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
@@ -348,29 +360,14 @@ class HiddenAdministratorAppCommands(commands.Cog):
     @app_commands.command(name="streams", description="List streaming routes.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention or server ID",
-        guild="Specify a server ID.",
     )
     @skip_app_command_help_discovery()
     async def list_streaming_app_command(
         self,
         interaction: discord.Interaction,
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
         if target is None:
             if interaction.guild is None:
                 return await tick.end(
@@ -379,10 +376,7 @@ class HiddenAdministratorAppCommands(commands.Cog):
             obj = interaction.guild
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
-        pages = await list_streams.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
-        )
+        pages = await list_streams.build_pages(obj=obj)
         return await tick.end(success=pages)
 
     @app_commands.command(name="v", description="Start/stop video-only channel.")
@@ -428,22 +422,8 @@ class HiddenAdministratorAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
         if target is None:
             if interaction.guild is None:
                 return await tick.end(
@@ -452,10 +432,7 @@ class HiddenAdministratorAppCommands(commands.Cog):
             obj = interaction.guild
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
-        pages = await list_video_channels.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
-        )
+        pages = await list_video_channels.build_pages(obj=obj)
         return await tick.end(success=pages)
 
 

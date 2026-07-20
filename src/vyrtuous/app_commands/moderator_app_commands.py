@@ -367,44 +367,6 @@ class ModeratorAppCommands(commands.Cog):
         pages = await list_bans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
-    @app_commands.command(name="cmds", description="List aliases.")
-    @app_commands.describe(
-        target="Specify one of: `all`, a channel ID/mention, or server ID."
-    )
-    async def list_commands_app_command(
-        self,
-        interaction: discord.Interaction,
-        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
-    ) -> discord.Message:
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-        else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-        if target is None:
-            if interaction.channel is None:
-                return await tick.end(
-                    warning=f"This command must target a valid channel."
-                )
-            obj = interaction.channel
-        else:
-            obj = target.target
-        is_at_home = at_home(source=interaction)
-        pages = await list_aliases.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
-        )
-        return await tick.end(success=pages)
-
     @app_commands.command(name="coords", description="Lists coords.")
     @app_commands.describe(
         target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
@@ -578,14 +540,13 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
+        if isinstance(member.target, int):
             member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         pages: list[discord.Embed] = []
-        is_at_home = at_home(source=interaction)
         services = []
         services.append(list_bans)
         services.append(list_flags)
@@ -595,7 +556,6 @@ class ModeratorAppCommands(commands.Cog):
             summary_pages = await service.build_pages(
                 guild_snowflake=guild_snowflake,
                 obj=member_snowflake,
-                is_at_home=is_at_home,
             )
             if isinstance(summary_pages, list):
                 for page in summary_pages:
@@ -607,7 +567,7 @@ class ModeratorAppCommands(commands.Cog):
 
     @app_commands.command(name="tmutes", description="List text-mutes.")
     @app_commands.describe(
-        target="Specify one of: `all`, a channel ID/mention, member ID/mention or server ID.",
+        target="Specify a channel ID/mention, member ID/mention or server ID.",
     )
     async def list_text_mutes_app_command(
         self,
@@ -637,9 +597,8 @@ class ModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
-        is_at_home = at_home(source=interaction)
         pages = await list_text_mutes.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, is_at_home=is_at_home
+            guild_snowflake=guild_snowflake, obj=obj
         )
         return await tick.end(success=pages)
 
