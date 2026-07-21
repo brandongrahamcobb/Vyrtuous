@@ -30,6 +30,7 @@ class Registry:
 @dataclass
 class MemberState:
     active: dict[int, tuple[str, datetime]] = field(default_factory=dict)
+    automuted: dict[int, set[int]] = field(default_factory=lambda: defaultdict(set))
     flagged: defaultdict[int, set[int]] = field(
         default_factory=lambda: defaultdict(set)
     )
@@ -40,23 +41,30 @@ class MemberState:
 
 @dataclass
 class ChannelState:
-    deleted: set[str] = field(default_factory=set)
-    join_log: defaultdict[tuple[int, int], list[float]] = field(
+    joined_at: dict[tuple[int, int], float] = field(default_factory=dict)
+    join_log: defaultdict[tuple[int, int, int], list[float]] = field(
         default_factory=lambda: defaultdict(list)
     )
     video: set[int] = field(default_factory=set)
-    join_log_window: float = 300.0
 
-    def should_notify(self, channel_id: int, member_id: int) -> bool:
-        key = (channel_id, member_id)
+    def should_notify(
+        self,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
+        timeout: float,
+    ) -> bool:
+        key = (channel_snowflake, guild_snowflake, member_snowflake)
         now = time.time()
-        self.join_log[key] = [
-            t for t in self.join_log[key] if now - t < self.join_log_window
-        ]
+        self.join_log[key] = [t for t in self.join_log[key] if now - t < timeout]
         return len(self.join_log[key]) < 1
 
-    def record(self, channel_id: int, member_id: int) -> None:
-        self.join_log[(channel_id, member_id)].append(time.time())
+    def record(
+        self, channel_snowflake: int, guild_snowflake: int, member_snowflake: int
+    ) -> None:
+        self.join_log[(channel_snowflake, guild_snowflake, member_snowflake)].append(
+            time.time()
+        )
 
 
 @dataclass

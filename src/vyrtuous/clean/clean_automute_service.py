@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
@@ -67,6 +68,9 @@ async def clean_expired_automutes() -> int:
                 target="auto",
                 singular=False,
             )
+            member_dict = bot.registry.get(MemberState).automuted
+            for channel_snowflakes in member_dict.values():
+                channel_snowflakes.discard(channel_snowflake)
             for automute in automutes:
                 member_snowflake = automute.member_snowflake
                 member = guild.get_member(member_snowflake)

@@ -21,6 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import Duration, DurationBuilder, DurationObject
@@ -53,6 +54,7 @@ async def toggle_automute(
     duration: DurationObject | None,
     guild_snowflake: int,
 ):
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
     pages: list[discord.Embed] = []
@@ -61,7 +63,8 @@ async def toggle_automute(
     )
     if automute:
         await database_factory.delete(
-            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
         )
         embed = await voice_mute_service.channel_unmute(
             author_snowflake=author_snowflake,
@@ -82,6 +85,7 @@ async def toggle_automute(
                 author_snowflake=author_snowflake,
                 channel_snowflake=channel_snowflake,
                 duration=duration,
+                excluded=[author_snowflake],
                 guild_snowflake=guild_snowflake,
                 reason=f"Automute enabled.",
                 target="auto",

@@ -236,6 +236,7 @@ class AdministratorAppCommands(commands.Cog):
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             duration=duration_obj,
+            excluded=[interaction.user.id],
             guild_snowflake=guild_snowflake,
             reason=reason or "No reason provided.",
         )

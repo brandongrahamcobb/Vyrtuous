@@ -68,22 +68,41 @@ async def enforce_or_undo(
 
 
 async def warn(
-    channel: discord.channel.VocalGuildChannel, member: discord.Member
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        return
+    member = guild.get_member(member_snowflake)
+    if member is None:
+        return
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     flags = await database_factory.select(singular=False)
     for flag in flags:
         if flag.channel_snowflake == channel.id and flag.member_snowflake == member.id:
-            if bot.registry.get(ChannelState).should_notify(channel.id, member.id):
-                embed = discord.Embed(
-                    title=f"\u26a0\ufe0f {member.display_name} is flagged",
-                    description=f"Channel: {channel.mention}\nReason: {flag.reason}",
-                    color=discord.Color.red(),
-                )
-                embed.set_thumbnail(url=member.display_avatar.url)
-                await channel.send(embed=embed)
-            bot.registry.get(ChannelState).record(channel.id, member.id)
+            if isinstance(channel, discord.channel.VocalGuildChannel):
+                if bot.registry.get(ChannelState).should_notify(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=member_snowflake,
+                    timeout=300.0,
+                ):
+                    embed = discord.Embed(
+                        title=f"\u26a0\ufe0f {member.display_name} is flagged",
+                        description=f"Channel: {channel.mention}\nReason: {flag.reason}",
+                        color=discord.Color.red(),
+                    )
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    await channel.send(embed=embed)
+            bot.registry.get(ChannelState).record(
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member_snowflake,
+            )
 
 
 async def populate() -> None:

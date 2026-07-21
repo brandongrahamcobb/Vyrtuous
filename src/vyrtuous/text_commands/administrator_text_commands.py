@@ -274,6 +274,7 @@ class AdministratorTextCommands(commands.Cog):
             author_snowflake=ctx.author.id,
             channel_snowflake=channel_snowflake,
             duration=duration_obj,
+            excluded=[ctx.author.id],
             guild_snowflake=guild_snowflake,
             reason=reason,
         )

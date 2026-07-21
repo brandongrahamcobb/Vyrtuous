@@ -25,6 +25,7 @@ from discord.ext import commands
 from vyrtuous.aliases import unvoice_mute_alias_service, voice_mute_alias_service
 from vyrtuous.aliases.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
@@ -130,6 +131,7 @@ async def channel_mute(
     author_snowflake: int,
     channel_snowflake: int,
     duration: DurationObject,
+    excluded: list[int],
     guild_snowflake: int,
     reason: str,
     *,
@@ -148,7 +150,7 @@ async def channel_mute(
         raise commands.CheckFailure("This action must be executed in a valid channel.")
     muted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
-        if member.id == author_snowflake:
+        if member.id in excluded:
             continue
         try:
             await moderator_service.has_equal_or_lower_role(
@@ -196,6 +198,10 @@ async def channel_mute(
             reason=reason,
             target=target,
         )
+        if target == "auto":
+            bot.registry.get(MemberState).automuted.setdefault(member.id, set()).add(
+                channel_snowflake
+            )
         muted_members.append(member)
     description_lines = [
         f"**Channel:** {channel.mention}",
@@ -233,8 +239,6 @@ async def channel_unmute(
         raise commands.CheckFailure("This command must be executed in a valid channel.")
     unmuted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
-        if member.id == author_snowflake:
-            continue
         try:
             await moderator_service.has_equal_or_lower_role(
                 channel_snowflake=channel.id,
@@ -285,6 +289,10 @@ async def channel_unmute(
             reason=reason or "No reason provided.",
             target=target,
         )
+        if target == "auto":
+            member_dict = bot.registry.get(MemberState).automuted
+            for channel_snowflakes in member_dict.values():
+                channel_snowflakes.discard(channel_snowflake)
         unmuted_members.append(member)
     description_lines = [
         f"**Channel:** {channel.mention}",
@@ -322,3 +330,59 @@ async def is_voice_muted(
         if voice_mute:
             muted_targets.append(target)
     return muted_targets
+
+
+async def populate(target: str = "auto"):
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    voice_mutes = await database_factory.select(target=target, singular=False)
+    for voice_mute in voice_mutes:
+        if target == "auto":
+            bot.registry.get(MemberState).automuted.setdefault(
+                voice_mute.member_snowflake, set()
+            ).add(voice_mute.channel_snowflake)
+
+
+async def alert_mute(
+    channel_snowflake: int,
+    guild_snowflake: int,
+    member_snowflake: int,
+    target: str = "command",
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        return
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        return
+    member = guild.get_member(member_snowflake)
+    if member is None:
+        return
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    voice_mute = await database_factory.select(
+        channel_snowflake=channel_snowflake,
+        member_snowflake=member_snowflake,
+        target=target,
+        singular=True,
+    )
+    if voice_mute and bot.registry.get(ChannelState).should_notify(
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+        timeout=900.0,
+    ):
+        if isinstance(channel, discord.channel.VocalGuildChannel):
+            duration_builder = DurationBuilder()
+            embed = discord.Embed(
+                title=f"\u274c {member.display_name} must be unmuted via a command",
+                description=f"**Expires:** {duration_builder.from_timestamp(voice_mute.expires_in).to_unix_ts()}\nReason:** {voice_mute.reason}",
+                color=discord.Color.red(),
+            )
+            embed.set_thumbnail(url=member.display_avatar.url)
+            await channel.send(embed=embed)
+    bot.registry.get(ChannelState).record(
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+    )

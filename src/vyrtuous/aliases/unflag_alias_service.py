@@ -120,13 +120,8 @@ async def unflag(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
-    channel = guild.get_channel(channel_snowflake)
-    if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
-    if member:
-        bot.logger.debug("Member found path in unflag alias")
-    else:
+    if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
             raise commands.MemberNotFound(str(member_snowflake))
@@ -135,6 +130,8 @@ async def unflag(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
     )
+    original_set = bot.registry.get(MemberState).flagged
+    original_set[guild_snowflake].remove(member_snowflake)
 
 
 def build_unflag_embed(

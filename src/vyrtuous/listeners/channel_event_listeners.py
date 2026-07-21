@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import time
 from datetime import datetime, timezone
 
 import discord
@@ -24,7 +25,7 @@ from discord.ext import commands
 
 from vyrtuous.aliases import unvoice_mute_alias_service, voice_mute_alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
@@ -58,6 +59,7 @@ class ChannelEventListeners(commands.Cog):
                 if before.self_mute == after.self_mute:
                     return None
                 return None
+        bot: DiscordBot = DiscordBot.get_instance()
         await ban_service.is_banned_then_kick_and_reset_cooldown(
             channel=after.channel, member=member
         )
@@ -158,6 +160,10 @@ class ChannelEventListeners(commands.Cog):
                 )
             await flag_service.warn(channel=after.channel, member=member)
             await vegan_service.notify(channel=after.channel, member=member)
+            joined_at = bot.registry.get(ChannelState).joined_at
+            if before.channel:
+                joined_at.pop((before.channel.id, member.id), None)
+            joined_at[(after.channel.id, member.id)] = time.time()
         elif before.channel == after.channel:
             if before.mute and not after.mute:
                 if await automute_channel_service.is_active_automute_channel(
