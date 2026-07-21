@@ -64,7 +64,7 @@ async def build_pages(obj) -> str | list[discord.Embed]:
         if simplified_member:
             obj_name = simplified_member[0]
         else:
-            return "No developers found."
+            return "This command must target a valid member."
     title = f"{emojis.get_random_emoji()} Developers for {obj_name}"
 
     dictionary = await build_dictionary(obj=obj)

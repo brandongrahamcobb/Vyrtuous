@@ -23,20 +23,23 @@ from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.tests.conftest import context
-from vyrtuous.tests.integration.test_suite import (build_message,
-                                                   capture_command,
-                                                   send_message, setup)
+from vyrtuous.tests.conftest import context, interaction
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "permission_role, command, lines",
     [
-        ("Administrator", "!debug", "10"),
+        ("Administrator", "debug", "10"),
     ],
 )
-async def test_debug(bot, command: str, lines, permission_role):
+async def test_debug(bot, command: str, prefix: str, lines, permission_role):
     """
     Fetch last lines from the logs.
 
@@ -50,11 +53,17 @@ async def test_debug(bot, command: str, lines, permission_role):
     >>> !debug 10
     [{emoji} Logger Information]\n Scheduled blah blah blah.
     """
-    full = f"{command} {lines}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    full = f"{prefix}{command} {lines}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),
@@ -63,34 +72,15 @@ async def test_debug(bot, command: str, lines, permission_role):
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
-        ctx = context(
+        inx = interaction(
             bot=bot,
             channel=objects.get("text_channel", None),
             guild=objects.get("guild", None),
             message=msg,
-            prefix="!",
         )
-        admin_commands = bot.get_cog("AdminTextCommands")
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.administrator.administrator_service.administrator_predicator",
-                    return_value=True,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.has_equal_or_lower_role",
-                    return_value=permission_role,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permission_service.PermissionService.resolve_highest_role",
-                    return_value=permission_role,
-                )
-            )
-            async with capture_command() as end_results:
-                command = await admin_commands.debug_text_command(ctx, lines=int(lines))
-            for kind, content in end_results:
-                assert kind == "success"
+        async with capture_command() as end_results:
+            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            command = cog.debug_app_command
+            command = await command.callback(cog, interaction=inx, lines=int(lines))
+        for kind, content in end_results:
+            assert kind == "success"

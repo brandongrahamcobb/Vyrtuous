@@ -37,11 +37,11 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 @pytest.mark.parametrize(
     "permission_role, command, member",
     [
-        ("Sysadmin", "!dev", "{member_snowflake}"),
-        ("Sysadmin", "!dev", "<@{member_snowflake}>"),
+        ("Sysadmin", "dev", "{member_snowflake}"),
+        ("Sysadmin", "dev", "<@{member_snowflake}>"),
     ],
 )
-async def test_dev(bot, command: str, member, permission_role):
+async def test_dev(bot, command: str, prefix: str, member, permission_role):
     """
     Promote or demote a member with 'Developer' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -64,7 +64,7 @@ async def test_dev(bot, command: str, member, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {m}"
+    full = f"{prefix}{command} {m}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

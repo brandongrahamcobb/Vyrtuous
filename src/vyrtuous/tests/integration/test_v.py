@@ -37,11 +37,11 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel",
     [
-        ("Administrator", "!v", "{channel_snowflake}"),
-        ("Administrator", "!v", "{channel_snowflake}"),
+        ("Administrator", "v", "{channel_snowflake}"),
+        ("Administrator", "v", "{channel_snowflake}"),
     ],
 )
-async def test_v(bot, command: str, channel, permission_role):
+async def test_v(bot, command: str, prefix: str, channel, permission_role):
     """
     Create or teardown a video channel by accessing
     the PostgresSQL database 'vyrtuous' in the table 'video_channels'.
@@ -62,15 +62,15 @@ async def test_v(bot, command: str, channel, permission_role):
     """
     c = None
     # d = None
-    full = command
+    full = f"{prefix}{command}"
     if channel:  # and duration is None:
         c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-        full = f"{command} {c}"
+        full = f"{prefix}{command} {c}"
     # elif channel: and duration:
     #     c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
     #     d = duration
     #     full = f"{command} {c} {d}
-    full = f"{command} {c}"
+    full = f"{prefix}{command} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

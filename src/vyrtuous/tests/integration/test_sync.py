@@ -34,13 +34,13 @@ from vyrtuous.tests.integration.test_suite import (
 @pytest.mark.parametrize(
     "permission_role, command, spec",
     [
-        ("Guild Owner", "!sync", None),
-        ("Guild Owner", "!sync", "*"),
-        ("Guild Owner", "!sync", "^"),
-        ("Guild Owner", "!sync", "~"),
+        ("Guild Owner", "sync", None),
+        ("Guild Owner", "sync", "*"),
+        ("Guild Owner", "sync", "^"),
+        ("Guild Owner", "sync", "~"),
     ],
 )
-async def test_sync(bot, command: str, spec, permission_role):
+async def test_sync(bot, command: str, prefix: str, spec, permission_role):
     """
     Syncs app commands.
 
@@ -65,9 +65,9 @@ async def test_sync(bot, command: str, spec, permission_role):
     [{emoji} Synced 0 commands to the current guild]
     """
     if spec:
-        full = f"{command} {spec}"
+        full = f"{prefix}{command} {spec}"
     else:
-        full = f"{command}"
+        full = f"{prefix}{command}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

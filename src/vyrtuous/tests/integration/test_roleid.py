@@ -38,11 +38,11 @@ GUILD_SNOWFLAKE = 10000000000000500
 @pytest.mark.parametrize(
     "permission_role, command, role, guild",
     [
-        ("Administrator", "!roleid", "{role_name}", None),
-        ("Administrator", "!roleid", "{role_name}", "{guild_snowflake}"),
+        ("Administrator", "roleid", "{role_name}", None),
+        ("Administrator", "roleid", "{role_name}", "{guild_snowflake}"),
     ],
 )
-async def test_roleid(bot, command: str, role, guild, permission_role):
+async def test_roleid(bot, command: str, prefix: str, role, guild, permission_role):
     """
     Fetch a role snowflake in a guild
 
@@ -59,10 +59,10 @@ async def test_roleid(bot, command: str, role, guild, permission_role):
     """
     r = role.format(role_name=ROLE_NAME)
     g = None
-    full = f"{command} {r}"
+    full = f"{prefix}{command} {r}"
     if guild:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {r} {g}"
+        full = f"{prefix}{command} {r} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

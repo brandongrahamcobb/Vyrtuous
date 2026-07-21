@@ -38,11 +38,11 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel",
     [
-        ("Administrator", "!xrmute", "{channel_snowflake}"),
-        ("Administrator", "!xrmute", "<#{channel_snowflake}>"),
+        ("Administrator", "xrmute", "{channel_snowflake}"),
+        ("Administrator", "xrmute", "<#{channel_snowflake}>"),
     ],
 )
-async def test_rmute_xrmute(bot, command: str, channel, permission_role):
+async def test_rmute_xrmute(bot, command: str, prefix: str, channel, permission_role):
     """
     Voice-mute a whole channel and undo it by adding and removing
     entries in the PostgreSQL database 'vyrtuous' in the table
@@ -71,7 +71,7 @@ async def test_rmute_xrmute(bot, command: str, channel, permission_role):
     c = channel.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {c}"
+    full = f"{prefix}{command} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

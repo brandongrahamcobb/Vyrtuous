@@ -34,7 +34,7 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import moderator_service
+from vyrtuous.utils.users import moderator_service, role_service
 
 
 class GenericEventListeners(commands.Cog):
@@ -113,6 +113,11 @@ class GenericEventListeners(commands.Cog):
                     return await tick.end(success=embed)
                 case "flag":
                     embed = await flag_service.enforce_or_undo(
+                        alias_ctx=alias_ctx, message=message
+                    )
+                    return await tick.end(success=embed)
+                case "role":
+                    embed = await role_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
                     return await tick.end(success=embed)

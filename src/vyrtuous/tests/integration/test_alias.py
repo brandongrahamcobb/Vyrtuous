@@ -32,11 +32,11 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, category, alias_name, channel_snowflake, role_snowflake",
     [
-        ("Administrator", "!alias", "vmute", "testmute", "{channel_snowflake}", None),
-        ("Administrator", "!alias", "flag", "testflag", "{channel_snowflake}", None),
+        ("Administrator", "alias", "vmute", "testmute", "{channel_snowflake}", None),
+        ("Administrator", "alias", "flag", "testflag", "{channel_snowflake}", None),
         (
             "Administrator",
-            "!alias",
+            "alias",
             "tmute",
             "testtmute",
             "{channel_snowflake}",
@@ -44,7 +44,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ),
         (
             "Administrator",
-            "!alias",
+            "alias",
             "ban",
             "testban",
             "{channel_snowflake}",
@@ -52,7 +52,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ),
         (
             "Administrator",
-            "!alias",
+            "alias",
             "role",
             "testrole",
             "{channel_snowflake}",
@@ -63,6 +63,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 async def test_alias(
     bot,
     command: str,
+    prefix: str,
     category,
     alias_name,
     channel_snowflake,
@@ -103,9 +104,12 @@ async def test_alias(
             role_snowflake=ROLE_SNOWFLAKE,
         )
         kwargs.update({"role": role})
-        full = f"{command} {category} {alias_name} {channel} {role}"
+        full = f"{prefix}{command} {category} {alias_name} {channel} {role}"
     else:
-        full = f"{command} {category} {alias_name} {channel}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+        full = f"{prefix}{command} {category} {alias_name} {channel}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]

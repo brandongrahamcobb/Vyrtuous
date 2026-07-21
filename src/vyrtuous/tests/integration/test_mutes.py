@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -37,16 +38,30 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, guild",
+    "permission_role, command, target, scope, guild",
     [
-        ("Moderator", "!mutes", "{channel_snowflake}", None),
-        ("Moderator", "!mutes", "<#{channel_snowflake}>", "{guild_snowflake}"),
-        ("Moderator", "!mutes", "{guild_snowflake}", None),
-        ("Moderator", "!mutes", "{member_snowflake}", None),
-        ("Moderator", "!mutes", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "mutes", "{channel_snowflake}", None, None),
+        ("Moderator", "mutes", "<#{channel_snowflake}>", "all", "{guild_snowflake}"),
+        ("Moderator", "mutes", "<#{channel_snowflake}>", "click", "{guild_snowflake}"),
+        (
+            "Moderator",
+            "mutes",
+            "<#{channel_snowflake}>",
+            "command",
+            "{guild_snowflake}",
+        ),
+        ("Moderator", "mutes", "{guild_snowflake}", "all", None),
+        ("Moderator", "mutes", "{guild_snowflake}", "click", None),
+        ("Moderator", "mutes", "{guild_snowflake}", "command", None),
+        ("Moderator", "mutes", "{member_snowflake}", None, None),
+        ("Moderator", "mutes", "<@{member_snowflake}>", "all", "{guild_snowflake}"),
+        ("Moderator", "mutes", "<@{member_snowflake}>", "click", "{guild_snowflake}"),
+        ("Moderator", "mutes", "<@{member_snowflake}>", "command", "{guild_snowflake}"),
     ],
 )
-async def test_voice_mutes(bot, command: str, target, guild, permission_role):
+async def test_voice_mutes(
+    bot, command: str, prefix: str, target, guild, scope, permission_role
+):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
@@ -89,12 +104,22 @@ async def test_voice_mutes(bot, command: str, target, guild, permission_role):
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    if guild is None:
+
+    full = f"{prefix}{command} {t}"
+    if guild is None and not scope:
         g = None
-        full = f"{command} {t}"
-    else:
+        s = None
+    elif scope and not guild:
+        g = None
+        s = scope
+        full = f"{prefix}{command} {t} {s}"
+    elif guild:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {t} {g}"
+        s = scope
+        full = f"{prefix}{command} {t} {s} {g}"
+    else:
+        g = None
+        s = None
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -131,8 +156,17 @@ async def test_voice_mutes(bot, command: str, target, guild, permission_role):
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
+            scope_transformer = AppScope()
+            if s:
+                resolved_scope = await scope_transformer.transform(inx, s)
+            else:
+                resolved_scope = None
             await command.callback(
-                cog, interaction=inx, target=resolved, guild=resolved_guild
+                cog,
+                interaction=inx,
+                target=resolved,
+                scope=resolved_scope,
+                guild=resolved_guild,
             )
         for kind, content in end_results:
             assert kind == "success"

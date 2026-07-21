@@ -216,10 +216,8 @@ def build_unvoice_mute_embed(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
-    channel = bot.get_channel(channel_snowflake)
-    if channel is None or not isinstance(
-        channel, (discord.VoiceChannel, discord.StageChannel)
-    ):
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:

@@ -31,5 +31,5 @@ class VoiceMute:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_in: datetime | None = None
     reason: str = "No reason provided."
-    target: str = "user"
+    target: str = "click"
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

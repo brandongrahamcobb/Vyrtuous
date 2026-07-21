@@ -43,19 +43,19 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     [
         (
             "Administrator",
-            "!coord",
+            "coord",
             "{member_snowflake}",
             "{channel_snowflake}",
         ),
         (
             "Administrator",
-            "!coord",
+            "coord",
             "<@{member_snowflake}>",
             "<#{channel_snowflake}>",
         ),
     ],
 )
-async def test_coord(bot, command: str, member, channel, permission_role):
+async def test_coord(bot, command: str, prefix: str, member, channel, permission_role):
     """
     Promote or demote a member with 'Coordinator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'coordinators'.
@@ -82,7 +82,7 @@ async def test_coord(bot, command: str, member, channel, permission_role):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-    full = f"{command} {m} {c}"
+    full = f"{prefix}{command} {m} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -38,10 +38,10 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 @pytest.mark.parametrize(
     "permission_role, command, guild",
     [
-        ("Administrator", "!aroles", "{guild_snowflake}"),
+        ("Administrator", "aroles", "{guild_snowflake}"),
     ],
 )
-async def test_aroles(bot, command: str, guild, permission_role):
+async def test_aroles(bot, command: str, prefix: str, guild, permission_role):
     """
     List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.
@@ -62,7 +62,7 @@ async def test_aroles(bot, command: str, guild, permission_role):
     [{emoji} Administrator Roles\n Guild1]
     """
     g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-    full = f"{command} {g}"
+    full = f"{prefix}{command} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

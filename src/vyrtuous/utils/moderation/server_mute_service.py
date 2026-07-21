@@ -48,40 +48,29 @@ async def toggle_server_mute(
         target_member_snowflake=member_snowflake,
     )
     server_mute = await database_factory.select(
-        singular=True,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
+        target="server",
+        singular=True,
     )
     if not server_mute:
         server_mute = VoiceMute(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
             reason=reason,
+            target="server",
         )
         await database_factory.create(server_mute)
         action = "muted"
         should_be_muted = True
     else:
         await database_factory.delete(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            target="server",
         )
         action = "unmuted"
         should_be_muted = False
     if member.voice and member.voice.channel:
         await member.edit(mute=should_be_muted)
     return f"Successfully server {action} {member.mention} in {guild.name}."
-
-
-async def is_server_muted(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
-) -> bool:
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    server_mute = await database_factory.select(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-        singular=False,
-    )
-    if server_mute:
-        return True
-    return False

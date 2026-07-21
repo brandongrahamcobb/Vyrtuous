@@ -41,25 +41,27 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     [
         (
             "Coordinator",
-            "!blacklist",
+            "blacklist",
             "{member_snowflake}",
             "{channel_snowflake}",
         ),
         (
             "Coordinator",
-            "!blacklist",
+            "blacklist",
             "<@{member_snowflake}>",
             None,
         ),
         (
             "Coordinator",
-            "!blacklist",
+            "blacklist",
             "<@{member_snowflake}>",
             "<#{channel_snowflake}>",
         ),
     ],
 )
-async def test_blacklist(bot, command: str, member, channel, permission_role):
+async def test_blacklist(
+    bot, command: str, prefix: str, member, channel, permission_role
+):
     """
     Blacklist or unlisted a member's ban in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
@@ -85,13 +87,13 @@ async def test_blacklist(bot, command: str, member, channel, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {m}"
+    full = f"{prefix}{command} {m}"
     c = None
     if channel:
         c = channel.format(
             channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         )
-        full = f"{command} {m} {c}"
+        full = f"{prefix}{command} {m} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

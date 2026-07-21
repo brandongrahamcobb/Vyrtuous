@@ -54,14 +54,24 @@ class MockMember(discord.Member):
         state: MockState,
         **overrides,
     ):
-        data = MEMBER_DATA.copy()
-        data["user"]["bot"] = is_bot
-        data["user"]["id"] = id
-        data["user"]["username"] = name
-        data.update(overrides)
-        super().__init__(data=data, guild=guild, state=state)
+        self.data = MEMBER_DATA.copy()
+        self.data["user"]["bot"] = is_bot
+        self.data["user"]["id"] = id
+        self.data["user"]["username"] = name
+        self.data.update(overrides)
+        super().__init__(data=self.data, guild=guild, state=state)
+        self._mock_roles = []
 
     async def edit(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
         return self
+
+    @property
+    def roles(self):
+        return self._mock_roles
+
+    async def add_roles(self, *roles, reason=None, **kwargs):
+        for role in roles:
+            if role not in self._mock_roles:
+                self._mock_roles.append(role)

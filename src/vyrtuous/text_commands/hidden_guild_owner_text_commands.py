@@ -61,7 +61,7 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
             description="Tag a member or include their ID.",
         ),
         target: Union[discord.Guild, None] = commands.parameter(
-            converter=commands.GuildConverter,
+            converter=MultiConverter,
             default=None,
             description="Specify a server ID.",
         ),

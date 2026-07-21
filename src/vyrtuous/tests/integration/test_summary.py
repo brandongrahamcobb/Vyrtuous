@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -36,13 +37,18 @@ GUILD_SNOWFLAKE = 10000000000000500
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member, guild",
+    "permission_role, command, member, scope, guild",
     [
-        ("Moderator", "!summary", "{member_snowflake}", None),
-        ("Moderator", "!summary", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "summary", "{member_snowflake}", None, None),
+        ("Moderator", "summary", "{member_snowflake}", "all", None),
+        ("Moderator", "summary", "{member_snowflake}", "click", None),
+        ("Moderator", "summary", "{member_snowflake}", "command", None),
+        ("Moderator", "summary", "<@{member_snowflake}>", "click", "{guild_snowflake}"),
     ],
 )
-async def test_summary(bot, command: str, member, guild, permission_role):
+async def test_summary(
+    bot, command: str, prefix: str, member, guild, scope, permission_role
+):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
@@ -71,12 +77,21 @@ async def test_summary(bot, command: str, member, guild, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    if guild is None:
+    full = f"{prefix}{command} {m}"
+    if guild is None and not scope:
         g = None
-        full = f"{command} {m}"
-    else:
+        s = None
+    elif scope and not guild:
+        g = None
+        s = scope
+        full = f"{prefix}{command} {m} {s}"
+    elif guild:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {m} {g}"
+        s = scope
+        full = f"{prefix}{command} {m} {s} {g}"
+    else:
+        g = None
+        s = None
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -110,8 +125,17 @@ async def test_summary(bot, command: str, member, guild, permission_role):
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
+            scope_transformer = AppScope()
+            if s:
+                resolved_scope = await scope_transformer.transform(inx, s)
+            else:
+                resolved_scope = None
             await command.callback(
-                cog, interaction=inx, member=resolved_member, guild=resolved_guild
+                cog,
+                interaction=inx,
+                member=resolved_member,
+                scope=resolved_scope,
+                guild=resolved_guild,
             )
         for kind, content in end_results:
             assert kind == "success"

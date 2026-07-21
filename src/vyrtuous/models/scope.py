@@ -21,7 +21,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-SCOPES = ["auto", "click", "command", "server"]
+SCOPES = ["all", "auto", "click", "command", "server"]
 
 
 class ScopeObject:

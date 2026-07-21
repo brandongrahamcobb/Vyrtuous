@@ -173,7 +173,6 @@ class HiddenAdministratorTextCommands(commands.Cog):
     async def debug_text_command(
         self,
         ctx,
-        *,
         lines: int = commands.parameter(
             default=3, description="Specify the number of lines"
         ),

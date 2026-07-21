@@ -124,7 +124,7 @@ async def voice_mute_by_message(
     ctx: VoiceMuteMessageContext, display: bool = True
 ) -> discord.Embed:
     duration_builder = DurationBuilder()
-    duration = duration_builder.parse(value=ctx.duration).build()
+    duration = duration_builder.load(duration=ctx.duration).build()
     if await cap_service.exceeds_cap(
         category="vmute",
         channel_snowflake=ctx.channel_snowflake,
@@ -225,10 +225,8 @@ def build_voice_mute_embed(
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise commands.GuildNotFound(str(guild_snowflake))
-    channel = bot.get_channel(channel_snowflake)
-    if channel is None or not isinstance(
-        channel, (discord.VoiceChannel, discord.StageChannel)
-    ):
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:

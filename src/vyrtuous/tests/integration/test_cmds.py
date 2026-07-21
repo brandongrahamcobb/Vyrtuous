@@ -33,12 +33,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Moderator", "!cmds", "{channel_snowflake}"),
-        ("Moderator", "!cmds", "<#{channel_snowflake}>"),
-        ("Administrator", "!cmds", "{guild_snowflake}"),
+        ("Moderator", "cmds", "{channel_snowflake}"),
+        ("Moderator", "cmds", "<#{channel_snowflake}>"),
+        ("Administrator", "cmds", "{guild_snowflake}"),
     ],
 )
-async def test_cmds(bot, command: str, target, permission_role):
+async def test_cmds(bot, command: str, prefix: str, target, permission_role):
     """
     List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'command_aliases'.
@@ -70,7 +70,7 @@ async def test_cmds(bot, command: str, target, permission_role):
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    full = f"{command} {t}"
+    full = f"{prefix}{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Union
+
 import discord
 from discord.ext import commands
 
@@ -84,7 +86,7 @@ async def enforce_or_undo(
             )
             return embed
     else:
-        target = "user"
+        target = "command"
         voice_mute = await database_factory.select(
             channel_snowflake=alias_ctx.channel_snowflake,
             guild_snowflake=alias_ctx.guild_snowflake,
@@ -131,7 +133,7 @@ async def channel_mute(
     guild_snowflake: int,
     reason: str,
     *,
-    target: str = "user",
+    target: str = "click",
 ) -> list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -217,7 +219,7 @@ async def channel_unmute(
     channel_snowflake: int,
     guild_snowflake: int,
     reason: str | None = "No reason provided.",
-    target: str = "user",
+    target: str = "click",
 ) -> list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -302,15 +304,21 @@ async def channel_unmute(
 
 
 async def is_voice_muted(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int
-) -> bool:
+    channel_snowflake: int,
+    guild_snowflake: int,
+    member_snowflake: int,
+    targets: list[str],
+) -> list[str]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    voice_mute = await database_factory.select(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-        singular=True,
-    )
-    if voice_mute:
-        return True
-    return False
+    muted_targets = []
+    for target in targets:
+        voice_mute = await database_factory.select(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            target=target,
+            singular=True,
+        )
+        if voice_mute:
+            muted_targets.append(target)
+    return muted_targets

@@ -39,14 +39,14 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target, guild",
     [
-        ("Moderator", "!tmutes", "{channel_snowflake}", None),
-        ("Moderator", "!tmutes", "<#{channel_snowflake}>", "{guild_snowflake}"),
-        ("Administrator", "!tmutes", "{guild_snowflake}", None),
-        ("Moderator", "!tmutes", "{member_snowflake}", None),
-        ("Moderator", "!tmutes", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "tmutes", "{channel_snowflake}", None),
+        ("Moderator", "tmutes", "<#{channel_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "tmutes", "{guild_snowflake}", None),
+        ("Moderator", "tmutes", "{member_snowflake}", None),
+        ("Moderator", "tmutes", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_text_mutes(bot, command: str, target, guild, permission_role):
+async def test_text_mutes(bot, command: str, prefix: str, target, guild, permission_role):
     """
     List text-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_text_mutes'.
@@ -91,10 +91,10 @@ async def test_text_mutes(bot, command: str, target, guild, permission_role):
     )
     if guild is None:
         g = None
-        full = f"{command} {t}"
+        full = f"{prefix}{command} {t}"
     else:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {t} {g}"
+        full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

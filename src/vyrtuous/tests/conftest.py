@@ -58,6 +58,11 @@ async def bot(cf, db):
     return bot
 
 
+@pytest.fixture
+def prefix(bot):
+    return bot.config.get("discord_command_prefix", "!")
+
+
 def context(bot, channel, guild, message, prefix):
     view = cmd_view.StringView(message.content)
     view.skip_string(prefix)

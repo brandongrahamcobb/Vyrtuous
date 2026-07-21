@@ -38,12 +38,14 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel, duration",
     [
-        ("Coordinator", "!automute", None, None),
-        ("Coordinator", "!automute", "{channel_snowflake}", None),
-        ("Coordinator", "!automute", "{channel_snowflake}", "1h"),
+        ("Coordinator", "automute", None, None),
+        ("Coordinator", "automute", "{channel_snowflake}", None),
+        ("Coordinator", "automute", "{channel_snowflake}", "1h"),
     ],
 )
-async def test_automute(bot, command: str, channel, duration, permission_role):
+async def test_automute(
+    bot, command: str, prefix: str, channel, duration, permission_role
+):
     """
     Create or teardown a stage by accessing
     the PostgresSQL database 'vyrtuous' in the table 'video_channels'.
@@ -64,14 +66,14 @@ async def test_automute(bot, command: str, channel, duration, permission_role):
     """
     c = None
     d = None
-    full = command
+    full = f"{prefix}{command}"
     if channel and duration is None:
         c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
-        full = f"{command} {c}"
+        full = f"{prefix}{command} {c}"
     elif channel and duration:
         c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
         d = duration
-        full = f"{command} {c} {d}"
+        full = f"{prefix}{command} {c} {d}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

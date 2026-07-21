@@ -28,6 +28,7 @@ from vyrtuous.listing import list_overwrites, list_server_mutes
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.models.scope import Scope, ScopeObject
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
@@ -118,8 +119,10 @@ class AdministratorTextCommands(commands.Cog):
             description="Specify one of: `admin`, `alias`, `all`, `automute`, `ban`, `coord`, "
             "flag`, `mod`, `tmute`, `stream` or `vmute`.",
         ),
-        scope: str = commands.parameter(
-            default="user", description="Specify one of: `auto`, `server` or `user`."
+        scope: ScopeObject | None = commands.parameter(
+            converter=Scope,
+            default=None,
+            description="Specify one of: `auto`, `click`, `command` or `server`.",
         ),
     ):
         tick = Tick(bot=self.__bot, ctx=ctx)
@@ -135,6 +138,10 @@ class AdministratorTextCommands(commands.Cog):
         await tick.end(success=embed, view=view)
         await view.wait()
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if scope is None:
+            mute_type = "click"
+        else:
+            mute_type = scope.scope
         msg = await clear_service.clear(
             author_snowflake=ctx.author.id,
             category=str(category),
@@ -142,7 +149,7 @@ class AdministratorTextCommands(commands.Cog):
             message_snowflake=ctx.message.id,
             message_channel_snowflake=ctx.channel.id,
             obj=obj,
-            target=scope,
+            target=mute_type,
             view=view,
         )
         return await tick.end(success=msg)

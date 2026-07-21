@@ -38,12 +38,12 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 @pytest.mark.parametrize(
     "permission_role, command, member, target",
     [
-        ("Guild Owner", "!hero", "{member_snowflake}", None),
-        ("Guild Owner", "!hero", "{member_snowflake}", "all"),
-        ("Guild Owner", "!hero", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Guild Owner", "hero", "{member_snowflake}", None),
+        ("Guild Owner", "hero", "{member_snowflake}", "all"),
+        ("Guild Owner", "hero", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_hero(bot, command: str, member, target, permission_role):
+async def test_hero(bot, command: str, prefix: str, member, target, permission_role):
     """
     Promote or demote member to 'Hero' in memory (lost on reload).
 
@@ -65,11 +65,11 @@ async def test_hero(bot, command: str, member, target, permission_role):
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {m}"
+    full = f"{prefix}{command} {m}"
     t = None
     if target:
         t = target.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {m} {t}"
+        full = f"{prefix}{command} {m} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

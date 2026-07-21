@@ -40,13 +40,13 @@ NOT_PRIVILEGED_AUTHOR_NAME_ONE = "Not Privileged Author Name One"
 @pytest.mark.parametrize(
     "permission_role, command, target, guild",
     [
-        ("Administrator", "!admins", "{guild_snowflake}", None),
-        ("Moderator", "!admins", "{member_snowflake}", None),
-        ("Moderator", "!admins", "<@{member_snowflake}>", None),
-        ("Moderator", "!admins", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "admins", "{guild_snowflake}", None),
+        ("Moderator", "admins", "{member_snowflake}", None),
+        ("Moderator", "admins", "<@{member_snowflake}>", None),
+        ("Moderator", "admins", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_admins(bot, command: str, target, guild, permission_role):
+async def test_admins(bot, command: str, prefix: str, target, guild, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'administrators'.
@@ -80,10 +80,10 @@ async def test_admins(bot, command: str, target, guild, permission_role):
     )
     if guild is None:
         g = None
-        full = f"{command} {t}"
+        full = f"{prefix}{command} {t}"
     else:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {t} {g}"
+        full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -40,11 +40,11 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, member, channel",
     [
-        ("Coordinator", "!mod", "{member_snowflake}", "{channel_snowflake}"),
-        ("Coordinator", "!mod", "<@{member_snowflake}>", "<#{channel_snowflake}>"),
+        ("Coordinator", "mod", "{member_snowflake}", "{channel_snowflake}"),
+        ("Coordinator", "mod", "<@{member_snowflake}>", "<#{channel_snowflake}>"),
     ],
 )
-async def test_mod(bot, command: str, member, channel, permission_role):
+async def test_mod(bot, command: str, prefix: str, member, channel, permission_role):
     """
     Promote or demote a member with 'Moderator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'moderators'.
@@ -73,7 +73,7 @@ async def test_mod(bot, command: str, member, channel, permission_role):
     c = channel.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {m} {c}"
+    full = f"{prefix}{command} {m} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

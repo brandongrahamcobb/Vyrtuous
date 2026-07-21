@@ -38,24 +38,26 @@ GUILD_SNOWFLAKE = 10000000000000500
 @pytest.mark.parametrize(
     "permission_role, command, member, guild, reason",
     [
-        ("Administrator", "!smute", "{member_snowflake}", None, None),
+        ("Administrator", "smute", "{member_snowflake}", None, None),
         (
             "Administrator",
-            "!smute",
+            "smute",
             "<@{member_snowflake}>",
             "{guild_snowflake}",
             "test_reason",
         ),
         (
             "Administrator",
-            "!smute",
+            "smute",
             "<@{member_snowflake}>",
             "{guild_snowflake}",
             None,
         ),
     ],
 )
-async def test_smute(bot, command: str, member, reason, guild, permission_role):
+async def test_smute(
+    bot, command: str, prefix: str, member, reason, guild, permission_role
+):
     """
     Server mute a member localized to the guild
 
@@ -78,14 +80,14 @@ async def test_smute(bot, command: str, member, reason, guild, permission_role):
     )
     g = None
     r = None
-    full = f"{command} {m}"
+    full = f"{prefix}{command} {m}"
     if reason and not guild:
         r = reason
-        full = f"{command} {m} {r}"
+        full = f"{prefix}{command} {m} {r}"
     if reason and guild:
         r = reason
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {m} {g} {r}"
+        full = f"{prefix}{command} {m} {g} {r}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -30,6 +30,7 @@ from vyrtuous.listing import (
     list_text_mutes,
     list_voice_mutes,
 )
+from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import moderator_service
@@ -479,12 +480,14 @@ class ModeratorAppCommands(commands.Cog):
     @app_commands.command(name="mutes", description="List mutes.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention, member ID/mention or server ID.",
+        scope="Specify one of: `auto`, `click`, `command` or all.",
         guild="Specify a server ID.",
     )
     async def list_mutes_app_command(
         self,
         interaction: discord.Interaction,
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        scope: app_commands.Transform[ScopeObject | None, AppScope] = None,
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
@@ -509,8 +512,12 @@ class ModeratorAppCommands(commands.Cog):
             obj = interaction.channel
         else:
             obj = target.target
+        if scope is None:
+            mute_type = "all"
+        else:
+            mute_type = scope.scope
         pages = await list_voice_mutes.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj
+            guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
         )
         return await tick.end(success=pages)
 
@@ -522,6 +529,7 @@ class ModeratorAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
+        scope: app_commands.Transform[ScopeObject | None, AppScope] = None,
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
@@ -549,7 +557,6 @@ class ModeratorAppCommands(commands.Cog):
         services.append(list_bans)
         services.append(list_flags)
         services.append(list_text_mutes)
-        services.append(list_voice_mutes)
         for service in services:
             summary_pages = await service.build_pages(
                 guild_snowflake=guild_snowflake,
@@ -559,6 +566,18 @@ class ModeratorAppCommands(commands.Cog):
                 for page in summary_pages:
                     if isinstance(page, discord.Embed):
                         pages.append(page)
+        if scope is None:
+            mute_type = "all"
+        else:
+            mute_type = scope.scope
+        summary_pages = await list_voice_mutes.build_pages(
+            guild_snowflake=guild_snowflake, obj=member_snowflake, mute_type=mute_type
+        )
+        if isinstance(summary_pages, list):
+            for page in summary_pages:
+                if isinstance(page, discord.Embed):
+                    pages.append(page)
+
         if not pages:
             return await tick.end(success="No infractions found")
         return await tick.end(success=pages)

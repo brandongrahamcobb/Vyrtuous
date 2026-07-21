@@ -50,7 +50,11 @@ class MockBot(commands.Bot):
         self._tree.remove_command = AsyncMock()
         self._tree.copy_global_to = AsyncMock()
         self.logger = logger
-        super().__init__(command_prefix="!", help_command=None, intents=intents)
+        super().__init__(
+            command_prefix=config.get("discord_command_prefix", "!"),
+            help_command=None,
+            intents=intents,
+        )
 
     def register(self):
         self.registry.register(

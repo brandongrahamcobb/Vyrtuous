@@ -23,12 +23,9 @@ import pytest
 
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 GUILD_SNOWFLAKE = 10000000000000500
 ROLE_SNOWFLAKE = 10000000000000200
@@ -38,12 +35,12 @@ ROLE_SNOWFLAKE = 10000000000000200
 @pytest.mark.parametrize(
     "permission_role, command, role, guild",
     [
-        ("Guild Owner", "!admin", "{role_snowflake}", None),
-        ("Guild Owner", "!admin", "<@&{role_snowflake}>", None),
-        ("Guild Owner", "!admin", "{role_snowflake}", "{guild_snowflake}"),
+        ("Guild Owner", "admin", "{role_snowflake}", None),
+        ("Guild Owner", "admin", "<@&{role_snowflake}>", None),
+        ("Guild Owner", "admin", "{role_snowflake}", "{guild_snowflake}"),
     ],
 )
-async def test_admin(bot, command: str, role: str, guild: str | None, permission_role):
+async def test_admin(bot, command: str, prefix: str, role: str, guild: str | None, permission_role):
     """
     List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.
@@ -68,10 +65,10 @@ async def test_admin(bot, command: str, role: str, guild: str | None, permission
     )
     if guild is None:
         g = None
-        full = f"{command} {r}"
+        full = f"{prefix}{command} {r}"
     else:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {r} {g}"
+        full = f"{prefix}{command} {r} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

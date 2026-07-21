@@ -23,12 +23,9 @@ import pytest
 
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import (build_message,
+                                                   capture_command,
+                                                   send_message, setup)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -38,11 +35,11 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 @pytest.mark.parametrize(
     "permission_role, command, member",
     [
-        ("Guild Owner", "!devs", "{member_snowflake}"),
-        ("Guild Owner", "!devs", "<@{member_snowflake}>"),
+        ("Guild Owner", "devs", "{member_snowflake}"),
+        ("Guild Owner", "devs", "<@{member_snowflake}>"),
     ],
 )
-async def test_devs(bot, command: str, member, permission_role):
+async def test_devs(bot, command: str, prefix: str, member, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -72,7 +69,7 @@ async def test_devs(bot, command: str, member, permission_role):
     [{emoji} Developers for Member1\n Guild1\n Guild2]
     """
     m = member.format(member_snowflake=DUMMY_MEMBER_SNOWFLAKE)
-    full = f"{command} {m}"
+    full = f"{prefix}{command} {m}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

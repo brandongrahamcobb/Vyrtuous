@@ -32,32 +32,30 @@ MODEL = VoiceMute
 
 
 async def build_dictionary(
-    guild_snowflake: int,
-    obj,
+    guild_snowflake: int, obj, mute_type
 ) -> dict[int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    target = "user"
     voice_mutes = []
     dictionary: dict[
         int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]
     ] = {}
     if isinstance(obj, discord.Guild):
         voice_mutes = await database_factory.select(
-            guild_snowflake=obj.id, tagret=target, singular=False
+            guild_snowflake=obj.id, target=mute_type, singular=False
         )
         guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         voice_mutes = await database_factory.select(
             channel_snowflake=obj.id,
             guild_snowflake=guild_snowflake,
-            target=target,
+            target=mute_type,
             singular=False,
         )
     elif isinstance(obj, discord.Member):
         voice_mutes = await database_factory.select(
             member_snowflake=obj.id,
             guild_snowflake=guild_snowflake,
-            target=target,
+            target=mute_type,
             singular=False,
         )
     else:
@@ -81,11 +79,17 @@ async def build_dictionary(
     return dictionary
 
 
-async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
+async def build_pages(
+    guild_snowflake: int, obj, mute_type: str
+) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        return "No active voice-mutes found."
+        return (
+            f"No active {mute_type} mutes found."
+            if mute_type != "all"
+            else "No mutes of all types found."
+        )
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
@@ -97,10 +101,12 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
         if simplified_member:
             obj_name = simplified_member[0]
         else:
-            return "No active voice-mutes found."
+            return "This command must target a valid member."
     title = f"{emojis.get_random_emoji()} Voice Mutes for {obj_name}"
 
-    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
+    dictionary = await build_dictionary(
+        guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
+    )
     processed_dictionary: list_service.VoiceMuteDictionary = (
         await list_service.process_dictionary(
             cls=list_service.VoiceMuteDictionary, dictionary=dictionary

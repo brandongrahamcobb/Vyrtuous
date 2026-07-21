@@ -39,12 +39,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target, guild",
     [
-        ("Administrator", "!smutes", "{guild_snowflake}", None),
-        ("Administrator", "!smutes", "{member_snowflake}", None),
-        ("Administrator", "!smutes", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "smutes", "{guild_snowflake}", None),
+        ("Administrator", "smutes", "{member_snowflake}", None),
+        ("Administrator", "smutes", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_server_mutes(bot, command: str, target, guild, permission_role):
+async def test_server_mutes(bot, command: str, prefix: str, target, guild, permission_role):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
@@ -88,10 +88,10 @@ async def test_server_mutes(bot, command: str, target, guild, permission_role):
     )
     if guild is None:
         g = None
-        full = f"{command} {t}"
+        full = f"{prefix}{command} {t}"
     else:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {t} {g}"
+        full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

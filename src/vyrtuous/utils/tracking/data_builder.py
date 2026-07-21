@@ -115,7 +115,7 @@ class DataBuilder:
                 )
         return self
 
-    def set_target(self, *, target: str | None = "user") -> Self:
+    def set_target(self, *, target: str | None = "click") -> Self:
         if target:
             self.__data = replace(self.__data, target=target)
         return self

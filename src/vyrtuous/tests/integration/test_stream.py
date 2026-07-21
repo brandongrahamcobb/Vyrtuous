@@ -41,49 +41,49 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     [
         (
             "Administrator",
-            "!stream",
+            "stream",
             "{target_channel_snowflake}",
             None,
         ),
         (
             "Administrator",
-            "!stream",
+            "stream",
             "{target_channel_snowflake}",
             "{source_channel_snowflake}",
         ),
         (
             "Administrator",
-            "!stream",
+            "stream",
             "{target_channel_snowflake}",
             "{source_guild_snowflake}",
         ),
         (
             "Administrator",
-            "!stream",
+            "stream",
             "<#{target_channel_snowflake}>",
             None,
         ),
         (
             "Administrator",
-            "!stream",
+            "stream",
             "<#{target_channel_snowflake}>",
             None,
         ),
         (
             "Administrator",
-            "!stream",
+            "stream",
             "<#{target_channel_snowflake}>",
             "{source_guild_snowflake}",
         ),
         (
             "Administrator",
-            "!stream",
+            "stream",
             "{target_channel_snowflake}",
             "{source_channel_snowflake}",
         ),
     ],
 )
-async def test_stream(bot, command: str, source, target, permission_role):
+async def test_stream(bot, command: str, prefix: str, source, target, permission_role):
     """
     Setup, modify or teardown a streaming route, modifying the
     the PostgresSQL database 'vyrtuous' in the table 'streaming'.
@@ -111,14 +111,14 @@ async def test_stream(bot, command: str, source, target, permission_role):
     tc = target.format(
         target_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {tc}"
+    full = f"{prefix}{command} {tc}"
     s = None
     if source:
         s = source.format(
             source_guild_snowflake=GUILD_SNOWFLAKE,
             source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         )
-        full = f"{command} {tc} {s}"
+        full = f"{prefix}{command} {tc} {s}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

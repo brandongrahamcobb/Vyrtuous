@@ -18,10 +18,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    capture_command,
+    send_message,
+    setup,
+)
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -32,15 +39,18 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, member_snowflake",
     [
-        ("Moderator", "!testban", "{member_snowflake}"),
-        ("Moderator", "!testmute", "{member_snowflake}"),
-        ("Moderator", "!testflag", "{member_snowflake}"),
-        ("Moderator", "!testvegan", "{member_snowflake}"),
-        ("Moderator", "!testtmute", "{member_snowflake}"),
-        ("Coordinator", "!testrole", "{member_snowflake}"),
+        ("Moderator", "testban", "{member_snowflake}"),
+        ("Moderator", "testban", "{member_snowflake}"),
+        ("Moderator", "testmute", "{member_snowflake}"),
+        ("Moderator", "testmute", "{member_snowflake}"),
+        ("Moderator", "testflag", "{member_snowflake}"),
+        ("Moderator", "testflag", "{member_snowflake}"),
+        ("Moderator", "testtmute", "{member_snowflake}"),
+        ("Moderator", "testtmute", "{member_snowflake}"),
+        ("Coordinator", "testrole", "{member_snowflake}"),
     ],
 )
-async def test_aliases(bot, command: str, member_snowflake, permission_role):
+async def test_aliases(bot, prefix, command: str, member_snowflake, permission_role):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
@@ -69,7 +79,25 @@ async def test_aliases(bot, command: str, member_snowflake, permission_role):
     member = member_snowflake.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    full = f"{command} {member}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+    full = f"{prefix}{command} {member}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
+        objects = setup(bot)
+        msg = build_message(
+            author=objects.get("author", None),
+            channel=objects.get("text_channel", None),
+            content=full,
+            guild=objects.get("guild", None),
+            state=objects.get("state", None),
+        )
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.tests.integration.mock_discord_channel.MockVoiceChannel.fetch_message",
+                    new=AsyncMock(return_value=msg),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]

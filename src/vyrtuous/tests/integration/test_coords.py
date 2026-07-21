@@ -39,14 +39,14 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target, guild",
     [
-        ("Moderator", "!coords", "{channel_snowflake}", None),
-        ("Moderator", "!coords", "<#{channel_snowflake}>", "{guild_snowflake}"),
-        ("Administrator", "!coords", "{guild_snowflake}", None),
-        ("Moderator", "!coords", "{member_snowflake}", None),
-        ("Moderator", "!coords", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "coords", "{channel_snowflake}", None),
+        ("Moderator", "coords", "<#{channel_snowflake}>", "{guild_snowflake}"),
+        ("Administrator", "coords", "{guild_snowflake}", None),
+        ("Moderator", "coords", "{member_snowflake}", None),
+        ("Moderator", "coords", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_coords(bot, command: str, target, guild, permission_role):
+async def test_coords(bot, command: str, prefix: str, target, guild, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'coordinators'.
@@ -91,10 +91,10 @@ async def test_coords(bot, command: str, target, guild, permission_role):
     )
     if guild is None:
         g = None
-        full = f"{command} {t}"
+        full = f"{prefix}{command} {t}"
     else:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{command} {t} {g}"
+        full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

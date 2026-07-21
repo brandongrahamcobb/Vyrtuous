@@ -295,7 +295,7 @@ class ReasonModal(discord.ui.Modal):
                         reason=self.reason_selection.value,
                     )
             case "vmute":
-                target = "user"
+                target = "command"
                 if self.__record:
                     await unvoice_mute_alias_service.unvoice_mute(
                         channel_snowflake=self.__channel_snowflake,

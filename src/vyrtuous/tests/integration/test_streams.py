@@ -40,13 +40,13 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Administrator", "!streams", "{channel_snowflake}"),
-        ("Administrator", "!streams", "<#{channel_snowflake}>"),
-        ("Administrator", "!streams", "{guild_snowflake}"),
-        ("Administrator", "!streams", None),
+        ("Administrator", "streams", "{channel_snowflake}"),
+        ("Administrator", "streams", "<#{channel_snowflake}>"),
+        ("Administrator", "streams", "{guild_snowflake}"),
+        ("Administrator", "streams", None),
     ],
 )
-async def test_streams(bot, command: str, target, permission_role):
+async def test_streams(bot, command: str, prefix: str, target, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'streaming'.
@@ -76,12 +76,12 @@ async def test_streams(bot, command: str, target, permission_role):
     [{emoji} Streaming Channels for Channel1]
     """
     t = None
-    full = f"{command}"
+    full = f"{prefix}{command}"
     if target:
         t = target.format(
             channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
         )
-        full = f"{command} {t}"
+        full = f"{prefix}{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

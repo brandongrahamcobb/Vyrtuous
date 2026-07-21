@@ -35,12 +35,12 @@ from vyrtuous.tests.integration.test_suite import (
 @pytest.mark.parametrize(
     "permission_role, command, cog",
     [
-        ("Developer", "!unload", "{cog}"),
-        ("Developer", "!load", "{cog}"),
-        ("Developer", "!reload", "{cog}"),
+        ("Developer", "unload", "{cog}"),
+        ("Developer", "load", "{cog}"),
+        ("Developer", "reload", "{cog}"),
     ],
 )
-async def test_load_reload_unload(bot, command: str, cog, permission_role):
+async def test_load_reload_unload(bot, command: str, prefix: str, cog, permission_role):
     """
     Load, reload or unload cogs.
 
@@ -62,8 +62,8 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
 
     """
     c = cog.format(cog="vyrtuous.listeners.scheduled_tasks")
-    full = f"{command} {c}"
-    if command == "!load":
+    full = f"{prefix}{command} {c}"
+    if command == "load":
         await bot.unload_extension(c)
     if (
         os.environ["TEST_MODE"].lower() == "text"
@@ -93,21 +93,20 @@ async def test_load_reload_unload(bot, command: str, cog, permission_role):
             cog = bot.get_cog("HiddenDeveloperAppCommands")
             transformer = AppModule()
             resolved = await transformer.transform(inx, c)
-            if command == "!reload":
+            if command == "reload":
                 command = cog.reload_app_command
                 await command.callback(cog, interaction=inx, module=resolved)
                 for kind, content in end_results:
                     assert kind == "success"
-            elif command == "!load":
+            elif command == "load":
                 await bot.unload_extension(c)
                 command = cog.load_app_command
                 await command.callback(cog, interaction=inx, module=resolved)
                 for kind, content in end_results:
                     assert kind == "success"
-            elif command == "!unload":
+            elif command == "unload":
                 await bot.load_extension(c)
                 command = cog.unload_app_command
                 await command.callback(cog, interaction=inx, module=resolved)
                 for kind, content in end_results:
-                    print(content)
                     assert kind == "success"

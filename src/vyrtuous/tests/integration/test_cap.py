@@ -39,12 +39,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, category, channel, limit",
     [
-        ("Administrator", "!cap", "ban", None, None),
-        ("Administrator", "!cap", "ban", "{channel_snowflake}", None),
-        ("Administrator", "!cap", "ban", "{channel_snowflake}", "8h"),
+        ("Administrator", "cap", "ban", None, None),
+        ("Administrator", "cap", "ban", "{channel_snowflake}", None),
+        ("Administrator", "cap", "ban", "{channel_snowflake}", "8h"),
     ],
 )
-async def test_cap(bot, command: str, channel, category, limit, permission_role):
+async def test_cap(bot, command: str, prefix: str, channel, category, limit, permission_role):
     """
     Set a expires in limit for a channel by populating the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.
@@ -68,11 +68,11 @@ async def test_cap(bot, command: str, channel, category, limit, permission_role)
     l = None
     if limit:
         l = limit
-    full = f"{command} {category}"
+    full = f"{prefix}{command} {category}"
     if c and not limit:
-        full = f"{command} {category} {c}"
+        full = f"{prefix}{command} {category} {c}"
     elif c and limit:
-        full = f"{command} {category} {c} {limit}"
+        full = f"{prefix}{command} {category} {c} {limit}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -37,12 +37,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel",
     [
-        ("Moderator", "!survey", None),
-        ("Moderator", "!survey", "{channel_snowflake}"),
-        ("Moderator", "!survey", "<#{channel_snowflake}>"),
+        ("Moderator", "survey", None),
+        ("Moderator", "survey", "{channel_snowflake}"),
+        ("Moderator", "survey", "<#{channel_snowflake}>"),
     ],
 )
-async def test_survey(bot, command: str, channel, permission_role):
+async def test_survey(bot, command: str, prefix: str, channel, permission_role):
     """
     Server mute a member localized to the guild
 
@@ -60,13 +60,13 @@ async def test_survey(bot, command: str, channel, permission_role):
     >>> !survey 10000000000000010
     [{emoji} Survey results for Channel1]
     """
-    full = f"{command}"
+    full = f"{prefix}{command}"
     c = None
     if channel:
         c = channel.format(
             channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         )
-        full = f"{command} {c}"
+        full = f"{prefix}{command} {c}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -59,7 +59,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
         if simplified_member:
             obj_name = simplified_member[0]
         else:
-            return "No heroes found."
+            return "This command must target a valid member."
 
     title = f"{emojis.get_random_emoji()} Heroes for {obj_name}"
 

@@ -34,10 +34,10 @@ from vyrtuous.tests.integration.test_suite import (
 @pytest.mark.parametrize(
     "permission_role, command",
     [
-        ("Developer", "!cogs"),
+        ("Developer", "cogs"),
     ],
 )
-async def test_cogs(bot, command: str, permission_role):
+async def test_cogs(bot, command: str, prefix: str, permission_role):
     """
     List cogs loaded by 'Vyrtuous'.
 
@@ -51,10 +51,17 @@ async def test_cogs(bot, command: str, permission_role):
     >>> !cogs
     [{emoji} Cogs\n Cog1\n Cog2]
     """
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
-        captured = await send_message(bot=bot, content=command)
+    full = f"{prefix}{command}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
+        captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]
-    if os.environ["TEST_MODE"].lower() == "app" or os.environ["TEST_MODE"].lower() == "all":
+    if (
+        os.environ["TEST_MODE"].lower() == "app"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         objects = setup(bot)
         msg = build_message(
             author=objects.get("author", None),

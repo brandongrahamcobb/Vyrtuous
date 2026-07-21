@@ -79,7 +79,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
         if simplified_member:
             obj_name = simplified_member[0]
         else:
-            return "No administrators found."
+            return "This command must target a valid member."
     title = f"{emojis.get_random_emoji()} Administrators for {obj_name}"
 
     dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)

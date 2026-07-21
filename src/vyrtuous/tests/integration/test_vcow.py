@@ -40,11 +40,11 @@ GUILD_SNOWFLAKE = 10000000000000500
 @pytest.mark.parametrize(
     "permission_role, command, member, guild",
     [
-        ("Moderator", "!vcow", "{member_snowflake}", None),
-        ("Moderator", "!vcow", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "vcow", "{member_snowflake}", None),
+        ("Moderator", "vcow", "<@{member_snowflake}>", "{guild_snowflake}"),
     ],
 )
-async def test_vcow(bot, command: str, member, guild, permission_role):
+async def test_vcow(bot, command: str, prefix: str, member, guild, permission_role):
     """
     Promote or demote a member with 'Coordinator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'coordinators'.
@@ -71,7 +71,7 @@ async def test_vcow(bot, command: str, member, guild, permission_role):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     g = None
-    full = f"{command} {m} {GUILD_SNOWFLAKE}"
+    full = f"{prefix}{command} {m} {GUILD_SNOWFLAKE}"
     if guild:
         g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
     if (

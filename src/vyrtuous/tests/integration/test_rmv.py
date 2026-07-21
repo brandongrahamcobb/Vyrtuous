@@ -40,19 +40,21 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     [
         (
             "Administrator",
-            "!rmv",
+            "rmv",
             "{target_channel_snowflake}",
             "{source_channel_snowflake}",
         ),
         (
             "Administrator",
-            "!rmv",
+            "rmv",
             "{target_channel_snowflake}",
             None,
         ),
     ],
 )
-async def test_rmv(bot, command: str, source_channel, target_channel, permission_role):
+async def test_rmv(
+    bot, command: str, prefix: str, source_channel, target_channel, permission_role
+):
     """
     Move all members from one VC to another
 
@@ -73,13 +75,13 @@ async def test_rmv(bot, command: str, source_channel, target_channel, permission
     tc = target_channel.format(
         target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    full = f"{command} {tc}"
+    full = f"{prefix}{command} {tc}"
     sc = None
     if source_channel:
         sc = source_channel.format(
             source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         )
-        full = f"{command} {sc} {tc}"
+        full = f"{prefix}{command} {sc} {tc}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

@@ -73,7 +73,7 @@ async def clear(
     obj,
     view,
     *,
-    target: str = "user",
+    target: str = "click",
 ):
     if isinstance(obj, discord.Member):
         COMBINED_LIST = INFRACTION_MODELS + ROLE_MODELS
@@ -191,24 +191,47 @@ async def clear(
                         case "vmute":
                             if category == "vmute":
                                 await database_factory.delete_by_cls(value)
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=value.channel_snowflake,
-                                guild_snowflake=guild_snowflake,
-                                member_snowflake=obj.id,
-                                target=target,
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=author_snowflake,
-                                channel_snowflake=value.channel_snowflake,
-                                display=False,
-                                guild_snowflake=guild_snowflake,
-                                is_channel_scope=False,
-                                member_snowflake=obj.id,
-                                message_snowflake=message_snowflake,
-                                message_channel_snowflake=message_channel_snowflake,
-                                reason="Clear command.",
-                                target=target,
-                            )
+                            match target:
+                                case "all":
+                                    targets = ["auto", "click", "command", "server"]
+                                    for target in targets:
+                                        await unvoice_mute_alias_service.unvoice_mute(
+                                            channel_snowflake=value.channel_snowflake,
+                                            guild_snowflake=guild_snowflake,
+                                            member_snowflake=obj.id,
+                                            target=target,
+                                        )
+                                        await unvoice_mute_alias_service.log_unvoice_mute(
+                                            author_snowflake=author_snowflake,
+                                            channel_snowflake=value.channel_snowflake,
+                                            display=False,
+                                            guild_snowflake=guild_snowflake,
+                                            is_channel_scope=False,
+                                            member_snowflake=obj.id,
+                                            message_snowflake=message_snowflake,
+                                            message_channel_snowflake=message_channel_snowflake,
+                                            reason="Clear command.",
+                                            target=target,
+                                        )
+                                case _:
+                                    await unvoice_mute_alias_service.unvoice_mute(
+                                        channel_snowflake=value.channel_snowflake,
+                                        guild_snowflake=guild_snowflake,
+                                        member_snowflake=obj.id,
+                                        target=target,
+                                    )
+                                    await unvoice_mute_alias_service.log_unvoice_mute(
+                                        author_snowflake=author_snowflake,
+                                        channel_snowflake=value.channel_snowflake,
+                                        display=False,
+                                        guild_snowflake=guild_snowflake,
+                                        is_channel_scope=False,
+                                        member_snowflake=obj.id,
+                                        message_snowflake=message_snowflake,
+                                        message_channel_snowflake=message_channel_snowflake,
+                                        reason="Clear command.",
+                                        target=target,
+                                    )
     elif isinstance(obj, discord.abc.GuildChannel):
         COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
         await moderator_service.check_minimum_role(
@@ -356,24 +379,47 @@ async def clear(
                         case "vmute":
                             if category == "vmute":
                                 await database_factory.delete_by_cls(value)
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=obj.id,
-                                guild_snowflake=obj.guild.id,
-                                member_snowflake=value.member_snowflake,
-                                target=target,
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=author_snowflake,
-                                channel_snowflake=obj.id,
-                                display=False,
-                                guild_snowflake=obj.guild.id,
-                                is_channel_scope=False,
-                                member_snowflake=value.member_snowflake,
-                                message_snowflake=message_snowflake,
-                                message_channel_snowflake=message_channel_snowflake,
-                                reason="Clear command.",
-                                target=target,
-                            )
+                            match target:
+                                case "all":
+                                    targets = ["auto", "click", "command", "server"]
+                                    for target in targets:
+                                        await unvoice_mute_alias_service.unvoice_mute(
+                                            channel_snowflake=obj.id,
+                                            guild_snowflake=obj.guild.id,
+                                            member_snowflake=value.member_snowflake,
+                                            target=target,
+                                        )
+                                        await unvoice_mute_alias_service.log_unvoice_mute(
+                                            author_snowflake=author_snowflake,
+                                            channel_snowflake=obj.id,
+                                            display=False,
+                                            guild_snowflake=obj.guild.id,
+                                            is_channel_scope=False,
+                                            member_snowflake=value.member_snowflake,
+                                            message_snowflake=message_snowflake,
+                                            message_channel_snowflake=message_channel_snowflake,
+                                            reason="Clear command.",
+                                            target=target,
+                                        )
+                                case _:
+                                    await unvoice_mute_alias_service.unvoice_mute(
+                                        channel_snowflake=obj.id,
+                                        guild_snowflake=obj.guild.id,
+                                        member_snowflake=value.member_snowflake,
+                                        target=target,
+                                    )
+                                    await unvoice_mute_alias_service.log_unvoice_mute(
+                                        author_snowflake=author_snowflake,
+                                        channel_snowflake=obj.id,
+                                        display=False,
+                                        guild_snowflake=obj.guild.id,
+                                        is_channel_scope=False,
+                                        member_snowflake=value.member_snowflake,
+                                        message_snowflake=message_snowflake,
+                                        message_channel_snowflake=message_channel_snowflake,
+                                        reason="Clear command.",
+                                        target=target,
+                                    )
     elif isinstance(obj, discord.Guild):
         COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
         await moderator_service.check_minimum_role(
@@ -531,24 +577,47 @@ async def clear(
                         case "vmute":
                             if category == "vmute":
                                 await database_factory.delete_by_cls(value)
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=value.channel_snowflake,
-                                guild_snowflake=obj.id,
-                                member_snowflake=value.member_snowflake,
-                                target=target,
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=author_snowflake,
-                                channel_snowflake=value.channel_snowflake,
-                                display=False,
-                                guild_snowflake=obj.id,
-                                is_channel_scope=False,
-                                member_snowflake=value.member_snowflake,
-                                message_snowflake=message_snowflake,
-                                message_channel_snowflake=message_channel_snowflake,
-                                reason="Clear command.",
-                                target=target,
-                            )
+                            match target:
+                                case "all":
+                                    targets = ["auto", "click", "command", "server"]
+                                    for target in targets:
+                                        await unvoice_mute_alias_service.unvoice_mute(
+                                            channel_snowflake=value.channel_snowflake,
+                                            guild_snowflake=obj.id,
+                                            member_snowflake=value.member_snowflake,
+                                            target=target,
+                                        )
+                                        await unvoice_mute_alias_service.log_unvoice_mute(
+                                            author_snowflake=author_snowflake,
+                                            channel_snowflake=value.channel_snowflake,
+                                            display=False,
+                                            guild_snowflake=obj.id,
+                                            is_channel_scope=False,
+                                            member_snowflake=value.member_snowflake,
+                                            message_snowflake=message_snowflake,
+                                            message_channel_snowflake=message_channel_snowflake,
+                                            reason="Clear command.",
+                                            target=target,
+                                        )
+                                case _:
+                                    await unvoice_mute_alias_service.unvoice_mute(
+                                        channel_snowflake=value.channel_snowflake,
+                                        guild_snowflake=obj.id,
+                                        member_snowflake=value.member_snowflake,
+                                        target=target,
+                                    )
+                                    await unvoice_mute_alias_service.log_unvoice_mute(
+                                        author_snowflake=author_snowflake,
+                                        channel_snowflake=value.channel_snowflake,
+                                        display=False,
+                                        guild_snowflake=obj.id,
+                                        is_channel_scope=False,
+                                        member_snowflake=value.member_snowflake,
+                                        message_snowflake=message_snowflake,
+                                        message_channel_snowflake=message_channel_snowflake,
+                                        reason="Clear command.",
+                                        target=target,
+                                    )
     elif obj == "all" and await sysadmin_service.is_sysadmin(
         member_snowflake=author_snowflake
     ):
@@ -705,24 +774,47 @@ async def clear(
                         case "vmute":
                             if category == "vmute":
                                 await database_factory.delete_by_cls(value)
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=value.channel_snowflake,
-                                guild_snowflake=value.guild_snowflake,
-                                member_snowflake=value.member_snowflake,
-                                target=target,
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=author_snowflake,
-                                channel_snowflake=value.channel_snowflake,
-                                display=False,
-                                guild_snowflake=value.guild_snowflake,
-                                is_channel_scope=False,
-                                member_snowflake=value.member_snowflake,
-                                message_snowflake=message_snowflake,
-                                message_channel_snowflake=message_channel_snowflake,
-                                reason="Clear command.",
-                                target=target,
-                            )
+                            match target:
+                                case "all":
+                                    targets = ["auto", "click", "command", "server"]
+                                    for target in targets:
+                                        await unvoice_mute_alias_service.unvoice_mute(
+                                            channel_snowflake=value.channel_snowflake,
+                                            guild_snowflake=value.guild_snowflake,
+                                            member_snowflake=value.member_snowflake,
+                                            target=target,
+                                        )
+                                        await unvoice_mute_alias_service.log_unvoice_mute(
+                                            author_snowflake=author_snowflake,
+                                            channel_snowflake=value.channel_snowflake,
+                                            display=False,
+                                            guild_snowflake=value.guild_snowflake,
+                                            is_channel_scope=False,
+                                            member_snowflake=value.member_snowflake,
+                                            message_snowflake=message_snowflake,
+                                            message_channel_snowflake=message_channel_snowflake,
+                                            reason="Clear command.",
+                                            target=target,
+                                        )
+                                case _:
+                                    await unvoice_mute_alias_service.unvoice_mute(
+                                        channel_snowflake=value.channel_snowflake,
+                                        guild_snowflake=value.guild_snowflake,
+                                        member_snowflake=value.member_snowflake,
+                                        target=target,
+                                    )
+                                    await unvoice_mute_alias_service.log_unvoice_mute(
+                                        author_snowflake=author_snowflake,
+                                        channel_snowflake=value.channel_snowflake,
+                                        display=False,
+                                        guild_snowflake=value.guild_snowflake,
+                                        is_channel_scope=False,
+                                        member_snowflake=value.member_snowflake,
+                                        message_snowflake=message_snowflake,
+                                        message_channel_snowflake=message_channel_snowflake,
+                                        reason="Clear command.",
+                                        target=target,
+                                    )
     else:
         if obj is None:
             msg = f"Clear command cancelled."

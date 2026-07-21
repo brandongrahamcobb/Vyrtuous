@@ -39,13 +39,13 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel, duration, reason",
     [
-        ("Administrator", "!rmute", "{channel_snowflake}", None, None),
-        ("Administrator", "!rmute", "<#{channel_snowflake}>", "1h", None),
-        ("Administrator", "!rmute", "<#{channel_snowflake}>", "1h", "test reason"),
+        ("Administrator", "rmute", "{channel_snowflake}", None, None),
+        ("Administrator", "rmute", "<#{channel_snowflake}>", "1h", None),
+        ("Administrator", "rmute", "<#{channel_snowflake}>", "1h", "test reason"),
     ],
 )
 async def test_rmute_xrmute(
-    bot, command: str, channel, duration, reason, permission_role
+    bot, command: str, prefix: str, channel, duration, reason, permission_role
 ):
     """
     Voice-mute a whole channel and undo it by adding and removing
@@ -77,11 +77,11 @@ async def test_rmute_xrmute(
     )
     d = duration
     r = reason
-    full = f"{command} {c}"
+    full = f"{prefix}{command} {c}"
     if d and not r:
-        full = f"{command} {c} {d}"
+        full = f"{prefix}{command} {c} {d}"
     elif d and r:
-        full = f"{command} {c} {d} {r}"
+        full = f"{prefix}{command} {c} {d} {r}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

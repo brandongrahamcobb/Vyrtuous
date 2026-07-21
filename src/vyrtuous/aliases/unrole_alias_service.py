@@ -115,7 +115,7 @@ async def log_unrole(
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
         channel_snowflake=channel_snowflake or None,
-        duration_value=duration_value or None,
+        duration=duration,
         guild_snowflake=guild_snowflake,
         identifier="unrole",
         member_snowflake=member_snowflake,
@@ -128,7 +128,7 @@ async def log_unrole(
             author_snowflake=author_snowflake or None,
             channel_snowflake=channel_snowflake or None,
             identifier="unrole",
-            duration_value=duration_value or None,
+            duration=duration,
             guild_snowflake=guild_snowflake,
             is_channel_scope=is_channel_scope or None,
             member_snowflake=member_snowflake,

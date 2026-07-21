@@ -32,15 +32,15 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, alias_name",
     [
-        ("Administrator", "!xalias", "testban"),
-        ("Administrator", "!xalias", "testmute"),
-        ("Administrator", "!xalias", "testflag"),
-        ("Administrator", "!xalias", "testvegan"),
-        ("Administrator", "!xalias", "testtmute"),
-        ("Administrator", "!xalias", "testrole"),
+        ("Administrator", "xalias", "testban"),
+        ("Administrator", "xalias", "testmute"),
+        ("Administrator", "xalias", "testflag"),
+        ("Administrator", "xalias", "testvegan"),
+        ("Administrator", "xalias", "testtmute"),
+        ("Administrator", "xalias", "testrole"),
     ],
 )
-async def test_xalias(bot, command: str, alias_name, permission_role):
+async def test_xalias(bot, command: str, prefix: str, alias_name, permission_role):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
@@ -66,7 +66,10 @@ async def test_xalias(bot, command: str, alias_name, permission_role):
     >>> !xalias testban
     [{emoji} Alias `testban` deleted]
     """
-    full = f"{command} {alias_name}"
-    if os.environ["TEST_MODE"].lower() == "text" or os.environ["TEST_MODE"].lower() == "all":
+    full = f"{prefix}{command} {alias_name}"
+    if (
+        os.environ["TEST_MODE"].lower() == "text"
+        or os.environ["TEST_MODE"].lower() == "all"
+    ):
         captured = await send_message(bot=bot, content=full)
         assert captured == ["success"]

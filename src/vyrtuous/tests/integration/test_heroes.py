@@ -39,12 +39,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target, guild",
     [
-        ("Guild Owner", "!heroes", "{guild_snowflake}", None),
-        ("Guild Owner", "!heroes", "{member_snowflake}", "{guild_snowflake}"),
-        ("Guild Owner", "!heroes", "<@{member_snowflake}>", None),
+        ("Guild Owner", "heroes", "{guild_snowflake}", None),
+        ("Guild Owner", "heroes", "{member_snowflake}", "{guild_snowflake}"),
+        ("Guild Owner", "heroes", "<@{member_snowflake}>", None),
     ],
 )
-async def test_mods(bot, command: str, target, guild, permission_role):
+async def test_mods(bot, command: str, prefix: str, target, guild, permission_role):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'moderators'.
@@ -88,13 +88,13 @@ async def test_mods(bot, command: str, target, guild, permission_role):
     )
     g = None
     if guild is None:
-        full = f"{command} {t}"
+        full = f"{prefix}{command} {t}"
     else:
         g = guild.format(
             channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
             guild_snowflake=GUILD_SNOWFLAKE,
         )
-        full = f"{command} {t} {g}"
+        full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

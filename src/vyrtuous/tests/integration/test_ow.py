@@ -38,12 +38,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Administrator", "!ow", "{channel_snowflake}"),
-        ("Administrator", "!ow", "<#{channel_snowflake}>"),
-        ("Administrator", "!ow", "{guild_snowflake}"),
+        ("Administrator", "ow", "{channel_snowflake}"),
+        ("Administrator", "ow", "<#{channel_snowflake}>"),
+        ("Administrator", "ow", "{guild_snowflake}"),
     ],
 )
-async def test_overwrites(bot, command: str, target, permission_role):
+async def test_overwrites(bot, command: str, prefix: str, target, permission_role):
     """
     Voice-mute a whole channel and undo it by adding and removing
     entries in the PostgreSQL database 'vyrtuous' in the table
@@ -72,7 +72,7 @@ async def test_overwrites(bot, command: str, target, permission_role):
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    full = f"{command} {t}"
+    full = f"{prefix}{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"

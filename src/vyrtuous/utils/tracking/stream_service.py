@@ -154,16 +154,16 @@ async def toggle_stream(
                 )
             else:
                 stream = Stream(
-                    target_guild_snowflake=target_channel.guild.id,
-                    target_channel_snowflake=target_channel.id,
+                    channel_snowflake=target_channel.id,
+                    guild_snowflake=target_channel.guild.id,
                     source_guild_snowflake=source.id,
                 )
                 await database_factory.create(stream)
             source_text = f"from {source.name}"
         else:
             stream = await database_factory.select(
-                target_guild_snowflake=target_channel.guild.id,
-                target_channel_snowflake=target_channel.id,
+                channel_snowflake=target_channel.id,
+                guild_snowflake=target_channel.guild.id,
                 source_channel_snowflake=source.id,
                 singular=True,
             )
@@ -175,9 +175,9 @@ async def toggle_stream(
                 )
             else:
                 stream = Stream(
-                    target_guild_snowflake=target_channel.guild.id,
+                    channel_snowflake=target_channel.id,
+                    guild_snowflake=target_channel.guild.id,
                     source_channel_snowflake=source.id,
-                    target_channel_snowflake=target_channel.id,
                 )
                 await database_factory.create(stream)
             source_text = f"from {source.mention}"
@@ -198,10 +198,10 @@ async def toggle_stream(
             )
         else:
             stream = Stream(
-                source_guild_snowflake=None,
+                channel_snowflake=target_channel.id,
+                guild_snowflake=target_channel.guild.id,
                 source_channel_snowflake=None,
-                target_channel_snowflake=target_channel.id,
-                target_guild_snowflake=target_channel.guild.id,
+                source_guild_snowflake=None,
             )
             await database_factory.create(stream)
         source_text = f"from all servers"

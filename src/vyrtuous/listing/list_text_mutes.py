@@ -90,7 +90,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
         if simplified_member:
             obj_name = simplified_member[0]
         else:
-            return "No active text-mutes found."
+            return "This command must target a valid member."
 
     title = f"{emojis.get_random_emoji()} Text Mutes for {obj_name}"
 
