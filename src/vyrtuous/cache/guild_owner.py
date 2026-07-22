@@ -31,12 +31,15 @@ class GuildOwner:
 
 
 class NotGuildOwner(commands.CheckFailure):
-    def __init__(self, guild_snowflake: int):
+    def __init__(self, guild_snowflake: int | None):
+        name = None
         bot: DiscordBot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+        if guild_snowflake:
+            guild = bot.get_guild(guild_snowflake)
+            if guild is None:
+                raise commands.GuildNotFound(str(guild_snowflake))
+            name = guild.name
         message: str = (
-            f"You lack sufficient permissions of a guild owner in the requested server ({guild.name})."
+            f"You lack sufficient permissions of a guild owner in the requested server{f" ({name})" if name else ""}."
         )
         super().__init__(message)

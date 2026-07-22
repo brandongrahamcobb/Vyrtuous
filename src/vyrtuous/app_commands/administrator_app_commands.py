@@ -77,6 +77,7 @@ class AdministratorAppCommands(commands.Cog):
         scope: app_commands.Transform[ScopeObject, AppScope],
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
+        await interaction.response.defer()
         tick = Tick(bot=self.__bot, interaction=interaction)
         if guild is None:
             if interaction.guild is None:
@@ -125,6 +126,7 @@ class AdministratorAppCommands(commands.Cog):
         member: app_commands.Transform[TargetObject, AppTarget],
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
+        await interaction.response.defer()
         tick = Tick(bot=self.__bot, interaction=interaction)
         if channel is None:
             if interaction.channel is None:

@@ -290,7 +290,7 @@ class ModeratorAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
-        if voice_mute_service.is_voice_muted(
+        if await voice_mute_service.is_voice_muted(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
             targets=["server"],

@@ -23,6 +23,8 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.guild_owner import NotGuildOwner
+from vyrtuous.cache.sysadmin import NotSysadmin
 from vyrtuous.db.administrator import Administrator
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.coordinator import Coordinator
@@ -39,7 +41,11 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import guild_owner_service, sysadmin_service
+from vyrtuous.utils.users import (
+    guild_owner_service,
+    moderator_service,
+    sysadmin_service,
+)
 from vyrtuous.view.view_context import ViewContext
 
 INFRACTION_MODELS = [
@@ -82,73 +88,69 @@ class ModifyInfractionView(discord.ui.View):
             member_snowflake=self.__author_snowflake, singular=True
         )
         while True:
-            if developer is not None or sysadmin_service.is_sysadmin(
-                self.__author_snowflake
-            ):
-                guild_select_disabled = False
-                self.__available_guilds.extend(bot.guilds)
-                self.__available_guilds.append("all")
-                for guild in bot.guilds:
-                    self.__all_available_channels.extend(guild.channels)
-                    self.__all_available_channels.append("all")
-                break
-            if await guild_owner_service.is_guild_owner(
-                guild_snowflake=self.__ctx.guild_snowflake,
+            try:
+                if developer or await sysadmin_service.is_sysadmin(
+                    self.__author_snowflake
+                ):
+                    guild_select_disabled = False
+                    self.__available_guilds.extend(bot.guilds)
+                    self.__available_guilds.append("all")
+                    for guild in bot.guilds:
+                        self.__all_available_channels.extend(guild.channels)
+                        self.__all_available_channels.append("all")
+                    break
+            except NotSysadmin:
+                pass
+            try:
+                if await guild_owner_service.is_guild_owner(
+                    member_snowflake=self.__author_snowflake,
+                ):
+                    for guild in bot.guilds:
+                        if guild.owner_id == self.__author_snowflake:
+                            self.__available_guilds.append(guild)
+                            self.__all_available_channels.extend(guild.channels)
+                    break
+            except NotGuildOwner:
+                pass
+            administrator: Administrator = await database_factory.select(
                 member_snowflake=self.__author_snowflake,
-            ):
-                guild = bot.get_guild(self.__ctx.guild_snowflake)
+                guild_snowflake=self.__ctx.guild_snowflake,
+                singular=True,
+            )
+            if administrator:
+                guild = bot.get_guild(administrator.guild_snowflake)
                 if guild is None:
-                    raise commands.GuildNotFound(str(self.__ctx.guild_snowflake))
+                    continue
                 self.__available_guilds.append(guild)
                 self.__all_available_channels.extend(guild.channels)
                 break
-            database_factory: DatabaseFactory = DatabaseFactory(Administrator)
-            administrators: list[Administrator] = await database_factory.select(
-                member_snowflake=self.__author_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
-                singular=False,
-            )
-            if administrators:
-                for administrator in administrators:
-                    guild = bot.get_guild(administrator.guild_snowflake)
-                    if guild is None:
-                        continue
-                    self.__available_guilds.append(guild)
-                    self.__all_available_channels.extend(guild.channels)
-                break
             database_factory: DatabaseFactory = DatabaseFactory(Coordinator)
-            coordinators: list[Coordinator] = await database_factory.select(
-                member_snowflake=self.__author_snowflake, singular=False
+            coordinator: Coordinator = await database_factory.select(
+                member_snowflake=self.__author_snowflake, singular=True
             )
-            if coordinators:
-                for coordinator in coordinators:
-                    guild = bot.get_guild(coordinator.guild_snowflake)
-                    if guild is None:
-                        continue
-                    channel = bot.get_channel(coordinator.channel_snowflake)
-                    if channel is None or not isinstance(
-                        channel, discord.abc.GuildChannel
-                    ):
-                        continue
-                    self.__available_guilds.append(guild)
-                    self.__all_available_channels.append(channel)
+            if coordinator:
+                guild = bot.get_guild(coordinator.guild_snowflake)
+                if guild is None:
+                    continue
+                channel = bot.get_channel(coordinator.channel_snowflake)
+                if channel is None or not isinstance(channel, discord.abc.GuildChannel):
+                    continue
+                self.__available_guilds.append(guild)
+                self.__all_available_channels.append(channel)
                 break
             database_factory: DatabaseFactory = DatabaseFactory(Moderator)
-            moderators: list[Moderator] = await database_factory.select(
-                member_snowflake=self.__author_snowflake, singular=False
+            moderator: Moderator = await database_factory.select(
+                member_snowflake=self.__author_snowflake, singular=True
             )
-            if moderators:
-                for moderator in moderators:
-                    guild = bot.get_guild(moderator.guild_snowflake)
-                    if guild is None:
-                        continue
-                    channel = bot.get_channel(moderator.channel_snowflake)
-                    if channel is None or not isinstance(
-                        channel, discord.abc.GuildChannel
-                    ):
-                        continue
-                    self.__available_guilds.append(guild)
-                    self.__all_available_channels.append(channel)
+            if moderator:
+                guild = bot.get_guild(moderator.guild_snowflake)
+                if guild is None:
+                    continue
+                channel = bot.get_channel(moderator.channel_snowflake)
+                if channel is None or not isinstance(channel, discord.abc.GuildChannel):
+                    continue
+                self.__available_guilds.append(guild)
+                self.__all_available_channels.append(channel)
                 break
             break
         if guild_select_disabled:
@@ -274,6 +276,13 @@ class ModifyInfractionView(discord.ui.View):
             for member in channel.members:
                 if self.__ctx.member_snowflake == member.id:
                     self.__is_channel_scope = True
+        if isinstance(channel, discord.abc.GuildChannel):
+            await moderator_service.has_equal_or_lower_role(
+                channel_snowflake=self.__channel_snowflake,
+                guild_snowflake=channel.guild.id,
+                member_snowflake=self.__author_snowflake,
+                target_member_snowflake=self.__ctx.member_snowflake,
+            )
         category_options = await self._build_category_options(
             channel_snowflake=self.__channel_snowflake,
             guild_snowflake=self.__guild_snowflake,
@@ -331,3 +340,16 @@ class ModifyInfractionView(discord.ui.View):
     async def cancel(self, interaction, button):
         self.stop()
         await interaction.response.edit_message(content="Cancelled action.", view=None)
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item: discord.ui.Item,
+    ) -> None:
+        if isinstance(error, commands.BadArgument):
+            await self.__tick.end(error=str(error), ephemeral=True)
+        elif isinstance(error, commands.CheckFailure):
+            await self.__tick.end(error=str(error), ephemeral=True)
+        else:
+            raise error

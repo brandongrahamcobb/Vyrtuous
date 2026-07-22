@@ -61,6 +61,7 @@ class GuildOwnerAppCommands(commands.Cog):
         role: app_commands.Transform[TargetObject, AppTarget],
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
+        await interaction.response.defer()
         tick = Tick(bot=self.__bot, interaction=interaction)
         if guild is None:
             if interaction.guild is None:

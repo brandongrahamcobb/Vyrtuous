@@ -350,7 +350,7 @@ async def has_equal_or_lower_role(
         member_snowflake=target_member_snowflake,
     )
     target_rank = PERMISSION_TYPES.index(target_name)
-    compare_ranks(sender_rank=sender_rank, target_rank=target_rank)
+    compare_ranks(author_snowflake=member_snowflake, member_snowflake=target_member_snowflake, sender_rank=sender_rank, target_rank=target_rank)
     return sender_name
 
 
@@ -408,9 +408,11 @@ async def resolve_highest_role(
     return "Everyone"
 
 
-def compare_ranks(sender_rank, target_rank) -> bool:
+def compare_ranks(
+    author_snowflake: int, member_snowflake: int, sender_rank, target_rank
+) -> bool:
     try:
-        if sender_rank <= target_rank:
+        if sender_rank <= target_rank or author_snowflake == member_snowflake:
             raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
     except HasEqualOrLowerRole as e:
         raise e

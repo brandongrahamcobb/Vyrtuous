@@ -57,6 +57,7 @@ class SysadminAppCommands(commands.Cog):
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
     ) -> discord.Message:
+        await interaction.response.defer()
         tick = Tick(bot=self.__bot, interaction=interaction)
         if isinstance(member.target, int):
             member_snowflake = member.target
