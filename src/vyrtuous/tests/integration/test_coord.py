@@ -19,10 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -35,6 +37,7 @@ from vyrtuous.tests.integration.test_suite import (
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
@@ -51,6 +54,18 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
             "Administrator",
             "coord",
             "<@{member_snowflake}>",
+            "<#{channel_snowflake}>",
+        ),
+        (
+            "Administrator",
+            "coord",
+            "{simplified_member_snowflake}",
+            "{channel_snowflake}",
+        ),
+        (
+            "Administrator",
+            "coord",
+            "<@{simplified_member_snowflake}>",
             "<#{channel_snowflake}>",
         ),
     ],
@@ -78,8 +93,12 @@ async def test_coord(bot, command: str, prefix: str, member, channel, permission
     >>> !coord 10000000000000003 10000000000000010
     [{emoji} Coordinator granted for Member1]
     """
+    bot.registry.get(MemberState).active.update(
+        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+    )
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
     )
     c = channel.format(channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
     full = f"{prefix}{command} {m} {c}"

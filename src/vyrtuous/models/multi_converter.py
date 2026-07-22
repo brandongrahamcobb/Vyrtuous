@@ -77,11 +77,12 @@ class MultiConverter(commands.Converter):
             return role
         except commands.RoleNotFound as e:
             bot.logger.warning(e)
-        if argument.isdigit():
+        number = argument.strip("<@>")
+        if number.isdigit():
             try:
-                member = bot.registry.get(MemberState).active.get(int(argument), None)
+                member = bot.registry.get(MemberState).active.get(int(number), None)
                 if member:
-                    return int(argument)
+                    return int(number)
             except commands.MemberNotFound as e:
                 bot.logger.warning(e)
         raise commands.BadArgument(

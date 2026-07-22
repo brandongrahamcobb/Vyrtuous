@@ -56,8 +56,8 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
     async def toggle_invincibility_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
             description="Tag a member or include their ID.",
         ),
         target: Union[str, discord.Guild, None] = commands.parameter(

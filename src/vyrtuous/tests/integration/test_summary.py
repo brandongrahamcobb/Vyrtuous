@@ -18,9 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from datetime import datetime, timezone
 
 import pytest
 
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
@@ -33,6 +35,7 @@ from vyrtuous.tests.integration.test_suite import (
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 GUILD_SNOWFLAKE = 10000000000000500
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
@@ -44,6 +47,17 @@ GUILD_SNOWFLAKE = 10000000000000500
         ("Moderator", "summary", "{member_snowflake}", "click", None),
         ("Moderator", "summary", "{member_snowflake}", "command", None),
         ("Moderator", "summary", "<@{member_snowflake}>", "click", "{guild_snowflake}"),
+        ("Moderator", "summary", "{simplified_member_snowflake}", None, None),
+        ("Moderator", "summary", "{simplified_member_snowflake}", "all", None),
+        ("Moderator", "summary", "{simplified_member_snowflake}", "click", None),
+        ("Moderator", "summary", "{simplified_member_snowflake}", "command", None),
+        (
+            "Moderator",
+            "summary",
+            "<@{simplified_member_snowflake}>",
+            "click",
+            "{guild_snowflake}",
+        ),
     ],
 )
 async def test_summary(
@@ -74,8 +88,12 @@ async def test_summary(
     >>> !summary 10000000000000003
     [{emoji} Infractions for Member1\n Guild1\n Guild2]
     """
+    bot.registry.get(MemberState).active.update(
+        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+    )
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
     )
     full = f"{prefix}{command} {m}"
     if guild is None and not scope:

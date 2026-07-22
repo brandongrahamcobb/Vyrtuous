@@ -19,10 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -34,6 +36,7 @@ from vyrtuous.tests.integration.test_suite import (
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 GUILD_SNOWFLAKE = 10000000000000500
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
@@ -42,6 +45,8 @@ GUILD_SNOWFLAKE = 10000000000000500
     [
         ("Moderator", "vcow", "{member_snowflake}", None),
         ("Moderator", "vcow", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "vcow", "{simplified_member_snowflake}", None),
+        ("Moderator", "vcow", "<@{simplified_member_snowflake}>", "{guild_snowflake}"),
     ],
 )
 async def test_vcow(bot, command: str, prefix: str, member, guild, permission_role):
@@ -67,8 +72,13 @@ async def test_vcow(bot, command: str, prefix: str, member, guild, permission_ro
     >>> !coord 10000000000000003 10000000000000010
     [{emoji} Coordinator granted for Member1]
     """
+    bot.registry.get(MemberState).active.update(
+        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+    )
+
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
     )
     g = None
     full = f"{prefix}{command} {m} {GUILD_SNOWFLAKE}"

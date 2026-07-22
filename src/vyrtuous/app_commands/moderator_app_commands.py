@@ -578,7 +578,7 @@ class ModeratorAppCommands(commands.Cog):
                     warning="This command must target a valid server."
                 )
         if isinstance(member.target, int):
-            member_snowflake = member
+            member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
             member_snowflake = member.target.id
         else:

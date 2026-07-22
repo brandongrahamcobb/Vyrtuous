@@ -18,9 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from datetime import datetime, timezone
 
 import pytest
 
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -33,6 +35,7 @@ from vyrtuous.tests.integration.test_suite import (
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
@@ -44,6 +47,8 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ("Moderator", "flags", "{guild_snowflake}", None),
         ("Moderator", "flags", "{member_snowflake}", "{guild_snowflake}"),
         ("Moderator", "flags", "<@{member_snowflake}>", None),
+        ("Moderator", "flags", "{simplified_member_snowflake}", "{guild_snowflake}"),
+        ("Moderator", "flags", "<@{simplified_member_snowflake}>", None),
     ],
 )
 async def test_flags(bot, command: str, prefix: str, target, guild, permission_role):
@@ -84,10 +89,14 @@ async def test_flags(bot, command: str, prefix: str, target, guild, permission_r
     >>> !flags 10000000000000003
     [{emoji} Flags for Member1\n Guild1\n Guild2]
     """
+    bot.registry.get(MemberState).active.update(
+        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+    )
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
     )
     if guild is None:
         g = None

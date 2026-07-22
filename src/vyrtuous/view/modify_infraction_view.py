@@ -161,6 +161,7 @@ class ModifyInfractionView(discord.ui.View):
             channel_options = self._build_channel_options()
             self.channel_select.options = channel_options
             self.channel_select.disabled = False
+            self.__guild_snowflake = self.__ctx.guild_snowflake
         else:
             self.__available_guilds = self.limit_available_to_top_25_by_member_count(
                 available=self.__available_guilds

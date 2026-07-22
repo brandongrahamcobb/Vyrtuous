@@ -356,8 +356,8 @@ class ModeratorTextCommands(commands.Cog):
     async def list_moderation_summary_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
-            converter=commands.MemberConverter,
+        member: int | discord.Member = commands.parameter(
+            converter=MultiConverter,
             description="Specify a member ID/mention.",
         ),
         scope: ScopeObject | None = commands.parameter(
@@ -372,21 +372,29 @@ class ModeratorTextCommands(commands.Cog):
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        bot: DiscordBot = DiscordBot.get_instance()
         if ctx.guild is None:
             return await tick.end(warning="This command must target a valid server.")
         if guild is None:
             guild_snowflake = ctx.guild.id
         else:
             guild_snowflake = guild.id
+        if isinstance(member, int):
+            simplified_member = bot.registry.get(MemberState).active.get(member, None)
+            if simplified_member:
+                member_snowflake = member
+            else:
+                raise commands.MemberNotFound(str(member))
+        else:
+            member_snowflake = member.id
         pages: list[discord.Embed] = []
-        obj = member
         services = []
         services.append(list_bans)
         services.append(list_flags)
         services.append(list_text_mutes)
         for service in services:
             summary_pages = await service.build_pages(
-                guild_snowflake=guild_snowflake, obj=obj
+                guild_snowflake=guild_snowflake, obj=member_snowflake
             )
             if isinstance(summary_pages, list):
                 for page in summary_pages:
@@ -397,7 +405,7 @@ class ModeratorTextCommands(commands.Cog):
         else:
             mute_type = scope.scope
         summary_pages = await list_voice_mutes.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
+            guild_snowflake=guild_snowflake, obj=member_snowflake, mute_type=mute_type
         )
         if isinstance(summary_pages, list):
             for page in summary_pages:

@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.utils.users import moderator_service
@@ -39,7 +40,15 @@ async def toggle_server_mute(
         raise commands.GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
-        raise commands.MemberNotFound(str(member_snowflake))
+        simplified_member = bot.registry.get(MemberState).active.get(
+            member_snowflake, None
+        )
+        if simplified_member:
+            member_name = simplified_member[0]
+        else:
+            raise commands.MemberNotFound(str(member_snowflake))
+    else:
+        member_name = member.mention
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     await moderator_service.has_equal_or_lower_role(
         channel_snowflake=None,
@@ -71,6 +80,6 @@ async def toggle_server_mute(
         )
         action = "unmuted"
         should_be_muted = False
-    if member.voice and member.voice.channel:
+    if member and member.voice and member.voice.channel:
         await member.edit(mute=should_be_muted)
-    return f"Successfully server {action} {member.mention} in {guild.name}."
+    return f"Successfully server {action} {member_name} in {guild.name}."

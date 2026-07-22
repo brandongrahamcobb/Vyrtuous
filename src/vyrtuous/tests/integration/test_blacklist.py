@@ -18,9 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from datetime import datetime, timezone
 
 import pytest
 
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -33,6 +35,7 @@ from vyrtuous.tests.integration.test_suite import (
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
@@ -50,6 +53,18 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
             "blacklist",
             "<@{member_snowflake}>",
             None,
+        ),
+        (
+            "Coordinator",
+            "blacklist",
+            "{simplified_member_snowflake}",
+            "{channel_snowflake}",
+        ),
+        (
+            "Coordinator",
+            "blacklist",
+            "<@{simplified_member_snowflake}>",
+            "<#{channel_snowflake}>",
         ),
         (
             "Coordinator",
@@ -84,8 +99,12 @@ async def test_blacklist(
     >>> !mod 10000000000000003 10000000000000010
     [{emoji} Member unlisted in Channel]
     """
+    bot.registry.get(MemberState).active.update(
+        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+    )
     m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
     )
     full = f"{prefix}{command} {m}"
     c = None

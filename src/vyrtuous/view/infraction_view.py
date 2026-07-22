@@ -58,6 +58,13 @@ INFRACTION_MODELS = [
     voice_mute_service.MODEL,
 ]
 
+UNDO_CATEGORIES = {
+    "ban": "ban",
+    "flag": "flag",
+    "tmute": "text-mute",
+    "vmute": "voice-mute",
+}
+
 
 class InfractionView(discord.ui.View):
     def __init__(
@@ -218,6 +225,7 @@ class InfractionView(discord.ui.View):
             channel_options = self._build_channel_options()
             self.channel_select.options = channel_options
             self.channel_select.disabled = False
+            self.__guild_snowflake = self.__ctx.guild_snowflake
         else:
             self.__available_guilds = self.limit_available_to_top_25_by_member_count(
                 available=self.__available_guilds, all=all
@@ -389,7 +397,14 @@ class InfractionView(discord.ui.View):
         else:
             self.__record = record
         await interaction.response.defer()
-        await interaction.edit_original_response(view=self)
+        if self.__record:
+            if category := UNDO_CATEGORIES.get(self.__ctx.category, None):
+                await interaction.edit_original_response(
+                    content=f"Are you sure you want to undo their {category}?",
+                    view=self,
+                )
+        else:
+            await interaction.edit_original_response(view=self)
 
     @discord.ui.select(
         placeholder="Select a duration",

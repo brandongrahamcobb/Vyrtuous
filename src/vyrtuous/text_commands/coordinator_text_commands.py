@@ -21,6 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.channels import automute_channel_service
@@ -51,7 +52,7 @@ class CoordinatorTextCommands(commands.Cog):
     async def toggle_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: discord.Member = commands.parameter(
+        member: int | discord.Member = commands.parameter(
             converter=MultiConverter,
             description="Tag a member or include their ID",
         ),
@@ -60,36 +61,38 @@ class CoordinatorTextCommands(commands.Cog):
             description="Tag a channel or include its ID.",
         ),
     ) -> discord.Message:
-        try:
-            tick = Tick(bot=self.__bot, ctx=ctx)
-            if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must be executed in a server."
-                )
-            await moderator_service.check_minimum_role(
-                channel_snowflake=channel.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=ctx.author.id,
-                lowest_role="Coordinator",
-            )
-            await moderator_service.has_equal_or_lower_role(
-                target_member_snowflake=int(member.id),
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel.id,
-                guild_snowflake=channel.guild.id,
-            )
-            msg = await moderator_service.toggle_moderator(
-                author_snowflake=ctx.author.id,
-                channel_snowflake=channel.id,
-                guild_snowflake=channel.guild.id,
-                member_snowflake=member.id,
-                message_snowflake=ctx.message.id,
-                message_channel_snowflake=ctx.message.channel.id,
-            )
-        except:
-            import traceback
-
-            traceback.print_exc()
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        bot: DiscordBot = DiscordBot.get_instance()
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        if isinstance(member, int):
+            simplified_member = bot.registry.get(MemberState).active.get(member, None)
+            if simplified_member:
+                member_snowflake = member
+            else:
+                raise commands.MemberNotFound(str(member))
+        else:
+            member_snowflake = member.id
+        await moderator_service.check_minimum_role(
+            channel_snowflake=channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id,
+            lowest_role="Coordinator",
+        )
+        await moderator_service.has_equal_or_lower_role(
+            target_member_snowflake=member_snowflake,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+        )
+        msg = await moderator_service.toggle_moderator(
+            author_snowflake=ctx.author.id,
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+            member_snowflake=member_snowflake,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.message.channel.id,
+        )
         return await tick.end(success=msg)
 
     @commands.command(name="roles", help="List role members.")

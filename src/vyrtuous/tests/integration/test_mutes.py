@@ -18,9 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from datetime import datetime, timezone
 
 import pytest
 
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
@@ -34,6 +36,7 @@ from vyrtuous.tests.integration.test_suite import (
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
@@ -57,6 +60,28 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ("Moderator", "mutes", "<@{member_snowflake}>", "all", "{guild_snowflake}"),
         ("Moderator", "mutes", "<@{member_snowflake}>", "click", "{guild_snowflake}"),
         ("Moderator", "mutes", "<@{member_snowflake}>", "command", "{guild_snowflake}"),
+        ("Moderator", "mutes", "{simplified_member_snowflake}", None, None),
+        (
+            "Moderator",
+            "mutes",
+            "<@{simplified_member_snowflake}>",
+            "all",
+            "{guild_snowflake}",
+        ),
+        (
+            "Moderator",
+            "mutes",
+            "<@{simplified_member_snowflake}>",
+            "click",
+            "{guild_snowflake}",
+        ),
+        (
+            "Moderator",
+            "mutes",
+            "<@{simplified_member_snowflake}>",
+            "command",
+            "{guild_snowflake}",
+        ),
     ],
 )
 async def test_voice_mutes(
@@ -99,10 +124,15 @@ async def test_voice_mutes(
     >>> !mutes 10000000000000003
     [{emoji} Voice Mutes for Member1\n Guild1\n Guild2]
     """
+    bot.registry.get(MemberState).active.update(
+        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+    )
+
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
     )
 
     full = f"{prefix}{command} {t}"

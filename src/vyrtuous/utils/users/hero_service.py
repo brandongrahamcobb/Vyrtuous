@@ -47,8 +47,6 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
     if not guild:
         raise commands.GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
-    if not member:
-        raise commands.MemberNotFound(str(member_snowflake))
     for model in INFRACTION_MODELS:
         database_factory: DatabaseFactory = DatabaseFactory(model)
         objects = await database_factory.select(
@@ -58,10 +56,10 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
         )
         if objects:
             for obj in objects:
+                channel = guild.get_channel(obj.channel_snowflake)
                 match obj.identifier:
                     case "ban":
-                        channel = guild.get_channel(obj.channel_snowflake)
-                        if channel:
+                        if channel and member:
                             try:
                                 await channel.set_permissions(member, overwrite=None)
                             except discord.Forbidden:
@@ -69,8 +67,7 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
                                     f"Unable to unban {member.name} ({member.id}) in {channel.name} ({channel.id})."
                                 )
                     case "tmute":
-                        channel = guild.get_channel(obj.channel_snowflake)
-                        if channel:
+                        if channel and member:
                             try:
                                 await channel.set_permissions(
                                     member, send_messages=True
@@ -80,8 +77,7 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
                                     f"Unable to untmute {member.name} ({member.id}) in {channel.name} ({channel.id})."
                                 )
                     case "vmute":
-                        channel = guild.get_channel(obj.channel_snowflake)
-                        if channel and member.voice and member.voice.mute:
+                        if channel and member and member.voice and member.voice.mute:
                             try:
                                 await member.edit(mute=False)
                             except discord.Forbidden:
