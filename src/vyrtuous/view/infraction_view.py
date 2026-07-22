@@ -24,13 +24,16 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.administrator import Administrator
+from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.cap import Cap
 from vyrtuous.db.coordinator import Coordinator
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import Developer
+from vyrtuous.db.flag import Flag
 from vyrtuous.db.moderator import Moderator
+from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.modal.reason_modal import ReasonModal
-from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -67,12 +70,13 @@ class InfractionView(discord.ui.View):
         self.__available_durations: list[str] = []
         self.__all_available_channels: list[discord.abc.GuildChannel | str] = []
         self.__available_guilds: list[discord.Guild | str] = []
-        self.__channel_snowflake: int
+        self.__channel_snowflake = None
         self.__ctx = ctx
-        self.__duration: DurationObject
+        self.__duration = None
         self.__is_channel_scope: bool = False
         self.__tick = tick
         self.__record = None
+        self.__model = None
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -314,7 +318,7 @@ class InfractionView(discord.ui.View):
             for member in channel.members:
                 if self.__ctx.member_snowflake == member.id:
                     self.__is_channel_scope = True
-        model = next(
+        self.__model = next(
             (
                 model
                 for model in INFRACTION_MODELS
@@ -322,14 +326,34 @@ class InfractionView(discord.ui.View):
             ),
             None,
         )
-        database_factory: DatabaseFactory = DatabaseFactory(model)
-        record = await database_factory.select(
+        database_factory: DatabaseFactory = DatabaseFactory(AutoMute)
+        automute = await database_factory.select(
             channel_snowflake=self.__channel_snowflake,
-            guild_snowflake=self.__guild_snowflake,
-            member_snowflake=self.__ctx.member_snowflake,
+            guild_snowflake=self.__ctx.guild_snowflake,
             singular=True,
         )
-        if not record:
+        if self.__model == VoiceMute:
+            if automute:
+                target = "auto"
+            else:
+                target = "command"
+            database_factory: DatabaseFactory = DatabaseFactory(self.__model)
+            record = await database_factory.select(
+                channel_snowflake=self.__channel_snowflake,
+                guild_snowflake=self.__ctx.guild_snowflake,
+                member_snowflake=self.__ctx.member_snowflake,
+                target=target,
+                singular=True,
+            )
+        else:
+            database_factory: DatabaseFactory = DatabaseFactory(self.__model)
+            record = await database_factory.select(
+                channel_snowflake=self.__channel_snowflake,
+                guild_snowflake=self.__ctx.guild_snowflake,
+                member_snowflake=self.__ctx.member_snowflake,
+                singular=True,
+            )
+        if not record and not automute and self.__model != Flag:
             duration_options = self._build_duration_options()
             self.duration_select.options = duration_options
             self.add_item(self.duration_select)
@@ -343,16 +367,21 @@ class InfractionView(discord.ui.View):
         options=[],
     )
     async def duration_select(self, interaction, select):
-        duration_name = select.values[0]
+        duration_name = next(
+            option.label
+            for option in select.options
+            if option.value == select.values[0]
+        )
+        duration_value = select.values[0]
         self.duration_select.placeholder = duration_name
         duration_builder = DurationBuilder()
-        self.__duration = duration_builder.parse(duration_name).build()
+        self.__duration = duration_builder.parse(duration_value).build()
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        if not self.has_the_user_selected_all_fields():
+        if self.__channel_snowflake is None:
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
@@ -366,23 +395,29 @@ class InfractionView(discord.ui.View):
         if self.__record:
             duration = duration_builder.from_timestamp(self.__record.expires_in).build()
         else:
-            duration = self.__duration
-        if await cap_service.exceeds_cap(
-            channel_snowflake=self.__channel_snowflake,
-            category=self.__ctx.category,
-            duration=duration,
-            guild_snowflake=self.__ctx.guild_snowflake,
-        ):
-            role = await moderator_service.resolve_highest_role(
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
-                member_snowflake=self.__author_snowflake,
-            )
-            if role in ["Moderator", "Everyone"]:
-                return await interaction.response.send_message(
-                    content=f"Duration {duration_builder.load(duration).as_str()} exceeds the channel cap.",
-                    ephemeral=True,
-                )
+            duration = None
+            if self.__model != Flag:
+                if self.__duration is None:
+                    return await interaction.response.send_message(
+                        content="Please select all fields.", ephemeral=True
+                    )
+                duration = self.__duration
+                if await cap_service.exceeds_cap(
+                    channel_snowflake=self.__channel_snowflake,
+                    category=self.__ctx.category,
+                    duration=duration,
+                    guild_snowflake=self.__ctx.guild_snowflake,
+                ):
+                    role = await moderator_service.resolve_highest_role(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__ctx.guild_snowflake,
+                        member_snowflake=self.__author_snowflake,
+                    )
+                    if role in ["Moderator", "Everyone"]:
+                        return await interaction.response.send_message(
+                            content=f"Duration {duration_builder.load(duration).as_str()} exceeds the channel cap.",
+                            ephemeral=True,
+                        )
         modal = ReasonModal(
             author_snowflake=self.__author_snowflake,
             category=self.__ctx.category,
@@ -400,10 +435,3 @@ class InfractionView(discord.ui.View):
     async def cancel(self, interaction, button):
         self.stop()
         await interaction.response.edit_message(content="Cancelled action.", view=None)
-
-    def has_the_user_selected_all_fields(self):
-        if self.__record and self.__channel_snowflake is None:
-            return False
-        elif self.__record is None and self.__duration is None:
-            return False
-        return True

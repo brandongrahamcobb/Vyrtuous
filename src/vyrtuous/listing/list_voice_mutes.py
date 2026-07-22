@@ -26,6 +26,7 @@ from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.listing import list_service
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 
 MODEL = VoiceMute
@@ -39,29 +40,52 @@ async def build_dictionary(
     dictionary: dict[
         int, dict[str, dict[int, dict[str, dict[int, dict[str, Any]]]]]
     ] = {}
-    if isinstance(obj, discord.Guild):
-        voice_mutes = await database_factory.select(
-            guild_snowflake=obj.id, target=mute_type, singular=False
-        )
-        guild_snowflake = obj.id
-    elif isinstance(obj, discord.abc.GuildChannel):
-        voice_mutes = await database_factory.select(
-            channel_snowflake=obj.id,
-            guild_snowflake=guild_snowflake,
-            target=mute_type,
-            singular=False,
-        )
-    elif isinstance(obj, discord.Member):
-        voice_mutes = await database_factory.select(
-            member_snowflake=obj.id,
-            guild_snowflake=guild_snowflake,
-            target=mute_type,
-            singular=False,
-        )
+    if mute_type == "all":
+        if isinstance(obj, discord.Guild):
+            voice_mutes = await database_factory.select(
+                guild_snowflake=obj.id, target=mute_type, singular=False
+            )
+            guild_snowflake = obj.id
+        elif isinstance(obj, discord.abc.GuildChannel):
+            voice_mutes = await database_factory.select(
+                channel_snowflake=obj.id,
+                guild_snowflake=guild_snowflake,
+                singular=False,
+            )
+        elif isinstance(obj, discord.Member):
+            voice_mutes = await database_factory.select(
+                member_snowflake=obj.id,
+                guild_snowflake=guild_snowflake,
+                singular=False,
+            )
+        else:
+            voice_mutes = await database_factory.select(
+                guild_snowflake=guild_snowflake, singular=False
+            )
     else:
-        voice_mutes = await database_factory.select(
-            guild_snowflake=guild_snowflake, singular=False
-        )
+        if isinstance(obj, discord.Guild):
+            voice_mutes = await database_factory.select(
+                guild_snowflake=obj.id, target=mute_type, singular=False
+            )
+            guild_snowflake = obj.id
+        elif isinstance(obj, discord.abc.GuildChannel):
+            voice_mutes = await database_factory.select(
+                channel_snowflake=obj.id,
+                guild_snowflake=guild_snowflake,
+                target=mute_type,
+                singular=False,
+            )
+        elif isinstance(obj, discord.Member):
+            voice_mutes = await database_factory.select(
+                member_snowflake=obj.id,
+                guild_snowflake=guild_snowflake,
+                target=mute_type,
+                singular=False,
+            )
+        else:
+            voice_mutes = await database_factory.select(
+                guild_snowflake=guild_snowflake, singular=False
+            )
     if voice_mutes:
         for voice_mute in voice_mutes:
             dictionary.setdefault(guild_snowflake, {"members": {}})
@@ -83,6 +107,7 @@ async def build_pages(
     guild_snowflake: int, obj, mute_type: str
 ) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    duration_builder: DurationBuilder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         return (
@@ -151,7 +176,9 @@ async def build_pages(
                 if not isinstance(obj, discord.abc.GuildChannel):
                     lines.append(f"**Channel:** {channel.mention}")
                 if isinstance(obj, discord.Member):
-                    lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    lines.append(
+                        f"**Expires:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
+                    )
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
                 vmute_n += 1
                 field_count += 1

@@ -22,6 +22,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.listing import (
     list_bans,
     list_coordinators,
@@ -33,8 +34,8 @@ from vyrtuous.listing import (
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.moderation import voice_mute_service
 from vyrtuous.utils.users import moderator_service
-from vyrtuous.view.flag_view import FlagView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_infraction_view import ModifyInfractionView
 from vyrtuous.view.view_context import ViewContext
@@ -183,6 +184,12 @@ class ModeratorAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
+        bot: DiscordBot = DiscordBot.get_instance()
+        if invincible := bot.registry.get(MemberState).invincible.get(
+            guild_snowflake, None
+        ):
+            if member_snowflake in invincible:
+                return
         ctx = ViewContext(
             interaction=interaction,
             guild_snowflake=guild_snowflake,
@@ -196,7 +203,7 @@ class ModeratorAppCommands(commands.Cog):
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
+            content="Specify the ban", view=view, ephemeral=True
         )
 
     @app_commands.command(name="flag", description="Create a flag.")
@@ -227,20 +234,26 @@ class ModeratorAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
+        bot: DiscordBot = DiscordBot.get_instance()
+        if invincible := bot.registry.get(MemberState).invincible.get(
+            guild_snowflake, None
+        ):
+            if member_snowflake in invincible:
+                return
         ctx = ViewContext(
             interaction=interaction,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
         ctx.category = "flag"
-        view = FlagView(
+        view = InfractionView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
             tick=tick,
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel", view=view, ephemeral=True
+            content="Specify the flag", view=view, ephemeral=True
         )
 
     @app_commands.command(name="mute", description="Create a voice mute.")
@@ -250,7 +263,7 @@ class ModeratorAppCommands(commands.Cog):
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
-    ):
+    ) -> discord.Message | None:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if guild is None:
             if interaction.guild is None:
@@ -271,6 +284,18 @@ class ModeratorAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
+        bot: DiscordBot = DiscordBot.get_instance()
+        if invincible := bot.registry.get(MemberState).invincible.get(
+            guild_snowflake, None
+        ):
+            if member_snowflake in invincible:
+                return
+        if voice_mute_service.is_voice_muted(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            targets=["server"],
+        ):
+            return
         ctx = ViewContext(
             interaction=interaction,
             guild_snowflake=guild_snowflake,
@@ -284,12 +309,12 @@ class ModeratorAppCommands(commands.Cog):
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
+            content="Specify the voice-mute", view=view, ephemeral=True
         )
 
     @app_commands.command(name="tmute", description="Create a text-mute.")
     @app_commands.describe(member="Specify a member ID/mention.")
-    async def create_app_mute_app_command(
+    async def create_app_text_mute_app_command(
         self,
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
@@ -315,6 +340,12 @@ class ModeratorAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
+        bot: DiscordBot = DiscordBot.get_instance()
+        if invincible := bot.registry.get(MemberState).invincible.get(
+            guild_snowflake, None
+        ):
+            if member_snowflake in invincible:
+                return
         ctx = ViewContext(
             interaction=interaction,
             guild_snowflake=guild_snowflake,
@@ -328,7 +359,7 @@ class ModeratorAppCommands(commands.Cog):
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Select a channel and a duration", view=view, ephemeral=True
+            content="Specify the text-mute", view=view, ephemeral=True
         )
 
     @app_commands.command(name="bans", description="List bans.")

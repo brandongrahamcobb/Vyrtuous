@@ -41,7 +41,7 @@ class MemberState:
 
 @dataclass
 class ChannelState:
-    joined_at: dict[tuple[int, int], float] = field(default_factory=dict)
+    joined_at: dict[tuple[int, int, int], float] = field(default_factory=dict)
     join_log: defaultdict[tuple[int, int, int], list[float]] = field(
         default_factory=lambda: defaultdict(list)
     )

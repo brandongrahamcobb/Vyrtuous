@@ -80,7 +80,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         return "No active bans found."
-    duration_builder = DurationBuilder()
+    duration_builder: DurationBuilder = DurationBuilder()
     lines: list[str] = []
     pages: list[discord.Embed] = []
     thumbnail = False
@@ -140,7 +140,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     lines.append(f"**Channel:** {channel.mention}")
                 if isinstance(obj, discord.Member):
                     lines.append(
-                        f"**Expires in:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
+                        f"**Expires:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
                     )
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     lines.append(

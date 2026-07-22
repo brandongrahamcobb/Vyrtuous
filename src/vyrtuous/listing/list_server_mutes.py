@@ -56,7 +56,8 @@ async def build_dictionary(
         for server_mute in server_mutes:
             dictionary.setdefault(guild_snowflake, {"members": {}})
             dictionary[guild_snowflake]["members"].setdefault(
-                server_mute.member_snowflake, {"server_mutes": {}}
+                server_mute.member_snowflake,
+                {"server_mutes": {"reason": server_mute.reason}},
             )
     return dictionary
 
@@ -100,11 +101,14 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
-        for member_snowflake, _ in guild_data.get("members", {}).items():
+        for member_snowflake, dictionary in guild_data.get("members", {}).items():
             member = guild.get_member(member_snowflake)
             if member:
                 if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.display_name} {member.mention}")
+                    lines.append(
+                        f"**Reason:** {dictionary.get("server_mutes", {}).get('reason', None)}"
+                    )
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(url=obj.display_avatar.url)

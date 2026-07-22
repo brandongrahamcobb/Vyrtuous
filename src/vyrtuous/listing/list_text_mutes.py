@@ -26,6 +26,7 @@ from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.text_mute import TextMute
 from vyrtuous.listing import list_service
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 
 MODEL = TextMute
@@ -102,6 +103,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     )
 
     for guild_snowflake, guild_data in processed_dictionary.data.items():
+        duration_builder: DurationBuilder = DurationBuilder()
         tmute_n = 0
         field_count = 0
         lines = []
@@ -141,7 +143,9 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                 if not isinstance(obj, discord.abc.GuildChannel):
                     lines.append(f"**Channel:** {channel.mention}")
                 if isinstance(obj, discord.Member):
-                    lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    lines.append(
+                        f"**Expires:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
+                    )
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
                 tmute_n += 1
                 field_count += 1

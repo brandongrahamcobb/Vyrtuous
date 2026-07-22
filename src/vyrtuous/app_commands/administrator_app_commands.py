@@ -407,7 +407,7 @@ class AdministratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
-            obj = interaction.channel
+            obj = interaction.guild
         else:
             obj = target.target
         pages = await list_server_mutes.build_pages(

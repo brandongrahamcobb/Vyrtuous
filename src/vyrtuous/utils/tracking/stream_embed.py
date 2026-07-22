@@ -135,11 +135,11 @@ class StreamEmbed(discord.Embed):
             fields.append(f"**Username:** @{member.name}")
             fields.append(f"**User ID:** `{member.id}`")
             fields.append(
-                f"**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
+                f"**Account Created:** <t:{int(member.created_at.timestamp())}:D>"
             )
             if member.joined_at:
                 fields.append(
-                    f"**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+                    f"**Server Join:** <t:{int(member.joined_at.timestamp())}:D>"
                 )
         fields.append(f"**Top Role:** {highest_role}")
         field = "\n".join(fields)

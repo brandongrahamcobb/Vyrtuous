@@ -24,13 +24,14 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.administrator import Administrator
+from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.coordinator import Coordinator
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.developer import Developer
 from vyrtuous.db.moderator import Moderator
+from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal
-from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -63,9 +64,8 @@ class ModifyInfractionView(discord.ui.View):
         self.__available_channels: list[discord.abc.GuildChannel | str] = []
         self.__available_guilds: list[discord.Guild | str] = []
         self.__category: str
-        self.__channel_snowflake: int
+        self.__channel_snowflake = None
         self.__ctx = ctx
-        self.__duration: DurationObject
         self.__guild_snowflake: int
         self.__is_channel_scope: bool = False
         self.__modal = modal
@@ -197,13 +197,33 @@ class ModifyInfractionView(discord.ui.View):
     ):
         categories = []
         for model in INFRACTION_MODELS:
-            database_factory: DatabaseFactory = DatabaseFactory(model)
-            infraction = await database_factory.select(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-                singular=True,
-            )
+            if model == VoiceMute:
+                database_factory: DatabaseFactory = DatabaseFactory(AutoMute)
+                automute = await database_factory.select(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    singular=True,
+                )
+                if automute:
+                    target = "auto"
+                else:
+                    target = "command"
+                database_factory: DatabaseFactory = DatabaseFactory(model)
+                infraction = await database_factory.select(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    target=target,
+                    singular=True,
+                )
+            else:
+                database_factory: DatabaseFactory = DatabaseFactory(model)
+                infraction = await database_factory.select(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    singular=True,
+                )
             if infraction:
                 categories.append(model.identifier)
         category_options = [
@@ -276,7 +296,7 @@ class ModifyInfractionView(discord.ui.View):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        if not self.has_the_user_selected_all_fields():
+        if self.__channel_snowflake is None:
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
@@ -311,8 +331,3 @@ class ModifyInfractionView(discord.ui.View):
     async def cancel(self, interaction, button):
         self.stop()
         await interaction.response.edit_message(content="Cancelled action.", view=None)
-
-    def has_the_user_selected_all_fields(self):
-        if not self.__channel_snowflake:
-            return False
-        return True

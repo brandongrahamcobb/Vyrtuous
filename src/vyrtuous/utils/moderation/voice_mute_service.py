@@ -312,21 +312,29 @@ async def channel_unmute(
 
 
 async def is_voice_muted(
-    channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
     targets: list[str],
+    channel_snowflake: int | None = None,
 ) -> list[str]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     muted_targets = []
     for target in targets:
-        voice_mute = await database_factory.select(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-            target=target,
-            singular=True,
-        )
+        if channel_snowflake is None:
+            voice_mute = await database_factory.select(
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member_snowflake,
+                target=target,
+                singular=True,
+            )
+        else:
+            voice_mute = await database_factory.select(
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member_snowflake,
+                target=target,
+                singular=True,
+            )
         if voice_mute:
             muted_targets.append(target)
     return muted_targets
@@ -375,8 +383,8 @@ async def alert_mute(
         if isinstance(channel, discord.channel.VocalGuildChannel):
             duration_builder = DurationBuilder()
             embed = discord.Embed(
-                title=f"\u274c {member.display_name} must be unmuted via a command",
-                description=f"**Expires:** {duration_builder.from_timestamp(voice_mute.expires_in).to_unix_ts()}\nReason:** {voice_mute.reason}",
+                title=f"\u274c {member.display_name} must be unmuted via /mute.",
+                description=f"**Expires:** {duration_builder.from_timestamp(voice_mute.expires_in).to_unix_ts()}\n**Reason:** {voice_mute.reason}",
                 color=discord.Color.red(),
             )
             embed.set_thumbnail(url=member.display_avatar.url)

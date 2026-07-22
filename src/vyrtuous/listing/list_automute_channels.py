@@ -25,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.listing import list_service
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 
 MODEL = AutoMute
@@ -67,11 +68,12 @@ async def build_dictionary(
 
 async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    duration_builder: DurationBuilder = DurationBuilder()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
     obj_name = obj.name
-    title = f"{emojis.get_random_emoji()} Automute Rooms for {obj_name}"
+    title = f"{emojis.get_random_emoji()} Automute Channels for {obj_name}"
 
     dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
     processed_dictionary: list_service.AutoMuteDictionary = (
@@ -96,9 +98,13 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
                 continue
-            lines.append(
-                f"**Expires in:** {automute_dictionary.get('automutes', {}).get('expires_in', None)}"
+            expires_in = automute_dictionary.get("automutes", {}).get(
+                "expires_in", None
             )
+            if expires_in:
+                lines.append(
+                    f"**Expires:** {duration_builder.from_timestamp(expires_in).to_unix_ts()}"
+                )
             automute_n += 1
             field_count += 1
             if field_count == list_service.CHUNK_SIZE:

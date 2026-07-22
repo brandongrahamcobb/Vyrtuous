@@ -17,10 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import time
+
 import discord
 from discord.ext import commands, tasks
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.clean import (
     clean_active_member_service,
     clean_automute_service,
@@ -29,6 +32,7 @@ from vyrtuous.clean import (
     clean_voice_mute_service,
 )
 from vyrtuous.db.database import Database
+from vyrtuous.utils.moderation import flag_service
 from vyrtuous.utils.statistics import system_monitoring_service
 from vyrtuous.utils.users import active_member_service
 
@@ -56,6 +60,8 @@ class ScheduledTasks(commands.Cog):
             self.system_monitoring.start()
         if not self.cleanup_stale_overwrites.is_running():
             self.cleanup_stale_overwrites.start()
+        if not self.notify_loop.is_running():
+            self.notify_loop.start()
 
     @tasks.loop(hours=1)
     async def clean_inactive_members(self) -> None:
@@ -84,6 +90,24 @@ class ScheduledTasks(commands.Cog):
                                 self.__bot.logger.info(
                                     f"Failed to cleaned up stale overwrite for {target.mention} in {channel.mention}."
                                 )
+
+    @tasks.loop(seconds=30)
+    async def notify_loop(self) -> None:
+        bot: DiscordBot = DiscordBot.get_instance()
+        joined_at = bot.registry.get(ChannelState).joined_at
+        now = time.time()
+        for (
+            channel_snowflake,
+            guild_snowflake,
+            member_snowflake,
+        ), joined in joined_at.items():
+            elapsed = now - joined
+            if elapsed >= 900 and int(elapsed // 900) > int((elapsed - 60) // 900):
+                await flag_service.warn(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=member_snowflake,
+                )
 
     @tasks.loop(minutes=1)
     async def save_active_members(self) -> None:

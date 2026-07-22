@@ -93,7 +93,7 @@ async def warn(
                 ):
                     embed = discord.Embed(
                         title=f"\u26a0\ufe0f {member.display_name} is flagged",
-                        description=f"Channel: {channel.mention}\nReason: {flag.reason}",
+                        description=f"**Channel:** {channel.mention}\n**Reason:** {flag.reason}",
                         color=discord.Color.red(),
                     )
                     embed.set_thumbnail(url=member.display_avatar.url)

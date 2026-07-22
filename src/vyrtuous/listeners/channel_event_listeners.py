@@ -67,15 +67,21 @@ class ChannelEventListeners(commands.Cog):
             await video_channel_service.update_video_channel_tasks(
                 after=after, before=before, member=member
             )
-        if (
-            after.channel.guild.id,
-            member.id,
-        ) in self.__bot.registry.get(MemberState).invincible:
-            await member.edit(
-                mute=False,
-                reason="Channel event listeners unmute. Target: unknown.",
-            )
-            return None
+        if invincible := self.__bot.registry.get(MemberState).invincible.get(
+            after.channel.guild.id, None
+        ):
+            if member.id in invincible:
+                database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
+                await database_factory.delete(
+                    channel_snowflake=after.channel.id,
+                    guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
+                )
+                await member.edit(
+                    mute=False,
+                    reason="Channel event listeners unmute. Target: unknown.",
+                )
+                return None
         if before.channel != after.channel:
             if targets := await voice_mute_service.is_voice_muted(
                 channel_snowflake=after.channel.id,
@@ -96,13 +102,9 @@ class ChannelEventListeners(commands.Cog):
                         expires_in = duration_builder.from_timestamp(
                             mute.expires_in
                         ).build()
-                        await voice_mute_alias_service.voice_mute(
-                            channel_snowflake=after.channel.id,
-                            duration=expires_in,
-                            guild_snowflake=after.channel.guild.id,
-                            member_snowflake=member.id,
-                            target=target,
-                            reason=f"Channel event listeners mute. Target: {target}.",
+                        await member.edit(
+                            mute=True,
+                            reason="Channel event listeners remute. Target: command or server.",
                         )
                         await voice_mute_alias_service.log_voice_mute(
                             author_snowflake=None,
@@ -138,7 +140,7 @@ class ChannelEventListeners(commands.Cog):
                     guild_snowflake=after.channel.guild.id,
                     member_snowflake=member.id,
                     target="auto",
-                    reason=f"Channel event listeners automute. Target: auto.",
+                    reason=f"Automuted.",
                 )
                 await voice_mute_alias_service.log_voice_mute(
                     author_snowflake=None,
@@ -158,79 +160,94 @@ class ChannelEventListeners(commands.Cog):
                     mute=False,
                     reason="Channel event listeners unmute. Target: unknown.",
                 )
-            await flag_service.warn(channel=after.channel, member=member)
+            await flag_service.warn(
+                channel_snowflake=after.channel.id,
+                guild_snowflake=after.channel.guild.id,
+                member_snowflake=member.id,
+            )
             await vegan_service.notify(channel=after.channel, member=member)
             joined_at = bot.registry.get(ChannelState).joined_at
             if before.channel:
-                joined_at.pop((before.channel.id, member.id), None)
-            joined_at[(after.channel.id, member.id)] = time.time()
+                joined_at.pop(
+                    (before.channel.id, before.channel.guild.id, member.id), None
+                )
+            joined_at[(after.channel.id, after.channel.guild.id, member.id)] = (
+                time.time()
+            )
         elif before.channel == after.channel:
             if before.mute and not after.mute:
-                if await automute_channel_service.is_active_automute_channel(
+                if await voice_mute_service.is_voice_muted(
+                    guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
+                    targets=["server"],
+                ):
+                    await member.edit(
+                        mute=True,
+                        reason="Channel event listeners remute. Target: server.",
+                    )
+                elif await voice_mute_service.is_voice_muted(
                     channel_snowflake=after.channel.id,
                     guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
+                    targets=["command"],
                 ):
-                    database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
-                    await database_factory.delete(
+                    await member.edit(
+                        mute=True,
+                        reason="Channel event listeners remute. Target: command.",
+                    )
+                    await voice_mute_service.alert_mute(
+                        channel_snowflake=after.channel.id,
+                        guild_snowflake=after.channel.guild.id,
+                        member_snowflake=member.id,
+                    )
+                elif await voice_mute_service.is_voice_muted(
+                    channel_snowflake=after.channel.id,
+                    guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
+                    targets=["auto"],
+                ):
+                    await unvoice_mute_alias_service.unvoice_mute(
                         channel_snowflake=after.channel.id,
                         guild_snowflake=after.channel.guild.id,
                         member_snowflake=member.id,
                         target="auto",
                     )
-                else:
-                    if targets := await voice_mute_service.is_voice_muted(
+                    await unvoice_mute_alias_service.log_unvoice_mute(
+                        author_snowflake=None,
+                        channel_snowflake=after.channel.id,
+                        display=True,
+                        guild_snowflake=after.channel.guild.id,
+                        is_channel_scope=True,
+                        member_snowflake=member.id,
+                        message_snowflake=None,
+                        message_channel_snowflake=None,
+                        reason="Channel event listeners unmute. Target: auto.",
+                        target="auto",
+                    )
+                elif await voice_mute_service.is_voice_muted(
+                    channel_snowflake=after.channel.id,
+                    guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
+                    targets=["click"],
+                ):
+                    await unvoice_mute_alias_service.unvoice_mute(
                         channel_snowflake=after.channel.id,
                         guild_snowflake=after.channel.guild.id,
                         member_snowflake=member.id,
-                        targets=["click", "auto", "command", "server"],
-                    ):
-                        if "command" in targets or "server" in targets:
-                            await member.edit(
-                                mute=True,
-                                reason="Channel event listeners remute. Target: command or server.",
-                            )
-                            voice_mute_service.alert_mute(
-                                channel_snowflake=after.channel.id,
-                                guild_snowflake=after.channel.guild.id,
-                            )
-                        elif "auto" in targets:
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=after.channel.id,
-                                guild_snowflake=after.channel.guild.id,
-                                member_snowflake=member.id,
-                                target="auto",
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=None,
-                                channel_snowflake=after.channel.id,
-                                display=True,
-                                guild_snowflake=after.channel.guild.id,
-                                is_channel_scope=True,
-                                member_snowflake=member.id,
-                                message_snowflake=None,
-                                message_channel_snowflake=None,
-                                reason="Channel event listeners unmute. Target: auto.",
-                                target="auto",
-                            )
-                        elif "click" in targets:
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=after.channel.id,
-                                guild_snowflake=after.channel.guild.id,
-                                member_snowflake=member.id,
-                                target="click",
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=None,
-                                channel_snowflake=after.channel.id,
-                                display=True,
-                                guild_snowflake=after.channel.guild.id,
-                                is_channel_scope=True,
-                                member_snowflake=member.id,
-                                message_snowflake=None,
-                                message_channel_snowflake=None,
-                                reason="Channel event listeners unmute. Target: click.",
-                                target="click",
-                            )
+                        target="click",
+                    )
+                    await unvoice_mute_alias_service.log_unvoice_mute(
+                        author_snowflake=None,
+                        channel_snowflake=after.channel.id,
+                        display=True,
+                        guild_snowflake=after.channel.guild.id,
+                        is_channel_scope=True,
+                        member_snowflake=member.id,
+                        message_snowflake=None,
+                        message_channel_snowflake=None,
+                        reason="Channel event listeners unmute. Target: click.",
+                        target="click",
+                    )
             elif not before.mute and after.mute:
                 if await automute_channel_service.is_active_automute_channel(
                     channel_snowflake=after.channel.id,
@@ -252,7 +269,7 @@ class ChannelEventListeners(commands.Cog):
                         guild_snowflake=after.channel.guild.id,
                         member_snowflake=member.id,
                         target="auto",
-                        reason="Channel event listeners mute. Target: auto.",
+                        reason="Automuted.",
                     )
                     await voice_mute_alias_service.log_voice_mute(
                         author_snowflake=None,
@@ -275,7 +292,7 @@ class ChannelEventListeners(commands.Cog):
                         guild_snowflake=after.channel.guild.id,
                         member_snowflake=member.id,
                         target="click",
-                        reason="Channel event listeners mute. Target: click.",
+                        reason="Right-click muted.",
                     )
                     await voice_mute_alias_service.log_voice_mute(
                         author_snowflake=None,

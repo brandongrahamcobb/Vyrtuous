@@ -127,6 +127,12 @@ class GenericEventListeners(commands.Cog):
                     )
                     return await tick.end(success=embed)
                 case "vmute":
+                    if voice_mute_service.is_voice_muted(
+                        guild_snowflake=alias_ctx.guild_snowflake,
+                        member_snowflake=alias_ctx.member_snowflake,
+                        targets=["server"],
+                    ):
+                        return None
                     embed = await voice_mute_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )

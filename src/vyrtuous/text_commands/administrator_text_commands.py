@@ -439,7 +439,7 @@ class AdministratorTextCommands(commands.Cog):
                 return await tick.end(
                     warning=f"This command must target a valid channel."
                 )
-            obj = ctx.channel
+            obj = ctx.guild
         else:
             obj = target
         pages = await list_server_mutes.build_pages(
