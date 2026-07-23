@@ -98,6 +98,10 @@ class InfractionView(discord.ui.View):
                 available_channels=available_channels,
                 available_guilds=available_guilds,
             )
+            limited_channels = self.limit_available_to_top_24_by_member_count(
+                available=available_channels
+            )
+            self._build_channel_options(limited_channels=limited_channels)
             available_durations = [
                 "1hour",
                 "8hours",
@@ -119,6 +123,10 @@ class InfractionView(discord.ui.View):
                     available_channels=available_channels,
                     available_guilds=available_guilds,
                 )
+                limited_channels = self.limit_available_to_top_24_by_member_count(
+                    available=available_channels
+                )
+                self._build_channel_options(limited_channels=limited_channels)
                 available_durations = [
                     "1hour",
                     "8hour",
