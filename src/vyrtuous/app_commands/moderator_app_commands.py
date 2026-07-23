@@ -90,6 +90,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if interaction.channel is None:
+            return await tick.end(warning="This command must target a valid channel.")
+        else:
+            channel_snowflake = interaction.channel.id
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -98,6 +102,7 @@ class ModeratorAppCommands(commands.Cog):
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
             interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -134,6 +139,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if interaction.channel is None:
+            return await tick.end(warning="This command must target a valid channel.")
+        else:
+            channel_snowflake = interaction.channel.id
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -142,6 +151,7 @@ class ModeratorAppCommands(commands.Cog):
             return await tick.end(warning=f"This command must target a valid member.")
         ctx = ViewContext(
             interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -178,6 +188,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if interaction.channel is None:
+            return await tick.end(warning="This command must target a valid channel.")
+        else:
+            channel_snowflake = interaction.channel.id
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -192,6 +206,7 @@ class ModeratorAppCommands(commands.Cog):
                 return
         ctx = ViewContext(
             interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -228,6 +243,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if interaction.channel is None:
+            return await tick.end(warning="This command must target a valid channel.")
+        else:
+            channel_snowflake = interaction.channel.id
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -242,6 +261,7 @@ class ModeratorAppCommands(commands.Cog):
                 return
         ctx = ViewContext(
             interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -278,6 +298,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if interaction.channel is None:
+            return await tick.end(warning="This command must target a valid channel.")
+        else:
+            channel_snowflake = interaction.channel.id
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -298,6 +322,7 @@ class ModeratorAppCommands(commands.Cog):
             return
         ctx = ViewContext(
             interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -334,6 +359,10 @@ class ModeratorAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if interaction.channel is None:
+            return await tick.end(warning="This command must target a valid channel.")
+        else:
+            channel_snowflake = interaction.channel.id
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -348,6 +377,7 @@ class ModeratorAppCommands(commands.Cog):
                 return
         ctx = ViewContext(
             interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -361,6 +391,7 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Specify the text-mute", view=view, ephemeral=True
         )
+        await interaction.response.defer()
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -649,6 +680,10 @@ class ModeratorAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake, obj=obj
         )
         return await tick.end(success=pages)
+
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

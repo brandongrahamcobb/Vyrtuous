@@ -106,7 +106,6 @@ class HiddenModeratorAppCommands(commands.Cog):
                 )
         if interaction.guild.id != guild_snowflake:
             await moderator_service.check_minimum_role(
-                guild_snowflake=guild_snowflake,
                 member_snowflake=interaction.user.id,
                 lowest_role="Developer",
             )
@@ -229,6 +228,10 @@ class HiddenModeratorAppCommands(commands.Cog):
             obj = target.target
         pages = await list_vegans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
+
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

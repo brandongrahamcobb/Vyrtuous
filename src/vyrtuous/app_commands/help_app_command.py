@@ -25,9 +25,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import (
-    moderator_service,
-)
+from vyrtuous.utils.users import moderator_service
 
 
 def skip_app_command_help_discovery():
@@ -55,9 +53,13 @@ class HelpAppCommand(commands.Cog):
 
     async def interaction_check(self, interaction: Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be executed in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -285,6 +287,10 @@ class HelpAppCommand(commands.Cog):
                 warning="\U000026a0\U0000fe0f No commands available to you."
             )
         return await tick.end(success=pages)
+
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

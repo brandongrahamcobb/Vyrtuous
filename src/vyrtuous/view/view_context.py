@@ -39,10 +39,12 @@ class ViewContext:
     def __init__(
         self,
         interaction: discord.Interaction,
+        channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
     ):
         self._category: str
+        self.channel_snowflake = channel_snowflake
         self.guild_snowflake = guild_snowflake
         self.interaction = interaction
         self.member_snowflake = member_snowflake

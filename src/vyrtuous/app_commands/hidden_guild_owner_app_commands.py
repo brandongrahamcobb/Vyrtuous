@@ -172,6 +172,10 @@ class HiddenGuildOwnerAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
+
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(HiddenGuildOwnerAppCommands(bot=bot))

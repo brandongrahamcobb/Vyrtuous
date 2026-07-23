@@ -36,9 +36,13 @@ class HiddenSysadminAppCommands(commands.Cog):
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         if interaction.channel is None:
-            raise commands.CheckFailure("This command must be executed in a valid channel.")
+            raise commands.CheckFailure(
+                "This command must be executed in a valid channel."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
@@ -50,8 +54,11 @@ class HiddenSysadminAppCommands(commands.Cog):
     @app_commands.command(name="upload", description="Create the upload document.")
     @skip_app_command_help_discovery()
     async def uploads_app_command(self, interaction: discord.Interaction) -> None:
-        tick = Tick(bot=self.__bot, interaction=interaction)
         return await upload_service.build_latex_document()
+
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

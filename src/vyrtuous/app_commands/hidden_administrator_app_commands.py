@@ -88,7 +88,6 @@ class HiddenAdministratorAppCommands(commands.Cog):
                 )
         if interaction.guild.id != guild_snowflake:
             await moderator_service.check_minimum_role(
-                guild_snowflake=guild_snowflake,
                 member_snowflake=interaction.user.id,
                 lowest_role="Developer",
             )
@@ -289,8 +288,6 @@ class HiddenAdministratorAppCommands(commands.Cog):
                 )
         if interaction.guild.id != guild_snowflake:
             await moderator_service.check_minimum_role(
-                channel_snowflake=interaction.channel.id,
-                guild_snowflake=guild_snowflake,
                 member_snowflake=interaction.user.id,
                 lowest_role="Developer",
             )
@@ -434,6 +431,10 @@ class HiddenAdministratorAppCommands(commands.Cog):
             obj = target.target
         pages = await list_video_channels.build_pages(obj=obj)
         return await tick.end(success=pages)
+
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

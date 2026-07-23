@@ -167,15 +167,6 @@ class GenericEventListeners(commands.Cog):
         return None
 
     @commands.Cog.listener()
-    async def on_app_command_error(self, interaction, error) -> discord.Message | None:
-        bot: DiscordBot = DiscordBot.get_instance()
-        bot.logger.info("Reached app command_error")
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        if isinstance(error, app_commands.CheckFailure):
-            return await tick.end(error=str(error))
-        return None
-
-    @commands.Cog.listener()
     async def on_ready(self) -> None:
         if getattr(self, "_ready_done", False):
             return

@@ -150,6 +150,10 @@ class HiddenDeveloperAppCommands(commands.Cog):
             )
         return await tick.end(success=f"Successfully unloaded {module.module}.")
 
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
+
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(HiddenDeveloperAppCommands(bot=bot))

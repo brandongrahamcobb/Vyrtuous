@@ -83,7 +83,6 @@ class HiddenAdministratorTextCommands(commands.Cog):
             guild_snowflake = guild.id
         if ctx.guild.id != guild_snowflake:
             await moderator_service.check_minimum_role(
-                guild_snowflake=guild_snowflake,
                 member_snowflake=ctx.author.id,
                 lowest_role="Developer",
             )

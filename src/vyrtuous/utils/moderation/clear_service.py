@@ -78,7 +78,6 @@ async def clear(
     if isinstance(obj, discord.Member):
         COMBINED_LIST = INFRACTION_MODELS + ROLE_MODELS
         await moderator_service.check_minimum_role(
-            channel_snowflake=message_channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=author_snowflake,
             lowest_role="Administrator",
@@ -235,7 +234,6 @@ async def clear(
     elif isinstance(obj, discord.abc.GuildChannel):
         COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
         await moderator_service.check_minimum_role(
-            channel_snowflake=obj.id,
             guild_snowflake=obj.guild.id,
             member_snowflake=author_snowflake,
             lowest_role="Guild Owner",
@@ -423,8 +421,6 @@ async def clear(
     elif isinstance(obj, discord.Guild):
         COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL + ROLE_MODELS
         await moderator_service.check_minimum_role(
-            channel_snowflake=message_channel_snowflake,
-            guild_snowflake=obj.id,
             member_snowflake=author_snowflake,
             lowest_role="Developer",
         )

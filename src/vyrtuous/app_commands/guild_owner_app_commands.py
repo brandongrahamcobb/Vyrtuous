@@ -148,6 +148,9 @@ class GuildOwnerAppCommands(commands.Cog):
     #         else:
     #             ret += 1
     #     return await tick.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):
