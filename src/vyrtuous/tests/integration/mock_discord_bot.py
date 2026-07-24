@@ -27,6 +27,7 @@ from vyrtuous.cache.registry import (
     ChannelState,
     MemberState,
     MessageHistoryState,
+    PermissionState,
     Registry,
     SystemResourcesState,
     VideoChannelState,
@@ -62,6 +63,7 @@ class MockBot(commands.Bot):
                 ChannelState(),
                 MemberState(),
                 MessageHistoryState(),
+                PermissionState(),
                 SystemResourcesState(),
                 VideoChannelState(),
             )

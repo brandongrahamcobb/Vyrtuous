@@ -103,7 +103,8 @@ DISCORD_COGS_CLASSES = [
 ]
 DISCORD_COMMAND_PREFIX = "!"
 #### PATHS
-PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
+PATH_LOG = join(DIR_BASE, ".log", "discord.log")
+PATH_GROUPS = join(DIR_BASE, "groups.yml")
 
 
 def resolve_author(source) -> discord.User | discord.Member:

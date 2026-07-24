@@ -404,6 +404,13 @@ class ModeratorAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        from vyrtuous.cache.registry import PermissionState
+
+        bot: DiscordBot = DiscordBot.get_instance()
+        if bot.registry.get(PermissionState).has_permission(
+            "moderator", "command.listing.bans"
+        ):
+            print("test")
         if guild is None:
             if interaction.guild is None:
                 return await tick.end(

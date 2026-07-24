@@ -1,0 +1,90 @@
+groups:
+  Sysadmin:
+    alias: sysadmin
+    default: false
+    permissions:
+    - '*'
+  Developer:
+    alias: developer
+    default: false
+    permissions:
+    - command.clear.scope.all
+    - command.dev.*
+    - other_guilds
+    inheritance:
+    - guild_owner
+  GuildOwner:
+    alias: guild_owner
+    default: false
+    permissions:
+    - command.clear.scope.guild
+    - command.moderation.hero
+    - command.listing.heroes
+    inheritance:
+    - administrator
+  Administrator:
+    alias: administrator
+    default: false
+    permissions:
+    - command.clear.category.*
+    - command.clear.target.*
+    - command.clear.scope.channel
+    - command.clear.scope.member
+    - command.clear.scope.role
+    - command.channel.*
+    - command.info.*
+    - command.listing.automutes
+    - command.listing.scope.guild
+    - command.listing.server-mutes
+    - command.listing.streams
+    - command.listing.video-channels
+    - command.moderation.voice-mute.server
+    - command.moderation.*
+    - command.movement.*
+    inheritance:
+    - coordinator
+  Coordinator:
+    alias: coordinator
+    default: false
+    permissions:
+    - command.listing.blacklists
+    - command.moderation.blacklist
+    - command.moderation.voice-mute.channel_mute
+    - command.moderation.uncapped
+    inheritance:
+    - moderator
+  Moderator:
+    alias: moderator
+    default: false
+    permissions:
+    - command.moderation.ban
+    - command.moderation.duration
+    - command.moderation.flag
+    - command.moderation.reason
+    - command.moderation.text-mute
+    - command.moderation.voice-mute.auto
+    - command.moderation.voice-mute.command
+    - command.moderation.unban
+    - command.moderation.unflag
+    - command.moderation.untext-mute
+    - command.moderation.unvoice-mute
+    - command.listing.aliases
+    - command.listing.bans
+    - command.listing.caps
+    - command.listing.flags
+    - command.listing.roles
+    - command.listing.scope.channel
+    - command.listing.scope.member
+    - command.listing.scope.role
+    - command.listing.summary
+    - command.listing.survey
+    - command.listing.text-mutes
+    - command.listing.voice-mutes
+    - command.info.roleid
+    inheritance:
+    - everyone
+  Everyone:
+    alias: everyone
+    default: true
+
+
