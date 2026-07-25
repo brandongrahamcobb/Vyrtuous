@@ -11,6 +11,7 @@ groups:
     - command.clear.scope.all
     - command.dev.*
     - other_guilds
+    - level.global
     inheritance:
     - guild_owner
   GuildOwner:
@@ -20,6 +21,7 @@ groups:
     - command.clear.scope.guild
     - command.moderation.hero
     - command.listing.heroes
+    - level.guild
     inheritance:
     - administrator
   Administrator:
@@ -41,6 +43,7 @@ groups:
     - command.moderation.voice-mute.server
     - command.moderation.*
     - command.movement.*
+    = level.guild
     inheritance:
     - coordinator
   Coordinator:
@@ -51,6 +54,7 @@ groups:
     - command.moderation.blacklist
     - command.moderation.voice-mute.channel_mute
     - command.moderation.uncapped
+    - level.channel
     inheritance:
     - moderator
   Moderator:
@@ -81,10 +85,15 @@ groups:
     - command.listing.text-mutes
     - command.listing.voice-mutes
     - command.info.roleid
+    - level.channel
     inheritance:
     - everyone
   Everyone:
     alias: everyone
     default: true
+    permissions:
+    - command.permission.grant
+    - command.permission.revoke
+ 
 
 

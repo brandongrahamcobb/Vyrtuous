@@ -104,3 +104,12 @@ ALTER TABLE streaming
 RENAME COLUMN target_guild_snowflake TO guild_snowflake;
 ALTER TABLE streaming
 RENAME COLUMN target_channel_snowflake TO channel_snowflake;
+
+CREATE TABLE permission_levels (
+    channel_snowflake bigint,
+    created_at timestamp with time zone DEFAULT now(),
+    guild_snowflake bigint,
+    level_name TEXT NOT NULL,
+    member_snowflake bigint NOT NULL,
+    updated_at timestamp with time zone DEFAULT now(),
+);

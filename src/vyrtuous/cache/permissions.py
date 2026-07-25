@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 # "groups": {"scope": ["group", "guild", "member"]},
 
 PERMISSION_TREE = {
+    "level": ["channel", "guild", "global"],
     "other_guilds": [],
     "uncapped": [],
     "command": {
@@ -16,13 +17,12 @@ PERMISSION_TREE = {
             "heroes": [],
             "roles": [],
             "scope": ["channel", "guild", "member", "role"],
-            "server-mutes": [],
             "summary": [],
             "survey": [],
             "streams": [],
             "text-mutes": [],
             "video-channels": [],
-            "voice-mutes": [],
+            "voice-mutes": ["auto", "click", "command", "server"],
         },
         "clear": {
             "category": ["automute", "ban", "flag", "text-mute", "voice_mute"],
@@ -84,6 +84,7 @@ class PermissionGroup:
     default: bool
     permissions: set[str] = field(default_factory=set)
     inheritance: list[str] = field(default_factory=list)
+    ancestors: set[str] = field(default_factory=set)
 
 
 @dataclass

@@ -114,39 +114,3 @@ class PermissionState:
     root: PermissionNode | None = None
     nodes: dict[str, PermissionNode] = field(default_factory=dict)
     groups: dict[str, PermissionGroup] = field(default_factory=dict)
-
-    def exists(self, permission: str) -> bool:
-        if permission.endswith(".*"):
-            permission = permission[:-2]
-        return permission in self.nodes
-
-    def has_permission(
-        self,
-        group_name: str,
-        requested: str,
-    ) -> bool:
-        group = self.groups.get(group_name.lower())
-        if group is None:
-            return False
-        for permission in group.permissions:
-            deny = permission.startswith("-")
-            node = permission.removeprefix("-")
-            if self.matches(node, requested):
-                return not deny
-        return False
-
-    def matches(
-        self,
-        granted: str,
-        requested: str,
-    ) -> bool:
-        granted_parts = granted.split(".")
-        requested_parts = requested.split(".")
-        if len(granted_parts) > len(requested_parts):
-            return False
-        for index, part in enumerate(granted_parts):
-            if part == "*":
-                return True
-            if part != requested_parts[index]:
-                return False
-        return len(granted_parts) == len(requested_parts)

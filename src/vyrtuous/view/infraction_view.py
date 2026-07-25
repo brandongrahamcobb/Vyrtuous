@@ -42,7 +42,7 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import guild_owner_service, moderator_service
+from vyrtuous.utils.users import moderator_service
 from vyrtuous.view.view_context import ViewContext
 
 INFRACTION_MODELS = [
