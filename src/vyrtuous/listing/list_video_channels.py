@@ -1,7 +1,7 @@
 """!/bin/python3
-video_channels_service.py The purpose of this program is to extend Service to service the video channel class.
+list_video_channels.py The purpose of this program is to list video-only channels.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

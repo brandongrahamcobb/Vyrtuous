@@ -1,7 +1,7 @@
 """!/bin/python3
-sysadmin_text_commands.py A discord.py cog containing sysadmin commands for the Vyrtuous bot.
+hidden_sysadmin_text_commands.py A discord.py cog containing sysadmin commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,7 +36,9 @@ class HiddenSysadminTextCommands(commands.Cog):
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            raise commands.CheckFailure("This command must be executed inside a server.")
+            raise commands.CheckFailure(
+                "This command must be executed inside a server."
+            )
         await moderator_service.check_minimum_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,

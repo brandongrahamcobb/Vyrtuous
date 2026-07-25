@@ -1,7 +1,7 @@
 """!/bin/python3
 scheduled_tasks.py A discord.py cog containing scheduled tasks for the Vyrtuous bot.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ import discord
 from discord.ext import commands, tasks
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import ChannelState, MemberState
+from vyrtuous.cache.registry import ChannelState
 from vyrtuous.clean import (
     clean_active_member_service,
     clean_automute_service,

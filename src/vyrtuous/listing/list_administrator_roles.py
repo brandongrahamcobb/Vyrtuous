@@ -1,7 +1,7 @@
 """!/bin/python3
-administrator_service.py The purpose of this program is to extend Service to service the administrator and administrator role classes.
+list_administrator_role.py The purpose of this program is to list administrator roles.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

@@ -1,7 +1,7 @@
 """!/bin/python3stage"
-automute_channel_service.py The purpose of this program is to extend Service to service the stage class.
+automute_channel_service.py The purpose of this program is service automute channels.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,34 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.models.duration import Duration, DurationBuilder, DurationObject
-from vyrtuous.utils.messaging import emojis
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.moderation import voice_mute_service
 
 MODEL = AutoMute
-
-
-# async def send_automute_ask_to_speak_message(
-#     join_log: dict[int, discord.Member], member: discord.Member, automute: AutoMute
-# ):
-#     bot: DiscordBot = DiscordBot.get_instance()
-#     now = time.time()
-#     join_log[member.id] = [t for t in join_log[member.id] if now - t < 300]
-#     if len(join_log[member.id]) < 1:
-#         join_log[member.id].append(now)
-#         embed = discord.Embed(
-#             title=f"{emojis.get_random_emoji()} {automute.channel_snowflake} — Stage Mode",
-#             description=f"Ends <t:{int(automute.expires_in.timestamp())}:R>",
-#             color=discord.Color.green(),
-#         )
-#         embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
-#         await bot.get_channel(automute.channel_snowflake).send(embed=embed)
 
 
 async def toggle_automute(
@@ -54,7 +33,6 @@ async def toggle_automute(
     duration: DurationObject | None,
     guild_snowflake: int,
 ):
-    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
     pages: list[discord.Embed] = []

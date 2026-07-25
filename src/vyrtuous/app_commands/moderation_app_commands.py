@@ -1,7 +1,7 @@
 """!/bin/python3
-moderator_app_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
+moderation_app_commands.py A discord.py cog containing moderation commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

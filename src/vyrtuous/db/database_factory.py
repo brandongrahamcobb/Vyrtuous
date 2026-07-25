@@ -1,8 +1,8 @@
 """!/bin/python3
 
-database_factory.py The purpose of this program is to the parent class to all database operation classes.
+database_factory.py The purpose of this program is to the database factory utility class.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

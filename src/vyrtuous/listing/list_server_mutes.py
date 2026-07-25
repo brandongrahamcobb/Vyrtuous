@@ -1,7 +1,7 @@
 """!/bin/python3
-server_mute_service.py The purpose of this program is to extend AliasService to service the server mute infraction.
+list_server_mutes.py The purpose of this program is list server mutes.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

@@ -1,7 +1,7 @@
 """!/bin/python3
-helpers.py The purpose of this program is to provide generic parameters.
+helpers.py The purpose of this program is to provide generic parameters and functions.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,12 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from os.path import abspath, dirname, expanduser, join
-from typing import Union
 
 import discord
 from discord.ext import commands
-
-from vyrtuous.bot.discord_bot import DiscordBot
 
 #### DEVELOPMENT
 RELEASE_MODE = False

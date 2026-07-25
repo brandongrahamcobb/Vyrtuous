@@ -1,8 +1,8 @@
 """!/bin/python3
 
-admin_app_commands.py A discord.py cog containing administrative commands for the Vyrtuous bot.
+hidden_admin_app_commands.py A discord.py cog containing administrative commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

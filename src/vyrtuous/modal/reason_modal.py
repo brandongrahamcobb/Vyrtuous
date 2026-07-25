@@ -1,7 +1,7 @@
 """!/bin/python3
-reason_modal.py The purpose of this program is to provide the reason utility modal.
+reason_modal.py The purpose of this program is to provide the reason utility modal which is used to finalize infractions.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

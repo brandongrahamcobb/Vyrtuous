@@ -1,7 +1,7 @@
 """!/bin/python3
-permission_service.py The purpose of this program is to provide the service for deciding whether a member has sufficient permissions.
+list_permissions.py The purpose of this program is to list permissions.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

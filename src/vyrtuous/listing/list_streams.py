@@ -1,7 +1,7 @@
 """!/bin/python3
-streaming_service.py The purpose of this program is to extend Service service the stream command class.
+list_streams.py The purpose of this program is to list streams.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

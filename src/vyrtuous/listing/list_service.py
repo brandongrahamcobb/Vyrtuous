@@ -1,8 +1,7 @@
 """!/bin/python3
+list_service.py The purpose of this program is to service listing.
 
-dictionary.py The purpose of this program is to manage list command logic.
-
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,7 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 CHUNK_SIZE = 12
 
-from typing import TypeVar, cast
+from typing import TypeVar
 
 
 @dataclass(frozen=True)

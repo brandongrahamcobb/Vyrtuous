@@ -1,6 +1,6 @@
 """!/bin/python3
 __init__.py The purpose of this program is to provide the discord_oauth module.
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

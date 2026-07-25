@@ -1,7 +1,7 @@
 """!/bin/python3
-voice_mute_service.py The purpose of this program is to extend AliasService to service the voice mute infraction.
+voice_mute_service.py The purpose of this program is to service voice-mutes.
 
-Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-from typing import Union
 
 import discord
 from discord.ext import commands
