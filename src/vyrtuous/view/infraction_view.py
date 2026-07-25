@@ -42,7 +42,7 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import guild_owner_service, moderator_service
+from vyrtuous.utils.users import moderator_service
 from vyrtuous.view.view_context import ViewContext
 
 INFRACTION_MODELS = [
@@ -250,7 +250,7 @@ class InfractionView(discord.ui.View):
             cap: Cap = await database_factory.select(
                 category=self.__ctx.category,
                 channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
+                guild_snowflake=self.__guild_snowflake,
                 singular=True,
             )
             if cap:
@@ -301,7 +301,8 @@ class InfractionView(discord.ui.View):
         return top_24
 
     def _build_channel_options(
-        self, limited_channels: list[discord.abc.GuildChannel], all: bool = False
+        self,
+        limited_channels: list[discord.abc.GuildChannel],
     ):
         channel_options = []
         bot: DiscordBot = DiscordBot.get_instance()
@@ -328,8 +329,6 @@ class InfractionView(discord.ui.View):
                 and c.id != self.__ctx.channel_snowflake
             ]
         )
-        if all:
-            channel_options.append(discord.SelectOption(label="All", value="all"))
         self.channel_select.options = channel_options
 
     def _build_guild_options(
@@ -353,7 +352,7 @@ class InfractionView(discord.ui.View):
             top_24_channels = self.limit_available_to_top_24_by_member_count(
                 available=available_channels
             )
-            self._build_channel_options(limited_channels=top_24_channels, all=False)
+            self._build_channel_options(limited_channels=top_24_channels)
         else:
             limited_guilds = self.limit_available_to_top_24_by_member_count(
                 available=available_guilds
@@ -383,7 +382,7 @@ class InfractionView(discord.ui.View):
             limited_channels = self.limit_available_to_top_24_by_member_count(
                 available=all_channels,
             )
-            self._build_channel_options(limited_channels=limited_channels, all=True)
+            self._build_channel_options(limited_channels=limited_channels)
         else:
             guild = bot.get_guild(int(select.values[0]))
             if guild is None:
@@ -391,7 +390,7 @@ class InfractionView(discord.ui.View):
             limited_channels = self.limit_available_to_top_24_by_member_count(
                 available=guild.channels,
             )
-            self._build_channel_options(limited_channels=limited_channels, all=True)
+            self._build_channel_options(limited_channels=limited_channels)
         self.channel_select.disabled = False
         await interaction.edit_original_response(view=self)
 
@@ -429,7 +428,7 @@ class InfractionView(discord.ui.View):
         database_factory: DatabaseFactory = DatabaseFactory(AutoMute)
         automute = await database_factory.select(
             channel_snowflake=self.__channel_snowflake,
-            guild_snowflake=self.__ctx.guild_snowflake,
+            guild_snowflake=self.__guild_snowflake,
             singular=True,
         )
         if self.__model == VoiceMute:
@@ -440,7 +439,7 @@ class InfractionView(discord.ui.View):
             database_factory: DatabaseFactory = DatabaseFactory(self.__model)
             record = await database_factory.select(
                 channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
+                guild_snowflake=self.__guild_snowflake,
                 member_snowflake=self.__ctx.member_snowflake,
                 target=target,
                 singular=True,
@@ -449,7 +448,7 @@ class InfractionView(discord.ui.View):
             database_factory: DatabaseFactory = DatabaseFactory(self.__model)
             record = await database_factory.select(
                 channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
+                guild_snowflake=self.__guild_snowflake,
                 member_snowflake=self.__ctx.member_snowflake,
                 singular=True,
             )
