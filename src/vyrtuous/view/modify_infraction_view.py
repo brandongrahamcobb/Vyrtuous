@@ -242,7 +242,7 @@ class ModifyInfractionView(discord.ui.View):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(int(select.values[0]))
         if guild is None:
-            raise commands.GuildNotFound(str(select.values[0]))
+            raise GuildNotFound(str(select.values[0]))
         self.guild_select.placeholder = guild.name
         self.__guild_snowflake = guild.id
         available_channels = [

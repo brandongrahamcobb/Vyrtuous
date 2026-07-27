@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -51,7 +52,7 @@ PERMISSION_TYPES = [
 ]
 
 
-class HasEqualOrLowerRole(commands.CheckFailure):
+class HasEqualOrLowerRole(app_commands.CheckFailure, commands.CheckFailure):
     def __init__(self, target_rank=str):
         super().__init__(
             message=f"You may not execute this command on this `{target_rank}` because they have equal or higher role than you in this channel/server."
@@ -91,7 +92,7 @@ async def survey(channel_snowflake: int, guild_snowflake: int) -> list[discord.E
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -209,7 +210,7 @@ async def toggle_moderator(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -283,7 +284,6 @@ async def check_minimum_role(
     for role_name in role_names:
         if lowest_role == role_name:
             passed_lowest = True
-            break
         try:
             match role_name:
                 case "Sysadmin":
@@ -326,7 +326,7 @@ async def check_minimum_role(
                             member_snowflake=int(member_snowflake),
                         ):
                             return role_name
-        except commands.CheckFailure:
+        except (app_commands.CheckFailure, commands.CheckFailure):
             if lowest_role is not None and passed_lowest:
                 raise
     return "Everyone"

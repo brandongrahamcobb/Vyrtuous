@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
 
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -27,6 +28,6 @@ class Sysadmin:
     member_snowflake: int
 
 
-class NotSysadmin(commands.CheckFailure):
+class NotSysadmin(app_commands.CheckFailure, commands.CheckFailure):
     def __init__(self, message="You lack sufficient permissions of a sysadmin."):
         super().__init__(message)

@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
 
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -30,14 +31,14 @@ class GuildOwner:
     member_snowflake: int
 
 
-class NotGuildOwner(commands.CheckFailure):
+class NotGuildOwner(app_commands.CheckFailure, commands.CheckFailure):
     def __init__(self, guild_snowflake: int | None):
         name = None
         bot: DiscordBot = DiscordBot.get_instance()
         if guild_snowflake:
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
-                raise commands.GuildNotFound(str(guild_snowflake))
+                raise GuildNotFound(str(guild_snowflake))
             name = guild.name
         message: str = (
             f"You lack sufficient permissions of a guild owner in the requested server{f" ({name})" if name else ""}."

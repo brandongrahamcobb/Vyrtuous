@@ -37,7 +37,7 @@ async def toggle_server_mute(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(

@@ -94,7 +94,7 @@ class AdministratorAppCommands(commands.Cog):
                 )
         view = VerifyView(
             author_snowflake=interaction.user.id,
-            category=str(category),
+            category=str(category.category),
             obj=target,
         )
         embed = view.build_embed()

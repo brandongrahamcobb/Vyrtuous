@@ -391,7 +391,6 @@ class ModeratorAppCommands(commands.Cog):
         await interaction.response.send_message(
             content="Specify the text-mute", view=view, ephemeral=True
         )
-        await interaction.response.defer()
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(

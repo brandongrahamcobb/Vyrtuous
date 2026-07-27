@@ -58,7 +58,7 @@ async def toggle_administrator_role(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     role = guild.get_role(role_snowflake)
     if role is None:
         raise commands.RoleNotFound(str(role_snowflake))

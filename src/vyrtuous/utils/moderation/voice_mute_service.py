@@ -40,23 +40,21 @@ async def enforce_or_undo(
     alias_ctx: AliasContext,
     message: discord.Message,
 ) -> discord.Embed:
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    duration_builder = DurationBuilder()
     automute_database_factory: DatabaseFactory = DatabaseFactory(AutoMute)
     auto_mute_channel = await automute_database_factory.select(
         channel_snowflake=alias_ctx.channel_snowflake,
         guild_snowflake=alias_ctx.guild_snowflake,
         singular=True,
     )
-    if auto_mute_channel:
-        target = "auto"
-        auto_mute = await database_factory.select(
-            channel_snowflake=alias_ctx.channel_snowflake,
-            guild_snowflake=alias_ctx.guild_snowflake,
-            member_snowflake=alias_ctx.member_snowflake,
-            target=target,
-            singular=True,
-        )
-        if auto_mute:
+    if targets := await is_voice_muted(
+        channel_snowflake=alias_ctx.channel_snowflake,
+        guild_snowflake=alias_ctx.guild_snowflake,
+        member_snowflake=alias_ctx.member_snowflake,
+        targets=["click", "command", "auto"],
+    ):
+        embeds = []
+        for target in targets:
             unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
                 author_snowflake=message.author.id,
                 channel_snowflake=alias_ctx.channel_snowflake,
@@ -66,65 +64,48 @@ async def enforce_or_undo(
                 message_channel_snowflake=message.channel.id,
                 target=target,
             )
-            embed = await unvoice_mute_alias_service.unvoice_mute_by_message(
-                ctx=unvoice_mute_ctx, display=True
+            embeds.append(
+                await unvoice_mute_alias_service.unvoice_mute_by_message(
+                    ctx=unvoice_mute_ctx, display=True
+                )
             )
-            return embed
-        else:
-            voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
-                author_snowflake=message.author.id,
-                channel_snowflake=alias_ctx.channel_snowflake,
-                duration=alias_ctx.duration,
-                guild_snowflake=alias_ctx.guild_snowflake,
-                member_snowflake=alias_ctx.member_snowflake,
-                message_snowflake=message.id,
-                message_channel_snowflake=message.channel.id,
-                reason=alias_ctx.reason,
-                target=target,
-            )
-            embed = await voice_mute_alias_service.voice_mute_by_message(
-                ctx=voice_mute_ctx, display=True
-            )
-            return embed
+        return embeds[0]
+    elif auto_mute_channel:
+        target = "auto"
+        voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
+            author_snowflake=message.author.id,
+            channel_snowflake=alias_ctx.channel_snowflake,
+            duration=duration_builder.from_timestamp(
+                auto_mute_channel.expires_in
+            ).build(),
+            guild_snowflake=alias_ctx.guild_snowflake,
+            member_snowflake=alias_ctx.member_snowflake,
+            message_snowflake=message.id,
+            message_channel_snowflake=message.channel.id,
+            reason="Automuted",
+            target=target,
+        )
+        embed = await voice_mute_alias_service.voice_mute_by_message(
+            ctx=voice_mute_ctx, display=True
+        )
+        return embed
     else:
         target = "command"
-        voice_mute = await database_factory.select(
+        voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
+            author_snowflake=message.author.id,
             channel_snowflake=alias_ctx.channel_snowflake,
+            duration=alias_ctx.duration,
             guild_snowflake=alias_ctx.guild_snowflake,
             member_snowflake=alias_ctx.member_snowflake,
+            message_snowflake=message.id,
+            message_channel_snowflake=message.channel.id,
+            reason=alias_ctx.reason,
             target=target,
-            singular=True,
         )
-        if voice_mute:
-            unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
-                author_snowflake=message.author.id,
-                channel_snowflake=alias_ctx.channel_snowflake,
-                guild_snowflake=alias_ctx.guild_snowflake,
-                member_snowflake=alias_ctx.member_snowflake,
-                message_snowflake=message.id,
-                message_channel_snowflake=message.channel.id,
-                target=target,
-            )
-            embed = await unvoice_mute_alias_service.unvoice_mute_by_message(
-                ctx=unvoice_mute_ctx, display=True
-            )
-            return embed
-        else:
-            voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
-                author_snowflake=message.author.id,
-                channel_snowflake=alias_ctx.channel_snowflake,
-                duration=alias_ctx.duration,
-                guild_snowflake=alias_ctx.guild_snowflake,
-                member_snowflake=alias_ctx.member_snowflake,
-                message_snowflake=message.id,
-                message_channel_snowflake=message.channel.id,
-                reason=alias_ctx.reason,
-                target=target,
-            )
-            embed = await voice_mute_alias_service.voice_mute_by_message(
-                ctx=voice_mute_ctx, display=True
-            )
-            return embed
+        embed = await voice_mute_alias_service.voice_mute_by_message(
+            ctx=voice_mute_ctx, display=True
+        )
+        return embed
 
 
 async def channel_mute(
@@ -142,7 +123,7 @@ async def channel_mute(
     duration_builder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -231,7 +212,7 @@ async def channel_unmute(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))

@@ -33,7 +33,7 @@ def is_vegan(guild_snowflake: int, member_snowflake: int) -> bool:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
         raise commands.MemberNotFound(str(member_snowflake))
@@ -84,7 +84,7 @@ async def build_vegan_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -113,7 +113,7 @@ async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name

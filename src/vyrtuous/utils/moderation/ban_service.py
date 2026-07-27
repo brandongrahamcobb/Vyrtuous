@@ -85,7 +85,7 @@ async def toggle_blacklist(
     )
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))

@@ -156,7 +156,7 @@ async def save_data(
     if guild_snowflake:
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         total_guild_members = sum(1 for member in guild.members if not member.bot)
         data.set_counts(total_guild_members=total_guild_members)
         online_members = sum(

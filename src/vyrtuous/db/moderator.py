@@ -37,7 +37,7 @@ class Moderator:
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class NotModerator(commands.CheckFailure):
+class NotModerator(app_commands.CheckFailure, commands.CheckFailure):
     def __init__(
         self,
         channel_snowflake: int | None,
@@ -46,7 +46,7 @@ class NotModerator(commands.CheckFailure):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         if channel_snowflake is None:
             message: str = (
                 f"You lack sufficient permissions of a moderator in the requested server ({guild.name})."
@@ -71,7 +71,7 @@ class NotAppModerator(app_commands.CheckFailure):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(channel_snowflake)
         if channel is None:
             raise commands.ChannelNotFound(str(channel_snowflake))

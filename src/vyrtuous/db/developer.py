@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -32,6 +33,6 @@ class Developer:
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class NotDeveloper(commands.CheckFailure):
+class NotDeveloper(app_commands.CheckFailure, commands.CheckFailure):
     def __init__(self, message="You lack sufficient permissions of a developer."):
         super().__init__(message)

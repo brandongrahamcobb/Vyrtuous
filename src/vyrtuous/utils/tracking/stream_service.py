@@ -56,7 +56,7 @@ async def send_log(
     if guild_snowflake:
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         if channel_snowflake:
             if author_snowflake:
                 executor_role = await moderator_service.resolve_highest_role(

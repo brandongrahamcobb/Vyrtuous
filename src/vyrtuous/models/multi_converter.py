@@ -70,7 +70,7 @@ class MultiConverter(commands.Converter):
         try:
             guild = await guild_converter.convert(ctx, argument)
             return guild
-        except commands.GuildNotFound as e:
+        except GuildNotFound as e:
             bot.logger.warning(e)
         try:
             role = await role_converter.convert(ctx, argument)

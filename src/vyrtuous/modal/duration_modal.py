@@ -92,7 +92,7 @@ class DurationModal(discord.ui.Modal):
             bot: DiscordBot = DiscordBot.get_instance()
             guild = bot.get_guild(self.__guild_snowflake)
             if guild is None:
-                raise commands.GuildNotFound(str(self.__guild_snowflake))
+                raise GuildNotFound(str(self.__guild_snowflake))
             channel = guild.get_channel(self.__channel_snowflake)
             if channel is None:
                 raise commands.ChannelNotFound(str(self.__channel_snowflake))

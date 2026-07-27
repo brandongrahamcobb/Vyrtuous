@@ -45,7 +45,7 @@ async def set_unrole_overwrite(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     role = guild.get_role(role_snowflake)
     if role is None:
         raise commands.RoleNotFound(str(role_snowflake))
@@ -71,7 +71,7 @@ def build_unrole_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     role = guild.get_role(role_snowflake)
     if role is None:
         raise commands.RoleNotFound(str(role_snowflake))

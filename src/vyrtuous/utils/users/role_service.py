@@ -31,7 +31,7 @@ async def enforce_or_undo(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(alias_ctx.guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(alias_ctx.guild_snowflake))
+        raise GuildNotFound(str(alias_ctx.guild_snowflake))
     role = guild.get_role(alias_ctx.role_snowflake)
     if role is None:
         raise commands.RoleNotFound(str(alias_ctx.role_snowflake))

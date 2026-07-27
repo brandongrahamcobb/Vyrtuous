@@ -99,7 +99,7 @@ async def set_unvoice_mute_overwrite(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -130,6 +130,7 @@ async def unvoice_mute_by_message(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
+        target=ctx.target,
         singular=True,
     )
     duration = duration_builder.from_timestamp(voice_mute.expires_in).build()
@@ -183,7 +184,7 @@ async def unvoice_mute(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))
@@ -192,19 +193,20 @@ async def unvoice_mute(
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
             raise commands.MemberNotFound(str(member_snowflake))
-    else:
-        is_channel_scope = await set_unvoice_mute_overwrite(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-        )
     await database_factory.delete(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
         target=target,
     )
-    return is_channel_scope
+    if member:
+        is_channel_scope = await set_unvoice_mute_overwrite(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        return is_channel_scope
+    return False
 
 
 def build_unvoice_mute_embed(
@@ -215,7 +217,7 @@ def build_unvoice_mute_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))

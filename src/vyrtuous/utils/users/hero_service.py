@@ -45,7 +45,7 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if not guild:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     for model in INFRACTION_MODELS:
         database_factory: DatabaseFactory = DatabaseFactory(model)

@@ -15,7 +15,7 @@ class SnowflakeContext:
         self.guild_snowflake = guild_snowflake
         self.guild = self.bot.get_guild(guild_snowflake)
         if self.guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         self.channel_snowflake = channel_snowflake
         self.channel = self.guild.get_channel(channel_snowflake)
         if self.channel is None:

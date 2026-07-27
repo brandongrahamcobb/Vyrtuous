@@ -87,7 +87,7 @@ async def delete_alias(alias_name: str, guild_snowflake: int) -> str:
         return f"No aliases found for `{alias_name}`."
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(alias.channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(alias.channel_snowflake)
@@ -122,7 +122,7 @@ async def create_alias(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
         raise commands.ChannelNotFound(str(channel_snowflake))

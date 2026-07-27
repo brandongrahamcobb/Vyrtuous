@@ -51,7 +51,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         role = guild.get_role(role_snowflake)
         if role is None:
             raise commands.RoleNotFound(str(role_snowflake))
@@ -89,7 +89,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         author = guild.get_member(author_snowflake)
         if author is None:
             raise commands.MemberNotFound(str(author_snowflake))
@@ -119,7 +119,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         member = guild.get_member(target_snowflake)
         if member is None:
             simplified_member = bot.registry.get(MemberState).active.get(
@@ -157,7 +157,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if not guild:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(message_channel_snowflake)
         if not channel or not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
@@ -199,7 +199,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         text = f"Ref: {target_snowflake}-{channel_snowflake} | Msg: {message_snowflake if message_snowflake else 'Hidden'}"
         if guild.icon:
             icon_url = guild.icon.url
@@ -215,7 +215,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(channel_snowflake)
         if channel is None:
             raise commands.ChannelNotFound(str(channel_snowflake))
@@ -237,7 +237,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(channel_snowflake)
         if channel is None or not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
