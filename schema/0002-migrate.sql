@@ -113,3 +113,82 @@ CREATE TABLE permission_entries (
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE permission_entries
+ADD CONSTRAINT permission_entries_unique
+UNIQUE (
+    member_snowflake,
+    group_alias,
+    guild_snowflake,
+    channel_snowflake
+);
+BEGIN;
+
+INSERT INTO permission_entries (
+    channel_snowflake,
+    created_at,
+    guild_snowflake,
+    group_alias,
+    member_snowflake,
+    updated_at
+)
+SELECT
+    NULL,
+    created_at,
+    NULL,
+    'developer',
+    member_snowflake,
+    updated_at
+FROM developers;
+
+INSERT INTO permission_entries (
+    channel_snowflake,
+    created_at,
+    guild_snowflake,
+    group_alias,
+    member_snowflake,
+    updated_at
+)
+SELECT
+    NULL,
+    created_at,
+    guild_snowflake,
+    'administrator',
+    member_snowflake,
+    updated_at
+FROM administrators;
+
+INSERT INTO permission_entries (
+    channel_snowflake,
+    created_at,
+    guild_snowflake,
+    group_alias,
+    member_snowflake,
+    updated_at
+)
+SELECT
+    channel_snowflake,
+    created_at,
+    guild_snowflake,
+    'coordinator',
+    member_snowflake,
+    updated_at
+FROM coordinators;
+
+INSERT INTO permission_entries (
+    channel_snowflake,
+    created_at,
+    guild_snowflake,
+    group_alias,
+    member_snowflake,
+    updated_at
+)
+SELECT
+    channel_snowflake,
+    created_at,
+    guild_snowflake,
+    'moderator',
+    member_snowflake,
+    updated_at
+FROM moderators;
+
+COMMIT;
