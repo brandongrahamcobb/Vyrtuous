@@ -35,6 +35,7 @@ mypy = "^2.1.0"
 types-cachetools = "^7.0.0.20260518"
 pandas-stubs = "^3.0.3.260530"
 types-seaborn = "^0.13.2.20260518"
+pyyaml = "^6.0.3"
 
 [tool.poetry.scripts]
 vyrtuous = "vyrtuous.main:run"

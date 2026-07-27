@@ -17,23 +17,36 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import dataclass, field
+
 import discord
 from discord import app_commands
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.flag import Flag
 from vyrtuous.db.permission_level import PermissionLevel
-from vyrtuous.modal.reason_modal import ReasonModal
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import cap_service
 from vyrtuous.utils.permissions import permission_service
-from vyrtuous.utils.users import moderator_service
 from vyrtuous.view.view_context import ViewContext
 
 MODEL = PermissionLevel
+
+
+@dataclass
+class GroupScope:
+    group: PermissionGroup
+    guilds: dict[int, discord.Guild] = field(default_factory=dict)
+    channels: dict[int, discord.abc.GuildChannel] = field(default_factory=dict)
+
+
+SCOPE_REQUIREMENTS: dict[PermissionScope, frozenset[str]] = {
+    PermissionScope.CHANNEL: frozenset({"guild", "channel"}),
+    PermissionScope.GUILD: frozenset({"guild"}),
+    PermissionScope.GLOBAL: frozenset(),
+}
+
 
 class ManageView(discord.ui.View):
     def __init__(
@@ -44,115 +57,18 @@ class ManageView(discord.ui.View):
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
-        self.__channel_snowflake = ctx.channel_snowflake
         self.__ctx = ctx
-        self.__guild_snowflake = ctx.guild_snowflake
-        self.__is_channel_scope: bool = False
         self.__tick = tick
+        self.__groups: dict[str, PermissionGroup] = {}
+        self.__scopes: dict[str, GroupScope] = {}
+        self.__selected_group: PermissionGroup | None = None
+        self.__selected_guild: discord.Guild | None = None
+        self.__selected_channel: discord.abc.GuildChannel | None = None
+        self.remove_item(self.channel_select)
+        self.remove_item(self.guild_select)
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
-
-
-    async def build_group_options(self):
-        available_groups: list[str] = []
-        bot: DiscordBot = DiscordBot.get_instance()
-        permission_state = bot.registry.get(PermissionState)
-        if permission_service.has_permissions(
-            permission_state=permission_state,
-            member_snowflake=self.__author_snowflake,
-            requested=["level.global"],
-        ):
-            group = await permission_service.resolve_effective_group(permission_state=permission_state, member_snowflake=self.__author_snowflake)
-            if group:
-                ancestors = permission_service.resolve_ancestors(group_name=group.name, groups=permission_state.groups)
-                for ancestor in ancestors:
-                    available_groups.append(ancestor)
-        else:
-           for guild in bot.guilds:
-                if permission_service.has_permissions(
-                    permission_state=permission_state,
-                    member_snowflake=self.__author_snowflake,
-                    guild_snowflake=guild.id,
-                    requested=["level.guild"],
-                ):
-                    group = await permission_service.resolve_effective_group(permission_state=permission_state, member_snowflake=self.__author_snowflake, guild_snowflake=self.__guild_snowflake)
-                    if group:
-                        ancestors = permission_service.resolve_ancestors(group_name=group.name, groups=permission_state.groups)
-                        for ancestor in ancestors:
-                            if ancestor not in available_groups:
-                                available_groups.append(ancestor)
-                else:
-                    for channel in guild.channels:
-                        if permission_service.has_permissions(
-                            permission_state=permission_state,
-                            member_snowflake=self.__author_snowflake,
-                            guild_snowflake=guild.id,
-                            channel_snowflake=channel.id,
-                            requested=["level.channel"],
-                        ):
-                            group = await permission_service.resolve_effective_group(permission_state=permission_state, member_snowflake=self.__author_snowflake, guild_snowflake=self.__guild_snowflake)
-                            if group:
-                                ancestors = permission_service.resolve_ancestors(group_name=group.name, groups=permission_state.groups)
-                                for ancestor in ancestors:
-                                    if ancestor not in available_groups:
-                                        available_groups.append(ancestor)
-        if not available_groups:
-            raise app_commands.CheckFailure(
-                "You do not have sufficient privileges in this channel or server to use this command."
-            )
-        else:
-
-
-    async def setup(self):
-        await self.build_group_options()
-        available_channels: list[discord.abc.GuildChannel] = []
-        available_guilds: list[discord.Guild] = []
-        bot: DiscordBot = DiscordBot.get_instance()
-        permission_state = bot.registry.get(PermissionState)
-        if permission_service.has_permissions(
-            permission_state=permission_state,
-            member_snowflake=self.__author_snowflake,
-            requested=["level.global"],
-        ):
-            available_guilds.extend(bot.guilds)
-            for guild in bot.guilds:
-                available_channels.extend(guild.channels)
-        else:
-            for guild in bot.guilds:
-                if permission_service.has_permissions(
-                    permission_state=permission_state,
-                    member_snowflake=self.__author_snowflake,
-                    guild_snowflake=guild.id,
-                    requested=["level.guild"],
-                ):
-                    if guild not in available_guilds:
-                        available_guilds.append(guild)
-                        for channel in guild.channels:
-                            if channel not in available_channels:
-                                available_channels.append(channel)
-                else:
-                    for channel in guild.channels:
-                        if permission_service.has_permissions(
-                            permission_state=permission_state,
-                            member_snowflake=self.__author_snowflake,
-                            guild_snowflake=guild.id,
-                            channel_snowflake=channel.id,
-                            requested=["level.channel"],
-                        ):
-                            available_channels.append(channel)
-        if not available_channels and not available_guilds:
-            raise app_commands.CheckFailure(
-                "You do not have sufficient privileges in this channel or server to use this command."
-            )
-        self._build_guild_options(
-            available_channels=available_channels,
-            available_guilds=available_guilds,
-        )
-        limited_channels = self.limit_available_to_top_24_by_member_count(
-            available=available_channels
-        )
-        self._build_channel_options(limited_channels=limited_channels)
 
     def limit_available_to_top_24_by_member_count(self, available):
         items = []
@@ -161,10 +77,78 @@ class ManageView(discord.ui.View):
         top_24 = items[:24]
         return top_24
 
+    async def setup(self):
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        self.__groups.clear()
+        self.__scopes.clear()
+        assigned = await permission_service.resolve_all_assigned_groups(
+            permission_state=permission_state,
+            member_snowflake=self.__author_snowflake,
+        )
+        for group, guild_snowflake, channel_snowflake in assigned:
+            scope = GroupScope(group=group)
+            if guild_snowflake is not None:
+                guild = bot.get_guild(guild_snowflake)
+                if guild is not None:
+                    scope.guilds[guild.id] = guild
+            if channel_snowflake is not None:
+                channel = bot.get_channel(channel_snowflake)
+                if channel is not None and isinstance(
+                    channel,
+                    (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
+                ):
+                    scope.channels[channel.id] = channel
+            self.add_group_scope(scope)
+            self.add_selectable_group(group, scope)
+        if not self.__groups:
+            raise app_commands.CheckFailure(
+                "You do not have sufficient privileges in this channel or server to use this command."
+            )
+        self._build_group_options(available_groups=list(self.__groups.keys()))
+
+    def add_group_scope(self, scope: GroupScope):
+        existing = self.__scopes.setdefault(
+            scope.group.alias,
+            GroupScope(group=scope.group),
+        )
+        existing.guilds.update(scope.guilds)
+        existing.channels.update(scope.channels)
+
+    def add_selectable_group(self, group: PermissionGroup, scope: GroupScope):
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        ancestors = permission_service.resolve_ancestors(
+            group_alias=group.alias,
+            groups=permission_state.groups,
+        )
+        for ancestor_alias in ancestors:
+            ancestor = permission_state.groups[ancestor_alias]
+            self.__groups.setdefault(ancestor.alias, ancestor)
+            ancestor_scope = GroupScope(group=ancestor)
+            ancestor_scope.guilds.update(scope.guilds)
+            ancestor_scope.channels.update(scope.channels)
+            self.add_group_scope(ancestor_scope)
+
+    def _build_group_options(self, available_groups: list[str]):
+        group_options = []
+        groups = [self.__groups[alias] for alias in available_groups]
+        groups.sort(
+            key=lambda group: len(group.ancestors),
+            reverse=True,
+        )
+        group_options.extend(
+            [discord.SelectOption(label=g.name, value=g.alias) for g in groups]
+        )
+        self.group_select.options = group_options
+
     def _build_channel_options(
         self,
-        limited_channels: list[discord.abc.GuildChannel],
+        available_channels: list[discord.abc.GuildChannel],
     ):
+        limited_channels = self.limit_available_to_top_24_by_member_count(
+            available=available_channels
+        )
         channel_options = []
         bot: DiscordBot = DiscordBot.get_instance()
         channel = bot.get_channel(self.__ctx.channel_snowflake)
@@ -194,9 +178,11 @@ class ManageView(discord.ui.View):
 
     def _build_guild_options(
         self,
-        available_channels: list[discord.abc.GuildChannel],
         available_guilds: list[discord.Guild],
     ):
+        limited_guilds = self.limit_available_to_top_24_by_member_count(
+            available=available_guilds
+        )
         guild_options = []
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(self.__ctx.guild_snowflake)
@@ -208,176 +194,130 @@ class ManageView(discord.ui.View):
                     default=True,
                 )
             )
-        if len(available_guilds) == 1:
-            self.remove_item(self.guild_select)
-            top_24_channels = self.limit_available_to_top_24_by_member_count(
-                available=available_channels
-            )
-            self._build_channel_options(limited_channels=top_24_channels)
-        else:
-            limited_guilds = self.limit_available_to_top_24_by_member_count(
-                available=available_guilds
-            )
-            guild_options.extend(
-                [
-                    discord.SelectOption(label=g.name, value=str(g.id))
-                    for g in limited_guilds
-                    if g.id != self.__ctx.guild_snowflake
-                ]
-            )
-            guild_options.append(discord.SelectOption(label="All", value="all"))
-            self.guild_select.options = guild_options
+        guild_options.extend(
+            [
+                discord.SelectOption(label=g.name, value=str(g.id))
+                for g in limited_guilds
+                if g.id != self.__ctx.guild_snowflake
+            ]
+        )
+        self.guild_select.options = guild_options
 
-    @discord.ui.select(
-        placeholder="Select a group",
-        options=[],
-    )
+    @discord.ui.select(placeholder="Select a group", options=[])
     async def group_select(self, interaction, select):
-        await interaction.response.defer()
-        self.channel_select.disabled = False
-        await interaction.edit_original_response(view=self)
+        group_alias = select.values[0]
+        group = self.__groups[group_alias]
+        self.group_select.placeholder = group.name
+        self.__selected_group = group
+        bot: DiscordBot = DiscordBot.get_instance()
+        scope = self.__scopes.get(group_alias, GroupScope(group=group))
+        guilds = list(scope.guilds.values())
+        channels = list(scope.channels.values())
+        self.__selected_guild = None
+        self.__selected_channel = None
+        if self.guild_select in self.children:
+            self.remove_item(self.guild_select)
+        if self.channel_select in self.children:
+            self.remove_item(self.channel_select)
+        required = SCOPE_REQUIREMENTS[group.scope]
+        if "guild" in required:
+            if not guilds:
+                guilds = list(bot.guilds)
+            if interaction.guild and interaction.guild.id in {g.id for g in guilds}:
+                self.__selected_guild = interaction.guild
+            elif len(guilds) == 1:
+                self.__selected_guild = guilds[0]
+            self._build_guild_options(guilds)
+            self.add_item(self.guild_select)
+        if "channel" in required:
+            if not channels:
+                channels = [c for g in guilds for c in g.channels]
+            if interaction.channel and interaction.channel.id in {
+                c.id for c in channels
+            }:
+                self.__selected_channel = interaction.channel
+            elif len(channels) == 1:
+                self.__selected_channel = channels[0]
+            self._build_channel_options(channels)
+            self.add_item(self.channel_select)
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.select(
         placeholder="Select a guild",
-        options=[],
+        options=[discord.SelectOption(label="Select a group first", value=str(None))],
+        disabled=True,
     )
     async def guild_select(self, interaction, select):
-        await interaction.response.defer()
-        bot: DiscordBot = DiscordBot.get_instance()
-        if select.values[0] == "all":
-            self.guild_select.placeholder = "All"
-            await self.setup()
-        else:
-            guild = bot.get_guild(int(select.values[0]))
-            if guild is None:
-                raise commands.GuildNotFound(str(select.values[0]))
-            limited_channels = self.limit_available_to_top_24_by_member_count(
-                available=guild.channels,
+        guild_snowflake = int(select.values[0])
+        if self.__selected_group:
+            scope = self.__scopes.get(
+                self.__selected_group.alias, GroupScope(group=self.__selected_group)
             )
-            self._build_channel_options(limited_channels=limited_channels)
-        self.channel_select.disabled = False
-        await interaction.edit_original_response(view=self)
+            self.__selected_guild = scope.guilds[guild_snowflake]
+            self.guild_select.placeholder = self.__selected_guild.name
+            channels = [
+                channel
+                for channel in scope.channels.values()
+                if channel.guild.id == guild_snowflake
+            ]
+            if len(channels) == 1:
+                self.__selected_channel = channels[0]
+                self.channel_select.disabled = True
+            else:
+                self.__selected_channel = None
+                self.channel_select.disabled = False
+            self._build_channel_options(channels)
+            await interaction.response.edit_message(view=self)
 
     @discord.ui.select(
         placeholder="Select a channel",
         options=[discord.SelectOption(label="Select a guild first", value=str(None))],
+        disabled=True,
     )
     async def channel_select(self, interaction, select):
-        await interaction.response.defer()
-        bot: DiscordBot = DiscordBot.get_instance()
-        permission_state = bot.registry.get(PermissionState)
-        channel = bot.get_channel(int(select.values[0]))
-        if isinstance(channel, discord.abc.GuildChannel):
-            self.channel_select.placeholder = channel.name
-            self.__channel_snowflake = channel.id
-            self.__guild_snowflake = channel.guild.id
-            await permission_service.has_equal_or_lower_role(
-                permission_state=permission_state,
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__guild_snowflake,
-                author_snowflake=self.__author_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
+        channel_snowflake = int(select.values[0])
+        if self.__selected_group:
+            scope = self.__scopes.get(
+                self.__selected_group.alias, GroupScope(group=self.__selected_group)
             )
-        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-        record = await database_factory.select(
-            channel_snowflake=self.__channel_snowflake,
-            guild_snowflake=self.__guild_snowflake,
-            member_snowflake=self.__ctx.member_snowflake,
-            singular=True,
-        )
-        if record:
-            database_factory.delete
-        else:
-            database_factory: DatabaseFactory = DatabaseFactory(self.__model)
-            record = await database_factory.select(
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-                singular=True,
-            )
-        if not record and not automute and self.__model != Flag:
-            highest_role = await moderator_service.resolve_highest_role(
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__guild_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-            )
-            if highest_role == "Moderator":
-                await self.build_duration_options()
-            else:
-                available_durations = [
-                    "1hour",
-                    "8hours",
-                    "1day",
-                    "1week",
-                    "0",
-                ]
-                await self.build_duration_options(
-                    available_durations=available_durations
-                )
-        if record:
-            self.__record = record
-            self.remove_item(self.duration_select)
-            self.__duration = duration_builder.parse(0).build()
-            if category := UNDO_CATEGORIES.get(self.__ctx.category, None):
-                await interaction.edit_original_response(
-                    content=f"Are you sure you want to undo their {category}?",
-                    view=self,
-                )
-                return None
-        await interaction.edit_original_response(view=self)
-
-    @discord.ui.select(placeholder="Select a duration", options=[])
-    async def duration_select(self, interaction, select):
-        await interaction.response.defer()
-        duration_name = next(
-            option.label
-            for option in select.options
-            if option.value == select.values[0]
-        )
-        duration_value = select.values[0]
-        self.duration_select.placeholder = duration_name
-        duration_builder = DurationBuilder()
-        self.__duration = duration_builder.parse(duration_value).build()
-        await interaction.edit_original_response(view=self)
+            self.__selected_channel = scope.channels[channel_snowflake]
+            self.channel_select.placeholder = self.__selected_channel.name
+            if self.__selected_guild is None:
+                self.__selected_guild = self.__selected_channel.guild
+            await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        duration_builder = DurationBuilder()
-        if self.__duration is None:
-            if self.__model != Flag:
-                return await interaction.response.send_message(
-                    content="Please select all fields.", ephemeral=True
-                )
+        record = None
+        bot: DiscordBot = DiscordBot.get_instance()
+        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+        if self.__selected_group and self.__selected_channel and self.__selected_guild:
+            record = await database_factory.select(
+                channel_snowflake=self.__selected_channel.id,
+                guild_snowflake=self.__selected_guild.id,
+                member_snowflake=self.__ctx.member_snowflake,
+                group_name=self.__selected_group,
+                singular=True,
+            )
+
+        if not record and self.__selected_group and self.__selected_guild:
+            record = await database_factory.select(
+                guild_snowflake=self.__selected_guild.id,
+                member_snowflake=self.__ctx.member_snowflake,
+                group_name=self.__selected_group,
+                singular=True,
+            )
+
+        if not record and self.__selected_group:
+            record = await database_factory.select(
+                member_snowflake=self.__ctx.member_snowflake,
+                group_name=self.__selected_group,
+                singular=True,
+            )
+        if not record:
+            bot.logger.info("Grant")
         else:
-            if self.__record is None:
-                if await cap_service.exceeds_cap(
-                    channel_snowflake=self.__channel_snowflake,
-                    category=self.__ctx.category,
-                    duration=self.__duration,
-                    guild_snowflake=self.__guild_snowflake,
-                ):
-                    role = await moderator_service.resolve_highest_role(
-                        channel_snowflake=self.__channel_snowflake,
-                        guild_snowflake=self.__guild_snowflake,
-                        member_snowflake=self.__author_snowflake,
-                    )
-                    if role in ["Moderator", "Everyone"]:
-                        return await interaction.response.send_message(
-                            content=f"Duration {duration_builder.load(self.__duration).as_str()} exceeds the channel cap.",
-                            ephemeral=True,
-                        )
-        modal = ReasonModal(
-            author_snowflake=self.__author_snowflake,
-            category=self.__ctx.category,
-            channel_snowflake=self.__channel_snowflake,
-            duration=self.__duration,
-            guild_snowflake=self.__guild_snowflake,
-            member_snowflake=self.__ctx.member_snowflake,
-            is_channel_scope=self.__is_channel_scope,
-            tick=self.__tick,
-        )
-        await modal.setup(is_new=True)
-        await interaction.response.send_modal(modal)
+            bot.logger.info("Revoke")
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

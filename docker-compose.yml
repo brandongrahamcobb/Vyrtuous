@@ -25,7 +25,7 @@ services:
       - vyrtuous-backups:/app/backups
       - ./src:/app:Z
       - ./vyrtuous.code-workspace:/app/vyrtuous.code-workspace:Z
-      - ./groups.yml:/app/groups.yml:Z
+      - ./groups.yml:/groups.yml:Z
 
     healthcheck:
       test: "healthcheck.sh || kill 1"

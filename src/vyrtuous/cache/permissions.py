@@ -18,11 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from dataclasses import dataclass, field
+from enum import Enum
 
 # "groups": {"scope": ["group", "guild", "member"]},
 
 PERMISSION_TREE = {
-    "level": ["channel", "guild", "global"],
     "other_guilds": [],
     "uncapped": [],
     "command": {
@@ -96,11 +96,18 @@ PERMISSION_TREE = {
 }
 
 
+class PermissionScope(str, Enum):
+    GLOBAL = "global"
+    GUILD = "guild"
+    CHANNEL = "channel"
+
+
 @dataclass
 class PermissionGroup:
     name: str
     alias: str
     default: bool
+    scope: PermissionScope
     permissions: set[str] = field(default_factory=set)
     inheritance: list[str] = field(default_factory=list)
     ancestors: set[str] = field(default_factory=set)

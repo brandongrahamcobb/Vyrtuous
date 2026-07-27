@@ -1,7 +1,12 @@
 import yaml
 from discord.ext import commands
 
-from vyrtuous.cache.permissions import PERMISSION_TREE, PermissionGroup, PermissionNode
+from vyrtuous.cache.permissions import (
+    PERMISSION_TREE,
+    PermissionGroup,
+    PermissionNode,
+    PermissionScope,
+)
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_level import PermissionLevel
@@ -57,6 +62,7 @@ def load_groups(path: str) -> dict[str, PermissionGroup]:
             alias=alias,
             name=name,
             default=value.get("default", False),
+            scope=PermissionScope(value["scope"]),
             permissions=set(value.get("permissions", [])),
             inheritance=[parent.lower() for parent in value.get("inheritance", [])],
         )
@@ -64,17 +70,16 @@ def load_groups(path: str) -> dict[str, PermissionGroup]:
 
 
 def resolve_group_permissions(
-    group_name: str,
+    group_alias: str,
     groups: dict[str, PermissionGroup],
     visited: set[str] | None = None,
 ) -> set[str]:
-    group_name = group_name.lower()
     if visited is None:
         visited = set()
-    if group_name in visited:
-        raise ValueError(f"Circular inheritance detected: {group_name}")
-    visited.add(group_name)
-    group = groups[group_name]
+    if group_alias in visited:
+        raise ValueError(f"Circular inheritance detected: {group_alias}")
+    visited.add(group_alias)
+    group = groups[group_alias]
     permissions = set(group.permissions)
     for parent in group.inheritance:
         permissions.update(
@@ -105,10 +110,10 @@ async def has_permission(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
     )
-    for group_name in groups:
+    for group_alias in groups:
         if has_group_permission(
             permission_state=permission_state,
-            group_name=group_name,
+            group_alias=group_alias,
             requested=requested,
         ):
             return True
@@ -155,10 +160,10 @@ def validate_groups(permission_state: PermissionState) -> None:
 
 def has_group_permission(
     permission_state: PermissionState,
-    group_name: str,
+    group_alias: str,
     requested: str,
 ) -> bool:
-    group = permission_state.groups.get(group_name.lower())
+    group = permission_state.groups.get(group_alias)
     if group is None:
         return False
     for permission in group.permissions:
@@ -220,25 +225,26 @@ def populate(permission_state: PermissionState):
 def load_group_ancestors(
     groups: dict[str, PermissionGroup],
 ) -> None:
-    for group_name in groups:
-        groups[group_name].ancestors = resolve_ancestors(
-            group_name,
+    for group_alias in groups:
+        groups[group_alias].ancestors = resolve_ancestors(
+            group_alias,
             groups,
         )
 
 
 def resolve_ancestors(
-    group_name: str,
+    group_alias: str,
     groups: dict[str, PermissionGroup],
     visited: set[str] | None = None,
 ) -> set[str]:
     if visited is None:
         visited = set()
-    if group_name in visited:
-        raise ValueError(f"Circular inheritance detected: {group_name}")
-    visited.add(group_name)
-    ancestors = {group_name}
-    for parent in groups[group_name].inheritance:
+    if group_alias in visited:
+        raise ValueError(f"Circular inheritance detected: {group_alias}")
+    visited.add(group_alias)
+    ancestors = set()
+    for parent in groups[group_alias].inheritance:
+        ancestors.add(parent)
         ancestors.update(
             resolve_ancestors(
                 parent,
@@ -247,6 +253,31 @@ def resolve_ancestors(
             )
         )
     return ancestors
+
+
+async def resolve_all_assigned_groups(
+    permission_state: PermissionState,
+    member_snowflake: int,
+) -> list[tuple[PermissionGroup, int | None, int | None]]:
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    roles = await database_factory.select(
+        member_snowflake=member_snowflake, singular=False
+    )
+    assigned: list[tuple[PermissionGroup, int | None, int | None]] = []
+    for role in roles:
+        group = next(
+            (
+                g
+                for g in permission_state.groups.values()
+                if g.alias == role.level_name.lower()
+                or g.name.lower() == role.level_name.lower()
+            ),
+            None,
+        )
+        if group is None:
+            continue
+        assigned.append((group, role.guild_snowflake, role.channel_snowflake))
+    return assigned
 
 
 async def resolve_effective_group(

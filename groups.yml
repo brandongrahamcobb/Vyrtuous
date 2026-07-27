@@ -4,6 +4,9 @@ groups:
     default: false
     permissions:
     - '*'
+    inheritance:
+    - developer
+    scope: global
   Developer:
     alias: developer
     default: false
@@ -11,19 +14,19 @@ groups:
     - command.clear.scope.all
     - command.dev.*
     - other_guilds
-    - level.global
     inheritance:
     - guild_owner
-  GuildOwner:
+    scope: global
+  Guild Owner:
     alias: guild_owner
     default: false
     permissions:
     - command.clear.scope.guild
     - command.moderation.hero
     - command.listing.heroes
-    - level.guild
     inheritance:
     - administrator
+    scope: guild
   Administrator:
     alias: administrator
     default: false
@@ -43,9 +46,9 @@ groups:
     - command.moderation.voice-mute.server
     - command.moderation.*
     - command.movement.*
-    = level.guild
     inheritance:
     - coordinator
+    scope: guild
   Coordinator:
     alias: coordinator
     default: false
@@ -54,9 +57,9 @@ groups:
     - command.moderation.blacklist
     - command.moderation.voice-mute.channel_mute
     - command.moderation.uncapped
-    - level.channel
     inheritance:
     - moderator
+    scope: channel
   Moderator:
     alias: moderator
     default: false
@@ -85,15 +88,13 @@ groups:
     - command.listing.text-mutes
     - command.listing.voice-mutes
     - command.info.roleid
-    - level.channel
     inheritance:
     - everyone
+    scope: channel
   Everyone:
     alias: everyone
     default: true
-    permissions:
-    - command.permission.grant
-    - command.permission.revoke
+    scope: global
  
 
 
