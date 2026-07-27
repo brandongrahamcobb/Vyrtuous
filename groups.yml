@@ -7,6 +7,7 @@ groups:
     inheritance:
     - developer
     scope: global
+    sysadmin: true
   Developer:
     alias: developer
     default: false
@@ -27,6 +28,7 @@ groups:
     inheritance:
     - administrator
     scope: guild
+    guild_owner: true
   Administrator:
     alias: administrator
     default: false

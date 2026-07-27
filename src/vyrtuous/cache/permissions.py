@@ -106,8 +106,10 @@ class PermissionScope(str, Enum):
 class PermissionGroup:
     name: str
     alias: str
-    default: bool
     scope: PermissionScope
+    is_guild_owner: bool = False
+    is_sysadmin: bool = False
+    default: bool = False
     permissions: set[str] = field(default_factory=set)
     inheritance: list[str] = field(default_factory=list)
     ancestors: set[str] = field(default_factory=set)

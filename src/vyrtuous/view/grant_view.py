@@ -21,17 +21,19 @@ from dataclasses import dataclass, field
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.permission_level import PermissionLevel
+from vyrtuous.db.permission_entry import PermissionEntry
+from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
 from vyrtuous.view.view_context import ViewContext
 
-MODEL = PermissionLevel
+MODEL = PermissionEntry
 
 
 @dataclass
@@ -48,7 +50,7 @@ SCOPE_REQUIREMENTS: dict[PermissionScope, frozenset[str]] = {
 }
 
 
-class ManageView(discord.ui.View):
+class GrantView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
@@ -86,6 +88,7 @@ class ManageView(discord.ui.View):
             permission_state=permission_state,
             member_snowflake=self.__author_snowflake,
         )
+        bot.logger.info(assigned)
         for group, guild_snowflake, channel_snowflake in assigned:
             scope = GroupScope(group=group)
             if guild_snowflake is not None:
@@ -124,6 +127,8 @@ class ManageView(discord.ui.View):
         )
         for ancestor_alias in ancestors:
             ancestor = permission_state.groups[ancestor_alias]
+            if ancestor.is_sysadmin or ancestor.is_guild_owner or ancestor.default:
+                continue
             self.__groups.setdefault(ancestor.alias, ancestor)
             ancestor_scope = GroupScope(group=ancestor)
             ancestor_scope.guilds.update(scope.guilds)
@@ -245,7 +250,6 @@ class ManageView(discord.ui.View):
     @discord.ui.select(
         placeholder="Select a guild",
         options=[discord.SelectOption(label="Select a group first", value=str(None))],
-        disabled=True,
     )
     async def guild_select(self, interaction, select):
         guild_snowflake = int(select.values[0])
@@ -272,7 +276,6 @@ class ManageView(discord.ui.View):
     @discord.ui.select(
         placeholder="Select a channel",
         options=[discord.SelectOption(label="Select a guild first", value=str(None))],
-        disabled=True,
     )
     async def channel_select(self, interaction, select):
         channel_snowflake = int(select.values[0])
@@ -288,36 +291,116 @@ class ManageView(discord.ui.View):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
-        record = None
-        bot: DiscordBot = DiscordBot.get_instance()
-        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-        if self.__selected_group and self.__selected_channel and self.__selected_guild:
-            record = await database_factory.select(
-                channel_snowflake=self.__selected_channel.id,
-                guild_snowflake=self.__selected_guild.id,
-                member_snowflake=self.__ctx.member_snowflake,
-                group_name=self.__selected_group,
-                singular=True,
+        if self.__selected_group is None:
+            return await interaction.response.send_message(
+                content="Please select all fields.", ephemeral=True
             )
-
-        if not record and self.__selected_group and self.__selected_guild:
-            record = await database_factory.select(
-                guild_snowflake=self.__selected_guild.id,
-                member_snowflake=self.__ctx.member_snowflake,
-                group_name=self.__selected_group,
-                singular=True,
-            )
-
-        if not record and self.__selected_group:
-            record = await database_factory.select(
-                member_snowflake=self.__ctx.member_snowflake,
-                group_name=self.__selected_group,
-                singular=True,
-            )
-        if not record:
-            bot.logger.info("Grant")
         else:
-            bot.logger.info("Revoke")
+            record = None
+            database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+            if (
+                self.__selected_group
+                and self.__selected_channel
+                and self.__selected_guild
+            ):
+                record = await database_factory.select(
+                    channel_snowflake=self.__selected_channel.id,
+                    guild_snowflake=self.__selected_guild.id,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    group_alias=self.__selected_group.alias,
+                    singular=True,
+                )
+                entry = PermissionEntry(
+                    channel_snowflake=self.__selected_channel.id,
+                    group_alias=self.__selected_group.alias,
+                    guild_snowflake=self.__selected_guild.id,
+                    member_snowflake=self.__ctx.member_snowflake,
+                )
+                embed = self.build_grant_embed(
+                    group=self.__selected_group,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    channel_snowflake=self.__selected_channel.id,
+                    guild_snowflake=self.__selected_guild.id,
+                )
+            elif self.__selected_group and self.__selected_guild:
+                record = await database_factory.select(
+                    guild_snowflake=self.__selected_guild.id,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    group_name=self.__selected_group.alias,
+                    singular=True,
+                )
+                entry = PermissionEntry(
+                    group_alias=self.__selected_group.alias,
+                    guild_snowflake=self.__selected_guild.id,
+                    member_snowflake=self.__ctx.member_snowflake,
+                )
+                embed = self.build_grant_embed(
+                    group=self.__selected_group,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    guild_snowflake=self.__selected_guild.id,
+                )
+            else:
+                record = await database_factory.select(
+                    member_snowflake=self.__ctx.member_snowflake,
+                    group_name=self.__selected_group.alias,
+                    singular=True,
+                )
+                entry = PermissionEntry(
+                    group_alias=self.__selected_group.alias,
+                    member_snowflake=self.__ctx.member_snowflake,
+                )
+                embed = self.build_grant_embed(
+                    group=self.__selected_group,
+                    member_snowflake=self.__ctx.member_snowflake,
+                )
+            if record:
+                await self.__tick.end(
+                    warning=f"This member is already apart of this group ({self.__selected_group.name}).",
+                )
+            else:
+                await database_factory.create(entry)
+                await self.__tick.end(success=embed)
+
+    def build_grant_embed(
+        self,
+        group: PermissionGroup,
+        member_snowflake: int,
+        channel_snowflake: int | None = None,
+        guild_snowflake: int | None = None,
+    ) -> discord.Embed:
+        bot: DiscordBot = DiscordBot.get_instance()
+        description = ""
+        member = bot.get_user(member_snowflake)
+        if member:
+            display_name = member.display_name
+            member_str = member.mention
+        else:
+            simplified_member = bot.registry.get(MemberState).active.get(
+                member_snowflake
+            )
+            if not simplified_member:
+                raise commands.MemberNotFound(str(member_snowflake))
+            display_name = simplified_member[0]
+            member_str = display_name
+        description += f"**User:** {member_str}\n"
+        if guild_snowflake:
+            guild = bot.get_guild(guild_snowflake)
+            if guild is None:
+                raise commands.GuildNotFound(str(guild_snowflake))
+            description += f"**Server:** {guild.name}\n"
+            if channel_snowflake:
+                channel = guild.get_channel(channel_snowflake)
+                if channel is None:
+                    raise commands.ChannelNotFound(str(channel_snowflake))
+                description += f"**Channel:** {channel.mention}"
+        embed = discord.Embed(
+            title=f"{emojis.get_random_emoji()} {display_name} has been granted {group.name}",
+            description=description,
+            color=discord.Color.blue(),
+        )
+        if member:
+            embed.set_thumbnail(url=member.display_avatar.url)
+        return embed
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

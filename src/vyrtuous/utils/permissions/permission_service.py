@@ -1,6 +1,7 @@
 import yaml
 from discord.ext import commands
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import (
     PERMISSION_TREE,
     PermissionGroup,
@@ -9,11 +10,11 @@ from vyrtuous.cache.permissions import (
 )
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.permission_level import PermissionLevel
+from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.inc.helpers import PATH_GROUPS
 from vyrtuous.utils.users.moderator_service import HasEqualOrLowerRole
 
-MODEL = PermissionLevel
+MODEL = PermissionEntry
 
 
 def build_permission_tree(
@@ -62,6 +63,8 @@ def load_groups(path: str) -> dict[str, PermissionGroup]:
             alias=alias,
             name=name,
             default=value.get("default", False),
+            is_sysadmin=value.get("sysadmin", False),
+            is_guild_owner=value.get("guild_owner", False),
             scope=PermissionScope(value["scope"]),
             permissions=set(value.get("permissions", [])),
             inheritance=[parent.lower() for parent in value.get("inheritance", [])],
@@ -110,10 +113,10 @@ async def has_permission(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
     )
-    for group_alias in groups:
+    for group in groups:
         if has_group_permission(
             permission_state=permission_state,
-            group_alias=group_alias,
+            group_alias=group.alias,
             requested=requested,
         ):
             return True
@@ -140,7 +143,23 @@ async def has_permissions(
 
 
 def validate_groups(permission_state: PermissionState) -> None:
+    sysadmin_groups = set()
+    guild_owner_groups = set()
     for group in permission_state.groups.values():
+        if group.is_sysadmin:
+            sysadmin_groups.add(group)
+            if len(sysadmin_groups) > 1:
+                group_names = [group.name for group in sysadmin_groups]
+                raise ValueError(
+                    f"Multiple groups ({', '.join(group_names)}) have sysadmin privileges. Only one group can have sysadmin permissions."
+                )
+        if group.is_guild_owner:
+            guild_owner_groups.add(group)
+            if len(guild_owner_groups) > 1:
+                group_names = [group.name for group in guild_owner_groups]
+                raise ValueError(
+                    f"Multiple groups ({', '.join(group_names)}) have guild owner privileges. Only one group can have guild owner permissions."
+                )
         for permission in group.permissions:
             node = permission.removeprefix("-")
             if node == "*":
@@ -194,21 +213,34 @@ async def get_member_groups(
     member_snowflake: int,
     channel_snowflake: int | None = None,
     guild_snowflake: int | None = None,
-) -> set[str]:
+) -> set[PermissionGroup]:
+    groups = set()
+    bot: DiscordBot = DiscordBot.get_instance()
+    permission_state: PermissionState = bot.registry.get(PermissionState)
+    if is_sysadmin(member_snowflake=member_snowflake):
+        for group in permission_state.groups.values():
+            if group.is_sysadmin:
+                groups.add(group)
+    if guild_snowflake:
+        for guild in bot.guilds:
+            if guild.id == guild_snowflake and guild.owner_id == member_snowflake:
+                for group in permission_state.groups.values():
+                    if group.is_guild_owner:
+                        groups.add(group)
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    roles = await database_factory.select(
+    entries = await database_factory.select(
         member_snowflake=member_snowflake,
         singular=False,
     )
-    groups = set()
-    for role in roles:
-        if role.guild_snowflake is not None:
-            if role.guild_snowflake != guild_snowflake:
+    for entry in entries:
+        if entry.guild_snowflake is not None:
+            if entry.guild_snowflake != guild_snowflake:
                 continue
-        if role.channel_snowflake is not None:
-            if role.channel_snowflake != channel_snowflake:
+        if entry.channel_snowflake is not None:
+            if entry.channel_snowflake != channel_snowflake:
                 continue
-        groups.add(role.level_name.lower())
+        if group := permission_state.groups.get(entry.group_alias, None) is not None:
+            groups.add(group)
     return groups
 
 
@@ -255,28 +287,44 @@ def resolve_ancestors(
     return ancestors
 
 
+def is_sysadmin(member_snowflake: int) -> bool:
+    bot: DiscordBot = DiscordBot.get_instance()
+    if int(bot.config["discord_owner_id"]) == member_snowflake:
+        return True
+    return False
+
+
 async def resolve_all_assigned_groups(
     permission_state: PermissionState,
     member_snowflake: int,
 ) -> list[tuple[PermissionGroup, int | None, int | None]]:
+    assigned: list[tuple[PermissionGroup, int | None, int | None]] = []
+    bot: DiscordBot = DiscordBot.get_instance()
+    if is_sysadmin(member_snowflake=member_snowflake):
+        for group in permission_state.groups.values():
+            if group.is_sysadmin:
+                assigned.append((group, None, None))
+    for guild in bot.guilds:
+        if guild.owner_id == member_snowflake:
+            for group in permission_state.groups.values():
+                if group.is_guild_owner:
+                    assigned.append((group, guild.id, None))
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    roles = await database_factory.select(
+    entries = await database_factory.select(
         member_snowflake=member_snowflake, singular=False
     )
-    assigned: list[tuple[PermissionGroup, int | None, int | None]] = []
-    for role in roles:
+    for entry in entries:
         group = next(
             (
                 g
                 for g in permission_state.groups.values()
-                if g.alias == role.level_name.lower()
-                or g.name.lower() == role.level_name.lower()
+                if g.alias == entry.group_alias
             ),
             None,
         )
         if group is None:
             continue
-        assigned.append((group, role.guild_snowflake, role.channel_snowflake))
+        assigned.append((group, entry.guild_snowflake, entry.channel_snowflake))
     return assigned
 
 
@@ -286,29 +334,40 @@ async def resolve_effective_group(
     channel_snowflake: int | None = None,
     guild_snowflake: int | None = None,
 ) -> PermissionGroup | None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    if is_sysadmin(member_snowflake=member_snowflake):
+        for group in permission_state.groups.values():
+            if group.is_sysadmin:
+                return group
+    if guild_snowflake:
+        for guild in bot.guilds:
+            if guild.id == guild_snowflake and guild.owner_id == member_snowflake:
+                for group in permission_state.groups.values():
+                    if group.is_guild_owner:
+                        return group
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    roles = await database_factory.select(
+    entries = await database_factory.select(
         member_snowflake=member_snowflake,
         singular=False,
     )
-    global_role: PermissionGroup | None = None
-    guild_role: PermissionGroup | None = None
-    channel_role: PermissionGroup | None = None
-    for role in roles:
-        group = permission_state.groups.get(role.level_name.lower())
+    global_group: PermissionGroup | None = None
+    guild_group: PermissionGroup | None = None
+    channel_group: PermissionGroup | None = None
+    for entry in entries:
+        group = permission_state.groups.get(entry.group_alias.lower())
         if group is None:
             continue
-        if role.channel_snowflake is not None:
-            if role.channel_snowflake == channel_snowflake:
-                channel_role = group
+        if entry.channel_snowflake is not None:
+            if entry.channel_snowflake == channel_snowflake:
+                channel_group = group
                 continue
-        if role.guild_snowflake is not None:
-            if role.guild_snowflake == guild_snowflake:
-                guild_role = group
+        if entry.guild_snowflake is not None:
+            if entry.guild_snowflake == guild_snowflake:
+                guild_group = group
                 continue
-        if role.channel_snowflake is None and role.guild_snowflake is None:
-            global_role = group
-    return channel_role or guild_role or global_role
+        if entry.channel_snowflake is None and entry.guild_snowflake is None:
+            global_group = group
+    return channel_group or guild_group or global_group
 
 
 async def has_equal_or_lower_role(

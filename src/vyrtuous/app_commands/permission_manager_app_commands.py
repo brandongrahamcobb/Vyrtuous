@@ -26,7 +26,7 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
-from vyrtuous.view.manage_view import ManageView
+from vyrtuous.view.grant_view import GrantView
 from vyrtuous.view.view_context import ViewContext
 
 
@@ -35,13 +35,11 @@ class PermissionManagerAppCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
-    @app_commands.command(
-        name="groupmanager", description="Grant/revoke permission levels."
-    )
+    @app_commands.command(name="grant", description="Grant permission levels.")
     @app_commands.describe(
         member="Specify a member ID/mention.", guild="Specify a server ID."
     )
-    async def toggle_level_app_command(
+    async def grant_group_app_command(
         self,
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
@@ -89,7 +87,7 @@ class PermissionManagerAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
-        view = ManageView(
+        view = GrantView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
             tick=tick,

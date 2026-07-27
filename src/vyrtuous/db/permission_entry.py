@@ -22,11 +22,11 @@ from datetime import datetime, timezone
 
 
 @dataclass(frozen=True)
-class PermissionLevel:
-    __tablename__ = "permission_levels"
-    identifier = "permission_level"
+class PermissionEntry:
+    __tablename__ = "permission_entries"
+    identifier = "permission_entry"
     member_snowflake: int
-    level_name: str
+    group_alias: str
     channel_snowflake: int | None = None
     guild_snowflake: int | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
