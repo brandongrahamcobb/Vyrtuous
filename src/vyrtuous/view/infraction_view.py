@@ -372,7 +372,6 @@ class InfractionView(discord.ui.View):
         options=[],
     )
     async def guild_select(self, interaction, select):
-        await interaction.response.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         if select.values[0] == "all":
             self.guild_select.placeholder = "All"
@@ -399,7 +398,6 @@ class InfractionView(discord.ui.View):
         options=[discord.SelectOption(label="Select a guild first", value=str(None))],
     )
     async def channel_select(self, interaction, select):
-        await interaction.response.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         duration_builder: DurationBuilder = DurationBuilder()
         channel = bot.get_channel(int(select.values[0]))
@@ -485,7 +483,6 @@ class InfractionView(discord.ui.View):
 
     @discord.ui.select(placeholder="Select a duration", options=[])
     async def duration_select(self, interaction, select):
-        await interaction.response.defer()
         duration_name = next(
             option.label
             for option in select.options
