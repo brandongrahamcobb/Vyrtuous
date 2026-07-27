@@ -50,7 +50,7 @@ SCOPE_REQUIREMENTS: dict[PermissionScope, frozenset[str]] = {
 }
 
 
-class GrantView(discord.ui.View):
+class RevokeView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
@@ -81,14 +81,17 @@ class GrantView(discord.ui.View):
 
     async def setup(self):
         bot: DiscordBot = DiscordBot.get_instance()
+        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
         permission_state = bot.registry.get(PermissionState)
         self.__groups.clear()
         self.__scopes.clear()
-        assigned = await permission_service.resolve_all_assigned_groups(
+        author_assigned = await permission_service.resolve_all_assigned_groups(
             permission_state=permission_state,
             member_snowflake=self.__author_snowflake,
         )
-        for group, guild_snowflake, channel_snowflake in assigned:
+        author_groups: dict[str, PermissionGroup] = {}
+        author_scopes: dict[str, GroupScope] = {}
+        for group, guild_snowflake, channel_snowflake in author_assigned:
             scope = GroupScope(group=group)
             if guild_snowflake is not None:
                 guild = bot.get_guild(guild_snowflake)
@@ -101,38 +104,73 @@ class GrantView(discord.ui.View):
                     (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
                 ):
                     scope.channels[channel.id] = channel
-            self.add_group_scope(scope)
-            self.add_selectable_group(group, scope)
+            self._merge_scope(author_scopes, scope)
+            self.add_selectable_group(group, scope, author_groups, author_scopes)
+        records = await database_factory.select(
+            member_snowflake=self.__ctx.member_snowflake,
+            singular=False,
+        )
+        for role in records:
+            group = permission_state.groups.get(role.group_alias)
+            if group is None:
+                continue
+            author_scope = author_scopes.get(group.alias)
+            if author_scope is None:
+                continue
+            if author_scope.guilds and role.guild_snowflake not in author_scope.guilds:
+                continue
+            if (
+                author_scope.channels
+                and role.channel_snowflake not in author_scope.channels
+            ):
+                continue
+            scope = self.__scopes.setdefault(group.alias, GroupScope(group=group))
+            if role.guild_snowflake is not None:
+                guild = bot.get_guild(role.guild_snowflake)
+                if guild is not None:
+                    scope.guilds[guild.id] = guild
+            if role.channel_snowflake is not None:
+                channel = bot.get_channel(role.channel_snowflake)
+                if channel is not None and isinstance(
+                    channel,
+                    (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
+                ):
+                    scope.channels[channel.id] = channel
+            self.__groups.setdefault(group.alias, group)
         if not self.__groups:
             raise app_commands.CheckFailure(
                 "You do not have sufficient privileges in this channel or server to use this command."
             )
         self._build_group_options(available_groups=list(self.__groups.keys()))
 
-    def add_group_scope(self, scope: GroupScope):
-        existing = self.__scopes.setdefault(
-            scope.group.alias,
-            GroupScope(group=scope.group),
-        )
+    @staticmethod
+    def _merge_scope(scopes: dict[str, GroupScope], scope: GroupScope) -> None:
+        existing = scopes.setdefault(scope.group.alias, GroupScope(group=scope.group))
         existing.guilds.update(scope.guilds)
         existing.channels.update(scope.channels)
 
-    def add_selectable_group(self, group: PermissionGroup, scope: GroupScope):
+    def add_group_scope(self, scope: GroupScope):
+        self._merge_scope(self.__scopes, scope)
+
+    def add_selectable_group(
+        self,
+        group: PermissionGroup,
+        scope: GroupScope,
+        author_groups: dict[str, PermissionGroup],
+        author_scopes: dict[str, GroupScope],
+    ):
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
-        ancestors = permission_service.resolve_ancestors(
-            group_alias=group.alias,
-            groups=permission_state.groups,
-        )
-        for ancestor_alias in ancestors:
+        author_groups.setdefault(group.alias, group)
+        for ancestor_alias in permission_service.resolve_ancestors(
+            group_alias=group.alias, groups=permission_state.groups
+        ):
             ancestor = permission_state.groups[ancestor_alias]
-            if ancestor.is_sysadmin or ancestor.is_guild_owner or ancestor.default:
-                continue
-            self.__groups.setdefault(ancestor.alias, ancestor)
+            author_groups.setdefault(ancestor.alias, ancestor)
             ancestor_scope = GroupScope(group=ancestor)
             ancestor_scope.guilds.update(scope.guilds)
             ancestor_scope.channels.update(scope.channels)
-            self.add_group_scope(ancestor_scope)
+            self._merge_scope(author_scopes, ancestor_scope)
 
     def _build_group_options(self, available_groups: list[str]):
         group_options = []
@@ -302,66 +340,43 @@ class GrantView(discord.ui.View):
                 and self.__selected_channel
                 and self.__selected_guild
             ):
-                record = await database_factory.select(
+                await database_factory.delete(
                     channel_snowflake=self.__selected_channel.id,
                     guild_snowflake=self.__selected_guild.id,
                     member_snowflake=self.__ctx.member_snowflake,
                     group_alias=self.__selected_group.alias,
                     singular=True,
                 )
-                entry = PermissionEntry(
-                    channel_snowflake=self.__selected_channel.id,
-                    group_alias=self.__selected_group.alias,
-                    guild_snowflake=self.__selected_guild.id,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                embed = self.build_grant_embed(
+                embed = self.build_revoke_embed(
                     group=self.__selected_group,
                     member_snowflake=self.__ctx.member_snowflake,
                     channel_snowflake=self.__selected_channel.id,
                     guild_snowflake=self.__selected_guild.id,
                 )
             elif self.__selected_group and self.__selected_guild:
-                record = await database_factory.select(
+                await database_factory.delete(
                     guild_snowflake=self.__selected_guild.id,
                     member_snowflake=self.__ctx.member_snowflake,
                     group_name=self.__selected_group.alias,
                     singular=True,
                 )
-                entry = PermissionEntry(
-                    group_alias=self.__selected_group.alias,
-                    guild_snowflake=self.__selected_guild.id,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                embed = self.build_grant_embed(
+                embed = self.build_revoke_embed(
                     group=self.__selected_group,
                     member_snowflake=self.__ctx.member_snowflake,
                     guild_snowflake=self.__selected_guild.id,
                 )
             else:
-                record = await database_factory.select(
+                await database_factory.delete(
                     member_snowflake=self.__ctx.member_snowflake,
                     group_name=self.__selected_group.alias,
-                    singular=True,
                 )
-                entry = PermissionEntry(
-                    group_alias=self.__selected_group.alias,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                embed = self.build_grant_embed(
+                embed = self.build_revoke_embed(
                     group=self.__selected_group,
                     member_snowflake=self.__ctx.member_snowflake,
                 )
-            if record:
-                await self.__tick.end(
-                    warning=f"This member is already apart of this group (`{self.__selected_group.name}`).",
-                    ephemeral=True,
-                )
-            else:
-                await database_factory.create(entry)
-                await self.__tick.end(success=embed)
+            await self.__tick.end(success=embed)
 
-    def build_grant_embed(
+    def build_revoke_embed(
         self,
         group: PermissionGroup,
         member_snowflake: int,
@@ -397,7 +412,7 @@ class GrantView(discord.ui.View):
                     raise commands.ChannelNotFound(str(channel_snowflake))
                 description += f"**Channel:** {channel.mention}"
         embed = discord.Embed(
-            title=f"{emojis.get_random_emoji()} {display_name} has been granted {group.name}",
+            title=f"{emojis.get_random_emoji()} {display_name} has been revoked {group.name}",
             description=description,
             color=discord.Color.blue(),
         )
