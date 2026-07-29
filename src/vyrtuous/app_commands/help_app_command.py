@@ -27,7 +27,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.metadata import metadata
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 
 def skip_app_command_help_discovery():

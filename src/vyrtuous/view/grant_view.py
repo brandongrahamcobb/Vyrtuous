@@ -31,7 +31,7 @@ from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.utils.errors.error import CheckFailure, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 from vyrtuous.view.view_context import ViewContext
 
 MODEL = PermissionEntry

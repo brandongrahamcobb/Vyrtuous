@@ -30,7 +30,7 @@ from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 
 class UtilityAppCommands(commands.Cog):

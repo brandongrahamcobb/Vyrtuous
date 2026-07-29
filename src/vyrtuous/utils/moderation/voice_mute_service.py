@@ -35,7 +35,7 @@ from vyrtuous.utils.errors.error import (
     HasEqualOrLowerRole,
 )
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 MODEL = VoiceMute
 

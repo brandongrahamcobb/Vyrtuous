@@ -31,7 +31,7 @@ from vyrtuous.db.alias import Alias
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.metadata import metadata
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 
 def skip_text_command_help_discovery() -> Callable:

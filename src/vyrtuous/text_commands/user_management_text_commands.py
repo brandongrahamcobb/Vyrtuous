@@ -27,7 +27,7 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.users import hero_service, vegan_service
 
 

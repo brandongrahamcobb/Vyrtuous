@@ -35,7 +35,7 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 from vyrtuous.view.view_context import ViewContext
 
 INFRACTION_MODELS = [

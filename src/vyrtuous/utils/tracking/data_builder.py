@@ -29,7 +29,7 @@ from vyrtuous.db.data import Data
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 MODEL = Data
 

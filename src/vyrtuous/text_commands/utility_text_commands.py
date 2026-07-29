@@ -29,7 +29,7 @@ from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 
 class UtilityTextCommands(commands.Cog):

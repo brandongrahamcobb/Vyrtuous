@@ -26,7 +26,7 @@ import pytest
 from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.integration.test_suite import send_message
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200

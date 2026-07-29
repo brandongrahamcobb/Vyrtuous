@@ -30,7 +30,7 @@ from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.tracking import data_builder, stream_service
 
 MODEL = Ban

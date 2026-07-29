@@ -29,7 +29,7 @@ from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import Module, ModuleObject
 from vyrtuous.utils.errors.error import ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 
 
 class DevelopmentTextCommands(commands.Cog):

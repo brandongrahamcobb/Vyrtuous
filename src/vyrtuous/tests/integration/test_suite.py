@@ -218,3 +218,11 @@ async def capture_command():
         yield results
     finally:
         Tick.end = original_end
+
+
+def check_permissions(permissions: list[str]):
+    def check(*args, requested=None, **kwargs):
+        requested = requested or []
+        return set(requested).issubset(set(permissions))
+
+    return check

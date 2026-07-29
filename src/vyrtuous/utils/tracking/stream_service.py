@@ -27,7 +27,7 @@ from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.errors.error import GuildNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.paginator import Paginator
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.tracking.stream_embed import StreamEmbed
 
 MODEL = Stream

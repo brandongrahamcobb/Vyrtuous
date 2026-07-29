@@ -31,7 +31,7 @@ from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.utils.permissions import permission_service
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.tracking import stream_service
 
 
