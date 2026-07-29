@@ -36,6 +36,7 @@ PERMISSION_TREE = {
             "flags": [],
             "guilds": [],
             "intents": [],
+            "help": [],
             "heroes": [],
             "overwrites": [],
             "roleid": [],
@@ -69,12 +70,12 @@ PERMISSION_TREE = {
             "blacklist": [],
             "duration": [],
             "flag": [],
-            "hero": [],
             "reason": [],
             "text-mute": [],
             "voice-mute": [
                 "auto",
                 "channel_mute",
+                "click",
                 "command",
                 "server",
             ],
@@ -88,7 +89,7 @@ PERMISSION_TREE = {
             "automute",
             "cap",
             "stream",
-            "video",
+            "video-channel",
         ],
         "dev": [
             "backup",
@@ -98,7 +99,7 @@ PERMISSION_TREE = {
             "unload",
             "upload",
         ],
-        "groups": ["grant", "revoke"],
+        "users": ["grant", "revoke", "hero", "vegan"],
     },
 }
 
@@ -119,7 +120,7 @@ class PermissionGroup:
     default: bool = False
     permissions: set[str] = field(default_factory=set)
     inheritance: list[str] = field(default_factory=list)
-    ancestors: set[str] = field(default_factory=set)
+    ancestors: list[str] = field(default_factory=list)
 
 
 @dataclass

@@ -25,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.category import AppCategory, CategoryObject
 from vyrtuous.models.duration import AppDuration, DurationObject, DurationWrapper
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
@@ -35,7 +36,6 @@ from vyrtuous.utils.moderation import (
     voice_mute_service,
 )
 from vyrtuous.utils.permissions import permission_service
-from vyrtuous.utils.users import vegan_service
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_infraction_view import ModifyInfractionView
@@ -54,6 +54,7 @@ class ModerationAppCommands(commands.Cog):
         tick = Tick(bot=self.__bot, interaction=interaction)
         await tick.end(error=str(error))
 
+    @metadata(permission="command.moderation.ban")
     @app_commands.command(name="ban", description="Create a ban.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_ban_app_command(
@@ -129,6 +130,7 @@ class ModerationAppCommands(commands.Cog):
             content="Specify the ban", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.moderation.blacklist")
     @app_commands.command(name="blacklist", description="Blacklist a member.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
@@ -188,6 +190,7 @@ class ModerationAppCommands(commands.Cog):
         )
         return await tick.end(success=msg)
 
+    @metadata(permission="command.clear")
     @app_commands.command(name="clear", description="Reset records.")
     @app_commands.describe(
         category="Specify one of: `alias`, `all`, `automute`, `ban`, `flag`, `tmute`, `stream` or `vmute`.",
@@ -255,6 +258,7 @@ class ModerationAppCommands(commands.Cog):
         )
         return await tick.end(success=msg)
 
+    @metadata(permission="command.moderation.duration")
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def change_moderation_duration_app_command(
@@ -327,6 +331,7 @@ class ModerationAppCommands(commands.Cog):
             content="Select a channel and a category", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.moderation.flag")
     @app_commands.command(name="flag", description="Create a flag.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_flag_app_command(
@@ -403,6 +408,7 @@ class ModerationAppCommands(commands.Cog):
             content="Specify the flag", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.moderation.voice-mute")
     @app_commands.command(name="mute", description="Create a voice mute.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_voice_mute_app_command(
@@ -486,6 +492,7 @@ class ModerationAppCommands(commands.Cog):
             content="Specify the voice-mute", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.moderation.reason")
     @app_commands.command(name="reason", description="Modify a reason.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def change_moderation_reason_app_command(
@@ -552,6 +559,7 @@ class ModerationAppCommands(commands.Cog):
             content="Select a channel and a category", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.moderation.voice-mute.channel_mute")
     @app_commands.command(name="rmute", description="Room mute (except yourself).")
     @app_commands.describe(
         channel="Specify a channel ID/mention.",
@@ -612,6 +620,7 @@ class ModerationAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.moderation.voice-mute.server")
     @app_commands.command(name="smute", description="Server mute/server unmute.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
@@ -674,6 +683,7 @@ class ModerationAppCommands(commands.Cog):
         )
         return await tick.end(success=msg)
 
+    @metadata(permission="command.moderation.text-mute")
     @app_commands.command(name="tmute", description="Create a text-mute.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def create_app_text_mute_app_command(
@@ -745,6 +755,7 @@ class ModerationAppCommands(commands.Cog):
             content="Specify the text-mute", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.moderation.unvoice-mute.channel_unmute")
     @app_commands.command(name="xrmute", description="Unmute all.")
     @app_commands.describe(
         channel="Specify a channel ID/mention.",
@@ -781,7 +792,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.moderation.unvoice-mute.channel-unmute"],
+            requested=["command.moderation.unvoice-mute.channel_unmute"],
         )
         pages = await voice_mute_service.channel_unmute(
             author_snowflake=interaction.user.id,

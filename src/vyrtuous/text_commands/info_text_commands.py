@@ -31,6 +31,7 @@ from vyrtuous.listing import (list_aliases, list_automute_channels, list_bans,
                               list_overwrites, list_streams, list_text_mutes,
                               list_vegans, list_video_channels,
                               list_voice_mutes)
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.models.scope import Scope, ScopeObject
 from vyrtuous.models.target import Target, TargetObject
@@ -73,6 +74,7 @@ class InfoTextCommands(commands.Cog):
     #     return await tick.end(success=pages)
 
     @commands.command(name="automutes", help="List automute channels.")
+    @metadata(permission="command.info.automutes")
     async def list_automute_channels_text_command(
         self,
         ctx: commands.Context,
@@ -151,6 +153,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="bans", help="List bans.")
+    @metadata(permission="command.info.bans")
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
@@ -270,6 +273,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="blacklists", help="List blacklists.")
+    @metadata(permission="command.info.blacklists")
     async def list_blacklists_text_command(
         self,
         ctx: commands.Context,
@@ -279,7 +283,7 @@ class InfoTextCommands(commands.Cog):
         ) = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Tag a channel, guild, member, all or include their ID.",
+            description="Specify a channel ID/mention, member ID/mention or server ID.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
@@ -388,6 +392,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="caps", help="List caps.")
+    @metadata(permission="command.info.caps")
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
@@ -479,7 +484,8 @@ class InfoTextCommands(commands.Cog):
         pages = await list_caps.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
-    @commands.command(name="cmds", help="List aliases.")
+    @commands.command(name="aliases", help="List aliases.")
+    @metadata(permission="command.info.aliases")
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
@@ -515,8 +521,8 @@ class InfoTextCommands(commands.Cog):
         pages = await list_aliases.build_pages(obj=obj)
         return await tick.end(success=pages)
 
-
     @commands.command(name="cogs", help="Lists cogs.")
+    @metadata(permission="command.info.cogs")
     async def list_cogs_text_command(self, ctx: commands.Context) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
@@ -561,6 +567,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=embed)
 
     @commands.command(name="debug", help="Shows the last `n` number of logging.")
+    @metadata(permission="command.info.debug")
     async def debug_text_command(
         self,
         ctx,
@@ -602,6 +609,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=f"```log\n{output}\n```")
 
     @commands.command(name="flags", help="List flags.")
+    @metadata(permission="command.info.flags")
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
@@ -719,6 +727,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="heroes", help="List heroes.")
+    @metadata(permission="command.info.heroes")
     async def list_heroes_text_command(
         self,
         ctx: commands.Context,
@@ -835,6 +844,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="intents", help="View intents.")
+    @metadata(permission="command.info.intents")
     async def list_intents_text_command(
         self,
         ctx: commands.Context,
@@ -928,6 +938,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="mutes", help="List mutes.")
+    @metadata(permission="command.info.voice-mutes")
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
@@ -1090,6 +1101,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="ow", help="Overwrite stats.")
+    @metadata(permission="command.info.overwrites")
     async def list_overwrites_text_command(
         self,
         ctx: commands.Context,
@@ -1177,6 +1189,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=embed)
 
     @commands.command(name="roleid", help="Get role by name.")
+    @metadata(permission="command.info.roleid")
     async def get_role_id_text_command(
         self,
         ctx: commands.Context,
@@ -1225,13 +1238,14 @@ class InfoTextCommands(commands.Cog):
             )
 
     @commands.command(name="roles", help="List role members.")
+    @metadata(permission="command.info.roles")
     async def list_roles_text_command(
         self,
         ctx: commands.Context,
         role: TargetObject = commands.parameter(
             converter=Target,
             default=None,
-            description="Tag a role or include its ID.",
+            description="Specify a role ID/mention.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
@@ -1304,6 +1318,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=embeds)
 
     @commands.command(name="smutes", help="List mutes.")
+    @metadata(permission="command.info.voice-mutes.server")
     async def list_server_mutes_text_command(
         self,
         ctx: commands.Context,
@@ -1421,6 +1436,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="stats", help="Lists stats.")
+    @metadata(permission="command.info.stats")
     async def list_stats_text_command(self, ctx: commands.Context) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
@@ -1464,6 +1480,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=embed)
 
     @commands.command(name="streams", help="List streaming routes.")
+    @metadata(permission="command.info.streams")
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
@@ -1548,6 +1565,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="summary", help="List user moderation.")
+    @metadata(permission="command.info.summary")
     async def list_moderation_summary_text_command(
         self,
         ctx: commands.Context,
@@ -1760,6 +1778,7 @@ class InfoTextCommands(commands.Cog):
     #     return await tick.end(success=pages)
 
     @commands.command(name="tmutes", help="List text-mutes.")
+    @metadata(permission="command.info.text-mutes")
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
@@ -1879,6 +1898,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="vegans", help="List new vegans.")
+    @metadata(permission="command.info.vegans")
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
@@ -1974,6 +1994,7 @@ class InfoTextCommands(commands.Cog):
         name="vs",
         help="List video channels.",
     )
+    @metadata(permission="command.info.video-channels")
     async def list_video_channels_text_command(
         self,
         ctx: commands.Context,

@@ -25,6 +25,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.message import AppMessage, MessageObject
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
@@ -37,6 +38,7 @@ class UtilityAppCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
+    @metadata(permission="command.utility.delete")
     @app_commands.command(name="del", description="Delete a message.")
     @app_commands.describe(msg="Specify a message ID.")
     async def delete_message_app_command(
@@ -74,6 +76,7 @@ class UtilityAppCommands(commands.Cog):
             success=f"Message `{msg.message.id}` deleted successfully."
         )
 
+    @metadata(permission="command.utility.ping")
     @app_commands.command(name="ping", description="Ping me!")
     async def ping_app_command(
         self, interaction: discord.Interaction
@@ -96,6 +99,7 @@ class UtilityAppCommands(commands.Cog):
         )
         return await tick.end(success="Pong!")
 
+    @metadata(permission="command.utility.purge")
     @app_commands.command(name="purge", description="Delete messages.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
@@ -197,6 +201,7 @@ class UtilityAppCommands(commands.Cog):
             message = f"Deleted {count} and skipped {skipped} messages in {channel_obj.mention}."
         return await tick.end(success=message)
 
+    @metadata(permission="command.utility.move")
     @app_commands.command(name="rmv", description="VC move.")
     @app_commands.describe(
         target_channel="Specify a `to` channel ID/mention.",

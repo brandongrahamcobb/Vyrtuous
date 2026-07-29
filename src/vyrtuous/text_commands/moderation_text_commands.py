@@ -27,6 +27,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.models.scope import ScopeObject
 from vyrtuous.utils.messaging.tick import Tick
@@ -46,6 +47,7 @@ class ModerationTextCommands(commands.Cog):
         self.__bot = bot
 
     @commands.command(name="blacklist", help="Blacklist a member.")
+    @metadata(permission="command.moderation.blacklist")
     async def toggle_blacklist_text_command(
         self,
         ctx: commands.Context,
@@ -108,6 +110,7 @@ class ModerationTextCommands(commands.Cog):
         return await tick.end(success=msg)
 
     @commands.command(name="clear", help="Reset records.")
+    @metadata(permission="command.clear")
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
@@ -191,13 +194,14 @@ class ModerationTextCommands(commands.Cog):
         return await tick.end(success=msg)
 
     @commands.command(name="rmute", help="Room mute (except yourself).")
+    @metadata(permission="command.moderation.voice-mute.channel_mute")
     async def channel_mute_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=commands.VoiceChannelConverter,
             default=None,
-            description="Tag a channel or include its ID.",
+            description="Specify a channel ID/mention.",
         ),
         duration: DurationWrapper | None = commands.parameter(
             converter=Duration,
@@ -256,12 +260,13 @@ class ModerationTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(name="smute", help="Server mute/server unmute.")
+    @metadata(permission="command.moderation.voice-mute.server")
     async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
         member: Union[int, discord.Member] = commands.parameter(
             converter=MultiConverter,
-            description="Tag a member or include their ID",
+            description="Specify a member ID/mention.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=commands.GuildConverter,
@@ -323,13 +328,14 @@ class ModerationTextCommands(commands.Cog):
         return await tick.end(success=msg)
 
     @commands.command(name="xrmute", help="Unmute all.")
+    @metadata(permission="command.moderation.unvoice-mute.channel_unmute")
     async def channel_unmute_text_command(
         self,
         ctx: commands.Context,
         channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
             converter=commands.VoiceChannelConverter,
             default=None,
-            description="Tag a channel or include its ID.",
+            description="Specify a channel ID/mention.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
@@ -359,7 +365,7 @@ class ModerationTextCommands(commands.Cog):
             member_snowflake=ctx.author.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.moderation.unvoice-mute.channel-unmute"],
+            requested=["command.moderation.unvoice-mute.channel_unmute"],
         )
         pages = await voice_mute_service.channel_unmute(
             author_snowflake=ctx.author.id,

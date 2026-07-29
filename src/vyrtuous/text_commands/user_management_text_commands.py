@@ -24,6 +24,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
@@ -36,6 +37,7 @@ class UserManagementTextCommands(commands.Cog):
         self.__bot = bot
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
+    @metadata(permission="command.users.hero")
     async def toggle_invincibility_text_command(
         self,
         ctx: commands.Context,
@@ -117,7 +119,7 @@ class UserManagementTextCommands(commands.Cog):
                 member_snowflake=ctx.author.id,
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=g.id,
-                requested=["command.moderation.hero"],
+                requested=["command.users.hero"],
             )
             if enabled:
                 await hero_service.add_invincible_member(g.id, member_snowflake)
@@ -132,6 +134,7 @@ class UserManagementTextCommands(commands.Cog):
         return await tick.end(success=msg)
 
     @commands.command(name="vcow", help="Toggle vegan.")
+    @metadata(permission="command.users.vegan")
     async def toggle_vegan_text_command(
         self,
         ctx: commands.Context,
@@ -186,7 +189,7 @@ class UserManagementTextCommands(commands.Cog):
             member_snowflake=ctx.author.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.general.vcow"],
+            requested=["command.users.vegan"],
         )
         embed = await vegan_service.toggle_vegan(
             guild_snowflake=guild_snowflake,

@@ -35,7 +35,7 @@ DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
     "vyrtuous.app_commands.channel_management_app_commands",
     "vyrtuous.app_commands.development_app_commands",
-    # "vyrtuous.app_commands.help_app_command",
+    "vyrtuous.app_commands.help_app_command",
     "vyrtuous.app_commands.info_app_commands",
     "vyrtuous.app_commands.moderation_app_commands",
     "vyrtuous.app_commands.user_management_app_commands",
@@ -49,7 +49,7 @@ DISCORD_COGS = [
     "vyrtuous.text_commands.alias_management_text_commands",
     "vyrtuous.text_commands.channel_management_text_commands",
     "vyrtuous.text_commands.development_text_commands",
-    # "vyrtuous.text_commands.help_text_command",
+    "vyrtuous.text_commands.help_text_command",
     "vyrtuous.text_commands.info_text_commands",
     "vyrtuous.text_commands.moderation_text_commands",
     "vyrtuous.text_commands.user_management_text_commands",

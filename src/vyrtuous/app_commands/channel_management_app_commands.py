@@ -26,6 +26,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import AppCategory, CategoryObject
 from vyrtuous.models.duration import AppDuration, DurationObject, DurationWrapper
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.messaging.tick import Tick
@@ -39,6 +40,7 @@ class ChannelManagementAppCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
+    @metadata(permission="command.channel.automute")
     @app_commands.command(name="automute", description="Start/stop automute")
     @app_commands.describe(
         channel="Specify a channel ID/mention.",
@@ -91,6 +93,7 @@ class ChannelManagementAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.channel.cap")
     @app_commands.command(name="cap", description="Cap duration.")
     @app_commands.describe(
         channel="Specify a channel ID/mention.",
@@ -145,6 +148,7 @@ class ChannelManagementAppCommands(commands.Cog):
         )
         return await tick.end(success=msg)
 
+    @metadata(permission="command.channel.stream")
     @app_commands.command(name="stream", description="Setup streaming.")
     @app_commands.describe(
         target_channel="Specify a channel ID/mention where logs will be streamed.",
@@ -201,6 +205,7 @@ class ChannelManagementAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.channel.video-channel")
     @app_commands.command(name="v", description="Start/stop video-only channel.")
     @app_commands.describe(channel="Specify a channel ID/mention.")
     async def toggle_video_channel_app_command(
@@ -235,7 +240,7 @@ class ChannelManagementAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             guild_snowflake=guild_snowflake,
             channel_snowflake=channel_snowflake,
-            requested=["command.channel.video"],
+            requested=["command.channel.video-channel"],
         )
         msg = await video_channel_service.toggle_video_channel(
             channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake

@@ -14,6 +14,10 @@ groups:
     permissions:
     - command.clear.scope.all
     - command.dev.*
+    - command.info.cogs
+    - command.info.debug
+    - command.info.stats
+    - command.utility.*
     - other_guilds
     inheritance:
     - guild_owner
@@ -23,8 +27,12 @@ groups:
     default: false
     permissions:
     - command.clear.scope.guild
-    - command.moderation.hero
-    - command.listing.heroes
+    - command.info.heroes
+    - command.info.streams
+    - command.channel.stream
+    - command.users.grant
+    - command.users.hero
+    - command.users.revoke
     inheritance:
     - administrator
     scope: guild
@@ -33,21 +41,25 @@ groups:
     alias: administrator
     default: false
     permissions:
+    - command.alias.*
+    - command.clear
     - command.clear.category.*
     - command.clear.target.*
     - command.clear.scope.channel
     - command.clear.scope.member
     - command.clear.scope.role
-    - command.channel.*
-    - command.info.*
-    - command.listing.automutes
-    - command.listing.scope.guild
-    - command.listing.server-mutes
-    - command.listing.streams
-    - command.listing.video-channels
+    - command.channel.automute
+    - command.channel.cap
+    - command.channel.video-channel
+    - command.info.automutes
+    - command.info.intents
+    - command.info.overwrites
+    - command.info.scope.guild
+    - command.info.voice-mutes.server
+    - command.info.video-channels
     - command.moderation.voice-mute.server
-    - command.moderation.*
-    - command.movement.*
+    - command.utility.purge
+    - command.utility.move
     inheritance:
     - coordinator
     scope: guild
@@ -55,9 +67,11 @@ groups:
     alias: coordinator
     default: false
     permissions:
-    - command.listing.blacklists
+    - command.info.blacklists
+    - command.info.caps
     - command.moderation.blacklist
     - command.moderation.voice-mute.channel_mute
+    - command.moderation.unvoice-mute.channel_unmute
     - command.moderation.uncapped
     inheritance:
     - moderator
@@ -72,24 +86,31 @@ groups:
     - command.moderation.reason
     - command.moderation.text-mute
     - command.moderation.voice-mute.auto
+    - command.moderation.voice-mute.click
     - command.moderation.voice-mute.command
     - command.moderation.unban
     - command.moderation.unflag
     - command.moderation.untext-mute
     - command.moderation.unvoice-mute
-    - command.listing.aliases
-    - command.listing.bans
-    - command.listing.caps
-    - command.listing.flags
-    - command.listing.roles
-    - command.listing.scope.channel
-    - command.listing.scope.member
-    - command.listing.scope.role
-    - command.listing.summary
-    - command.listing.survey
-    - command.listing.text-mutes
-    - command.listing.voice-mutes
+    - command.info.aliases
+    - command.info.bans
+    - command.info.flags
+    - command.info.help
     - command.info.roleid
+    - command.info.roles
+    - command.info.scope.channel
+    - command.info.scope.member
+    - command.info.scope.role
+    - command.info.summary
+    - command.info.survey
+    - command.info.text-mutes
+    - command.info.vegans
+    - command.info.voice-mutes
+    - command.info.voice-mutes.auto
+    - command.info.voice-mutes.click
+    - command.info.voice-mutes.command
+    - command.utility.delete
+    - command.users.vegan
     inheritance:
     - everyone
     scope: channel

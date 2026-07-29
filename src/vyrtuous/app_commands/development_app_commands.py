@@ -24,6 +24,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database import Database
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import AppModule, ModuleObject
 from vyrtuous.utils.errors.error import ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
@@ -35,6 +36,7 @@ class DevelopmentAppCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
+    @metadata(permission="command.dev.backup")
     @app_commands.command(name="backup", description="Request a backup file.")
     async def backup_app_command(
         self, interaction: discord.Interaction
@@ -63,6 +65,7 @@ class DevelopmentAppCommands(commands.Cog):
             return await tick.end(warning=str(e).capitalize())
         return await tick.end(success=discord.File(db.file_name))
 
+    @metadata(permission="command.dev.load")
     @app_commands.command(name="load", description="Loads a cog.")
     @app_commands.describe(module="Specify the cog name.")
     async def load_app_command(
@@ -94,6 +97,7 @@ class DevelopmentAppCommands(commands.Cog):
             )
         return await tick.end(success=f"Successfully loaded {module.module}.")
 
+    @metadata(permission="command.dev.reload")
     @app_commands.command(name="reload", description="Reloads a cog.")
     @app_commands.describe(module="Specify the cog name.")
     async def reload_app_command(
@@ -172,6 +176,7 @@ class DevelopmentAppCommands(commands.Cog):
     # async def uploads_app_command(self, interaction: discord.Interaction) -> None:
     #     return await upload_service.build_latex_document()
 
+    @metadata(permission="command.dev.unload")
     @app_commands.command(name="unload", description="Unloads a cog`.")
     @app_commands.describe(module="Specify the cog name.")
     async def unload_app_command(

@@ -24,6 +24,7 @@ from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import Category, CategoryObject
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
@@ -38,6 +39,7 @@ class AliasManagementTextCommands(commands.Cog):
         name="alias",
         help="Alias creation.",
     )
+    @metadata(permission="command.alias.create")
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
@@ -108,6 +110,7 @@ class AliasManagementTextCommands(commands.Cog):
             return await tick.end(success=msg)
 
     @commands.command(name="xalias", help="Delete alias.")
+    @metadata(permission="command.alias.delete")
     async def delete_alias_text_command(
         self,
         ctx: commands.Context,

@@ -33,26 +33,26 @@ MODEL = Alias
 ALIASES = [BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]
 CATEGORY_TO_HELP = {
     "ban": [
-        "**member**: Tag a member or include their ID",
-        "**duration**: m/h/d",
-        "**reason**: Reason for ban",
+        "**member**: Specify a member ID/mention.",
+        "**duration**: Specify a duration in m/h/d.",
+        "**reason**: Specify a reason for the ban.",
     ],
     "flag": [
-        "**member**: Tag a member or include their ID",
-        "**reason**: Reason for flag",
+        "**member**: Specify a member ID/mention.",
+        "**reason**: Specify a reason for the flag.",
     ],
     "role": [
-        "**member**: Tag a member or include their ID",
+        "**member**: Specify a member ID/mention.",
     ],
     "tmute": [
-        "**member**: Tag a member or include their ID",
-        "**duration**: m/h/d",
-        "**reason**: Reason for text-mute",
+        "**member**: Specify a member ID/mention.",
+        "**duration**: Specify a duration in m/h/d.",
+        "**reason**: Specify a reason for the text-mute.",
     ],
     "vmute": [
-        "**member**: Tag a member or include their ID",
-        "**duration**: m/h/d",
-        "**reason**: Reason for voice-mute",
+        "**member**: Specify a member ID/mention.",
+        "**duration**: Specify a duration in m/h/d.",
+        "**reason**: Specify a reason for the voice-mute.",
     ],
 }
 CATEGORY_TO_DESCRIPTION = {
@@ -62,12 +62,11 @@ CATEGORY_TO_DESCRIPTION = {
     "tmute": "Toggles a mute in text channels.",
     "vmute": "Toggles a mute in voice channels.",
 }
-CATEGORY_TO_PERMISSION_LEVEL = {
-    "ban": "Moderator",
-    "flag": "Moderator",
-    "role": "Coordinator",
-    "tmute": "Moderator",
-    "vmute": "Moderator",
+CATEGORY_TO_PERMISSION = {
+    "ban": "command.moderation.ban",
+    "flag": "command.moderation.flag",
+    "tmute": "commands.moderation.text-mute",
+    "vmute": "commands.moderation.voice-mute",
 }
 
 

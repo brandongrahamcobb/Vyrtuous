@@ -25,6 +25,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database import Database
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import Module, ModuleObject
 from vyrtuous.utils.errors.error import ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
@@ -37,6 +38,7 @@ class DevelopmentTextCommands(commands.Cog):
         self.__bot = bot
 
     @commands.command(name="backup", help="Request a backup file.")
+    @metadata(permission="command.dev.backup")
     async def backup_text_command(self, ctx: commands.Context) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
@@ -63,6 +65,7 @@ class DevelopmentTextCommands(commands.Cog):
         return await tick.end(success=discord.File(db.file_name))
 
     @commands.command(name="load", help="Loads a cog.")
+    @metadata(permission="command.dev.load")
     async def load_text_command(
         self,
         ctx: commands.Context,
@@ -95,6 +98,7 @@ class DevelopmentTextCommands(commands.Cog):
         return await tick.end(success=f"Successfully loaded {module}.")
 
     @commands.command(name="reload", help="Reloads a cog.")
+    @metadata(permission="command.dev.reload")
     async def reload_text_command(
         self,
         ctx: commands.Context,
@@ -127,6 +131,7 @@ class DevelopmentTextCommands(commands.Cog):
         return await tick.end(success=f"Successfully reloaded {module}.")
 
     @commands.command(name="sync", help="Sync app commands.")
+    @metadata(permission="command.dev.sync")
     async def sync_text_command(
         self,
         ctx: commands.Context,
@@ -165,7 +170,12 @@ class DevelopmentTextCommands(commands.Cog):
                 ret += 1
         return await tick.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
-    @commands.command(name="unload", help="Unloads a cog.")
+    @commands.command(
+        name="unload",
+        help="Unloads a cog.",
+        extras={"permission": "command.dev.unload"},
+    )
+    @metadata(permission="command.dev.unload")
     async def unload_text_command(
         self,
         ctx: commands.Context,

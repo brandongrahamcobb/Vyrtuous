@@ -31,6 +31,7 @@ from vyrtuous.listing import (list_automute_channels, list_bans, list_caps,
                               list_overwrites, list_streams, list_text_mutes,
                               list_vegans, list_video_channels,
                               list_voice_mutes)
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging import emojis
@@ -77,6 +78,7 @@ class InfoAppCommands(commands.Cog):
     #     )
     #     return await tick.end(success=pages)
 
+    @metadata(permission="command.info.automutes")
     @app_commands.command(name="automutes", description="List automute channels.")
     @app_commands.describe(
         target="Specify a channel ID/mention or server ID.",
@@ -150,6 +152,7 @@ class InfoAppCommands(commands.Cog):
         pages = await list_automute_channels.build_pages(obj=obj)
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.bans")
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention, member ID/mention or server ID.",
@@ -260,6 +263,7 @@ class InfoAppCommands(commands.Cog):
         pages = await list_bans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.blacklists")
     @app_commands.command(name="blacklists", description="List blacklists.")
     @app_commands.describe(
         target="Specify a channel ID/mention, member ID/mention or server ID."
@@ -370,6 +374,7 @@ class InfoAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.caps")
     @app_commands.command(name="caps", description="List caps.")
     @app_commands.describe(
         target="Specify a channel ID/mention or server ID.",
@@ -456,6 +461,7 @@ class InfoAppCommands(commands.Cog):
         pages = await list_caps.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.cogs")
     @app_commands.command(name="cogs", description="Lists cogs.")
     async def list_cogs_app_command(
         self, interaction: discord.Interaction
@@ -524,6 +530,7 @@ class InfoAppCommands(commands.Cog):
     #     )
     #
 
+    @metadata(permission="command.info.debug")
     @app_commands.command(
         name="debug", description="Shows the last `n` number of logging."
     )
@@ -566,6 +573,7 @@ class InfoAppCommands(commands.Cog):
             output = output[-1900:]
         return await tick.end(success=f"```log\n{output}\n```")
 
+    @metadata(permission="command.info.flags")
     @app_commands.command(name="flags", description="List flags.")
     @app_commands.describe(
         target="Specify a channel ID/mention, member ID/mention or server ID.",
@@ -676,6 +684,7 @@ class InfoAppCommands(commands.Cog):
         pages = await list_flags.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.heroes")
     @app_commands.command(name="heroes", description="List heroes.")
     @app_commands.describe(
         target="Specify a member ID/mention or server ID.", guild="Specify a server ID."
@@ -787,6 +796,7 @@ class InfoAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.intents")
     @app_commands.command(name="intents", description="View intents.")
     @app_commands.describe(
         target="Specify a channel ID/mention or server ID.",
@@ -878,6 +888,7 @@ class InfoAppCommands(commands.Cog):
         return await tick.end(success=pages)
 
 
+    @metadata(permission="command.info.mutes")
     @app_commands.command(name="mutes", description="List mutes.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention, member ID/mention or server ID.",
@@ -1031,6 +1042,7 @@ class InfoAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.overwrites")
     @app_commands.command(name="ow", description="Overwrite stats.")
     @app_commands.describe(
         target="Specify a channel ID/mention or server ID.",
@@ -1115,6 +1127,7 @@ class InfoAppCommands(commands.Cog):
         embed = list_overwrites.build_embed(obj=obj)
         return await tick.end(success=embed)
 
+    @metadata(permission="command.info.roleid")
     @app_commands.command(name="roleid", description="Get role by name.")
     @app_commands.describe(
         role_name="Specify a role name.", guild="Specify a server ID."
@@ -1162,6 +1175,7 @@ class InfoAppCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
+    @metadata(permission="command.info.roles")
     @app_commands.command(name="roles", description="List role members.")
     @app_commands.describe(
         role="Specify a role ID/mention.", guild="Specify a server ID."
@@ -1236,7 +1250,7 @@ class InfoAppCommands(commands.Cog):
             embeds.append(embed)
         return await tick.end(success=embeds)
 
-
+    @metadata(permission="command.info.voice-mutes.server")
     @app_commands.command(name="smutes", description="List mutes.")
     @app_commands.describe(
         target="Specify one of: a member ID/mention or a server ID.",
@@ -1348,6 +1362,7 @@ class InfoAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.stats")
     @app_commands.command(name="stats", description="Lists stats.")
     async def list_stats_app_command(
         self, interaction: discord.Interaction
@@ -1393,6 +1408,7 @@ class InfoAppCommands(commands.Cog):
         embed.add_field(name="Servers", value=number_of_servers, inline=True)
         return await tick.end(success=embed)
 
+    @metadata(permission="command.info.streams")
     @app_commands.command(name="streams", description="List streaming routes.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention or server ID",
@@ -1474,6 +1490,7 @@ class InfoAppCommands(commands.Cog):
         pages = await list_streams.build_pages(obj=obj)
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.summary")
     @app_commands.command(name="summary", description="List user moderation.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
@@ -1647,6 +1664,7 @@ class InfoAppCommands(commands.Cog):
             return await tick.end(success="No infractions found")
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.text-mutes")
     @app_commands.command(name="tmutes", description="List text-mutes.")
     @app_commands.describe(
         target="Specify a channel ID/mention, member ID/mention or server ID.",
@@ -1760,6 +1778,7 @@ class InfoAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.vegans")
     @app_commands.command(name="vegans", description="List new vegans.")
     @app_commands.describe(
         target="Specify a member ID/mention or server ID.",
@@ -1847,6 +1866,7 @@ class InfoAppCommands(commands.Cog):
         pages = await list_vegans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.video-channels")
     @app_commands.command(
         name="vs",
         description="List video channels.",

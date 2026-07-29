@@ -24,6 +24,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
@@ -37,6 +38,7 @@ class UtilityTextCommands(commands.Cog):
         self.__bot = bot
 
     @commands.command(name="del", help="Delete message.")
+    @metadata(permission="command.utility.delete")
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
@@ -73,6 +75,7 @@ class UtilityTextCommands(commands.Cog):
         return await tick.end(success=f"Message `{msg.id}` deleted successfully.")
 
     @commands.command(name="ping", help="Ping me!")
+    @metadata(permission="command.utility.ping")
     async def ping_text_command(self, ctx: commands.Context) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
@@ -93,6 +96,7 @@ class UtilityTextCommands(commands.Cog):
         return await tick.end(success="Pong!")
 
     @commands.command(name="purge", help="Delete messages.")
+    @metadata(permission="command.utility.purge")
     async def purge_text_command(
         self,
         ctx: commands.Context,
@@ -195,6 +199,7 @@ class UtilityTextCommands(commands.Cog):
         return await tick.end(success=message)
 
     @commands.command(name="rmv", help="VC move.")
+    @metadata(permission="command.utility.move")
     async def channel_move_all_text_command(
         self,
         ctx: commands.Context,

@@ -23,6 +23,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
@@ -37,6 +38,7 @@ class UserManagementAppCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
+    @metadata(permission="command.users.grant")
     @app_commands.command(name="grant", description="Grant permission levels.")
     @app_commands.describe(member="Specify a member ID/mention.")
     async def grant_group_app_command(
@@ -68,7 +70,7 @@ class UserManagementAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.groups.grant"],
+            requested=["command.users.grant"],
         )
         ctx = ViewContext(
             interaction=interaction,
@@ -86,6 +88,7 @@ class UserManagementAppCommands(commands.Cog):
             content="Specify the group", view=view, ephemeral=True
         )
 
+    @metadata(permission="command.users.hero")
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
@@ -165,7 +168,7 @@ class UserManagementAppCommands(commands.Cog):
                 member_snowflake=interaction.user.id,
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=g.id,
-                requested=["command.moderation.hero"],
+                requested=["command.users.hero"],
             )
             if enabled:
                 await hero_service.add_invincible_member(g.id, member_snowflake)
@@ -179,6 +182,7 @@ class UserManagementAppCommands(commands.Cog):
         msg = header + ", ".join(guild_names) + "."
         return await tick.end(success=msg)
 
+    @metadata(permission="command.users.revoke")
     @app_commands.command(name="revoke", description="Revoke permission levels.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
@@ -212,7 +216,7 @@ class UserManagementAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.groups.revoke"],
+            requested=["command.users.revoke"],
         )
         ctx = ViewContext(
             interaction=interaction,
@@ -264,6 +268,7 @@ class UserManagementAppCommands(commands.Cog):
     #     )
     #     return await tick.end(success=pages)
 
+    @metadata(permission="command.users.vegan")
     @app_commands.command(name="vcow", description="Toggle vegan.")
     @app_commands.describe(member="Specify member ID/mention.", notes="Include notes.")
     async def toggle_vegan_app_command(
@@ -310,7 +315,7 @@ class UserManagementAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.general.vcow"],
+            requested=["command.users.vegan"],
         )
         embed = await vegan_service.toggle_vegan(
             guild_snowflake=guild_snowflake,

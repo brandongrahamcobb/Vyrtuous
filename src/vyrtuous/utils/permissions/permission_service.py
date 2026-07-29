@@ -12,7 +12,7 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.inc.helpers import PATH_GROUPS
-from vyrtuous.utils.errors.error import HasEqualOrLowerRole, NotGuildOwner
+from vyrtuous.utils.errors.error import CheckFailure, HasEqualOrLowerRole, NotGuildOwner
 
 MODEL = PermissionEntry
 
@@ -72,29 +72,6 @@ def load_groups(path: str) -> dict[str, PermissionGroup]:
     return groups
 
 
-def resolve_group_permissions(
-    group_alias: str,
-    groups: dict[str, PermissionGroup],
-    visited: set[str] | None = None,
-) -> set[str]:
-    if visited is None:
-        visited = set()
-    if group_alias in visited:
-        raise ValueError(f"Circular inheritance detected: {group_alias}")
-    visited.add(group_alias)
-    group = groups[group_alias]
-    permissions = set(group.permissions)
-    for parent in group.inheritance:
-        permissions.update(
-            resolve_group_permissions(
-                parent,
-                groups,
-                visited.copy(),
-            )
-        )
-    return permissions
-
-
 def exists(permission_state: PermissionState, permission: str) -> bool:
     if permission.endswith(".*"):
         permission = permission[:-2]
@@ -108,46 +85,46 @@ async def has_permission(
     channel_snowflake: int | None = None,
     guild_snowflake: int | None = None,
 ) -> bool:
-    groups = await get_member_groups(
+    group = await resolve_effective_group(
+        permission_state=permission_state,
         member_snowflake=member_snowflake,
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
     )
-    for group in groups:
-        if has_group_permission(
-            permission_state=permission_state,
-            group_alias=group.alias,
-            requested=requested,
-        ):
-            return True
-    return False
+    if group is None:
+        return False
+    return bool(resolve_group_permission(permission_state, group.alias, requested))
 
 
-async def any_group_has_permission(
+def group_defines_permission(
     permission_state: PermissionState,
-    member_snowflake: int,
+    group_alias: str,
     requested: str,
-) -> bool:
-    groups_list = []
-    bot: DiscordBot = DiscordBot.get_instance()
-    for guild in bot.guilds:
-        for channel in guild.channels:
-            groups = await get_member_groups(
-                member_snowflake=member_snowflake,
-                channel_snowflake=channel.id,
-                guild_snowflake=guild.id,
-            )
-            for group in groups:
-                if group not in groups_list:
-                    groups_list.append(group)
-    for group in groups_list:
-        if has_group_permission(
-            permission_state=permission_state,
-            group_alias=group.alias,
-            requested=requested,
-        ):
-            return True
-    return False
+) -> bool | None:
+    group = permission_state.groups.get(group_alias)
+    if group is None:
+        return None
+    for permission in group.permissions:
+        deny = permission.startswith("-")
+        node = permission.removeprefix("-")
+        if matches(node, requested):
+            return not deny
+    return None
+
+
+def resolve_group_permission(
+    permission_state: PermissionState,
+    group_alias: str,
+    requested: str,
+) -> bool | None:
+    group = permission_state.groups.get(group_alias)
+    if group is None:
+        return None
+    for alias in (group_alias, *group.ancestors):
+        result = group_defines_permission(permission_state, alias, requested)
+        if result is not None:
+            return result
+    return None
 
 
 async def has_permissions(
@@ -165,38 +142,40 @@ async def has_permissions(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
         ):
-            raise commands.CheckFailure("You do not have sufficient access to do that.")
+            raise CheckFailure("You do not have sufficient access to do that.")
     return True
 
 
-async def any_group_has_permissions(
+async def any_group_has_permission(
     permission_state: PermissionState,
     member_snowflake: int,
-    requested: list[str],
+    requested: str,
 ) -> bool:
-    for permission in requested:
-        if not await any_group_has_permission(
-            permission_state=permission_state,
-            member_snowflake=member_snowflake,
-            requested=permission,
-        ):
-            raise commands.CheckFailure("You do not have sufficient access to do that.")
-    return True
+    assigned = await resolve_all_assigned_groups(
+        permission_state=permission_state,
+        member_snowflake=member_snowflake,
+    )
+    for group, _guild, _channel in assigned:
+        if resolve_group_permission(permission_state, group.alias, requested):
+            return True
+    return False
 
 
 def validate_groups(permission_state: PermissionState) -> None:
-    sysadmin_groups = set()
-    guild_owner_groups = set()
+    sysadmin_groups = []
+    guild_owner_groups = []
     for group in permission_state.groups.values():
         if group.is_sysadmin:
-            sysadmin_groups.add(group)
+            if group not in sysadmin_groups:
+                sysadmin_groups.append(group)
             if len(sysadmin_groups) > 1:
                 group_names = [group.name for group in sysadmin_groups]
                 raise ValueError(
                     f"Multiple groups ({', '.join(group_names)}) have sysadmin privileges. Only one group can have sysadmin permissions."
                 )
         if group.is_guild_owner:
-            guild_owner_groups.add(group)
+            if group not in guild_owner_groups:
+                guild_owner_groups.append(group)
             if len(guild_owner_groups) > 1:
                 group_names = [group.name for group in guild_owner_groups]
                 raise ValueError(
@@ -283,20 +262,20 @@ async def get_member_groups(
         if entry.channel_snowflake is not None:
             if entry.channel_snowflake != channel_snowflake:
                 continue
-        if group := permission_state.groups.get(entry.group_alias, None) is not None:
-            if group not in groups:
-                groups.append(group)
+        group = permission_state.groups.get(entry.group_alias, None)
+        if group is not None and group not in groups:
+            groups.append(group)
     return groups
 
 
-def populate(permission_state: PermissionState):
+def populate(permission_state: PermissionState) -> None:
     root, nodes = build_permission_tree(permissions=PERMISSION_TREE)
     groups = load_groups(path=PATH_GROUPS)
-    validate_groups(permission_state=permission_state)
-    load_group_ancestors(groups)
     permission_state.root = root
     permission_state.nodes = nodes
     permission_state.groups = groups
+    validate_groups(permission_state=permission_state)
+    load_group_ancestors(groups)
 
 
 def load_group_ancestors(
@@ -309,26 +288,42 @@ def load_group_ancestors(
         )
 
 
+async def any_group_has_permissions(
+    permission_state: PermissionState,
+    member_snowflake: int,
+    requested: list[str],
+) -> bool:
+    for permission in requested:
+        if not await any_group_has_permission(
+            permission_state=permission_state,
+            member_snowflake=member_snowflake,
+            requested=permission,
+        ):
+            raise CheckFailure("You do not have sufficient access to do that.")
+    return True
+
+
 def resolve_ancestors(
     group_alias: str,
     groups: dict[str, PermissionGroup],
     visited: set[str] | None = None,
-) -> set[str]:
+) -> list[str]:
     if visited is None:
         visited = set()
     if group_alias in visited:
         raise ValueError(f"Circular inheritance detected: {group_alias}")
     visited.add(group_alias)
-    ancestors = set()
+    ancestors = []
     for parent in groups[group_alias].inheritance:
-        ancestors.add(parent)
-        ancestors.update(
-            resolve_ancestors(
-                parent,
-                groups,
-                visited.copy(),
-            )
-        )
+        if parent not in ancestors:
+            ancestors.append(parent)
+        for ancestor in resolve_ancestors(
+            parent,
+            groups,
+            visited.copy(),
+        ):
+            if ancestor not in ancestors:
+                ancestors.append(ancestor)
     return ancestors
 
 
@@ -456,6 +451,10 @@ async def is_guild_owner(
         if guild and guild.owner_id == member_snowflake:
             return True
     raise NotGuildOwner(guild_snowflake=guild_snowflake)
+
+
+def get_default_group(permission_state: PermissionState) -> PermissionGroup:
+    return next(group for group in permission_state.groups.values() if group.default)
 
 
 # async def survey(channel_snowflake: int, guild_snowflake: int) -> list[discord.Embed]:
