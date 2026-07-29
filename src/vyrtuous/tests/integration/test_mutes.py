@@ -31,6 +31,7 @@ from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
@@ -40,85 +41,393 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
+COMMAND = "mutes"
+BASE_PERMISSIONS = ["command.info.voice-mutes"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, scope, guild",
+    "target, scope, other_guild, extra_permissions",
     [
-        ("Moderator", "mutes", "{channel_snowflake}", None, None),
+        ("{channel_snowflake}", None, None, ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", None, None, ["command.info.scope.channel"]),
         (
-            "Developer",
-            "mutes",
+            "{channel_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "all",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{channel_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "auto",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{channel_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.channel", "command.info.voice-mutes.click"],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "click",
+            None,
+            ["command.info.scope.channel", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{channel_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.channel", "command,info.voice-mutes.command"],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "command",
+            None,
+            ["command.info.scope.channel", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{channel_snowflake}",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
             "<#{channel_snowflake}>",
             "all",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
         ),
         (
-            "Developer",
-            "mutes",
+            "{channel_snowflake}",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
             "<#{channel_snowflake}>",
             "click",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
         ),
         (
-            "Developer",
-            "mutes",
+            "{channel_snowflake}",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
             "<#{channel_snowflake}>",
             "command",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
         ),
-        ("Guild_Owner", "mutes", "{guild_snowflake}", "all", None),
-        ("Guild_Owner", "mutes", "{guild_snowflake}", "click", None),
-        ("Guild_Owner", "mutes", "{guild_snowflake}", "command", None),
-        ("Moderator", "mutes", "{member_snowflake}", None, None),
+        ("{member_snowflake}", None, None, ["command.info.scope.member"]),
+        ("<@{member_snowflake}>", None, None, ["command.info.scope.member"]),
         (
-            "Developer",
-            "mutes",
+            "{member_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "all",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{member_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "auto",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{member_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.member", "command.info.voice-mutes.click"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "click",
+            None,
+            ["command.info.scope.member", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{member_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{member_snowflake}",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
             "<@{member_snowflake}>",
             "all",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
         ),
         (
-            "Developer",
-            "mutes",
+            "{member_snowflake}",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
             "<@{member_snowflake}>",
             "click",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
         ),
         (
-            "Developer",
-            "mutes",
+            "{member_snowflake}",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
             "<@{member_snowflake}>",
             "command",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
         ),
-        ("Moderator", "mutes", "{simplified_member_snowflake}", None, None),
+        ("{guild_snowflake}", None, None, ["command.info.scope.guild"]),
         (
-            "Developer",
-            "mutes",
-            "<@{simplified_member_snowflake}>",
+            "{guild_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.guild",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{guild_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.guild",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{guild_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.guild", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{guild_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.guild", "command,info.voice-mutes.command"],
+        ),
+        ("{simplified_member_snowflake}", None, None, ["command.info.scope.member"]),
+        (
+            "{simplified_member_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.member", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{simplified_member_snowflake}",
             "all",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
         ),
         (
-            "Developer",
-            "mutes",
-            "<@{simplified_member_snowflake}>",
+            "{simplified_member_snowflake}",
             "click",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
         ),
         (
-            "Developer",
-            "mutes",
-            "<@{simplified_member_snowflake}>",
+            "{simplified_member_snowflake}",
             "command",
             "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
         ),
     ],
 )
-async def test_voice_mutes(
-    bot, command: str, prefix: str, target, guild, scope, permission_role
+async def test_mutes_text_command(
+    bot,
+    prefix: str,
+    target: str | None,
+    other_guild: str | None,
+    scope: str | None,
+    extra_permissions: list[str],
 ):
     """
     List voice-mutes on members which are registered in the PostgresSQL database
@@ -126,110 +435,535 @@ async def test_voice_mutes(
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all voice mutes in all guilds
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with voice-mutes on members
-        in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where mutes are present.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who has been voice-muted
-        in any of the guilds Vyrtuous has access inside.
+    target (Optional) : str | int
+        Defaults to context channel
+        Resolves to: int | discord.VoiceChannel | discord.TextChannel | discord.StageChannel | discord.Member | discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010> | <@10000000000000010>
 
-    Examples
+    scope (Optiona) : str
+        Default to all
+        Resolves to: ScopeObject
+        Examples: all | auto | click | command | server
+
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
+
+    Example
     --------
-    >>> !mutes "all"
-    [{emoji} Voice Mutes\n Guild1\n Guild2]
-
-    >>> !mutes <#10000000000000010>
-    [{emoji} Voice Mutes for Channel1\n Member1\n Member2]
-
-    >>> !mutes 10000000000000010
-    [{emoji} Voice Mutes for Channel1\n Member1\n Member2]
-
-    >>> !mutes 10000000000000500
-    [{emoji} Voice Mutes\n Guild1]
-
-    >>> !mutes <@10000000000000003>
-    [{emoji} Voice Mutes for Member1\n Guild1\n Guild2]
-
-    >>> !mutes 10000000000000003
-    [{emoji} Voice Mutes for Member1\n Guild1\n Guild2]
+    >>> !mutes
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    bot.registry.get(MemberState).active.update(
-        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
-    )
-
-    t = target.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE,
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
-    )
-
-    full = f"{prefix}{command} {t}"
-    if guild is None and not scope:
-        g = None
-        s = None
-    elif scope and not guild:
-        g = None
-        s = scope
-        full = f"{prefix}{command} {t} {s}"
-    elif guild:
-        g = guild.format(
-            guild_snowflake=GUILD_SNOWFLAKE, other_guild_snowflake=OTHER_GUILD_SNOWFLAKE
-        )
-        s = scope
-        full = f"{prefix}{command} {t} {s} {g}"
-    else:
-        g = None
-        s = None
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        print(full)
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            full = f"{prefix}{COMMAND}"
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+                )
+                full += f" {t}"
+            if scope is None:
+                s = scope
+            else:
+                s = scope
+                full += f" {s}"
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+                full += f" {g}"
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
             )
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target, scope, other_guild, extra_permissions",
+    [
+        ("{channel_snowflake}", None, None, ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", None, None, ["command.info.scope.channel"]),
+        (
+            "{channel_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "all",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{channel_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "auto",
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{channel_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.channel", "command.info.voice-mutes.click"],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "click",
+            None,
+            ["command.info.scope.channel", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{channel_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.channel", "command,info.voice-mutes.command"],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "command",
+            None,
+            ["command.info.scope.channel", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{channel_snowflake}",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{channel_snowflake}",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{channel_snowflake}",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        ("{member_snowflake}", None, None, ["command.info.scope.member"]),
+        ("<@{member_snowflake}>", None, None, ["command.info.scope.member"]),
+        (
+            "{member_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "all",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{member_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "auto",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{member_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.member", "command.info.voice-mutes.click"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "click",
+            None,
+            ["command.info.scope.member", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{member_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{member_snowflake}",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{member_snowflake}",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{member_snowflake}",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        ("{guild_snowflake}", None, None, ["command.info.scope.guild"]),
+        (
+            "{guild_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.guild",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{guild_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.guild",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{guild_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.guild", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{guild_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.guild", "command,info.voice-mutes.command"],
+        ),
+        ("{simplified_member_snowflake}", None, None, ["command.info.scope.member"]),
+        (
+            "{simplified_member_snowflake}",
+            "all",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "auto",
+            None,
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "click",
+            None,
+            ["command.info.scope.member", "command.info.voice-mutes.click"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "all",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "click",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "command",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.click",
+                "other_guilds",
+            ],
+        ),
+    ],
+)
+async def test_mutes_app_command(
+    bot,
+    target: str | None,
+    other_guild: str | None,
+    scope: str | None,
+    extra_permissions: list[str],
+):
+    """
+    List voice-mutes on members which are registered in the PostgresSQL database
+    'vyrtuous' in the table 'active_voice_mutes'.
+
+    Parameters
+    ----------
+    target (Optional) : str | int
+        Defaults to context channel
+        Resolves to: int | discord.VoiceChannel | discord.TextChannel | discord.StageChannel | discord.Member | discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010> | <@10000000000000010>
+
+    scope (Optiona) : str
+        Default to all
+        Resolves to: ScopeObject
+        Examples: all | auto | click | command | server
+
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
+
+    Example
+    --------
+    >>> !mutes
+    Embed
+    """
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
             cog = bot.get_cog("InfoAppCommands")
             command = cog.list_mutes_app_command
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+                )
+            s = scope
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
             transformer = AppTarget()
             if t:
-                resolved = await transformer.transform(inx, t)
+                resolved_target = await transformer.transform(inx, t)
             else:
-                resolved = None
+                resolved_target = None
             if g:
                 resolved_guild = await transformer.transform(inx, g)
             else:
@@ -239,21 +973,11 @@ async def test_voice_mutes(
                 resolved_scope = await scope_transformer.transform(inx, s)
             else:
                 resolved_scope = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
-                )
+            async with capture_command() as end_results:
                 await command.callback(
                     cog,
                     interaction=inx,
-                    target=resolved,
+                    target=resolved_target,
                     scope=resolved_scope,
                     guild=resolved_guild,
                 )

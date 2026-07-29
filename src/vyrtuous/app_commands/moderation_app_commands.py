@@ -99,7 +99,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.moderation.ban"],
@@ -307,7 +307,7 @@ class ModerationAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.moderation.duration"],
@@ -374,7 +374,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.moderation.flag"],
@@ -451,7 +451,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.moderation.voice-mute"],
@@ -535,7 +535,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.moderation.reason"],
@@ -726,7 +726,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.moderation.text-mute"],

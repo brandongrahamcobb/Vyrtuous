@@ -75,7 +75,7 @@ async def clear(
             author_snowflake=author_snowflake,
             member_snowflake=obj.id,
         )
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=author_snowflake,
             requested=["command.clear.scope.member"],
@@ -236,7 +236,7 @@ async def clear(
                                     )
     elif isinstance(obj, discord.abc.GuildChannel):
         COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=author_snowflake,
             requested=["command.clear.scope.channel"],
@@ -477,7 +477,7 @@ async def clear(
                                     )
     elif isinstance(obj, discord.Guild):
         COMBINED_LIST = INFRACTION_MODELS + CHANNEL_MODELS + ALIAS_MODEL
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=author_snowflake,
             requested=["command.clear.scope.channel"],

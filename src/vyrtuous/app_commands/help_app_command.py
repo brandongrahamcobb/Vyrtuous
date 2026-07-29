@@ -167,7 +167,7 @@ class HelpAppCommand(commands.Cog):
             return await tick.end(
                 warning="This command must be used in a server channel."
             )
-        await permission_service.any_group_has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
             requested=["command.info.help"],

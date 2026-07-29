@@ -68,7 +68,7 @@ async def has_permissions(
     return True
 
 
-async def any_group_has_permissions(
+async def has_permissions_at_all(
     permission_state: PermissionState,
     member_snowflake: int,
     requested: list[str],

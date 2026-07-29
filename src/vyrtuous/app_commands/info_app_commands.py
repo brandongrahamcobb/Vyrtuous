@@ -238,12 +238,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.bans"],
@@ -347,12 +347,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.blacklists"],
@@ -659,12 +659,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.flags"],
@@ -768,12 +768,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.heroes"],
@@ -1335,12 +1335,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.voice-mutes.server"],
@@ -1751,12 +1751,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.text-mutes"],
@@ -1841,12 +1841,12 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member"],
             )
-            await permission_service.any_group_has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.vegans"],

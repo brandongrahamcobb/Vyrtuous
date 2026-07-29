@@ -97,6 +97,7 @@ async def test_tmutes_text_command(
     Parameters
     ----------
     target (Optional) : str | int
+        Defaults to context channel
         Resolves to: int | discord.VoiceChannel | discord.TextChannel | discord.StageChannel | discord.Member | discord.Guild
         Examples: 10000000000000010 | <#10000000000000010> | <@10000000000000010>
 
@@ -123,7 +124,7 @@ async def test_tmutes_text_command(
             )
             stack.enter_context(
                 patch(
-                    "vyrtuous.permissions.permission_service.any_group_has_permissions",
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
                     side_effect=check_permissions(extra_permissions),
                 )
             )
@@ -225,7 +226,7 @@ async def test_tmutes_app_command(
             )
             stack.enter_context(
                 patch(
-                    "vyrtuous.permissions.permission_service.any_group_has_permissions",
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
                     side_effect=check_permissions(extra_permissions),
                 )
             )
