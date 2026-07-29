@@ -18,10 +18,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.utils.permissions import permission_service
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -95,6 +100,7 @@ async def test_alias(
     >>> !xalias testban
     [{emoji} Alias `testban` deleted]
     """
+    permission_state = bot.registry.get(PermissionState)
     channel = channel_snowflake.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
@@ -111,5 +117,16 @@ async def test_alias(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]

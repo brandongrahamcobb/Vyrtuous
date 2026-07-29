@@ -18,11 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -33,7 +35,7 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
@@ -46,7 +48,7 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
             "Administrator",
             "smute",
             "<@{member_snowflake}>",
-            "{guild_snowflake}",
+            "{other_guild_snowflake}",
             "test_reason",
         ),
         ("Administrator", "smute", "{simplified_member_snowflake}", None, None),
@@ -54,14 +56,14 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
             "Administrator",
             "smute",
             "<@{simplified_member_snowflake}>",
-            "{guild_snowflake}",
+            "{other_guild_snowflake}",
             "test_reason",
         ),
         (
             "Administrator",
             "smute",
             "<@{member_snowflake}>",
-            "{guild_snowflake}",
+            "{other_guild_snowflake}",
             None,
         ),
     ],
@@ -86,6 +88,7 @@ async def test_smute(
     >>> !smute 10000000000000003
     [{emoji} Member1 was Server Muted]
     """
+    permission_state = bot.registry.get(PermissionState)
     bot.registry.get(MemberState).active.update(
         {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
     )
@@ -102,14 +105,32 @@ async def test_smute(
         full = f"{prefix}{command} {m} {r}"
     if reason and guild:
         r = reason
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        g = guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
         full = f"{prefix}{command} {m} {g} {r}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                    new=AsyncMock(return_value=True),
+                )
+            )
+
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -137,12 +158,30 @@ async def test_smute(
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
-            await command.callback(
-                cog,
-                interaction=inx,
-                member=resolved_member,
-                reason=r,
-                guild=resolved_guild,
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                        new=AsyncMock(return_value=True),
+                    )
+                )
+
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    member=resolved_member,
+                    reason=r,
+                    guild=resolved_guild,
+                )
         for kind, content in end_results:
             assert kind == "success"

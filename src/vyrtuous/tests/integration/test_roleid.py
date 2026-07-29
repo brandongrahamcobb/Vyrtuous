@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -57,6 +60,7 @@ async def test_roleid(bot, command: str, prefix: str, role, guild, permission_ro
     [{emoji} Role `Vegan` has the id `10000000000000200`]
 
     """
+    permission_state = bot.registry.get(PermissionState)
     r = role.format(role_name=ROLE_NAME)
     g = None
     full = f"{prefix}{command} {r}"
@@ -67,8 +71,19 @@ async def test_roleid(bot, command: str, prefix: str, role, guild, permission_ro
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     elif (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -95,8 +110,19 @@ async def test_roleid(bot, command: str, prefix: str, role, guild, permission_ro
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
-            await command.callback(
-                cog, interaction=inx, role_name=r, guild=resolved_guild
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(
+                    cog, interaction=inx, role_name=r, guild=resolved_guild
+                )
         for kind, content in end_results:
             assert kind == "success"

@@ -30,6 +30,7 @@ from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.errors.error import (
     ChannelNotFound,
+    CheckFailure,
     GuildNotFound,
     HasEqualOrLowerRole,
 )
@@ -128,7 +129,7 @@ async def channel_mute(
     if channel is None:
         raise ChannelNotFound(str(channel_snowflake))
     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-        raise commands.CheckFailure("This action must be executed in a valid channel.")
+        raise CheckFailure("This command must target a valid channel.")
     muted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
         if member.id in excluded:
@@ -219,7 +220,7 @@ async def channel_unmute(
     if channel is None:
         raise ChannelNotFound(str(channel_snowflake))
     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-        raise commands.CheckFailure("This command must be executed in a valid channel.")
+        raise CheckFailure("This command must target a valid channel.")
     unmuted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
         try:

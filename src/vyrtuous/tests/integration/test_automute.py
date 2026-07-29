@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.duration import AppDuration
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
@@ -38,9 +41,9 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, channel, duration",
     [
-        ("Coordinator", "automute", None, None),
-        ("Coordinator", "automute", "{channel_snowflake}", None),
-        ("Coordinator", "automute", "{channel_snowflake}", "1h"),
+        ("Administrator", "automute", None, None),
+        ("Administrator", "automute", "{channel_snowflake}", None),
+        ("Administrator", "automute", "{channel_snowflake}", "1h"),
     ],
 )
 async def test_automute(
@@ -64,6 +67,7 @@ async def test_automute(
     >>> !stage 10000000000000010
     [{emoji} Stage has been ended]
     """
+    permission_state = bot.registry.get(PermissionState)
     c = None
     d = None
     full = f"{prefix}{command}"
@@ -78,8 +82,19 @@ async def test_automute(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -111,11 +126,22 @@ async def test_automute(
                 resolved_duration = await duration_transformer.transform(inx, d)
             else:
                 resolved_duration = None
-            await command.callback(
-                cog,
-                interaction=inx,
-                channel=resolved_channel,
-                duration=resolved_duration,
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    channel=resolved_channel,
+                    duration=resolved_duration,
+                )
         for kind, content in end_results:
             assert kind == "success"

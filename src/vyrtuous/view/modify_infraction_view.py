@@ -23,12 +23,8 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import PermissionScope
 from vyrtuous.cache.registry import PermissionState
-from vyrtuous.db.administrator import Administrator
 from vyrtuous.db.automute import AutoMute
-from vyrtuous.db.coordinator import Coordinator
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.developer import Developer
-from vyrtuous.db.moderator import Moderator
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.modal.duration_modal import DurationModal
 from vyrtuous.modal.reason_modal import ReasonModal

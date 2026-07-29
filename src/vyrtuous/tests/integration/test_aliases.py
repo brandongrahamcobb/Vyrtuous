@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
@@ -76,6 +77,7 @@ async def test_aliases(bot, prefix, command: str, member_snowflake, permission_r
     >>> !xalias testban
     [{emoji} Alias `testban` deleted]
     """
+    permission_state = bot.registry.get(PermissionState)
     member = member_snowflake.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
@@ -99,5 +101,22 @@ async def test_aliases(bot, prefix, command: str, member_snowflake, permission_r
                     new=AsyncMock(return_value=msg),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                    new=AsyncMock(return_value=True),
+                )
+            )
+
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]

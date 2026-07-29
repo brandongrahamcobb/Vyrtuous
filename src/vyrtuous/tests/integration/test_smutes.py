@@ -18,11 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -33,6 +35,7 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
@@ -44,13 +47,13 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
     [
         ("Administrator", "smutes", "{guild_snowflake}", None),
         ("Administrator", "smutes", "{member_snowflake}", None),
-        ("Administrator", "smutes", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Developer", "smutes", "<@{member_snowflake}>", "{other_guild_snowflake}"),
         ("Administrator", "smutes", "{simplified_member_snowflake}", None),
         (
-            "Administrator",
+            "Developer",
             "smutes",
             "<@{simplified_member_snowflake}>",
-            "{guild_snowflake}",
+            "{other_guild_snowflake}",
         ),
     ],
 )
@@ -94,6 +97,7 @@ async def test_server_mutes(
     >>> !smutes 10000000000000003
     [{emoji} Voice Mutes for Member1\n Guild1\n Guild2]
     """
+    permission_state = bot.registry.get(PermissionState)
     bot.registry.get(MemberState).active.update(
         {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
     )
@@ -107,14 +111,25 @@ async def test_server_mutes(
         g = None
         full = f"{prefix}{command} {t}"
     else:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        g = guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
         full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -145,8 +160,19 @@ async def test_server_mutes(
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
-            await command.callback(
-                cog, interaction=inx, target=resolved, guild=resolved_guild
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(
+                    cog, interaction=inx, target=resolved, guild=resolved_guild
+                )
         for kind, content in end_results:
             assert kind == "success"

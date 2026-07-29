@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -31,6 +34,7 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
@@ -39,7 +43,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     "permission_role, command, target, guild",
     [
         ("Administrator", "caps", "{channel_snowflake}", None),
-        ("Administrator", "caps", "<#{channel_snowflake}>", "{guild_snowflake}"),
+        ("Developer", "caps", "<#{channel_snowflake}>", "{other_guild_snowflake}"),
         ("Administrator", "caps", "{guild_snowflake}", None),
     ],
 )
@@ -72,6 +76,7 @@ async def test_caps(bot, command: str, prefix: str, target, guild, permission_ro
     >>> !caps 10000000000000010
     [{emoji} Caps for Channel1]
     """
+    permission_state = bot.registry.get(PermissionState)
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
@@ -81,16 +86,26 @@ async def test_caps(bot, command: str, prefix: str, target, guild, permission_ro
         full = f"{prefix}{command} {t}"
     else:
         g = guild.format(
-            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-            guild_snowflake=GUILD_SNOWFLAKE,
+            other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
         )
         full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -121,8 +136,19 @@ async def test_caps(bot, command: str, prefix: str, target, guild, permission_ro
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
-            await command.callback(
-                cog, interaction=inx, target=resolved, guild=resolved_guild
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(
+                    cog, interaction=inx, target=resolved, guild=resolved_guild
+                )
         for kind, content in end_results:
             assert kind == "success"

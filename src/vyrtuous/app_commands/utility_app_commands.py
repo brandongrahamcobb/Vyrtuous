@@ -48,7 +48,7 @@ class UtilityAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if msg.message.channel.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         else:
             channel_snowflake = msg.message.channel.id
             guild_snowflake = msg.message.channel.guild.id
@@ -83,10 +83,10 @@ class UtilityAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -262,14 +262,14 @@ class UtilityAppCommands(commands.Cog):
             channel_snowflake=target_channel_snowflake,
             member_snowflake=interaction.user.id,
             guild_snowflake=target_guild_snowflake,
-            requested=["command.movement.channel_move"],
+            requested=["command.utility.move"],
         )
         await permission_service.has_permissions(
             permission_state=permission_state,
             channel_snowflake=source_channel_snowflake,
             member_snowflake=interaction.user.id,
             guild_snowflake=source_guild_snowflake,
-            requested=["command.movement.channel_move"],
+            requested=["command.utility.move"],
         )
         failed, moved = [], []
         for member in source_channel_members:

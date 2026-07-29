@@ -22,17 +22,13 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.db.active_member import ActiveMember
-from vyrtuous.db.administrator import Administrator, AdministratorRole
 from vyrtuous.db.alias import Alias
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.bug import Bug
 from vyrtuous.db.cap import Cap
-from vyrtuous.db.coordinator import Coordinator
 from vyrtuous.db.data import Data
-from vyrtuous.db.developer import Developer
 from vyrtuous.db.flag import Flag
-from vyrtuous.db.moderator import Moderator
 from vyrtuous.db.stream import Stream
 from vyrtuous.db.text_mute import TextMute
 from vyrtuous.db.vegan import Vegan
@@ -42,18 +38,13 @@ from vyrtuous.utils.errors.error import CheckFailure
 
 CLASSES = [
     ActiveMember,
-    Administrator,
-    AdministratorRole,
     Alias,
     AutoMute,
     Ban,
     Bug,
     Cap,
-    Coordinator,
     Data,
-    Developer,
     Flag,
-    Moderator,
     Stream,
     TextMute,
     Vegan,

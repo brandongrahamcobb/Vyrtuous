@@ -43,10 +43,10 @@ class DevelopmentAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -75,10 +75,10 @@ class DevelopmentAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -107,10 +107,10 @@ class DevelopmentAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -186,10 +186,10 @@ class DevelopmentAppCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         if interaction.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)

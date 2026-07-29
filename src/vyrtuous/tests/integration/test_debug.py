@@ -19,10 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.conftest import context, interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -36,7 +37,7 @@ from vyrtuous.tests.integration.test_suite import (
 @pytest.mark.parametrize(
     "permission_role, command, lines",
     [
-        ("Administrator", "debug", "10"),
+        ("Developer", "debug", "10"),
     ],
 )
 async def test_debug(bot, command: str, prefix: str, lines, permission_role):
@@ -53,13 +54,25 @@ async def test_debug(bot, command: str, prefix: str, lines, permission_role):
     >>> !debug 10
     [{emoji} Logger Information]\n Scheduled blah blah blah.
     """
+    permission_state = bot.registry.get(PermissionState)
     full = f"{prefix}{command} {lines}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -81,6 +94,17 @@ async def test_debug(bot, command: str, prefix: str, lines, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("InfoAppCommands")
             command = cog.debug_app_command
-            command = await command.callback(cog, interaction=inx, lines=int(lines))
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                command = await command.callback(cog, interaction=inx, lines=int(lines))
         for kind, content in end_results:
             assert kind == "success"

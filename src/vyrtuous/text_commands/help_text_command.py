@@ -251,13 +251,13 @@ class HelpTextCommand(commands.Cog):
         permission_state: PermissionState = bot.registry.get(PermissionState)
         guild = ctx.guild
         if guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         channel = ctx.channel
         if not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):
             return await tick.end(
-                warning="This command must be executed in a valid channel."
+                warning="This command must be used in a server channel."
             )
         await permission_service.any_group_has_permissions(
             permission_state=permission_state,

@@ -148,12 +148,10 @@ class ModerationAppCommands(commands.Cog):
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must used in a server.")
             channel_snowflake = interaction.channel.id
             guild_snowflake = interaction.guild.id
         elif isinstance(
@@ -579,7 +577,7 @@ class ModerationAppCommands(commands.Cog):
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = interaction.channel.id
             if interaction.guild is None:
@@ -771,13 +769,11 @@ class ModerationAppCommands(commands.Cog):
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must used in a server channel."
                 )
             channel_snowflake = interaction.channel.id
             if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must used in a server.")
             guild_snowflake = interaction.guild.id
         elif isinstance(
             channel.target,

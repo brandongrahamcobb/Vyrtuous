@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -40,7 +43,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
     [
         ("Administrator", "intents", "{channel_snowflake}"),
         ("Administrator", "intents", "<#{channel_snowflake}>"),
-        ("Guild Owner", "intents", "{guild_snowflake}"),
+        ("Guild_Owner", "intents", "{guild_snowflake}"),
     ],
 )
 async def test_intents(bot, command: str, prefix: str, target, permission_role):
@@ -71,6 +74,7 @@ async def test_intents(bot, command: str, prefix: str, target, permission_role):
     >>> !pc 10000000000000010
     [{emoji} Permissions for Channel1]
     """
+    permission_state = bot.registry.get(PermissionState)
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
@@ -79,8 +83,19 @@ async def test_intents(bot, command: str, prefix: str, target, permission_role):
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -107,6 +122,17 @@ async def test_intents(bot, command: str, prefix: str, target, permission_role):
                 resolved = await transformer.transform(inx, t)
             else:
                 resolved = None
-            await command.callback(cog, interaction=inx, target=resolved)
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(cog, interaction=inx, target=resolved)
         for kind, content in end_results:
             assert kind == "success"

@@ -22,10 +22,9 @@ import discord
 from vyrtuous.tests.integration.mock_discord_bot import MockBot
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
-GUILD_SNOWFLAKE = 10000000000000500
 GUILD_NAME = "Guild Name"
 GUILD_DATA = {
-    "id": GUILD_SNOWFLAKE,
+    "id": None,
     "name": GUILD_NAME,
     "icon": None,
     "splash": None,

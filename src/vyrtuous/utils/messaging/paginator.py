@@ -80,7 +80,7 @@ class Paginator:
             channel,
             (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
         ):
-            raise commands.CheckFailure("This message must be sent to a valid channel.")
+            raise CheckFailure("This message must be sent to a valid channel.")
         embed = self.get_current_embed(guild_snowflake=guild_snowflake, pages=pages)
         message = await channel.send(embed=embed)
         for emoji in self.NAV_EMOJIS:

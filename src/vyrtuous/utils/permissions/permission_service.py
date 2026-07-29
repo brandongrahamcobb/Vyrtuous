@@ -142,7 +142,9 @@ async def has_permissions(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
         ):
-            raise CheckFailure("You do not have sufficient access to do that.")
+            raise CheckFailure(
+                f"You do not have sufficient access to do that (`{permission}`)."
+            )
     return True
 
 
@@ -299,7 +301,9 @@ async def any_group_has_permissions(
             member_snowflake=member_snowflake,
             requested=permission,
         ):
-            raise CheckFailure("You do not have sufficient access to do that.")
+            raise CheckFailure(
+                f"You do not have sufficient access to do that (`{permission}`)."
+            )
     return True
 
 
@@ -417,6 +421,8 @@ async def has_equal_or_lower_role(
     channel_snowflake: int | None = None,
     guild_snowflake: int | None = None,
 ) -> None:
+    if author_snowflake == member_snowflake:
+        return None
     author_group = await resolve_effective_group(
         permission_state=permission_state,
         member_snowflake=author_snowflake,

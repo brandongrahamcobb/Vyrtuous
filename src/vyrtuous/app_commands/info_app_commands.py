@@ -888,7 +888,7 @@ class InfoAppCommands(commands.Cog):
         return await tick.end(success=pages)
 
 
-    @metadata(permission="command.info.mutes")
+    @metadata(permission="command.info.voice-mutes")
     @app_commands.command(name="mutes", description="List mutes.")
     @app_commands.describe(
         target="Specify one of: a channel ID/mention, member ID/mention or server ID.",
@@ -944,9 +944,9 @@ class InfoAppCommands(commands.Cog):
                         channel_snowflake=channel_snowflake,
                         guild_snowflake=guild_snowflake,
                         requested=[
-                            "command.info.voice-mutes.auto"
-                            "command.info.voice-mutes.click"
-                            "command.info.voice-mutes.command"
+                            "command.info.voice-mutes.auto",
+                            "command.info.voice-mutes.click",
+                            "command.info.voice-mutes.command",
                         ],
                     )
                 case "auto":
@@ -1797,7 +1797,7 @@ class InfoAppCommands(commands.Cog):
         if guild is None:
             if interaction.guild is None:
                 return await tick.end(
-                    warning="This command must target a valid server."
+                    warning="This command must be used in a server."
                 )
             guild_snowflake = interaction.guild.id
         else:
@@ -1809,7 +1809,7 @@ class InfoAppCommands(commands.Cog):
                 )
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must target a valid channel."
+                warning="This command must be used in a server channel."
             )
         else:
             channel_snowflake = interaction.channel.id

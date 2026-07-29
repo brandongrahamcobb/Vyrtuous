@@ -67,12 +67,10 @@ class ModerationTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(
@@ -144,9 +142,7 @@ class ModerationTextCommands(commands.Cog):
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if guild is None:
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
             if isinstance(guild, discord.Guild):
@@ -218,24 +214,18 @@ class ModerationTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = ctx.channel.id
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
             channel,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
             channel_snowflake = channel.id
-            if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = ctx.guild.id
+            guild_snowflake = channel.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         if duration is None:
@@ -283,9 +273,7 @@ class ModerationTextCommands(commands.Cog):
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
             if isinstance(guild, discord.Guild):
@@ -344,13 +332,11 @@ class ModerationTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = ctx.channel.id
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
             channel,

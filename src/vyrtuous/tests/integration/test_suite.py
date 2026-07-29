@@ -33,6 +33,8 @@ from vyrtuous.tests.integration.mock_discord_role import MockRole
 from vyrtuous.tests.integration.mock_discord_state import MockState
 from vyrtuous.utils.messaging.tick import Tick
 
+GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
 PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"
 NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE = 10000000000000002
@@ -82,8 +84,8 @@ async def capture(channel):
         channel._captured = new_messages
 
 
-def build_guild(bot, state):
-    guild = MockGuild(bot=bot, channels={}, members={}, roles={}, state=state)
+def build_guild(id, bot, state):
+    guild = MockGuild(id=id, bot=bot, channels={}, members={}, roles={}, state=state)
     return guild
 
 
@@ -123,10 +125,11 @@ def build_message(author, channel, content, guild, state):
 
 def setup(bot):
     state = MockState()
-    guild = build_guild(bot, state)
+    guild = build_guild(GUILD_SNOWFLAKE, bot, state)
+    other_guild = build_guild(OTHER_GUILD_SNOWFLAKE, bot, state)
     role = build_role(guild, state)
     guild._roles.update({role.id: role})
-    bot._guilds.update({guild.id: guild})
+    bot._guilds.update({guild.id: guild, other_guild.id: other_guild})
     text_channel = build_text_channel(bot, guild, state, id=TEXT_CHANNEL_SNOWFLAKE)
     voice_channel = build_voice_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)
     guild._channels.update({text_channel.id: text_channel})

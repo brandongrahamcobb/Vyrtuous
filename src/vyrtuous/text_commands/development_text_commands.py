@@ -42,10 +42,10 @@ class DevelopmentTextCommands(commands.Cog):
     async def backup_text_command(self, ctx: commands.Context) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -75,10 +75,10 @@ class DevelopmentTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -108,10 +108,10 @@ class DevelopmentTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -185,10 +185,10 @@ class DevelopmentTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)

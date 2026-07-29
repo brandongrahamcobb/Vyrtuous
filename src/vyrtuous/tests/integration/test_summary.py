@@ -18,11 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
@@ -34,7 +36,7 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
@@ -46,7 +48,13 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
         ("Moderator", "summary", "{member_snowflake}", "all", None),
         ("Moderator", "summary", "{member_snowflake}", "click", None),
         ("Moderator", "summary", "{member_snowflake}", "command", None),
-        ("Moderator", "summary", "<@{member_snowflake}>", "click", "{guild_snowflake}"),
+        (
+            "Moderator",
+            "summary",
+            "<@{member_snowflake}>",
+            "click",
+            "{other_guild_snowflake}",
+        ),
         ("Moderator", "summary", "{simplified_member_snowflake}", None, None),
         ("Moderator", "summary", "{simplified_member_snowflake}", "all", None),
         ("Moderator", "summary", "{simplified_member_snowflake}", "click", None),
@@ -56,7 +64,7 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
             "summary",
             "<@{simplified_member_snowflake}>",
             "click",
-            "{guild_snowflake}",
+            "{other_guild_snowflake}",
         ),
     ],
 )
@@ -88,6 +96,7 @@ async def test_summary(
     >>> !summary 10000000000000003
     [{emoji} Infractions for Member1\n Guild1\n Guild2]
     """
+    permission_state = bot.registry.get(PermissionState)
     bot.registry.get(MemberState).active.update(
         {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
     )
@@ -104,7 +113,7 @@ async def test_summary(
         s = scope
         full = f"{prefix}{command} {m} {s}"
     elif guild:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        g = guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
         s = scope
         full = f"{prefix}{command} {m} {s} {g}"
     else:
@@ -114,8 +123,19 @@ async def test_summary(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -148,12 +168,23 @@ async def test_summary(
                 resolved_scope = await scope_transformer.transform(inx, s)
             else:
                 resolved_scope = None
-            await command.callback(
-                cog,
-                interaction=inx,
-                member=resolved_member,
-                scope=resolved_scope,
-                guild=resolved_guild,
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    member=resolved_member,
+                    scope=resolved_scope,
+                    guild=resolved_guild,
+                )
         for kind, content in end_results:
             assert kind == "success"

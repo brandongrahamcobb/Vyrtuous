@@ -48,7 +48,7 @@ class UtilityTextCommands(commands.Cog):
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if msg.channel.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         else:
             channel_snowflake = msg.channel.id
             guild_snowflake = msg.channel.guild.id
@@ -79,10 +79,10 @@ class UtilityTextCommands(commands.Cog):
     async def ping_text_command(self, ctx: commands.Context) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -267,14 +267,14 @@ class UtilityTextCommands(commands.Cog):
             channel_snowflake=target_channel_snowflake,
             member_snowflake=ctx.author.id,
             guild_snowflake=target_guild_snowflake,
-            requested=["command.movement.channel_move"],
+            requested=["command.utility.move"],
         )
         await permission_service.has_permissions(
             permission_state=permission_state,
             channel_snowflake=source_channel_snowflake,
             member_snowflake=ctx.author.id,
             guild_snowflake=source_guild_snowflake,
-            requested=["command.movement.channel_move"],
+            requested=["command.utility.move"],
         )
         failed, moved = [], []
         for member in source_channel_members:

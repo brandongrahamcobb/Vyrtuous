@@ -24,7 +24,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -36,6 +36,7 @@ from vyrtuous.tests.integration.test_suite import (
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
@@ -44,9 +45,14 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
     "permission_role, command, member, guild",
     [
         ("Moderator", "vcow", "{member_snowflake}", None),
-        ("Moderator", "vcow", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Moderator", "vcow", "<@{member_snowflake}>", "{other_guild_snowflake}"),
         ("Moderator", "vcow", "{simplified_member_snowflake}", None),
-        ("Moderator", "vcow", "<@{simplified_member_snowflake}>", "{guild_snowflake}"),
+        (
+            "Moderator",
+            "vcow",
+            "<@{simplified_member_snowflake}>",
+            "{other_guild_snowflake}",
+        ),
     ],
 )
 async def test_vcow(bot, command: str, prefix: str, member, guild, permission_role):
@@ -72,6 +78,7 @@ async def test_vcow(bot, command: str, prefix: str, member, guild, permission_ro
     >>> !coord 10000000000000003 10000000000000010
     [{emoji} Coordinator granted for Member1]
     """
+    permission_state = bot.registry.get(PermissionState)
     bot.registry.get(MemberState).active.update(
         {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
     )
@@ -83,13 +90,24 @@ async def test_vcow(bot, command: str, prefix: str, member, guild, permission_ro
     g = None
     full = f"{prefix}{command} {m} {GUILD_SNOWFLAKE}"
     if guild:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
+        g = guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     elif (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -115,6 +133,17 @@ async def test_vcow(bot, command: str, prefix: str, member, guild, permission_ro
                     new=AsyncMock(return_value=msg),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+
             async with capture_command() as end_results:
                 cog = bot.get_cog("UserManagementAppCommands")
                 command = cog.toggle_vegan_app_command

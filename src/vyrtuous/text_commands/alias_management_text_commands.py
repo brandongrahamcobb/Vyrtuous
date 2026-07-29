@@ -64,12 +64,10 @@ class AliasManagementTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(
@@ -120,12 +118,12 @@ class AliasManagementTextCommands(commands.Cog):
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if ctx.guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         else:
             guild_snowflake = ctx.guild.id
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must be executed in a server channel."
+                warning="This command must be used in a server channel."
             )
         else:
             channel_snowflake = ctx.channel.id

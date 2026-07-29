@@ -28,7 +28,7 @@ from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
-from vyrtuous.utils.errors.error import MemberNotFound
+from vyrtuous.utils.errors.error import CheckFailure, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
@@ -110,7 +110,7 @@ class GrantView(discord.ui.View):
             self.add_group_scope(scope)
             self.add_selectable_group(group, scope)
         if not self.__groups:
-            raise app_commands.CheckFailure(
+            raise CheckFailure(
                 "You do not have sufficient privileges in this channel or server to use this command."
             )
         self._build_group_options(available_groups=list(self.__groups.keys()))

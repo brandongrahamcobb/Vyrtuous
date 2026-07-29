@@ -58,7 +58,7 @@ class ChannelManagementAppCommands(commands.Cog):
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = interaction.channel.id
             if interaction.guild is None:
@@ -113,7 +113,7 @@ class ChannelManagementAppCommands(commands.Cog):
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = interaction.channel.id
             if interaction.guild is None:
@@ -219,7 +219,7 @@ class ChannelManagementAppCommands(commands.Cog):
         if channel is None:
             if interaction.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = interaction.channel.id
             if interaction.guild is None:

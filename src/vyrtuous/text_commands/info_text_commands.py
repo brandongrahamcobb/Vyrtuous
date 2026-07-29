@@ -1002,9 +1002,9 @@ class InfoTextCommands(commands.Cog):
                         channel_snowflake=channel_snowflake,
                         guild_snowflake=guild_snowflake,
                         requested=[
-                            "command.info.voice-mutes.auto"
-                            "command.info.voice-mutes.click"
-                            "command.info.voice-mutes.command"
+                            "command.info.voice-mutes.auto",
+                            "command.info.voice-mutes.click",
+                            "command.info.voice-mutes.command",
                         ],
                     )
                 case "auto":
@@ -1933,7 +1933,7 @@ class InfoTextCommands(commands.Cog):
                 )
         if ctx.channel is None:
             return await tick.end(
-                warning="This command must target a valid channel."
+                warning="This command must be used in a server channel."
             )
         else:
             channel_snowflake = ctx.channel.id

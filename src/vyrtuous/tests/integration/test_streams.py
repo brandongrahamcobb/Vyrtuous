@@ -19,10 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -40,10 +41,10 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Administrator", "streams", "{channel_snowflake}"),
-        ("Administrator", "streams", "<#{channel_snowflake}>"),
-        ("Administrator", "streams", "{guild_snowflake}"),
-        ("Administrator", "streams", None),
+        ("Guild_Owner", "streams", "{channel_snowflake}"),
+        ("Guild_Owner", "streams", "<#{channel_snowflake}>"),
+        ("Guild_Owner", "streams", "{guild_snowflake}"),
+        ("Guild_Owner", "streams", None),
     ],
 )
 async def test_streams(bot, command: str, prefix: str, target, permission_role):
@@ -75,6 +76,7 @@ async def test_streams(bot, command: str, prefix: str, target, permission_role):
     >>> !streams 10000000000000010
     [{emoji} Streaming Channels for Channel1]
     """
+    permission_state = bot.registry.get(PermissionState)
     t = None
     full = f"{prefix}{command}"
     if target:
@@ -86,8 +88,19 @@ async def test_streams(bot, command: str, prefix: str, target, permission_role):
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -114,6 +127,17 @@ async def test_streams(bot, command: str, prefix: str, target, permission_role):
                 resolved_target = await transformer.transform(inx, t)
             else:
                 resolved_target = None
-            await command.callback(cog, interaction=inx, target=resolved_target)
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(cog, interaction=inx, target=resolved_target)
         for kind, content in end_results:
             assert kind == "success"

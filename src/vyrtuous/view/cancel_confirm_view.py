@@ -20,6 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 from discord.ext import commands
 
+from vyrtuous.utils.errors.error import CheckFailure
+
 
 class VerifyView(discord.ui.View):
     def __init__(
@@ -59,7 +61,7 @@ class VerifyView(discord.ui.View):
             case "video":
                 self.__action = "Deletes all video channels."
             case _:
-                raise commands.CheckFailure(
+                raise CheckFailure(
                     f"Invalid category specified for clear command: {category}."
                 )
         self.__author_snowflake = author_snowflake

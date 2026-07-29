@@ -25,6 +25,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
+from vyrtuous.models.metadata import metadata
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
 
@@ -147,6 +148,7 @@ class HelpAppCommand(commands.Cog):
             func = func.__wrapped__
         return func
 
+    @metadata(permission="command.info.help")
     @app_commands.command(name="help", description="List commands")
     @app_commands.describe(command_name="The name of the command.")
     async def help_app_command(
@@ -157,13 +159,13 @@ class HelpAppCommand(commands.Cog):
         permission_state: PermissionState = bot.registry.get(PermissionState)
         guild = interaction.guild
         if guild is None:
-            return await tick.end(warning="This command must be executed in a server.")
+            return await tick.end(warning="This command must be used in a server.")
         channel = interaction.channel
         if not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):
             return await tick.end(
-                warning="This command must be executed in a valid channel."
+                warning="This command must be used in a server channel."
             )
         await permission_service.any_group_has_permissions(
             permission_state=permission_state,

@@ -18,11 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -41,12 +43,12 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 @pytest.mark.parametrize(
     "permission_role, command, member, target",
     [
-        ("Guild Owner", "hero", "{member_snowflake}", None),
-        ("Guild Owner", "hero", "{member_snowflake}", "all"),
-        ("Guild Owner", "hero", "<@{member_snowflake}>", "{guild_snowflake}"),
-        ("Guild Owner", "hero", "{simplified_member_snowflake}", "all"),
+        ("Guild_Owner", "hero", "{member_snowflake}", None),
+        ("Guild_Owner", "hero", "{member_snowflake}", "all"),
+        ("Guild_Owner", "hero", "<@{member_snowflake}>", "{guild_snowflake}"),
+        ("Guild_Owner", "hero", "{simplified_member_snowflake}", "all"),
         (
-            "Guild Owner",
+            "Guild_Owner",
             "hero",
             "<@{simplified_member_snowflake}>",
             "{guild_snowflake}",
@@ -72,6 +74,7 @@ async def test_hero(bot, command: str, prefix: str, member, target, permission_r
     >>> !hero 10000000000000003
     [{emoji} Invincibility granted for Member1]
     """
+    permission_state = bot.registry.get(PermissionState)
     bot.registry.get(MemberState).active.update(
         {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
     )
@@ -88,8 +91,25 @@ async def test_hero(bot, command: str, prefix: str, member, target, permission_r
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                    new=AsyncMock(return_value=True),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -117,8 +137,26 @@ async def test_hero(bot, command: str, prefix: str, member, target, permission_r
                 resolved_target = await transformer.transform(inx, t)
             else:
                 resolved_target = None
-            await command.callback(
-                cog, interaction=inx, member=resolved_member, target=resolved_target
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                        new=AsyncMock(return_value=True),
+                    )
+                )
+
+                await command.callback(
+                    cog, interaction=inx, member=resolved_member, target=resolved_target
+                )
         for kind, content in end_results:
             assert kind == "success"

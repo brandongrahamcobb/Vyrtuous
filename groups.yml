@@ -30,9 +30,7 @@ groups:
     - command.info.heroes
     - command.info.streams
     - command.channel.stream
-    - command.users.grant
     - command.users.hero
-    - command.users.revoke
     inheritance:
     - administrator
     scope: guild
@@ -73,6 +71,8 @@ groups:
     - command.moderation.voice-mute.channel_mute
     - command.moderation.unvoice-mute.channel_unmute
     - command.moderation.uncapped
+    - command.users.grant
+    - command.users.revoke
     inheritance:
     - moderator
     scope: channel
@@ -85,6 +85,7 @@ groups:
     - command.moderation.flag
     - command.moderation.reason
     - command.moderation.text-mute
+    - command.moderation.voice-mute
     - command.moderation.voice-mute.auto
     - command.moderation.voice-mute.click
     - command.moderation.voice-mute.command

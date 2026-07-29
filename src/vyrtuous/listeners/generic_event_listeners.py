@@ -104,32 +104,67 @@ class GenericEventListeners(commands.Cog):
             await permission_service.has_equal_or_lower_role(
                 permission_state=permission_state,
                 channel_snowflake=alias_ctx.channel_snowflake,
-                guild_snowflake=message.guild.id,
+                guild_snowflake=alias_ctx.guild_snowflake,
                 author_snowflake=message.author.id,
                 member_snowflake=alias_ctx.member_snowflake,
             )
             match alias_ctx.category:
                 case "ban":
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        channel_snowflake=alias_ctx.channel_snowflake,
+                        guild_snowflake=alias_ctx.guild_snowflake,
+                        member_snowflake=message.author.id,
+                        requested=["command.moderation.ban"],
+                    )
                     embed = await ban_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
                     return await tick.end(success=embed)
                 case "flag":
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        channel_snowflake=alias_ctx.channel_snowflake,
+                        guild_snowflake=alias_ctx.guild_snowflake,
+                        member_snowflake=message.author.id,
+                        requested=["command.moderation.flag"],
+                    )
                     embed = await flag_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
                     return await tick.end(success=embed)
                 case "role":
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        channel_snowflake=alias_ctx.channel_snowflake,
+                        guild_snowflake=alias_ctx.guild_snowflake,
+                        member_snowflake=message.author.id,
+                        requested=["command.moderation.role"],
+                    )
                     embed = await role_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
                     return await tick.end(success=embed)
                 case "tmute":
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        channel_snowflake=alias_ctx.channel_snowflake,
+                        guild_snowflake=alias_ctx.guild_snowflake,
+                        member_snowflake=message.author.id,
+                        requested=["command.moderation.text-mute"],
+                    )
                     embed = await text_mute_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
                     return await tick.end(success=embed)
                 case "vmute":
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        channel_snowflake=alias_ctx.channel_snowflake,
+                        guild_snowflake=alias_ctx.guild_snowflake,
+                        member_snowflake=message.author.id,
+                        requested=["command.moderation.voice-mute"],
+                    )
                     if await voice_mute_service.is_voice_muted(
                         guild_snowflake=alias_ctx.guild_snowflake,
                         member_snowflake=alias_ctx.member_snowflake,

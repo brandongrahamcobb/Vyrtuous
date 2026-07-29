@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -72,6 +75,7 @@ async def test_rmv(
     [{emoji} Members moved succesfully to Voice Channel One\n Member1\b Member2]
 
     """
+    permission_state = bot.registry.get(PermissionState)
     tc = target_channel.format(
         target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
@@ -86,8 +90,26 @@ async def test_rmv(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                    new=AsyncMock(return_value=True),
+                )
+            )
+
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -115,11 +137,29 @@ async def test_rmv(
                 resolved_source = await transformer.transform(inx, sc)
             else:
                 resolved_source = None
-            await command.callback(
-                cog,
-                interaction=inx,
-                target_channel=resolved_target,
-                source_channel=resolved_source,
-            )
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
+                        new=AsyncMock(return_value=True),
+                    )
+                )
+
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    target_channel=resolved_target,
+                    source_channel=resolved_source,
+                )
         for kind, content in end_results:
             assert kind == "success"

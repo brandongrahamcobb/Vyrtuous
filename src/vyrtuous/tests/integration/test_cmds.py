@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.integration.test_suite import send_message
 
 GUILD_SNOWFLAKE = 10000000000000500
@@ -33,9 +36,9 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Moderator", "cmds", "{channel_snowflake}"),
-        ("Moderator", "cmds", "<#{channel_snowflake}>"),
-        ("Administrator", "cmds", "{guild_snowflake}"),
+        ("Moderator", "aliases", "{channel_snowflake}"),
+        ("Moderator", "aliases", "<#{channel_snowflake}>"),
+        ("Administrator", "aliases", "{guild_snowflake}"),
     ],
 )
 async def test_cmds(bot, command: str, prefix: str, target, permission_role):
@@ -67,6 +70,7 @@ async def test_cmds(bot, command: str, prefix: str, target, permission_role):
     >>> !cmds 10000000000000010
     [{emoji} Aliases for Channel1]
     """
+    permission_state = bot.registry.get(PermissionState)
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
@@ -75,5 +79,16 @@ async def test_cmds(bot, command: str, prefix: str, target, permission_role):
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]

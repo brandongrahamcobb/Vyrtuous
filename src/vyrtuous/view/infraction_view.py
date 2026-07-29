@@ -157,7 +157,7 @@ class InfractionView(discord.ui.View):
 
                 break
             else:
-                raise app_commands.CheckFailure(
+                raise CheckFailure(
                     "You do not have sufficient privileges in this channel or server to use this command."
                 )
         self._build_guild_options(

@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.module import AppModule
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -61,6 +64,8 @@ async def test_load_reload_unload(bot, command: str, prefix: str, cog, permissio
     [{emoji} Unloaded ScheduledTasks]
 
     """
+
+    permission_state = bot.registry.get(PermissionState)
     c = cog.format(cog="vyrtuous.listeners.scheduled_tasks")
     full = f"{prefix}{command} {c}"
     if command == "load":
@@ -69,8 +74,19 @@ async def test_load_reload_unload(bot, command: str, prefix: str, cog, permissio
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -93,20 +109,31 @@ async def test_load_reload_unload(bot, command: str, prefix: str, cog, permissio
             cog = bot.get_cog("DevelopmentAppCommands")
             transformer = AppModule()
             resolved = await transformer.transform(inx, c)
-            if command == "reload":
-                command = cog.reload_app_command
-                await command.callback(cog, interaction=inx, module=resolved)
-                for kind, content in end_results:
-                    assert kind == "success"
-            elif command == "load":
-                await bot.unload_extension(c)
-                command = cog.load_app_command
-                await command.callback(cog, interaction=inx, module=resolved)
-                for kind, content in end_results:
-                    assert kind == "success"
-            elif command == "unload":
-                await bot.load_extension(c)
-                command = cog.unload_app_command
-                await command.callback(cog, interaction=inx, module=resolved)
-                for kind, content in end_results:
-                    assert kind == "success"
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                if command == "reload":
+                    command = cog.reload_app_command
+                    await command.callback(cog, interaction=inx, module=resolved)
+                    for kind, content in end_results:
+                        assert kind == "success"
+                elif command == "load":
+                    await bot.unload_extension(c)
+                    command = cog.load_app_command
+                    await command.callback(cog, interaction=inx, module=resolved)
+                    for kind, content in end_results:
+                        assert kind == "success"
+                elif command == "unload":
+                    await bot.load_extension(c)
+                    command = cog.unload_app_command
+                    await command.callback(cog, interaction=inx, module=resolved)
+            for kind, content in end_results:
+                assert kind == "success"

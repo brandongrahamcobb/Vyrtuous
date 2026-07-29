@@ -60,13 +60,11 @@ class ChannelManagementTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = ctx.channel.id
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
             channel,
@@ -118,12 +116,10 @@ class ChannelManagementTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must used in a server channel."
                 )
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(
@@ -231,13 +227,11 @@ class ChannelManagementTextCommands(commands.Cog):
         if channel is None:
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must be used in a server channel."
                 )
             channel_snowflake = ctx.channel.id
             if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
             channel,

@@ -18,9 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from contextlib import ExitStack
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -34,10 +37,10 @@ from vyrtuous.tests.integration.test_suite import (
 @pytest.mark.parametrize(
     "permission_role, command, spec",
     [
-        ("Guild Owner", "sync", None),
-        ("Guild Owner", "sync", "*"),
-        ("Guild Owner", "sync", "^"),
-        ("Guild Owner", "sync", "~"),
+        ("Guild_Owner", "sync", None),
+        ("Guild_Owner", "sync", "*"),
+        ("Guild_Owner", "sync", "^"),
+        ("Guild_Owner", "sync", "~"),
     ],
 )
 async def test_sync(bot, command: str, prefix: str, spec, permission_role):
@@ -64,6 +67,7 @@ async def test_sync(bot, command: str, prefix: str, spec, permission_role):
     >>> !sync ^
     [{emoji} Synced 0 commands to the current guild]
     """
+    permission_state = bot.registry.get(PermissionState)
     if spec:
         full = f"{prefix}{command} {spec}"
     else:
@@ -72,8 +76,19 @@ async def test_sync(bot, command: str, prefix: str, spec, permission_role):
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        captured = await send_message(bot=bot, content=full)
-        assert captured == ["success"]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                    new=AsyncMock(
+                        return_value=permission_state.groups.get(
+                            permission_role.lower()
+                        )
+                    ),
+                )
+            )
+            captured = await send_message(bot=bot, content=full)
+            assert captured == ["success"]
     elif (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -95,6 +110,17 @@ async def test_sync(bot, command: str, prefix: str, spec, permission_role):
         async with capture_command() as end_results:
             cog = bot.get_cog("GuildOwnerAppCommands")
             command = cog.sync_app_command
-            await command.callback(cog, interaction=inx, spec=spec)
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch(
+                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
+                        new=AsyncMock(
+                            return_value=permission_state.groups.get(
+                                permission_role.lower()
+                            )
+                        ),
+                    )
+                )
+                await command.callback(cog, interaction=inx, spec=spec)
             for kind, content in end_results:
                 assert kind == "success"
