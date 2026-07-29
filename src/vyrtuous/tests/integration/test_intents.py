@@ -38,12 +38,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 @pytest.mark.parametrize(
     "permission_role, command, target",
     [
-        ("Administrator", "pc", "{channel_snowflake}"),
-        ("Administrator", "pc", "<#{channel_snowflake}>"),
-        ("Guild Owner", "pc", "{guild_snowflake}"),
+        ("Administrator", "intents", "{channel_snowflake}"),
+        ("Administrator", "intents", "<#{channel_snowflake}>"),
+        ("Guild Owner", "intents", "{guild_snowflake}"),
     ],
 )
-async def test_pc(bot, command: str, prefix: str, target, permission_role):
+async def test_intents(bot, command: str, prefix: str, target, permission_role):
     """
     List permissions in channels.
 
@@ -101,7 +101,7 @@ async def test_pc(bot, command: str, prefix: str, target, permission_role):
         )
         async with capture_command() as end_results:
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.list_permissions_app_command
+            command = cog.list_intents_app_command
             transformer = AppTarget()
             if t:
                 resolved = await transformer.transform(inx, t)

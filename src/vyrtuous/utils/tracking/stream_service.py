@@ -125,7 +125,7 @@ async def send_log(
 
     streaming = await database_factory.select(singular=False)
     for stream in streaming:
-        channel_obj = bot.get_channel(stream.target_channel_snowflake)
+        channel_obj = bot.get_channel(stream.channel_snowflake)
         if channel_obj and isinstance(
             channel_obj,
             (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
@@ -150,15 +150,15 @@ async def toggle_stream(
         if isinstance(source, discord.Guild):
             stream = await database_factory.select(
                 source_guild_snowflake=source.id,
-                target_channel_snowflake=target_channel.id,
-                target_guild_snowflake=target_channel.guild.id,
+                channel_snowflake=target_channel.id,
+                guild_snowflake=target_channel.guild.id,
                 singular=True,
             )
             if stream:
                 await database_factory.delete(
                     source_guild_snowflake=source.id,
-                    target_channel_snowflake=target_channel.id,
-                    target_guild_snowflake=target_channel.guild.id,
+                    channel_snowflake=target_channel.id,
+                    guild_snowflake=target_channel.guild.id,
                 )
             else:
                 stream = Stream(
@@ -177,9 +177,9 @@ async def toggle_stream(
             )
             if stream:
                 await database_factory.delete(
-                    target_guild_snowflake=target_channel.guild.id,
+                    guild_snowflake=target_channel.guild.id,
                     source_channel_snowflake=source.id,
-                    target_channel_snowflake=target_channel.id,
+                    channel_snowflake=target_channel.id,
                 )
             else:
                 stream = Stream(
@@ -193,16 +193,16 @@ async def toggle_stream(
         stream = await database_factory.select(
             source_guild_snowflake=None,
             source_channel_snowflake=None,
-            target_guild_snowflake=target_channel.guild.id,
-            target_channel_snowflake=target_channel.id,
+            guild_snowflake=target_channel.guild.id,
+            channel_snowflake=target_channel.id,
             singular=True,
         )
         if stream:
             await database_factory.delete(
                 source_guild_snowflake=None,
                 source_channel_snowflake=None,
-                target_channel_snowflake=target_channel.id,
-                target_guild_snowflake=target_channel.guild.id,
+                channel_snowflake=target_channel.id,
+                guild_snowflake=target_channel.guild.id,
             )
         else:
             stream = Stream(
