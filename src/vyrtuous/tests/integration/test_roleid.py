@@ -88,7 +88,7 @@ async def test_roleid(bot, command: str, prefix: str, role, guild, permission_ro
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.get_role_id_app_command
             transformer = AppTarget()
             if g:

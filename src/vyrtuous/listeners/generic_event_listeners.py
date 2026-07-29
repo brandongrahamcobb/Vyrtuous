@@ -24,7 +24,7 @@ from discord.ext import commands
 
 from vyrtuous.aliases.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.alias import NotAlias
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
@@ -33,7 +33,8 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import moderator_service, role_service
+from vyrtuous.utils.permissions import permission_service
+from vyrtuous.utils.users import role_service
 
 
 class GenericEventListeners(commands.Cog):
@@ -82,6 +83,8 @@ class GenericEventListeners(commands.Cog):
             return None
 
         tick = Tick(bot=self.__bot, message=message)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
         try:
             alias_ctx = AliasContext(
                 content=message.content,
@@ -98,11 +101,12 @@ class GenericEventListeners(commands.Cog):
             if invincible_members_in_guild is not None:
                 if alias_ctx.member_snowflake in invincible_members_in_guild:
                     return None
-            await moderator_service.has_equal_or_lower_role(
+            await permission_service.has_equal_or_lower_role(
+                permission_state=permission_state,
                 channel_snowflake=alias_ctx.channel_snowflake,
                 guild_snowflake=message.guild.id,
-                member_snowflake=message.author.id,
-                target_member_snowflake=alias_ctx.member_snowflake,
+                author_snowflake=message.author.id,
+                member_snowflake=alias_ctx.member_snowflake,
             )
             match alias_ctx.category:
                 case "ban":

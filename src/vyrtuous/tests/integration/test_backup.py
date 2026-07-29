@@ -77,7 +77,7 @@ async def test_backup(bot, command: str, prefix: str, permission_role):
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenDeveloperAppCommands")
+            cog = bot.get_cog("DevelopmentAppCommands")
             command = cog.backup_app_command
             await command.callback(cog, interaction=inx)
         for kind, content in end_results:

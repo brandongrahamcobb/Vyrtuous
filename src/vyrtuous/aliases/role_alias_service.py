@@ -25,6 +25,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.duration import DurationObject
+from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 
@@ -47,10 +48,10 @@ def build_enrole_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     role = guild.get_role(role_snowflake)
     if role is None:
-        raise commands.RoleNotFound(str(role_snowflake))
+        raise RoleNotFound(str(role_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -60,7 +61,7 @@ def build_enrole_embed(
             member_snowflake, None
         )
         if simplified_member is None:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
         else:
             display_name = simplified_member[0]
             member_str = display_name
@@ -127,14 +128,14 @@ async def set_enrole_overwrite(
         raise TargetIsBot
     role = guild.get_role(role_snowflake)
     if role is None:
-        raise commands.RoleNotFound(str(role_snowflake))
+        raise RoleNotFound(str(role_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(
             member_snowflake, None
         )
         if simplified_member is None:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     else:
         try:
             await member.add_roles(role, reason="Granting role.")

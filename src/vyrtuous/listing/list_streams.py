@@ -36,7 +36,7 @@ async def build_dictionary(
     dictionary: dict[int, dict[str, dict[int, dict[str, list[int]]]]] = {}
     if isinstance(obj, discord.Guild):
         streaming = await database_factory.select(
-            target_guild_snowflake=obj.id, singular=False
+            guild_snowflake=obj.id, singular=False
         )
     elif isinstance(obj, discord.abc.GuildChannel):
         streaming = await database_factory.select(
@@ -46,13 +46,13 @@ async def build_dictionary(
         streaming = await database_factory.select(singular=False)
     if streaming:
         for stream in streaming:
-            dictionary.setdefault(stream.target_guild_snowflake, {"channels": {}})
-            dictionary[stream.target_guild_snowflake]["channels"].setdefault(
-                stream.target_channel_snowflake, {"sources": []}
+            dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
+            dictionary[stream.guild_snowflake]["channels"].setdefault(
+                stream.channel_snowflake, {"sources": []}
             )
-            dictionary[stream.target_guild_snowflake]["channels"][
-                stream.target_channel_snowflake
-            ]["sources"].append(stream.source_channel_snowflake)
+            dictionary[stream.guild_snowflake]["channels"][stream.channel_snowflake][
+                "sources"
+            ].append(stream.source_channel_snowflake)
     return dictionary
 
 

@@ -44,7 +44,9 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
         ("Administrator", "cap", "ban", "{channel_snowflake}", "8h"),
     ],
 )
-async def test_cap(bot, command: str, prefix: str, channel, category, limit, permission_role):
+async def test_cap(
+    bot, command: str, prefix: str, channel, category, limit, permission_role
+):
     """
     Set a expires in limit for a channel by populating the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.
@@ -98,7 +100,7 @@ async def test_cap(bot, command: str, prefix: str, channel, category, limit, per
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("ChannelManagementAppCommands")
             command = cog.cap_app_command
             category_transformer = AppCategory()
             resolved_category = await category_transformer.transform(inx, category)

@@ -116,7 +116,7 @@ async def test_vcow(bot, command: str, prefix: str, member, guild, permission_ro
                 )
             )
             async with capture_command() as end_results:
-                cog = bot.get_cog("HiddenModeratorAppCommands")
+                cog = bot.get_cog("UserManagementAppCommands")
                 command = cog.toggle_vegan_app_command
                 transformer = AppTarget()
                 resolved_member = await transformer.transform(inx, m)

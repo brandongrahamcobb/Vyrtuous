@@ -22,13 +22,14 @@ from datetime import datetime, timezone
 from typing import Self
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.data import Data
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder, DurationObject
-from vyrtuous.utils.users import moderator_service
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
+from vyrtuous.utils.permissions import permission_service
 
 MODEL = Data
 
@@ -94,24 +95,32 @@ class DataBuilder:
         guild_snowflake=None,
         member_snowflake=None,
     ):
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
         if author_snowflake and channel_snowflake and guild_snowflake:
-            executor_highest_role = await moderator_service.resolve_highest_role(
+            author_group = await permission_service.resolve_effective_group(
+                permission_state=permission_state,
                 channel_snowflake=int(channel_snowflake),
                 guild_snowflake=int(guild_snowflake),
                 member_snowflake=int(author_snowflake),
             )
-            self.__data = replace(
-                self.__data, executor_highest_role=executor_highest_role
-            )
+            if author_group:
+                executor_highest_role = author_group.name
+                self.__data = replace(
+                    self.__data, executor_highest_role=executor_highest_role
+                )
             if member_snowflake:
-                target_highest_role = await moderator_service.resolve_highest_role(
+                target_group = await permission_service.resolve_effective_group(
+                    permission_state=permission_state,
                     channel_snowflake=int(channel_snowflake),
                     guild_snowflake=int(guild_snowflake),
                     member_snowflake=int(member_snowflake),
                 )
-                self.__data = replace(
-                    self.__data, target_highest_role=target_highest_role
-                )
+                if target_group:
+                    target_highest_role = target_group.name
+                    self.__data = replace(
+                        self.__data, target_highest_role=target_highest_role
+                    )
         return self
 
     def set_target(self, *, target: str | None = "click") -> Self:
@@ -155,7 +164,7 @@ async def save_data(
     if guild_snowflake:
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         total_guild_members = sum(1 for member in guild.members if not member.bot)
         data.set_counts(total_guild_members=total_guild_members)
         online_members = sum(
@@ -176,7 +185,7 @@ async def save_data(
         if channel_snowflake:
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                raise commands.ChannelNotFound(str(channel_snowflake))
+                raise ChannelNotFound(str(channel_snowflake))
             if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
                 current_channel_members = len(channel.members)
                 data.set_counts(current_channel_members=current_channel_members)

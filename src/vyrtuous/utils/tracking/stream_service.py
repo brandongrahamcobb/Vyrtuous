@@ -18,16 +18,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.stream import Stream
 from vyrtuous.models.duration import DurationObject
+from vyrtuous.utils.errors.error import GuildNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.paginator import Paginator
+from vyrtuous.utils.permissions import permission_service
 from vyrtuous.utils.tracking.stream_embed import StreamEmbed
-from vyrtuous.utils.users import moderator_service
 
 MODEL = Stream
 
@@ -47,6 +48,7 @@ async def send_log(
     reason: str = "No reason provided",
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
+    permission_state: PermissionState = bot.registry.get(PermissionState)
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     embed = StreamEmbed(color=None, description=None, title=None, url=None)
     embed.set_title(identifier=identifier)
@@ -56,35 +58,41 @@ async def send_log(
     if guild_snowflake:
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         if channel_snowflake:
             if author_snowflake:
-                executor_role = await moderator_service.resolve_highest_role(
+                author_group = await permission_service.resolve_effective_group(
+                    permission_state=permission_state,
                     channel_snowflake=int(channel_snowflake),
                     guild_snowflake=int(guild_snowflake),
                     member_snowflake=int(author_snowflake),
                 )
-                embed.set_executor(
-                    author_snowflake=author_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    highest_role=executor_role,
-                )
-                author = guild.get_member(author_snowflake)
-                if author:
-                    embed.set_tn(url=author.display_avatar.url)
+                if author_group:
+                    executor_role = author_group.name
+                    embed.set_executor(
+                        author_snowflake=author_snowflake,
+                        guild_snowflake=guild_snowflake,
+                        highest_role=executor_role,
+                    )
+                    author = guild.get_member(author_snowflake)
+                    if author:
+                        embed.set_tn(url=author.display_avatar.url)
             else:
                 executor_role = "Unknown"
-            target_role = await moderator_service.resolve_highest_role(
+            target_group = await permission_service.resolve_effective_group(
+                permission_state=permission_state,
                 channel_snowflake=int(channel_snowflake),
                 guild_snowflake=int(guild_snowflake),
                 member_snowflake=int(member_snowflake),
             )
-            embed.set_target(
-                guild_snowflake=guild_snowflake,
-                target=target,
-                target_snowflake=member_snowflake,
-                highest_role=target_role,
-            )
+            if target_group:
+                target_role = target_group.name
+                embed.set_target(
+                    guild_snowflake=guild_snowflake,
+                    target=target,
+                    target_snowflake=member_snowflake,
+                    highest_role=target_role,
+                )
             embed.set_description(
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=guild_snowflake,

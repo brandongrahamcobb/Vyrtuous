@@ -20,17 +20,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
+from vyrtuous.utils.permissions import permission_service
 from vyrtuous.utils.tracking import data_builder, stream_service
-from vyrtuous.utils.users import moderator_service
 
 MODEL = VoiceMute
 
@@ -99,15 +99,15 @@ async def set_unvoice_mute_overwrite(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     else:
         if member.voice and member.voice.channel:
             if member.voice.channel.id == channel_snowflake:
@@ -124,8 +124,10 @@ async def set_unvoice_mute_overwrite(
 async def unvoice_mute_by_message(
     ctx: UnvoiceMuteMessageContext, display: bool = True
 ) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
+    permission_state: PermissionState = bot.registry.get(PermissionState)
     voice_mute = await database_factory.select(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
@@ -140,11 +142,12 @@ async def unvoice_mute_by_message(
         guild_snowflake=ctx.guild_snowflake,
     )
     if exceeds_cap:
-        await moderator_service.check_minimum_role(
+        await permission_service.has_permissions(
+            permission_state=permission_state,
             channel_snowflake=ctx.channel_snowflake,
             guild_snowflake=ctx.guild_snowflake,
             member_snowflake=ctx.author_snowflake,
-            lowest_role="Coordinator",
+            requested=["command.moderation.uncapped"],
         )
     is_channel_scope = await unvoice_mute(
         channel_snowflake=ctx.channel_snowflake,
@@ -183,15 +186,15 @@ async def unvoice_mute(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     else:
         is_channel_scope = await set_unvoice_mute_overwrite(
             channel_snowflake=channel_snowflake,
@@ -215,10 +218,10 @@ def build_unvoice_mute_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -226,7 +229,7 @@ def build_unvoice_mute_embed(
     else:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
         display_name = simplified_member[0]
         member_str = display_name
     embed = discord.Embed(

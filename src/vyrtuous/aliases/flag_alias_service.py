@@ -20,13 +20,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.flag import Flag
 from vyrtuous.models.duration import DurationObject
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import data_builder, stream_service
 
@@ -124,14 +124,14 @@ async def flag(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     if guild.me.id == member_snowflake:
         raise TargetIsBot
     member = guild.get_member(member_snowflake)
     if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     flag = MODEL(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
@@ -152,10 +152,10 @@ def build_flag_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -163,7 +163,7 @@ def build_flag_embed(
     else:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
         display_name = simplified_member[0]
         member_str = display_name
     embed = discord.Embed(

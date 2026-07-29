@@ -18,12 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
+from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 
 MODEL = Vegan
@@ -33,10 +33,10 @@ def is_vegan(guild_snowflake: int, member_snowflake: int) -> bool:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
-        raise commands.MemberNotFound(str(member_snowflake))
+        raise MemberNotFound(str(member_snowflake))
     for role in member.roles:
         if role.name == "Vegan":
             return True
@@ -84,7 +84,7 @@ async def build_vegan_embed(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -97,7 +97,7 @@ async def build_vegan_embed(
             display_name = simplified_member[0]
             member_str = display_name
         else:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     embed = discord.Embed(
         title=f"\U0001f525\U0001f525 {display_name} "
         f"is going Vegan!!!\U0001f525\U0001f525",
@@ -113,7 +113,7 @@ async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -126,7 +126,7 @@ async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
             display_name = simplified_member[0]
             member_str = display_name
         else:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     embed = discord.Embed(
         title=f"\U0001f44e\U0001f44e "
         f"{display_name} is a Carnist \U0001f44e\U0001f44e",
@@ -146,7 +146,12 @@ async def notify(
     vegans = await database_factory.select(singular=False)
     for vegan in vegans:
         if "Vegan" in channel.name and vegan.member_snowflake == member.id:
-            if bot.registry.get(ChannelState).should_notify(channel.id, member.id):
+            if bot.registry.get(ChannelState).should_notify(
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
+                member_snowflake=member.id,
+                timeout=900.0,
+            ):
                 embed = discord.Embed(
                     title=f"{emojis.get_random_emoji()}) {member.display_name} is a recent Vegan!",
                     description=f"**Notes:** {vegan.notes}",
@@ -154,4 +159,8 @@ async def notify(
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)
                 await channel.send(embed=embed)
-            bot.registry.get(ChannelState).record(channel.id, member.id)
+            bot.registry.get(ChannelState).record(
+                channel_snowflake=channel.id,
+                guild_snowflake=channel.guild.id,
+                member_snowflake=member.id,
+            )

@@ -101,7 +101,7 @@ async def test_vs(bot, command: str, prefix: str, target, permission_role):
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_video_channels_app_command
             transformer = AppTarget()
             resolved_target = await transformer.transform(inx, t)

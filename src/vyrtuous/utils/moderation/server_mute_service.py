@@ -17,27 +17,25 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from discord.ext import commands
-
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.utils.users import moderator_service
+from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound
 
 MODEL = VoiceMute
 
 
 async def toggle_server_mute(
-    author_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
 ) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     if member is None:
         simplified_member = bot.registry.get(MemberState).active.get(
@@ -46,16 +44,9 @@ async def toggle_server_mute(
         if simplified_member:
             member_name = simplified_member[0]
         else:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     else:
         member_name = member.mention
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    await moderator_service.has_equal_or_lower_role(
-        channel_snowflake=None,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=author_snowflake,
-        target_member_snowflake=member_snowflake,
-    )
     server_mute = await database_factory.select(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,

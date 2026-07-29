@@ -36,14 +36,14 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, guild",
+    "permission_role, command, target",
     [
-        ("Administrator", "automutes", "{channel_snowflake}", None),
-        ("Administrator", "automutes", "<#{channel_snowflake}>", "{guild_snowflake}"),
-        ("Administrator", "automutes", "{guild_snowflake}", None),
+        ("Administrator", "automutes", "{channel_snowflake}"),
+        ("Administrator", "automutes", "<#{channel_snowflake}>"),
+        ("Administrator", "automutes", "{guild_snowflake}"),
     ],
 )
-async def test_ams(bot, command: str, prefix: str, target, guild, permission_role):
+async def test_ams(bot, command: str, prefix: str, target, permission_role):
     """
     List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'stages'.
@@ -75,12 +75,7 @@ async def test_ams(bot, command: str, prefix: str, target, guild, permission_rol
     t = target.format(
         channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    if guild is None:
-        g = None
-        full = f"{prefix}{command} {t}"
-    else:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{prefix}{command} {t} {g}"
+    full = f"{prefix}{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -106,16 +101,14 @@ async def test_ams(bot, command: str, prefix: str, target, guild, permission_rol
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_automute_channels_app_command
             transformer = AppTarget()
             resolved_target = await transformer.transform(inx, t)
-            if g:
-                resolved_guild = await transformer.transform(inx, g)
-            else:
-                resolved_guild = None
             await command.callback(
-                cog, interaction=inx, target=resolved_target, guild=resolved_guild
+                cog,
+                interaction=inx,
+                target=resolved_target,
             )
         for kind, content in end_results:
             assert kind == "success"

@@ -134,7 +134,7 @@ async def test_server_mutes(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("AdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_server_mutes_app_command
             transformer = AppTarget()
             if t:

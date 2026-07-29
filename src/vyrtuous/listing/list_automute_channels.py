@@ -32,7 +32,6 @@ MODEL = AutoMute
 
 
 async def build_dictionary(
-    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[str, Any]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -42,31 +41,28 @@ async def build_dictionary(
         automutes = await database_factory.select(
             guild_snowflake=obj.id, singular=False
         )
-        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         automutes = await database_factory.select(
-            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+            channel_snowflake=obj.id, singular=False
         )
     else:
-        automutes = await database_factory.select(
-            guild_snowflake=guild_snowflake, singular=False
-        )
+        automutes = await database_factory.select(singular=False)
     if automutes:
         for automute in automutes:
-            dictionary.setdefault(guild_snowflake, {"channels": {}})
-            dictionary[guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(automute.guild_snowflake, {"channels": {}})
+            dictionary[automute.guild_snowflake]["channels"].setdefault(
                 automute.channel_snowflake, {}
             )
-            dictionary[guild_snowflake]["channels"][
+            dictionary[automute.guild_snowflake]["channels"][
                 automute.channel_snowflake
             ].setdefault("automutes", {})
-            dictionary[guild_snowflake]["channels"][automute.channel_snowflake][
-                "automutes"
-            ].update({"expires_in": automute.expires_in})
+            dictionary[automute.guild_snowflake]["channels"][
+                automute.channel_snowflake
+            ]["automutes"].update({"expires_in": automute.expires_in})
     return dictionary
 
 
-async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
+async def build_pages(obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     duration_builder: DurationBuilder = DurationBuilder()
     lines: list[str] = []
@@ -75,7 +71,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Automute Channels for {obj_name}"
 
-    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
+    dictionary = await build_dictionary(obj=obj)
     processed_dictionary: list_service.AutoMuteDictionary = (
         await list_service.process_dictionary(
             cls=list_service.AutoMuteDictionary, dictionary=dictionary

@@ -1,5 +1,5 @@
 """!/bin/python3
-hidden_guild_owner_text_commands.py A discord.py cog containing guild owner commands for the Vyrtuous bot.
+sysadmin_text_commands.py A discord.py cog containing sysadmin commands for the Vyrtuous bot.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,51 +23,35 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import MemberState
-from vyrtuous.listing import list_heroes
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.text_commands.help_text_command import skip_text_command_help_discovery
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import hero_service, moderator_service
+from vyrtuous.utils.permissions import permission_service
+from vyrtuous.utils.users import hero_service, vegan_service
 
 
-class HiddenGuildOwnerTextCommands(commands.Cog):
-
-    PERMISSION_LEVEL = "Guild Owner"
+class UserManagementTextCommands(commands.Cog):
 
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
 
-    async def cog_check(self, ctx) -> bool:
-        if ctx.guild is None:
-            raise commands.CheckFailure(
-                "This command must be executed inside a server."
-            )
-        await moderator_service.check_minimum_role(
-            channel_snowflake=ctx.channel.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id,
-            lowest_role=self.PERMISSION_LEVEL,
-        )
-        return True
-
     @commands.command(name="hero", help="Grant/revoke invincibility.")
-    @skip_text_command_help_discovery()
     async def toggle_invincibility_text_command(
         self,
         ctx: commands.Context,
         member: int | discord.Member = commands.parameter(
             converter=MultiConverter,
-            description="Tag a member or include their ID.",
+            description="Specify a member ID/mention.",
         ),
         target: Union[str, discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
-            description="Specify a server ID.",
+            description="Specify a `all` or a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
         singular = True
         if target is None:
             if ctx.guild is None:
@@ -85,6 +69,12 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
+        if ctx.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        else:
+            channel_snowflake = ctx.channel.id
         if isinstance(member, int):
             member_snowflake = member
             member_name = "Unknown"
@@ -93,9 +83,11 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
             )
             if simplified_member:
                 member_name = simplified_member[0]
-        else:
+        elif isinstance(member, discord.Member):
             member_snowflake = member.id
             member_name = member.mention
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
         if not singular:
             if any(
                 member_snowflake in member_set
@@ -120,6 +112,13 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
             header = f"Invincibility has been disabled for {member_name} in "
         guild_names = []
         for g in guilds:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=g.id,
+                requested=["command.moderation.hero"],
+            )
             if enabled:
                 await hero_service.add_invincible_member(g.id, member_snowflake)
                 await hero_service.unrestrict(
@@ -127,42 +126,75 @@ class HiddenGuildOwnerTextCommands(commands.Cog):
                 )
                 guild_names.append(g.name)
             else:
-                header = f"Invincibility has been disabled for {member_name} in "
                 await hero_service.remove_invincible_member(g.id, member_snowflake)
                 guild_names.append(g.name)
         msg = header + ", ".join(guild_names) + "."
         return await tick.end(success=msg)
 
-    @commands.command(name="heroes", help="List heroes.")
-    @skip_text_command_help_discovery()
-    async def list_heroes_text_command(
+    @commands.command(name="vcow", help="Toggle vegan.")
+    async def toggle_vegan_text_command(
         self,
         ctx: commands.Context,
-        target: Union[int, discord.Member, discord.Guild, None] = commands.parameter(
+        member: int | discord.Member = commands.parameter(
             converter=MultiConverter,
+            description="Specify a member ID/mention.",
+        ),
+        notes: str | None = commands.parameter(
             default=None,
-            description="Specify a member mention/ID or server ID.",
+            description="Include notes.",
         ),
         guild: Union[discord.Guild, None] = commands.parameter(
-            converter=commands.GuildConverter,
+            converter=MultiConverter,
             default=None,
             description="Specify a server ID.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must target a valid server.")
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
         if guild is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
             guild_snowflake = ctx.guild.id
         else:
-            guild_snowflake = guild.id
-        obj = target or ctx.guild
-        pages = await list_heroes.build_pages(
+            if isinstance(guild, discord.Guild):
+                guild_snowflake = guild.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if ctx.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        else:
+            channel_snowflake = ctx.channel.id
+        if not vegan_service.is_vegan(
+            guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id
+        ):
+            return await tick.end(warning="Author is not a vegan.")
+        if isinstance(member, int):
+            member_snowflake = member
+        elif isinstance(member, discord.Member):
+            member_snowflake = member.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            obj=obj,
+            requested=["command.general.vcow"],
         )
-        return await tick.end(success=pages)
+        embed = await vegan_service.toggle_vegan(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            notes=notes,
+        )
+        return await tick.end(success=embed)
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(HiddenGuildOwnerTextCommands(bot=bot))
+    await bot.add_cog(UserManagementTextCommands(bot=bot))

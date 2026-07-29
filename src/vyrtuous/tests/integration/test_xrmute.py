@@ -97,7 +97,7 @@ async def test_rmute_xrmute(bot, command: str, prefix: str, channel, permission_
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("AdministratorAppCommands")
+            cog = bot.get_cog("ModerationAppCommands")
             command = cog.channel_mute_app_command
             transformer = AppTarget()
             if c:

@@ -21,6 +21,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.utils.errors.error import CheckFailure
+
 SCOPES = ["all", "auto", "click", "command", "server"]
 
 
@@ -41,7 +43,7 @@ class Converter(commands.Converter):
 
     async def convert(self, ctx: commands.Context, argument: str) -> ScopeObject:
         if argument not in SCOPES:
-            raise commands.CheckFailure(f"Invalid scope specified: ({argument}).")
+            raise CheckFailure(f"Invalid scope specified: ({argument}).")
         return self.scope_cls(argument)
 
 
@@ -54,7 +56,7 @@ class Transformer(app_commands.Transformer):
         self, interaction: discord.Interaction, arg: str
     ) -> ScopeObject:
         if arg not in SCOPES:
-            raise app_commands.CheckFailure(f"Invalid scope specified: ({arg}).")
+            raise CheckFailure(f"Invalid scope specified: ({arg}).")
         return self.scope_cls(arg)
 
 

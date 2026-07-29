@@ -17,12 +17,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import importlib.util
-import inspect
-from pathlib import Path
 from typing import Union
-
-from discord.ext import commands
 
 from vyrtuous.aliases.ban_alias import BanAlias
 from vyrtuous.aliases.flag_alias import FlagAlias
@@ -32,6 +27,7 @@ from vyrtuous.aliases.voice_mute_alias import VoiceMuteAlias
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.alias import Alias, NotAlias
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, RoleNotFound
 
 MODEL = Alias
 ALIASES = [BanAlias, FlagAlias, RoleAlias, TextMuteAlias, VoiceMuteAlias]
@@ -87,14 +83,14 @@ async def delete_alias(alias_name: str, guild_snowflake: int) -> str:
         return f"No aliases found for `{alias_name}`."
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(alias.channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(alias.channel_snowflake)
+        raise ChannelNotFound(alias.channel_snowflake)
     if getattr(alias, "role_snowflake"):
         role = guild.get_role(alias.role_snowflake)
         if not role:
-            raise commands.RoleNotFound(alias.role_snowflake)
+            raise RoleNotFound(alias.role_snowflake)
         msg = (
             f"Alias `{alias.alias_name}` of type "
             f"`{alias.category}` for channel {channel.mention if channel else alias.channel_snowflake} "
@@ -122,10 +118,10 @@ async def create_alias(
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     msg = (
         f"Alias `{alias_name}` of type `{category}` "
         f"created successfully for channel {channel.mention}."
@@ -144,7 +140,7 @@ async def create_alias(
     if role_snowflake:
         role = guild.get_role(role_snowflake)
         if role is None:
-            raise commands.RoleNotFound(str(role_snowflake))
+            raise RoleNotFound(str(role_snowflake))
         msg = (
             f"Alias `{alias_name}` of type `{category}` "
             f"created successfully for channel {channel.mention} with role {role.mention}."

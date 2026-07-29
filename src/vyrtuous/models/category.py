@@ -38,6 +38,7 @@ from vyrtuous.db.text_mute import TextMute
 from vyrtuous.db.vegan import Vegan
 from vyrtuous.db.video_channel import VideoChannel
 from vyrtuous.db.voice_mute import VoiceMute
+from vyrtuous.utils.errors.error import CheckFailure
 
 CLASSES = [
     ActiveMember,
@@ -83,7 +84,7 @@ class Converter(commands.Converter):
         for extra in EXTRA_CATEGORIES:
             categories.append(extra)
         if argument not in categories:
-            raise commands.CheckFailure(f"Invalid category specified: ({argument}).")
+            raise CheckFailure(f"Invalid category specified: ({argument}).")
         return self.category_cls(argument)
 
 
@@ -100,7 +101,7 @@ class Transformer(app_commands.Transformer):
         for extra in EXTRA_CATEGORIES:
             categories.append(extra)
         if arg not in categories:
-            raise app_commands.CheckFailure(f"Invalid category specified: ({arg}).")
+            raise CheckFailure(f"Invalid category specified: ({arg}).")
         return self.category_cls(arg)
 
 

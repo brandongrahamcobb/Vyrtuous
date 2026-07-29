@@ -129,7 +129,7 @@ async def test_bans(bot, command: str, prefix: str, target, guild, permission_ro
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("ModeratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_bans_app_command
             transformer = AppTarget()
             if t:

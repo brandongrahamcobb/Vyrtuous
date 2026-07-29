@@ -28,6 +28,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 
 MODEL = Ban
 
@@ -85,10 +86,10 @@ async def toggle_blacklist(
     )
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
         display_name = member.display_name
@@ -97,7 +98,7 @@ async def toggle_blacklist(
         if member_data:
             display_name = member_data[0]
         else:
-            raise commands.MemberNotFound(str(member_snowflake))
+            raise MemberNotFound(str(member_snowflake))
     if not ban:
         return f"{display_name} is not banned in {channel.mention}."
     where_kwargs = {

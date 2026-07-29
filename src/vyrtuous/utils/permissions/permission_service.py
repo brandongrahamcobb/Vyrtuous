@@ -12,7 +12,7 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.inc.helpers import PATH_GROUPS
-from vyrtuous.utils.users.moderator_service import HasEqualOrLowerRole
+from vyrtuous.utils.errors.error import HasEqualOrLowerRole, NotGuildOwner
 
 MODEL = PermissionEntry
 
@@ -123,6 +123,33 @@ async def has_permission(
     return False
 
 
+async def any_group_has_permission(
+    permission_state: PermissionState,
+    member_snowflake: int,
+    requested: str,
+) -> bool:
+    groups_list = []
+    bot: DiscordBot = DiscordBot.get_instance()
+    for guild in bot.guilds:
+        for channel in guild.channels:
+            groups = await get_member_groups(
+                member_snowflake=member_snowflake,
+                channel_snowflake=channel.id,
+                guild_snowflake=guild.id,
+            )
+            for group in groups:
+                if group not in groups_list:
+                    groups_list.append(group)
+    for group in groups_list:
+        if has_group_permission(
+            permission_state=permission_state,
+            group_alias=group.alias,
+            requested=requested,
+        ):
+            return True
+    return False
+
+
 async def has_permissions(
     permission_state: PermissionState,
     member_snowflake: int,
@@ -137,6 +164,21 @@ async def has_permissions(
             requested=permission,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
+        ):
+            raise commands.CheckFailure("You do not have sufficient access to do that.")
+    return True
+
+
+async def any_group_has_permissions(
+    permission_state: PermissionState,
+    member_snowflake: int,
+    requested: list[str],
+) -> bool:
+    for permission in requested:
+        if not await any_group_has_permission(
+            permission_state=permission_state,
+            member_snowflake=member_snowflake,
+            requested=permission,
         ):
             raise commands.CheckFailure("You do not have sufficient access to do that.")
     return True
@@ -213,20 +255,22 @@ async def get_member_groups(
     member_snowflake: int,
     channel_snowflake: int | None = None,
     guild_snowflake: int | None = None,
-) -> set[PermissionGroup]:
-    groups = set()
+) -> list[PermissionGroup]:
+    groups = []
     bot: DiscordBot = DiscordBot.get_instance()
     permission_state: PermissionState = bot.registry.get(PermissionState)
     if is_sysadmin(member_snowflake=member_snowflake):
         for group in permission_state.groups.values():
             if group.is_sysadmin:
-                groups.add(group)
+                if group not in groups:
+                    groups.append(group)
     if guild_snowflake:
         for guild in bot.guilds:
             if guild.id == guild_snowflake and guild.owner_id == member_snowflake:
                 for group in permission_state.groups.values():
                     if group.is_guild_owner:
-                        groups.add(group)
+                        if group not in groups:
+                            groups.append(group)
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     entries = await database_factory.select(
         member_snowflake=member_snowflake,
@@ -240,7 +284,8 @@ async def get_member_groups(
             if entry.channel_snowflake != channel_snowflake:
                 continue
         if group := permission_state.groups.get(entry.group_alias, None) is not None:
-            groups.add(group)
+            if group not in groups:
+                groups.append(group)
     return groups
 
 
@@ -390,9 +435,217 @@ async def has_equal_or_lower_role(
         guild_snowflake=guild_snowflake,
     )
     if author_group is None or member_group is None:
-        raise HasEqualOrLowerRole
+        return None
     if (
         member_group.alias not in author_group.ancestors
         or author_group.alias == member_group.alias
     ):
-        raise HasEqualOrLowerRole
+        raise HasEqualOrLowerRole(target_rank=member_group.alias)
+
+
+async def is_guild_owner(
+    member_snowflake: int, guild_snowflake: int | None = None
+) -> bool:
+    bot: DiscordBot = DiscordBot.get_instance()
+    if guild_snowflake is None:
+        for guild in bot.guilds:
+            if guild and guild.owner_id == member_snowflake:
+                return True
+    else:
+        guild = bot.get_guild(guild_snowflake)
+        if guild and guild.owner_id == member_snowflake:
+            return True
+    raise NotGuildOwner(guild_snowflake=guild_snowflake)
+
+
+# async def survey(channel_snowflake: int, guild_snowflake: int) -> list[discord.Embed]:
+#     bot: DiscordBot = DiscordBot.get_instance()
+#     guild = bot.get_guild(guild_snowflake)
+#     if guild is None:
+#         raise GuildNotFound(str(guild_snowflake))
+#     channel = guild.get_channel(channel_snowflake)
+#     if channel is None:
+#         raise ChannelNotFound(str(channel_snowflake))
+#     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+#         raise commands.CheckFailure("This command must target a valid channel.")
+#     chunk_size, pages = 7, []
+#     (
+#         sysadmins,
+#         developers,
+#         guild_owners,
+#         administrators,
+#         coordinators,
+#         moderators,
+#     ) = ([], [], [], [], [], [])
+#
+#     for member in channel.members:
+#         try:
+#             if await sysadmin_service.is_sysadmin(member_snowflake=member.id):
+#                 sysadmins.append(member)
+#         except commands.CheckFailure as e:
+#             bot.logger.warning(str(e).capitalize())
+#         try:
+#             if await developer_service.is_developer(member_snowflake=member.id):
+#                 developers.append(member)
+#         except commands.CheckFailure as e:
+#             bot.logger.warning(str(e).capitalize())
+#         try:
+#             if await guild_owner_service.is_guild_owner(
+#                 guild_snowflake=channel.guild.id, member_snowflake=member.id
+#             ):
+#                 guild_owners.append(member)
+#         except commands.CheckFailure as e:
+#             bot.logger.warning(str(e).capitalize())
+#         try:
+#             if await administrator_service.is_administrator(
+#                 guild_snowflake=channel.guild.id, member_snowflake=member.id
+#             ):
+#                 administrators.append(member)
+#         except commands.CheckFailure as e:
+#             bot.logger.warning(str(e).capitalize())
+#         try:
+#             if await coordinator_service.is_coordinator(
+#                 channel_snowflake=channel.id,
+#                 guild_snowflake=channel.guild.id,
+#                 member_snowflake=member.id,
+#             ):
+#                 coordinators.append(member)
+#         except commands.CheckFailure as e:
+#             bot.logger.warning(str(e).capitalize())
+#         try:
+#             if await is_moderator(
+#                 channel_snowflake=channel.id,
+#                 guild_snowflake=channel.guild.id,
+#                 member_snowflake=member.id,
+#             ):
+#                 moderators.append(member)
+#         except commands.CheckFailure as e:
+#             bot.logger.warning(str(e).capitalize())
+#     sysadmins_chunks = [
+#         sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
+#     ]
+#     guild_owners_chunks = [
+#         guild_owners[i : i + chunk_size]
+#         for i in range(0, len(guild_owners), chunk_size)
+#     ]
+#     developers_chunks = [
+#         developers[i : i + chunk_size] for i in range(0, len(developers), chunk_size)
+#     ]
+#     administrators_chunks = [
+#         administrators[i : i + chunk_size]
+#         for i in range(0, len(administrators), chunk_size)
+#     ]
+#     coordinators_chunks = [
+#         coordinators[i : i + chunk_size]
+#         for i in range(0, len(coordinators), chunk_size)
+#     ]
+#     moderators_chunks = [
+#         moderators[i : i + chunk_size] for i in range(0, len(moderators), chunk_size)
+#     ]
+#     roles_chunks = [
+#         ("Sysadmins", sysadmins, sysadmins_chunks),
+#         ("Developers", developers, developers_chunks),
+#         ("Guild Owners", guild_owners, guild_owners_chunks),
+#         ("Administrators", administrators, administrators_chunks),
+#         ("Coordinators", coordinators, coordinators_chunks),
+#         ("Moderators", moderators, moderators_chunks),
+#     ]
+#     max_pages = max(len(c[2]) for c in roles_chunks)
+#     for page in range(max_pages):
+#         embed = discord.Embed(
+#             title=f"{emojis.get_random_emoji()} Survey results for {channel.name}",
+#             description=f"Total surveyed: {len(channel.members)}",
+#             color=discord.Color.blurple(),
+#         )
+#         for role_name, role_list, chunks in roles_chunks:
+#             chunk = chunks[page] if page < len(chunks) else []
+#             embed.add_field(
+#                 name=f"{role_name} ({len(chunk)}/{len(role_list)})",
+#                 value=", ".join(u.mention for u in chunk) if chunk else "*None*",
+#                 inline=False,
+#             )
+#         pages.append(embed)
+#     return pages
+#
+# async def log_mod(
+#     author_snowflake: int,
+#     channel_snowflake: int,
+#     display: bool,
+#     guild_snowflake: int,
+#     member_snowflake: int,
+#     message_snowflake: int | None,
+#     message_channel_snowflake: int | None,
+# ):
+#     duration = DurationObject(number=0, prefix="", sign=1, unit="")
+#     is_channel_scope = None
+#     reason = None
+#     role_snowflake = None
+#     target = None
+#     await data_builder.save_data(
+#         author_snowflake=author_snowflake,
+#         channel_snowflake=channel_snowflake,
+#         duration=duration,
+#         guild_snowflake=guild_snowflake,
+#         identifier="mod",
+#         member_snowflake=member_snowflake,
+#         reason=reason or "No reason provided.",
+#         role_snowflake=role_snowflake or None,
+#         target=target or None,
+#     )
+#     if display:
+#         await stream_service.send_log(
+#             author_snowflake=author_snowflake,
+#             channel_snowflake=channel_snowflake,
+#             identifier="mod",
+#             duration=duration,
+#             guild_snowflake=guild_snowflake,
+#             is_channel_scope=is_channel_scope,
+#             member_snowflake=member_snowflake,
+#             message_snowflake=message_snowflake or None,
+#             message_channel_snowflake=message_channel_snowflake or None,
+#             reason=reason or "No reason provided.",
+#             role_snowflake=role_snowflake or None,
+#             target=target or None,
+#         )
+#
+#
+# async def log_xmod(
+#     author_snowflake: int,
+#     channel_snowflake: int,
+#     display: bool,
+#     guild_snowflake: int,
+#     member_snowflake: int,
+#     message_snowflake: int | None,
+#     message_channel_snowflake: int | None,
+# ):
+#     duration = DurationObject(number=0, prefix="", sign=1, unit="")
+#     is_channel_scope = None
+#     reason = None
+#     role_snowflake = None
+#     target = None
+#     await data_builder.save_data(
+#         author_snowflake=author_snowflake or None,
+#         channel_snowflake=channel_snowflake,
+#         duration=duration,
+#         guild_snowflake=guild_snowflake,
+#         identifier="xmod",
+#         member_snowflake=member_snowflake,
+#         reason=reason or "No reason provided.",
+#         role_snowflake=role_snowflake or None,
+#         target=target or None,
+#     )
+#     if display:
+#         await stream_service.send_log(
+#             author_snowflake=author_snowflake or None,
+#             channel_snowflake=channel_snowflake,
+#             identifier="xmod",
+#             duration=duration,
+#             guild_snowflake=guild_snowflake,
+#             is_channel_scope=is_channel_scope,
+#             member_snowflake=member_snowflake,
+#             message_snowflake=message_snowflake or None,
+#             message_channel_snowflake=message_channel_snowflake or None,
+#             reason=reason or "No reason provided.",
+#             role_snowflake=role_snowflake or None,
+#             target=target or None,
+#         )

@@ -26,6 +26,12 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.utils.errors.error import (
+    ChannelNotFound,
+    GuildNotFound,
+    MemberNotFound,
+    RoleNotFound,
+)
 
 
 class StreamEmbed(discord.Embed):
@@ -51,10 +57,10 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         role = guild.get_role(role_snowflake)
         if role is None:
-            raise commands.RoleNotFound(str(role_snowflake))
+            raise RoleNotFound(str(role_snowflake))
         self.add_field(name="Role", value=role.mention, inline=False)
         return self
 
@@ -89,10 +95,10 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         author = guild.get_member(author_snowflake)
         if author is None:
-            raise commands.MemberNotFound(str(author_snowflake))
+            raise MemberNotFound(str(author_snowflake))
         fields = []
         if author:
             fields.append(f"**Executor:** {author.display_name} (@{author.name})")
@@ -119,7 +125,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         member = guild.get_member(target_snowflake)
         if member is None:
             simplified_member = bot.registry.get(MemberState).active.get(
@@ -129,7 +135,7 @@ class StreamEmbed(discord.Embed):
                 fields.append(f"**Display Name:** {simplified_member[0]}")
                 fields.append(f"**User ID:** `{target_snowflake}`")
             else:
-                raise commands.MemberNotFound(str(target_snowflake))
+                raise MemberNotFound(str(target_snowflake))
         else:
             fields.append(f"**Display Name:** {member.display_name}")
             fields.append(f"**Username:** @{member.name}")
@@ -157,12 +163,12 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if not guild:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(message_channel_snowflake)
         if not channel or not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):
-            raise commands.ChannelNotFound(str(message_channel_snowflake))
+            raise ChannelNotFound(str(message_channel_snowflake))
         try:
             message = await channel.fetch_message(message_snowflake)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
@@ -199,7 +205,7 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         text = f"Ref: {target_snowflake}-{channel_snowflake} | Msg: {message_snowflake if message_snowflake else 'Hidden'}"
         if guild.icon:
             icon_url = guild.icon.url
@@ -215,10 +221,10 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(channel_snowflake)
         if channel is None:
-            raise commands.ChannelNotFound(str(channel_snowflake))
+            raise ChannelNotFound(str(channel_snowflake))
         fields.append(f"**Channel:** {channel.mention} (`{channel.id}`)")
         if channel.category:
             fields.append(f"**Category:** {channel.category.name}")
@@ -237,12 +243,12 @@ class StreamEmbed(discord.Embed):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(channel_snowflake)
         if channel is None or not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):
-            raise commands.ChannelNotFound(str(channel_snowflake))
+            raise ChannelNotFound(str(channel_snowflake))
         member = guild.get_member(target_snowflake)
         if member is None:
             simplified_member = bot.registry.get(MemberState).active.get(
@@ -254,7 +260,7 @@ class StreamEmbed(discord.Embed):
                     f"**Target:** {display_name} moderated in {channel.mention}"
                 )
             else:
-                raise commands.MemberNotFound(str(target_snowflake))
+                raise MemberNotFound(str(target_snowflake))
 
         else:
             self.description = (

@@ -110,7 +110,7 @@ async def test_caps(bot, command: str, prefix: str, target, guild, permission_ro
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_caps_app_command
             transformer = AppTarget()
             if t:

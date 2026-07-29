@@ -1,0 +1,212 @@
+"""!/bin/python3
+hidden_dev_app_commands.py A discord.py cog containing developer commands for the Vyrtuous bot.
+
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import PermissionState
+from vyrtuous.db.database import Database
+from vyrtuous.models.module import AppModule, ModuleObject
+from vyrtuous.utils.errors.error import ExtensionError
+from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.permissions import permission_service
+
+
+class DevelopmentAppCommands(commands.Cog):
+
+    def __init__(self, bot: DiscordBot):
+        self.__bot = bot
+
+    @app_commands.command(name="backup", description="Request a backup file.")
+    async def backup_app_command(
+        self, interaction: discord.Interaction
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be executed in a server channel."
+            )
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            requested=["command.dev.backup"],
+        )
+        db = Database(config=self.__bot.config, directory="/app/backups")
+        try:
+            db.create_backup_directory()
+            db.execute_backup()
+        except RuntimeError as e:
+            return await tick.end(warning=str(e).capitalize())
+        return await tick.end(success=discord.File(db.file_name))
+
+    @app_commands.command(name="load", description="Loads a cog.")
+    @app_commands.describe(module="Specify the cog name.")
+    async def load_app_command(
+        self,
+        interaction: discord.Interaction,
+        module: app_commands.Transform[ModuleObject, AppModule],
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be executed in a server channel."
+            )
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            requested=["command.dev.load"],
+        )
+        try:
+            await self.__bot.load_extension(module.module)
+        except ExtensionError as e:
+            return await tick.end(
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
+            )
+        return await tick.end(success=f"Successfully loaded {module.module}.")
+
+    @app_commands.command(name="reload", description="Reloads a cog.")
+    @app_commands.describe(module="Specify the cog name.")
+    async def reload_app_command(
+        self,
+        interaction: discord.Interaction,
+        module: app_commands.Transform[ModuleObject, AppModule],
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be executed in a server channel."
+            )
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            requested=["command.dev.reload"],
+        )
+        try:
+            await self.__bot.reload_extension(module.module)
+        except ExtensionError as e:
+            return await tick.end(
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
+            )
+        return await tick.end(success=f"Successfully reloaded {module.module}.")
+
+    # @app_commands.command(name="sync", description="Sync app commands.")
+    # async def sync_app_command(
+    #     self,
+    #     interaction: discord.Interaction,
+    #     spec: Optional[Literal["~", "*", "^"]] = None,
+    #     *,
+    #     guilds: Union[commands.Greedy[discord.Object], None] = None,
+    # ) -> discord.Message:
+    #     tick = Tick(bot=self.__bot, interaction=interaction)
+    #     synced = []
+    #     if not guilds:
+    #         if spec == "~":
+    #             synced = await self.__bot.tree.sync(guild=interaction.guild)
+    #         elif spec == "*":
+    #             if interaction.guild is None:
+    #                 return await tick.end(
+    #                     warning="This command must be executed in a server."
+    #                 )
+    #             self.__bot.tree.copy_global_to(guild=interaction.guild)
+    #             synced = await self.__bot.tree.sync(guild=interaction.guild)
+    #         elif spec == "^":
+    #             self.__bot.tree.clear_commands(guild=interaction.guild)
+    #             await self.__bot.tree.sync(guild=interaction.guild)
+    #         else:
+    #             synced = await self.__bot.tree.sync()
+    #         try:
+    #             if spec is None:
+    #                 msg = f"Synced {len(synced)} commands globally."
+    #             else:
+    #                 msg = f"Synced {len(synced)} commands to the current server."
+    #             return await tick.end(success=msg)
+    #         except Exception as e:
+    #             return await tick.end(warning=str(e).capitalize())
+    #     ret = 0
+    #     for guild in guilds:
+    #         try:
+    #             await self.__bot.tree.sync(guild=guild)
+    #         except discord.HTTPException:
+    #             pass
+    #         else:
+    #             ret += 1
+    #     return await tick.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
+
+    # @app_commands.command(name="upload", description="Create the upload document.")
+    # async def uploads_app_command(self, interaction: discord.Interaction) -> None:
+    #     return await upload_service.build_latex_document()
+
+    @app_commands.command(name="unload", description="Unloads a cog`.")
+    @app_commands.describe(module="Specify the cog name.")
+    async def unload_app_command(
+        self,
+        interaction: discord.Interaction,
+        module: app_commands.Transform[ModuleObject, AppModule],
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be executed in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be executed in a server channel."
+            )
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            requested=["command.dev.unload"],
+        )
+        try:
+            await self.__bot.unload_extension(module.module)
+        except ExtensionError as e:
+            return await tick.end(
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
+            )
+        return await tick.end(success=f"Successfully unloaded {module.module}.")
+
+    async def cog_app_command_error(self, interaction, error):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
+
+
+async def setup(bot: DiscordBot):
+    await bot.add_cog(DevelopmentAppCommands(bot=bot))

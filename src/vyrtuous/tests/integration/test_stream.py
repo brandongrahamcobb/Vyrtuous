@@ -144,7 +144,7 @@ async def test_stream(bot, command: str, prefix: str, source, target, permission
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("ChannelManagementAppCommands")
             command = cog.modify_streaming_app_command
             transformer = AppTarget()
             resolved_target = await transformer.transform(inx, tc)

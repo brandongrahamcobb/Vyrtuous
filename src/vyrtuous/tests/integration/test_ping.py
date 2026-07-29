@@ -77,7 +77,7 @@ async def test_ping(bot, command: str, prefix: str, permission_role):
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("DeveloperAppCommands")
+            cog = bot.get_cog("UtilityAppCommands")
             command = cog.ping_app_command
             await command.callback(cog, interaction=inx)
         for kind, content in end_results:

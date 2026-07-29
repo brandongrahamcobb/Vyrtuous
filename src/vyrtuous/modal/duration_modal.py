@@ -19,10 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 from discord.ext import commands
+from discord.ext.commands.errors import ChannelNotFound
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.utils.errors.error import CheckFailure, GuildNotFound
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -31,7 +34,7 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.utils.users import moderator_service
+from vyrtuous.utils.permissions import permission_service
 
 INFRACTION_MODELS = [
     ban_service.MODEL,
@@ -92,10 +95,10 @@ class DurationModal(discord.ui.Modal):
             bot: DiscordBot = DiscordBot.get_instance()
             guild = bot.get_guild(self.__guild_snowflake)
             if guild is None:
-                raise commands.GuildNotFound(str(self.__guild_snowflake))
+                raise GuildNotFound(str(self.__guild_snowflake))
             channel = guild.get_channel(self.__channel_snowflake)
             if channel is None:
-                raise commands.ChannelNotFound(str(self.__channel_snowflake))
+                raise ChannelNotFound(str(self.__channel_snowflake))
             await self.__tick.end(
                 warning=f"No infraction exists under this category ({self.__category}) for channel ({channel.mention}) in guild ({guild.name}).",
                 ephemeral=True,
@@ -103,16 +106,19 @@ class DurationModal(discord.ui.Modal):
 
     async def on_submit(self, interaction):
         await interaction.response.defer()
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
         duration_builder: DurationBuilder = DurationBuilder()
         expires_in = duration_builder.parse(
             self.duration_selection.value
         ).to_expires_in()
         duration = duration_builder.parse(self.duration_selection.value).build()
-        await moderator_service.has_equal_or_lower_role(
+        await permission_service.has_equal_or_lower_role(
+            permission_state=permission_state,
             channel_snowflake=self.__channel_snowflake,
             guild_snowflake=self.__guild_snowflake,
-            member_snowflake=self.__author_snowflake,
-            target_member_snowflake=self.__member_snowflake,
+            author_snowflake=self.__author_snowflake,
+            member_snowflake=self.__member_snowflake,
         )
         if await cap_service.exceeds_cap(
             category=self.__category,
@@ -120,14 +126,17 @@ class DurationModal(discord.ui.Modal):
             duration=duration,
             guild_snowflake=self.__guild_snowflake,
         ):
-            role = await moderator_service.resolve_highest_role(
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__guild_snowflake,
-                member_snowflake=self.__member_snowflake,
-            )
-            if role in ["Moderator", "Everyone"]:
+            try:
+                await permission_service.has_permissions(
+                    permission_state=permission_state,
+                    channel_snowflake=self.__channel_snowflake,
+                    guild_snowflake=self.__guild_snowflake,
+                    member_snowflake=self.__member_snowflake,
+                    requested=["commands.moderation.uncapped"],
+                )
+            except CheckFailure:
                 return await interaction.response.send_message(
-                    content=f"Duration {self.duration_selection.value} exceeds the channel cap.",
+                    content=f"Duration {duration_builder.parse(self.duration_selection.value).as_str()} exceeds the channel cap.",
                     ephemeral=True,
                 )
         if self.__record:

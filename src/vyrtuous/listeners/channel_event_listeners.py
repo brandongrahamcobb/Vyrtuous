@@ -227,7 +227,14 @@ class ChannelEventListeners(commands.Cog):
                             target=target,
                         )
             elif not before.mute and after.mute:
-                if await automute_channel_service.is_active_automute_channel(
+                if await voice_mute_service.is_voice_muted(
+                    channel_snowflake=after.channel.id,
+                    guild_snowflake=after.channel.guild.id,
+                    member_snowflake=member.id,
+                    targets=["click", "command", "auto", "server"],
+                ):
+                    return
+                elif await automute_channel_service.is_active_automute_channel(
                     channel_snowflake=after.channel.id,
                     guild_snowflake=after.channel.guild.id,
                 ):
@@ -262,13 +269,6 @@ class ChannelEventListeners(commands.Cog):
                         reason="Channel event listeners mute. Target: auto.",
                         target="auto",
                     )
-                elif await voice_mute_service.is_voice_muted(
-                    channel_snowflake=after.channel.id,
-                    guild_snowflake=after.channel.guild.id,
-                    member_snowflake=member.id,
-                    targets=["click", "command", "auto", "server"],
-                ):
-                    return
                 else:
                     duration = DurationObject(number=1, prefix="", sign=1, unit="h")
                     await voice_mute_alias_service.voice_mute(

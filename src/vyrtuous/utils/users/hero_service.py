@@ -18,12 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.hero import Hero
 from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.utils.errors.error import GuildNotFound
 from vyrtuous.utils.moderation import (
     ban_service,
     flag_service,
@@ -45,7 +45,7 @@ async def unrestrict(guild_snowflake: int, member_snowflake: int) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if not guild:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     member = guild.get_member(member_snowflake)
     for model in INFRACTION_MODELS:
         database_factory: DatabaseFactory = DatabaseFactory(model)

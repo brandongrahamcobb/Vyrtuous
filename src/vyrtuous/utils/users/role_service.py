@@ -18,11 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.aliases import role_alias_service, unrole_alias_service
 from vyrtuous.aliases.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
 
 
 async def enforce_or_undo(
@@ -31,13 +31,13 @@ async def enforce_or_undo(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(alias_ctx.guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(alias_ctx.guild_snowflake))
+        raise GuildNotFound(str(alias_ctx.guild_snowflake))
     role = guild.get_role(alias_ctx.role_snowflake)
     if role is None:
-        raise commands.RoleNotFound(str(alias_ctx.role_snowflake))
+        raise RoleNotFound(str(alias_ctx.role_snowflake))
     member = guild.get_member(alias_ctx.member_snowflake)
     if member is None:
-        raise commands.MemberNotFound(str(alias_ctx.member_snowflake))
+        raise MemberNotFound(str(alias_ctx.member_snowflake))
     if role in member.roles:
         unrole_ctx = unrole_alias_service.UnroleMessageContext(
             author_snowflake=message.author.id,

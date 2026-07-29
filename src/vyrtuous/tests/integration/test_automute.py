@@ -99,7 +99,7 @@ async def test_automute(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("CoordinatorAppCommands")
+            cog = bot.get_cog("ChannelManagementAppCommands")
             command = cog.toggle_automute_app_command
             channel_transformer = AppTarget()
             if c:

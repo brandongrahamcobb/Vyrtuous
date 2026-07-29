@@ -138,7 +138,7 @@ async def test_blacklist(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenCoordinatorAppCommands")
+            cog = bot.get_cog("ModerationAppCommands")
             command = cog.toggle_blacklist_app_command
             transformer = AppTarget()
             resolved_member = await transformer.transform(inx, m)

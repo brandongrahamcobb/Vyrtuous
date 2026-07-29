@@ -90,7 +90,7 @@ async def test_load_reload_unload(bot, command: str, prefix: str, cog, permissio
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenDeveloperAppCommands")
+            cog = bot.get_cog("DevelopmentAppCommands")
             transformer = AppModule()
             resolved = await transformer.transform(inx, c)
             if command == "reload":

@@ -79,7 +79,7 @@ async def test_debug(bot, command: str, prefix: str, lines, permission_role):
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.debug_app_command
             command = await command.callback(cog, interaction=inx, lines=int(lines))
         for kind, content in end_results:

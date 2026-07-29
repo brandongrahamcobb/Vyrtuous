@@ -107,7 +107,7 @@ async def test_rmv(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("AdministratorAppCommands")
+            cog = bot.get_cog("UtilityAppCommands")
             command = cog.channel_move_all_app_command
             transformer = AppTarget()
             resolved_target = await transformer.transform(inx, tc)

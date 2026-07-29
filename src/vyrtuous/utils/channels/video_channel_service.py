@@ -85,11 +85,9 @@ async def update_video_channel_tasks(before, after, member) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     key = (member.guild.id, member.id)
     video = bot.registry.get(VideoChannelState)
-
     if before.channel and not after.channel:
         video.cancel(key)
         return
-
     if not before.channel and after.channel:
         if not after.self_video:
             await _prompt_enable_camera(member, after.channel)
@@ -99,7 +97,6 @@ async def update_video_channel_tasks(before, after, member) -> None:
                 coro=_enforce_video(member, after.channel, 300),
             )
         return
-
     if after.channel and before.self_video and not after.self_video:
         await _prompt_enable_camera(member, after.channel)
         video.schedule(
@@ -108,7 +105,6 @@ async def update_video_channel_tasks(before, after, member) -> None:
             coro=_enforce_video(member, after.channel, 300),
         )
         return
-
     if after.channel and not before.self_video and after.self_video:
         video.cancel(key)
 
@@ -146,7 +142,7 @@ async def _enforce_video(
             f"You were removed from {channel.mention} because your camera was off. "
             f"There is a 30-minute cooldown before you can rejoin."
         )
-    except Exception:
+    except discord.HTTPException:
         pass
     video = bot.registry.get(VideoChannelState)
     video.set_cooldown(member.id)

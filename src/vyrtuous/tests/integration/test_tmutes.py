@@ -137,7 +137,7 @@ async def test_text_mutes(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("ModeratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_text_mutes_app_command
             transformer = AppTarget()
             if t:

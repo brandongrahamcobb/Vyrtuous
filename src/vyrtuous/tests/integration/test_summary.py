@@ -135,7 +135,7 @@ async def test_summary(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("ModeratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_moderation_summary_app_command
             transformer = AppTarget()
             resolved_member = await transformer.transform(inx, m)

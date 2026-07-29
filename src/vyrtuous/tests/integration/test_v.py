@@ -96,7 +96,7 @@ async def test_v(bot, command: str, prefix: str, channel, permission_role):
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenAdministratorAppCommands")
+            cog = bot.get_cog("ChannelManagementAppCommands")
             command = cog.toggle_video_channel_app_command
             transformer = AppTarget()
             if c:

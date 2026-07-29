@@ -23,13 +23,18 @@ from discord.ext import commands
 from vyrtuous.aliases import unvoice_mute_alias_service, voice_mute_alias_service
 from vyrtuous.aliases.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import ChannelState, MemberState
+from vyrtuous.cache.registry import ChannelState, MemberState, PermissionState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.utils.errors.error import (
+    ChannelNotFound,
+    GuildNotFound,
+    HasEqualOrLowerRole,
+)
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.users import moderator_service
+from vyrtuous.utils.permissions import permission_service
 
 MODEL = VoiceMute
 
@@ -45,29 +50,25 @@ async def enforce_or_undo(
         guild_snowflake=alias_ctx.guild_snowflake,
         singular=True,
     )
-    if targets := await is_voice_muted(
+    if await is_voice_muted(
         channel_snowflake=alias_ctx.channel_snowflake,
         guild_snowflake=alias_ctx.guild_snowflake,
         member_snowflake=alias_ctx.member_snowflake,
-        targets=["click", "command", "auto"],
+        targets=["command"],
     ):
-        embeds = []
-        for target in targets:
-            unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
-                author_snowflake=message.author.id,
-                channel_snowflake=alias_ctx.channel_snowflake,
-                guild_snowflake=alias_ctx.guild_snowflake,
-                member_snowflake=alias_ctx.member_snowflake,
-                message_snowflake=message.id,
-                message_channel_snowflake=message.channel.id,
-                target=target,
-            )
-            embeds.append(
-                await unvoice_mute_alias_service.unvoice_mute_by_message(
-                    ctx=unvoice_mute_ctx, display=True
-                )
-            )
-        return embeds[0]
+        unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
+            author_snowflake=message.author.id,
+            channel_snowflake=alias_ctx.channel_snowflake,
+            guild_snowflake=alias_ctx.guild_snowflake,
+            member_snowflake=alias_ctx.member_snowflake,
+            message_snowflake=message.id,
+            message_channel_snowflake=message.channel.id,
+            target="command",
+        )
+        embed = await unvoice_mute_alias_service.unvoice_mute_by_message(
+            ctx=unvoice_mute_ctx, display=True
+        )
+        return embed
     elif auto_mute_channel:
         target = "auto"
         voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
@@ -119,12 +120,13 @@ async def channel_mute(
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder = DurationBuilder()
+    permission_state: PermissionState = bot.registry.get(PermissionState)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
         raise commands.CheckFailure("This action must be executed in a valid channel.")
     muted_members, pages, skipped_members, failed_members = [], [], [], []
@@ -132,13 +134,14 @@ async def channel_mute(
         if member.id in excluded:
             continue
         try:
-            await moderator_service.has_equal_or_lower_role(
+            await permission_service.has_equal_or_lower_role(
+                permission_state=permission_state,
                 channel_snowflake=channel.id,
                 guild_snowflake=channel.guild.id,
-                member_snowflake=author_snowflake,
-                target_member_snowflake=member.id,
+                author_snowflake=author_snowflake,
+                member_snowflake=member.id,
             )
-        except moderator_service.HasEqualOrLowerRole:
+        except HasEqualOrLowerRole:
             skipped_members.append(member)
             continue
         if member.voice and member.voice.channel:
@@ -208,41 +211,42 @@ async def channel_unmute(
 ) -> list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    permission_state: PermissionState = bot.registry.get(PermissionState)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
         raise commands.CheckFailure("This command must be executed in a valid channel.")
     unmuted_members, pages, skipped_members, failed_members = [], [], [], []
     for member in channel.members:
         try:
-            await moderator_service.has_equal_or_lower_role(
+            await permission_service.has_equal_or_lower_role(
+                permission_state=permission_state,
                 channel_snowflake=channel.id,
                 guild_snowflake=channel.guild.id,
-                member_snowflake=author_snowflake,
-                target_member_snowflake=member.id,
+                author_snowflake=author_snowflake,
+                member_snowflake=member.id,
             )
-        except moderator_service.HasEqualOrLowerRole:
+        except HasEqualOrLowerRole:
             skipped_members.append(member)
             continue
-        voice_mute = await database_factory.select(
+        voice_mutes = await database_factory.select(
             channel_snowflake=channel_snowflake,
             member_snowflake=member.id,
-            target=target,
             singular=True,
         )
-        if not voice_mute:
-            skipped_members.append(member)
-            continue
         await database_factory.delete(
             target=target,
             channel_snowflake=channel_snowflake,
             member_snowflake=member.id,
         )
-        if member.voice and member.voice.channel:
+        if not voice_mutes:
+            skipped_members.append(member)
+            continue
+        if len(voice_mutes) and member.voice and member.voice.channel:
             if member.voice.channel.id == channel.id:
                 try:
                     await member.edit(mute=False)

@@ -109,7 +109,7 @@ async def test_hero(bot, command: str, prefix: str, member, target, permission_r
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenGuildOwnerAppCommands")
+            cog = bot.get_cog("UserManagementAppCommands")
             command = cog.toggle_invincibility_app_command
             transformer = AppTarget()
             resolved_member = await transformer.transform(inx, m)

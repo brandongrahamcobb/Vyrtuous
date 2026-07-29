@@ -29,10 +29,10 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MessageHistoryState
 from vyrtuous.inc.helpers import resolve_author
 from vyrtuous.upload import upload_service
+from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging import emojis, message_service
 from vyrtuous.utils.messaging.paginator import Paginator
 from vyrtuous.utils.tracking import bug_service
-from vyrtuous.utils.users import developer_service
 
 COLOR_MAP = {"\u2705": 0x57F287, "\u26a0\ufe0f": 0xFEE65C, "\u274c": 0xED4245}
 
@@ -63,9 +63,7 @@ class Tick:
         message: discord.Message | None = None,
     ):
         if ctx is None and interaction is None and message is None:
-            raise commands.CheckFailure(
-                "Discord source not defined to start message tick."
-            )
+            raise CheckFailure("Discord source not defined to start message tick.")
         self.__bot = bot
         self.source = ctx or interaction or message
         self.author = resolve_author(self.source)
@@ -202,9 +200,9 @@ class Tick:
         message_history.reporters[response.id].add(user.id)
         reference = str(uuid.uuid4())
         await bug_service.create_bug(message=response, reference=reference)
-        await developer_service.report_issue(
-            author=self.author, message=response, reference=reference
-        )
+        # await developer_service.report_issue(
+        #     author=self.author, message=response, reference=reference
+        # )
 
     async def end(
         self,
@@ -217,7 +215,7 @@ class Tick:
         ephemeral: bool = False,
     ) -> discord.Message:
         if self.source is None:
-            raise commands.CheckFailure("Source not provided.")
+            raise CheckFailure("Source not provided.")
         message_obj, is_success = self._resolve_content(success, warning, error)
         self.elapsed = self._compute_elapsed()
         self.success = is_success
@@ -267,3 +265,31 @@ class Tick:
             response=response, show_error_emoji=show_error_emoji, paginated=False
         )
         return response
+
+
+# async def report_issue(author, message, reference) -> None:
+#     bot: DiscordBot = DiscordBot.get_instance()
+#     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+#     online_developer_mentions = []
+#     sysadmin = bot.get_user(bot.config["discord_owner_id"])
+#     if sysadmin:
+#         online_developer_mentions.append(sysadmin.mention)
+#     if message.guild:
+#         msg = f"Issue reported by {author.name}!\n**Message:** {message.jump_url}\n**Reference:** {reference}"
+#         developers = await database_factory.select(singular=False)
+#         for developer in developers:
+#             member = message.guild.get_member(developer.member_snowflake)
+#             if member and member.status != discord.Status.offline:
+#                 online_developer_mentions.append(member.mention)
+#                 try:
+#                     await member.send(msg)
+#                     if sysadmin:
+#                         await sysadmin.send(msg)
+#                 except discord.Forbidden as e:
+#                     bot.logger.warning(
+#                         f"Unable to send a developer log ID: {id}. {str(e).capitalize()}"
+#                     )
+#     msg = "Your report has been submitted"
+#     if online_developer_mentions:
+#         msg = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
+#     await author.send(msg)

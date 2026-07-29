@@ -22,6 +22,8 @@ from os.path import abspath, dirname, expanduser, join
 import discord
 from discord.ext import commands
 
+from vyrtuous.utils.errors.error import MemberNotFound
+
 #### DEVELOPMENT
 RELEASE_MODE = False
 #### DIRECTORIES
@@ -31,73 +33,49 @@ DIR_HOME = expanduser("~")
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    "vyrtuous.app_commands.administrator_app_commands",
-    "vyrtuous.app_commands.coordinator_app_commands",
-    "vyrtuous.app_commands.developer_app_commands",
-    "vyrtuous.app_commands.guild_owner_app_commands",
-    "vyrtuous.app_commands.help_app_command",
-    "vyrtuous.app_commands.hidden_administrator_app_commands",
-    "vyrtuous.app_commands.hidden_coordinator_app_commands",
-    "vyrtuous.app_commands.hidden_developer_app_commands",
-    "vyrtuous.app_commands.hidden_guild_owner_app_commands",
-    "vyrtuous.app_commands.hidden_moderator_app_commands",
-    "vyrtuous.app_commands.hidden_sysadmin_app_commands",
-    "vyrtuous.app_commands.list_app_commands",
+    "vyrtuous.app_commands.channel_management_app_commands",
+    "vyrtuous.app_commands.development_app_commands",
+    # "vyrtuous.app_commands.help_app_command",
+    "vyrtuous.app_commands.info_app_commands",
     "vyrtuous.app_commands.moderation_app_commands",
-    "vyrtuous.app_commands.permission_manager_app_commands",
+    "vyrtuous.app_commands.user_management_app_commands",
+    "vyrtuous.app_commands.utility_app_commands",
     "vyrtuous.listeners.channel_event_listeners",
     "vyrtuous.listeners.generic_event_listeners",
     "vyrtuous.listeners.guild_event_listeners",
     "vyrtuous.listeners.scheduled_tasks",
     "vyrtuous.listeners.startup_listener",
     "vyrtuous.system.heartbeat",
-    "vyrtuous.text_commands.administrator_text_commands",
-    "vyrtuous.text_commands.coordinator_text_commands",
-    "vyrtuous.text_commands.developer_text_commands",
-    "vyrtuous.text_commands.guild_owner_text_commands",
-    "vyrtuous.text_commands.help_text_command",
-    "vyrtuous.text_commands.hidden_administrator_text_commands",
-    "vyrtuous.text_commands.hidden_coordinator_text_commands",
-    "vyrtuous.text_commands.hidden_developer_text_commands",
-    "vyrtuous.text_commands.hidden_guild_owner_text_commands",
-    "vyrtuous.text_commands.hidden_moderator_text_commands",
-    "vyrtuous.text_commands.hidden_sysadmin_text_commands",
-    "vyrtuous.text_commands.moderator_text_commands",
-    "vyrtuous.text_commands.sysadmin_text_commands",
+    "vyrtuous.text_commands.alias_management_text_commands",
+    "vyrtuous.text_commands.channel_management_text_commands",
+    "vyrtuous.text_commands.development_text_commands",
+    # "vyrtuous.text_commands.help_text_command",
+    "vyrtuous.text_commands.info_text_commands",
+    "vyrtuous.text_commands.moderation_text_commands",
+    "vyrtuous.text_commands.user_management_text_commands",
+    "vyrtuous.text_commands.utility_text_commands",
 ]
 DISCORD_COGS_CLASSES = [
-    "AdministratorAppCommands",
-    "AdministratorTextCommands",
+    "ChannelManagementAppCommands",
+    "ChannelManagementTextCommands",
     "ChannelEventListeners",
-    "CoordinatorAppCommands",
-    "CoordinatorTextCommands",
-    "DeveloperAppCommands",
-    "DeveloperTextCommands",
+    "DevelopmentAppCommands",
+    "DevelopmentTextCommands",
     "GenericEventListeners",
     "GuildEventListeners",
-    "GuildOwnerAppCommands",
-    "GuildOwnerTextCommands",
+    "Heartbeat",
     "HelpAppCommand",
     "HelpTextCommand",
-    "Heartbeat",
-    "HiddenAdministratorAppCommands",
-    "HiddenAdministratorTextCommands",
-    "HiddenCoordinatorAppCommands",
-    "HiddenCoordinatorTextCommands",
-    "HiddenDeveloperAppCommands",
-    "HiddenDeveloperTextCommands",
-    "HiddenGuildOwnerAppCommands",
-    "HiddenGuildOwnerTextCommands",
-    "HiddenModeratorAppCommands",
-    "HiddenModeratorTextCommands",
-    "HiddenSysadminAppCommands",
-    "HiddenSysadminTextCommands",
-    "ModeratorAppCommands",
-    "ModeratorTextCommands",
+    "InfoAppCommands",
+    "InfoTextCommands",
+    "ModerationAppCommands",
+    "ModerationTextCommands",
+    "UserManagementAppCommands",
+    "UserManagementTextCommands",
+    "UtilityAppCommands",
+    "UtilityTextCommands",
     "ScheduledTasks",
     "Startup",
-    "SysadminAppCommands",
-    "SysadminTextCommands",
 ]
 DISCORD_COMMAND_PREFIX = "!"
 #### PATHS
@@ -111,5 +89,5 @@ def resolve_author(source) -> discord.User | discord.Member:
     elif isinstance(source, (commands.Context, discord.Message)):
         member = source.author
     else:
-        raise commands.MemberNotFound("Source")
+        raise MemberNotFound("Source")
     return member

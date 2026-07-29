@@ -129,7 +129,7 @@ async def test_mods(bot, command: str, prefix: str, target, guild, permission_ro
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenGuildOwnerAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_heroes_app_command
             transformer = AppTarget()
             if t:

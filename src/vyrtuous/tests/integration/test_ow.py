@@ -98,7 +98,7 @@ async def test_overwrites(bot, command: str, prefix: str, target, permission_rol
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("AdministratorAppCommands")
+            cog = bot.get_cog("InfoAppCommands")
             command = cog.list_overwrites_app_command
             transformer = AppTarget()
             if t:

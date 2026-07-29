@@ -23,6 +23,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.cap import Cap
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
 
 MODEL = Cap
 
@@ -36,10 +37,10 @@ async def toggle_cap(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     channel = guild.get_channel(channel_snowflake)
     if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
+        raise ChannelNotFound(str(channel_snowflake))
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     duration_builder: DurationBuilder = DurationBuilder()
     seconds = duration_builder.load(duration).to_seconds()

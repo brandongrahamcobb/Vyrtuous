@@ -129,7 +129,7 @@ async def test_smute(
             message=msg,
         )
         async with capture_command() as end_results:
-            cog = bot.get_cog("AdministratorAppCommands")
+            cog = bot.get_cog("ModerationAppCommands")
             command = cog.toggle_server_mute_app_command
             transformer = AppTarget()
             resolved_member = await transformer.transform(inx, m)

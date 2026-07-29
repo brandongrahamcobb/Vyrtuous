@@ -17,9 +17,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from discord.ext import commands
-
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
 
 
 class SnowflakeContext:
@@ -34,10 +33,10 @@ class SnowflakeContext:
         self.guild_snowflake = guild_snowflake
         self.guild = self.bot.get_guild(guild_snowflake)
         if self.guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         self.channel_snowflake = channel_snowflake
         self.channel = self.guild.get_channel(channel_snowflake)
         if self.channel is None:
-            raise commands.ChannelNotFound(str(channel_snowflake))
+            raise ChannelNotFound(str(channel_snowflake))
         self.member_snowflake = member_snowflake
         self.member = self.guild.get_member(member_snowflake)

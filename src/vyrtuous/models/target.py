@@ -27,6 +27,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
+from vyrtuous.utils.errors.error import BadArgument
 
 ResolvedTarget = Union[
     discord.Guild,
@@ -75,9 +76,7 @@ class Converter(commands.Converter):
         except ValueError:
             match = re.search(r"\d+", argument)
             if not match:
-                raise commands.BadArgument(
-                    f"Could not resolve a valid target ({argument})."
-                )
+                raise BadArgument(f"Could not resolve a valid target ({argument}).")
             id = int(match.group())
         guild = bot.get_guild(id)
         if guild:
@@ -99,7 +98,7 @@ class Converter(commands.Converter):
                 return self.target_cls(role)
         if id in bot.registry.get(MemberState).active:
             return self.target_cls(id)
-        raise commands.BadArgument(f"Could not resolve a valid targeti ({argument}).")
+        raise BadArgument(f"Could not resolve a valid targeti ({argument}).")
 
 
 class Transformer(app_commands.Transformer):

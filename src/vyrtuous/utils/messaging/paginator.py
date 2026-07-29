@@ -24,6 +24,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.errors.error import ChannelNotFound, CheckFailure, GuildNotFound
 
 
 class Paginator:
@@ -43,7 +44,7 @@ class Paginator:
     ) -> discord.Message:
         bot: DiscordBot = DiscordBot.get_instance()
         if source.guild is None:
-            raise commands.CheckFailure("This message must be sent in a guild.")
+            raise CheckFailure("This message must be sent in a guild.")
         embed = self.get_current_embed(guild_snowflake=source.guild.id, pages=pages)
         if isinstance(source, discord.Interaction):
             if not source.response.is_done():
@@ -71,10 +72,10 @@ class Paginator:
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         channel = guild.get_channel(channel_snowflake)
         if channel is None:
-            raise commands.ChannelNotFound(str(channel_snowflake))
+            raise ChannelNotFound(str(channel_snowflake))
         if not isinstance(
             channel,
             (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
@@ -95,7 +96,7 @@ class Paginator:
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:
-            raise commands.GuildNotFound(str(guild_snowflake))
+            raise GuildNotFound(str(guild_snowflake))
         embed = pages[self.current_page].copy()
         total_pages = len(pages)
         label = "page"

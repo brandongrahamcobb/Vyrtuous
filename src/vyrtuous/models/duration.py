@@ -24,6 +24,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.utils.errors.error import BadArgument, CheckFailure
+
 DAYS_PER_WEEK = 7
 DAYS_PER_YEAR = 365
 YEAR_UNITS = {"y", "year", "years"}
@@ -122,7 +124,7 @@ class DurationBuilder:
             else:
                 break
         if not num_str:
-            raise commands.BadArgument(f"No numeric duration found in '{value}'")
+            raise BadArgument(f"No numeric duration found in '{value}'")
         number = int(num_str)
         s = s[len(num_str) :].strip()
         if not s:
@@ -134,7 +136,7 @@ class DurationBuilder:
                     if s.startswith(known):
                         unit = UNIT_MAP[known]
                         break
-                raise commands.BadArgument(f"Invalid duration unit in '{value}'")
+                raise BadArgument(f"Invalid duration unit in '{value}'")
             else:
                 unit = value
         self.__duration = DurationObject(
@@ -229,7 +231,7 @@ class Converter(commands.Converter):
             duration = duration_builder.parse(argument).build()
             return self.duration_cls(duration)
         except ValueError:
-            raise commands.CheckFailure("This command must input a valid duration.")
+            raise CheckFailure("This command must input a valid duration.")
 
 
 class Transformer(app_commands.Transformer):
@@ -245,7 +247,7 @@ class Transformer(app_commands.Transformer):
             duration = duration_builder.parse(arg).build()
             return self.duration_cls(duration)
         except ValueError:
-            raise app_commands.CheckFailure("This command must input a valid duration.")
+            raise CheckFailure("This command must input a valid duration.")
 
 
 class Duration(Converter):
