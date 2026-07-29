@@ -1,20 +1,27 @@
+"""!/bin/python3
+metadata.py The purpose of this program is to provide the metadata command decorator.
+
+Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+
 def metadata(**kwargs):
     def decorator(func):
         for key, value in kwargs.items():
             setattr(func, key, value)
-        return func
-
-    return decorator
-
-
-def command_metadata(**kwargs):
-    def decorator(func):
-        for key, value in kwargs.items():
-            setattr(func, key, value)
-        command = getattr(func, "__command__", None)
-        if command:
-            for key, value in kwargs.items():
-                setattr(command, key, value)
         return func
 
     return decorator

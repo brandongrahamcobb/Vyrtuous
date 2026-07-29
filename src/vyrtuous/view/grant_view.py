@@ -28,6 +28,7 @@ from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
+from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.permissions import permission_service
@@ -94,6 +95,11 @@ class GrantView(discord.ui.View):
                 guild = bot.get_guild(guild_snowflake)
                 if guild is not None:
                     scope.guilds[guild.id] = guild
+            elif guild_snowflake is None and group.scope == PermissionScope.GLOBAL:
+                for guild in bot.guilds:
+                    for channel in guild.channels:
+                        scope.channels[channel.id] = channel
+                    scope.guilds[guild.id] = guild
             if channel_snowflake is not None:
                 channel = bot.get_channel(channel_snowflake)
                 if channel is not None and isinstance(
@@ -147,27 +153,12 @@ class GrantView(discord.ui.View):
         self.group_select.options = group_options
 
     def _build_channel_options(
-        self,
-        available_channels: list[discord.abc.GuildChannel],
+        self, available_channels: list[discord.abc.GuildChannel], default: bool
     ):
         limited_channels = self.limit_available_to_top_24_by_member_count(
             available=available_channels
         )
         channel_options = []
-        bot: DiscordBot = DiscordBot.get_instance()
-        channel = bot.get_channel(self.__ctx.channel_snowflake)
-        if channel:
-            if isinstance(
-                channel,
-                (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
-            ):
-                channel_options.append(
-                    discord.SelectOption(
-                        label=channel.name,
-                        value=str(self.__ctx.channel_snowflake),
-                        default=True,
-                    )
-                )
         channel_options.extend(
             [
                 discord.SelectOption(label=c.name, value=str(c.id))
@@ -175,36 +166,31 @@ class GrantView(discord.ui.View):
                 if isinstance(
                     c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
                 )
-                and c.id != self.__ctx.channel_snowflake
             ]
         )
+        for option in channel_options:
+            if option.value.isdigit():
+                if int(option.value) == self.__ctx.channel_snowflake and default:
+                    option.default = True
         self.channel_select.options = channel_options
 
     def _build_guild_options(
-        self,
-        available_guilds: list[discord.Guild],
+        self, available_guilds: list[discord.Guild], default: bool
     ):
         limited_guilds = self.limit_available_to_top_24_by_member_count(
             available=available_guilds
         )
         guild_options = []
-        bot: DiscordBot = DiscordBot.get_instance()
-        guild = bot.get_guild(self.__ctx.guild_snowflake)
-        if guild:
-            guild_options.append(
-                discord.SelectOption(
-                    label=guild.name,
-                    value=str(self.__ctx.guild_snowflake),
-                    default=True,
-                )
-            )
         guild_options.extend(
             [
                 discord.SelectOption(label=g.name, value=str(g.id))
                 for g in limited_guilds
-                if g.id != self.__ctx.guild_snowflake
             ]
         )
+        for option in guild_options:
+            if option.value.isdigit():
+                if int(option.value) == self.__ctx.guild_snowflake and default:
+                    option.default = True
         self.guild_select.options = guild_options
 
     @discord.ui.select(placeholder="Select a group", options=[])
@@ -231,10 +217,19 @@ class GrantView(discord.ui.View):
                 self.__selected_guild = interaction.guild
             elif len(guilds) == 1:
                 self.__selected_guild = guilds[0]
-            self._build_guild_options(guilds)
+            self._build_guild_options(guilds, default=True)
             self.add_item(self.guild_select)
         if "channel" in required:
-            if not channels:
+            if self.__selected_guild:
+                if scope.channels:
+                    channels = [
+                        c
+                        for c in scope.channels.values()
+                        if c.guild.id == self.__selected_guild.id
+                    ]
+                else:
+                    channels = list(self.__selected_guild.channels)
+            elif not channels:
                 channels = [c for g in guilds for c in g.channels]
             if interaction.channel and interaction.channel.id in {
                 c.id for c in channels
@@ -242,7 +237,7 @@ class GrantView(discord.ui.View):
                 self.__selected_channel = interaction.channel
             elif len(channels) == 1:
                 self.__selected_channel = channels[0]
-            self._build_channel_options(channels)
+            self._build_channel_options(channels, default=True)
             self.add_item(self.channel_select)
         await interaction.response.edit_message(view=self)
 
@@ -269,7 +264,9 @@ class GrantView(discord.ui.View):
             else:
                 self.__selected_channel = None
                 self.channel_select.disabled = False
-            self._build_channel_options(channels)
+            self._build_channel_options(channels, default=False)
+            for option in self.guild_select.options:
+                option.default = False
             await interaction.response.edit_message(view=self)
 
     @discord.ui.select(
@@ -286,6 +283,8 @@ class GrantView(discord.ui.View):
             self.channel_select.placeholder = self.__selected_channel.name
             if self.__selected_guild is None:
                 self.__selected_guild = self.__selected_channel.guild
+            for option in self.channel_select.options:
+                option.default = False
             await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
@@ -296,12 +295,37 @@ class GrantView(discord.ui.View):
             )
         else:
             record = None
+            bot: DiscordBot = DiscordBot.get_instance()
             database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+            permission_state: PermissionState = bot.registry.get(PermissionState)
+            member = bot.get_user(self.__ctx.member_snowflake)
+            if member:
+                member_str = member.mention
+            else:
+                simplified_member = bot.registry.get(MemberState).active.get(
+                    self.__ctx.member_snowflake
+                )
+                if not simplified_member:
+                    raise MemberNotFound(str(self.__ctx.member_snowflake))
+                display_name = simplified_member[0]
+                member_str = display_name
             if (
                 self.__selected_group
                 and self.__selected_channel
                 and self.__selected_guild
             ):
+                group = await permission_service.resolve_effective_group(
+                    permission_state=permission_state,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    guild_snowflake=self.__selected_guild.id,
+                    channel_snowflake=self.__selected_channel.id,
+                )
+                if group:
+                    if self.__selected_group.alias in group.ancestors:
+                        return await interaction.response.send_message(
+                            content=f"You cannot grant {member_str} a group they inherit from..",
+                            ephemeral=True,
+                        )
                 record = await database_factory.select(
                     channel_snowflake=self.__selected_channel.id,
                     guild_snowflake=self.__selected_guild.id,
@@ -322,6 +346,17 @@ class GrantView(discord.ui.View):
                     guild_snowflake=self.__selected_guild.id,
                 )
             elif self.__selected_group and self.__selected_guild:
+                group = await permission_service.resolve_effective_group(
+                    permission_state=permission_state,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    guild_snowflake=self.__selected_guild.id,
+                )
+                if group:
+                    if self.__selected_group.alias in group.ancestors:
+                        return await interaction.response.send_message(
+                            content=f"You cannot grant {member_str} a group they inherit from..",
+                            ephemeral=True,
+                        )
                 record = await database_factory.select(
                     guild_snowflake=self.__selected_guild.id,
                     member_snowflake=self.__ctx.member_snowflake,
@@ -339,6 +374,16 @@ class GrantView(discord.ui.View):
                     guild_snowflake=self.__selected_guild.id,
                 )
             else:
+                group = await permission_service.resolve_effective_group(
+                    permission_state=permission_state,
+                    member_snowflake=self.__ctx.member_snowflake,
+                )
+                if group:
+                    if self.__selected_group.alias in group.ancestors:
+                        return await interaction.response.send_message(
+                            content=f"You cannot grant {member_str} a group they inherit from..",
+                            ephemeral=True,
+                        )
                 record = await database_factory.select(
                     member_snowflake=self.__ctx.member_snowflake,
                     group_name=self.__selected_group.alias,
