@@ -20,16 +20,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 from contextlib import ExitStack
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.ban import Ban
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
+from vyrtuous.tests.integration.test_flags import BASE_PERMISSIONS
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
@@ -39,141 +42,281 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
+BASE_PERMISSIONS = ["command.info.bans"]
+COMMAND = "bans"
+TABLE_NAME = Ban.__tablename__
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, guild",
+    "target, other_guild, extra_permissions",
     [
-        ("Moderator", "bans", "{channel_snowflake}", None),
-        ("Administrator", "bans", "{guild_snowflake}", None),
-        ("Moderator", "bans", "{member_snowflake}", None),
-        ("Developer", "bans", "<@{member_snowflake}>", "{other_guild_snowflake}"),
-        ("Moderator", "bans", "{simplified_member_snowflake}", None),
+        ("{channel_snowflake}", None, ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", None, ["command.info.scope.channel"]),
         (
-            "Developer",
-            "bans",
-            "<@{simplified_member_snowflake}>",
+            "{channel_snowflake}",
             "{other_guild_snowflake}",
+            ["command.info.scope.channel", "other_guilds"],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            "{other_guild_snowflake}",
+            ["command.info.scope.channel", "other_guilds"],
+        ),
+        ("{guild_snowflake}", None, ["command.info.scope.guild"]),
+        ("{member_snowflake}", None, ["command.info.scope.member"]),
+        ("<@{member_snowflake}>", None, ["command.info.scope.member"]),
+        (
+            "{member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        ("{simplified_member_snowflake}", None, ["command.info.scope.member"]),
+        (
+            "{simplified_member_snowflake}>",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
         ),
     ],
 )
-async def test_bans(bot, command: str, prefix: str, target, guild, permission_role):
+async def test_bans_text_command(
+    bot,
+    prefix: str,
+    target: str | None,
+    other_guild: str | None,
+    extra_permissions: list[str],
+):
     """
     List bans on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all administrators in all guilds
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with bans on members
-        in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where bans are present.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who has been banned
-        in any of the guilds Vyrtuous has access inside.
+    target (Optional) : str | int
+        Resolves to: int | discord.VoiceChannel | discord.TextChannel | discord.StageChannel | discord.Member | discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010> | <@10000000000000010>
 
-    Examples
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
+
+    Example
     --------
-    >>> !bans "all"
-    [{emoji} Bans\n Guild1\n Guild2]
-
-    >>> !bans <#10000000000000010>
-    [{emoji} Bans for Channel1\n Member1\n Member2]
-
-    >>> !bans 10000000000000010
-    [{emoji} Bans for Channel1\n Member1\n Member2]
-
-    >>> !bans 10000000000000500
-    [{emoji} Bans\n Guild1]
-
-    >>> !bans <@10000000000000003>
-    [{emoji} Bans for Member1\n Guild1\n Guild2]
-
-    >>> !bans 10000000000000003
-    [{emoji} Bans for Member1\n Guild1\n Guild2]
+    >>> !bans
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    bot.registry.get(MemberState).active.update(
-        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
-    )
-    t = target.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE,
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
-    )
-    if guild is None:
-        g = None
-        full = f"{prefix}{command} {t}"
-    else:
-        g = guild.format(
-            guild_snowflake=GUILD_SNOWFLAKE, other_guild_snowflake=OTHER_GUILD_SNOWFLAKE
-        )
-        full = f"{prefix}{command} {t} {g}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
+            full = f"{prefix}{COMMAND}"
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+                )
+                full += f" {t}"
+            if other_guild is None:
+                g = None
+            else:
+                g = other_guild.format(
+                    other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
+                )
+                full += f" {g}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target, other_guild, extra_permissions",
+    [
+        ("{channel_snowflake}", None, ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", None, ["command.info.scope.channel"]),
+        (
+            "{channel_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.channel", "other_guilds"],
+        ),
+        (
+            "<#{channel_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.channel", "other_guilds"],
+        ),
+        ("{guild_snowflake}", None, ["command.info.scope.guild"]),
+        ("{member_snowflake}", None, ["command.info.scope.member"]),
+        ("<@{member_snowflake}>", None, ["command.info.scope.member"]),
+        (
+            "{member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "<@{member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        ("{simplified_member_snowflake}", None, ["command.info.scope.member"]),
+        (
+            "{simplified_member_snowflake}>",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+    ],
+)
+async def test_bans_app_command(
+    bot,
+    target: str | None,
+    other_guild: str | None,
+    extra_permissions: list[str],
+):
+    """
+    List bans on members which are registered in the PostgresSQL database
+    'vyrtuous' in the table 'active_bans'.
+
+    Parameters
+    ----------
+    target (Optional) : str | int
+        Resolves to: int | discord.VoiceChannel | discord.TextChannel | discord.StageChannel | discord.Member | discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010> | <@10000000000000010>
+
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
+
+    Example
+    --------
+    >>> !bans
+    Embed
+    """
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
             cog = bot.get_cog("InfoAppCommands")
             command = cog.list_bans_app_command
-            transformer = AppTarget()
-            if t:
-                resolved = await transformer.transform(inx, t)
+            if target is None:
+                t = target
             else:
-                resolved = None
-            if g:
-                resolved_guild = await transformer.transform(inx, g)
-            else:
-                resolved_guild = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
                 )
+            if other_guild is None:
+                g = None
+            else:
+                g = other_guild.format(
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
+                )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                transformer = AppTarget()
+                if t:
+                    resolved_target = await transformer.transform(inx, t)
+                else:
+                    resolved_target = None
+                if g:
+                    resolved_guild = await transformer.transform(inx, g)
+                else:
+                    resolved_guild = None
                 await command.callback(
-                    cog, interaction=inx, target=resolved, guild=resolved_guild
+                    cog, interaction=inx, target=resolved_target, guild=resolved_guild
                 )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "field, datatype, nullable",
+    [
+        ("channel_snowflake", "bigint", False),
+        ("guild_snowflake", "bigint", False),
+        ("member_snowflake", "bigint", False),
+        ("expires_in", "timestamp with time zone", True),
+        ("created_at", "timestamp with time zone", True),
+        ("updated_at", "timestamp with time zone", True),
+    ],
+)
+async def test_active_bans_database_table(
+    bot, field: str, datatype: str, nullable: bool
+):
+    async with bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+            ORDER BY ordinal_position
+        """,
+            TABLE_NAME,
+            field,
+        )
+    assert row is not None
+    assert row["column_name"] == field
+    assert row["data_type"] == datatype
+    assert row["is_nullable"] == ("YES" if nullable else "NO")

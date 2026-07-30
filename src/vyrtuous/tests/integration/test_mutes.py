@@ -20,11 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 from contextlib import ExitStack
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
@@ -43,6 +44,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 COMMAND = "mutes"
 BASE_PERMISSIONS = ["command.info.voice-mutes"]
+TABLE_NAME = VoiceMute.__tablename__
 
 
 @pytest.mark.asyncio
@@ -983,3 +985,41 @@ async def test_mutes_app_command(
                 )
         for kind, content in end_results:
             assert kind == "success"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "field, datatype, nullable",
+    [
+        ("channel_snowflake", "bigint", True),
+        ("guild_snowflake", "bigint", False),
+        ("member_snowflake", "bigint", False),
+        ("expires_in", "timestamp with time zone", True),
+        ("target", "text", False),
+        ("created_at", "timestamp with time zone", True),
+        ("updated_at", "timestamp with time zone", True),
+    ],
+)
+async def test_active_voice_mutes_database_table(
+    bot, field: str, datatype: str, nullable: bool
+):
+    async with bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+            ORDER BY ordinal_position
+        """,
+            TABLE_NAME,
+            field,
+        )
+    assert row is not None
+    assert row["column_name"] == field
+    assert row["data_type"] == datatype
+    assert row["is_nullable"] == ("YES" if nullable else "NO")

@@ -1,5 +1,5 @@
 """!/bin/python3
-test_stages.py The purpose of this program is to be the integration test for the stages list command for Vyrtuous.
+test_mods.py The purpose of this program is to be the integration test for the mods list command for Vyrtuous.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -19,11 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.db.automute import AutoMute
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -35,37 +36,63 @@ from vyrtuous.tests.integration.test_suite import (
 )
 
 GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
+DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
-COMMAND = "automutes"
-BASE_PERMISSIONS = ["command.info.automutes"]
-TABLE_NAME = AutoMute.__tablename__
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
+COMMAND = "vegans"
+BASE_PERMISSIONS = ["command.info.vegans"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "target, extra_permissions",
+    "target, other_guild, extra_permissions",
     [
-        ("{channel_snowflake}", ["command.info.scope.channel"]),
-        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", None, ["command.info.scope.guild"]),
+        ("{member_snowflake}", None, ["command.info.scope.member"]),
+        ("<@{member_snowflake}>", None, ["command.info.scope.member"]),
+        (
+            "{member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            None,
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
     ],
 )
-async def test_automutes_text_command(
-    bot, prefix: str, target: str | None, extra_permissions
+async def test_vegans_text_command(
+    bot, prefix: str, target: str | None, other_guild: str | None, extra_permissions
 ):
     """
-    List automutes which are registered in the PostgreSQL database
-    'vyrtuous' in the table 'active_automute_channels'.
+    List vegans which are registered in the PostgresSQL database
+    'vyrtuous' in the table 'vegans'.
 
     Parameters
     ----------
     target (Optional) : str | int
-        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
-        Examples: 10000000000000010 | <#10000000000000010>
+        Resolves to: int | discord.Member | discord.Guild
+        Examples: 10000000000000010 | <@10000000000000010>
+
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
 
     Example
     --------
-    >>> /automutes
+    >>> !vegans
     Embed
     """
     if (
@@ -86,6 +113,9 @@ async def test_automutes_text_command(
                     side_effect=check_permissions(extra_permissions),
                 )
             )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
             full = f"{prefix}{COMMAND}"
             if target is None:
                 t = target
@@ -93,35 +123,68 @@ async def test_automutes_text_command(
                 t = target.format(
                     channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
                     guild_snowflake=GUILD_SNOWFLAKE,
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
                 )
                 full += f" {t}"
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+                full += f" {g}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "target, extra_permissions",
+    "target, other_guild, extra_permissions",
     [
-        ("{channel_snowflake}", ["command.info.scope.channel"]),
-        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", None, ["command.info.scope.guild"]),
+        ("{member_snowflake}", None, ["command.info.scope.member"]),
+        ("<@{member_snowflake}>", None, ["command.info.scope.member"]),
+        (
+            "{member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            None,
+            ["command.info.scope.member", "other_guilds"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "{other_guild_snowflake}",
+            ["command.info.scope.member", "other_guilds"],
+        ),
     ],
 )
-async def test_automutes_app_command(bot, target: str | None, extra_permissions):
+async def test_vegans_app_command(
+    bot, target: str | None, other_guild: str | None, extra_permissions
+):
     """
-    List automutes which are registered in the PostgreSQL database
-    'vyrtuous' in the table 'active_automute_channels'.
+    List vegans which are registered in the PostgresSQL database
+    'vyrtuous' in the table 'vegans'.
 
     Parameters
     ----------
     target (Optional) : str | int
-        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
-        Examples: 10000000000000010 | <#10000000000000010>
+        Resolves to: int | discord.Member | discord.Guild
+        Examples: 10000000000000010 | <@10000000000000010>
+
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
 
     Example
     --------
-    >>> /automutes
+    >>> /vegans
     Embed
     """
     if (
@@ -142,15 +205,24 @@ async def test_automutes_app_command(bot, target: str | None, extra_permissions)
                     side_effect=check_permissions(extra_permissions),
                 )
             )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.list_automute_channels_app_command
+            command = cog.list_new_vegans_app_command
             if target is None:
                 t = target
             else:
                 t = target.format(
                     channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
                     guild_snowflake=GUILD_SNOWFLAKE,
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
                 )
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
             objects = setup(bot)
             msg = build_message(
                 author=objects.get("author", None),
@@ -171,46 +243,12 @@ async def test_automutes_app_command(bot, target: str | None, extra_permissions)
                     resolved_target = await transformer.transform(inx, t)
                 else:
                     resolved_target = None
+                if g:
+                    resolved_guild = await transformer.transform(inx, g)
+                else:
+                    resolved_guild = None
                 await command.callback(
-                    cog,
-                    interaction=inx,
-                    target=resolved_target,
+                    cog, interaction=inx, target=resolved_target, guild=resolved_guild
                 )
             for kind, content in end_results:
                 assert kind == "success"
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "field, datatype, nullable",
-    [
-        ("channel_snowflake", "bigint", False),
-        ("guild_snowflake", "bigint", False),
-        ("expires_in", "timestamp with time zone", True),
-        ("created_at", "timestamp with time zone", True),
-        ("updated_at", "timestamp with time zone", True),
-    ],
-)
-async def test_automute_channels_database_table(
-    bot, field: str, datatype: str, nullable: bool
-):
-    async with bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            f"""
-            SELECT
-                column_name,
-                data_type,
-                is_nullable
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = $1
-              AND column_name = $2
-            ORDER BY ordinal_position
-        """,
-            TABLE_NAME,
-            field,
-        )
-    assert row is not None
-    assert row["column_name"] == field
-    assert row["data_type"] == datatype
-    assert row["is_nullable"] == ("YES" if nullable else "NO")

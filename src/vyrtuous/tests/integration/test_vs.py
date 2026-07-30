@@ -19,118 +19,195 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.db.video_channel import VideoChannel
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
 GUILD_SNOWFLAKE = 10000000000000500
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+COMMAND = "vs"
+BASE_PERMISSIONS = ["command.info.video-channels"]
+TABLE_NAME = VideoChannel.__tablename__
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target",
+    "target, extra_permissions",
     [
-        ("Administrator", "vs", "{channel_snowflake}"),
-        ("Administrator", "vs", "<#{channel_snowflake}>"),
-        ("Administrator", "vs", "{guild_snowflake}"),
+        ("{channel_snowflake}", ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
+        ("{guild_snowflake}", ["command.info.scope.guild"]),
     ],
 )
-async def test_vs(bot, command: str, prefix: str, target, permission_role):
+async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permissions):
     """
-    List channels which are registered in the PostgresSQL database
-    'vyrtuous' in the table 'video_channels'.
+    List video-channels which are registered in the PostgreSQL database
+    'vyrtuous' in the table 'active_video_only_channels'.
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all video channels in all guilds
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with vrs
-        in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where video channels are present.
+    target (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    Example
     --------
-    >>> !vrs "all"
-    [{emoji} Video Rooms\n Guild1\n Guild2]
-
-    >>> !vrs 10000000000000500
-    [{emoji} Video Rooms\n Guild1]
-
-    >>> !vrs <@10000000000000010>
-    [{emoji} Video Rooms for Channel1]
-
-    >>> !vrs 10000000000000010
-    [{emoji} Video Rooms for Channel1]
+    >>> /vs
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    t = target.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
-    )
-    full = f"{prefix}{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            full = f"{prefix}{COMMAND}"
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                )
+                full += f" {t}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target, extra_permissions",
+    [
+        ("{channel_snowflake}", ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
+        ("{guild_snowflake}", ["command.info.scope.guild"]),
+    ],
+)
+async def test_vs_app_command(bot, target: str | None, extra_permissions):
+    """
+    List video-channels which are registered in the PostgreSQL database
+    'vyrtuous' in the table 'active_video_only_channels'.
+
+    Parameters
+    ----------
+    target (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    Example
+    --------
+    >>> /vs
+    Embed
+    """
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
-            cog = bot.get_cog("InfoAppCommands")
-            command = cog.list_video_channels_app_command
-            transformer = AppTarget()
-            resolved_target = await transformer.transform(inx, t)
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
-                await command.callback(cog, interaction=inx, target=resolved_target)
-        for kind, content in end_results:
-            assert kind == "success"
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            cog = bot.get_cog("InfoAppCommands")
+            command = cog.list_automute_channels_app_command
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                transformer = AppTarget()
+                if t:
+                    resolved_target = await transformer.transform(inx, t)
+                else:
+                    resolved_target = None
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    target=resolved_target,
+                )
+            for kind, content in end_results:
+                assert kind == "success"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "field, datatype, nullable",
+    [
+        ("channel_snowflake", "bigint", False),
+        ("guild_snowflake", "bigint", False),
+        ("created_at", "timestamp with time zone", True),
+        ("updated_at", "timestamp with time zone", True),
+    ],
+)
+async def test_video_only_channels_database_table(
+    bot, field: str, datatype: str, nullable: bool
+):
+    async with bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+            ORDER BY ordinal_position
+        """,
+            TABLE_NAME,
+            field,
+        )
+    assert row is not None
+    assert row["column_name"] == field
+    assert row["data_type"] == datatype
+    assert row["is_nullable"] == ("YES" if nullable else "NO")
