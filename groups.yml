@@ -68,6 +68,7 @@ groups:
     - command.info.blacklists
     - command.info.caps
     - command.moderation.blacklist
+    - command.moderation.role
     - command.moderation.voice-mute.channel_mute
     - command.moderation.unvoice-mute.channel_unmute
     - command.moderation.uncapped

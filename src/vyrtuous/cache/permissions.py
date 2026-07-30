@@ -23,7 +23,11 @@ from enum import Enum
 PERMISSION_TREE = {
     "other_guilds": [],
     "command": {
-        "alias": ["create", "delete"],
+        "alias": {
+            "create": [],
+            "delete": [],
+            "scope": ["channel", "role"],
+        },
         "utility": ["delete", "ping", "purge", "move"],
         "info": {
             "aliases": [],
@@ -71,6 +75,7 @@ PERMISSION_TREE = {
             "duration": [],
             "flag": [],
             "reason": [],
+            "role": [],
             "text-mute": [],
             "voice-mute": [
                 "auto",

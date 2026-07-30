@@ -17,6 +17,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Union
+
 import discord
 from discord.ext import commands
 
@@ -26,8 +28,8 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.messaging.tick import Tick
 
 
 class AliasManagementTextCommands(commands.Cog):
@@ -50,6 +52,7 @@ class AliasManagementTextCommands(commands.Cog):
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=MultiConverter,
+            default=None,
             description="Specify a channel ID/mention",
         ),
         role: discord.Role | None = commands.parameter(
@@ -113,14 +116,21 @@ class AliasManagementTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         alias_name: str = commands.parameter(description="Include an alias name"),
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify a server ID.",
+        ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
-        else:
+        if guild is None:
+            if ctx.guild is None:
+                return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
+        else:
+            guild_snowflake = guild.id
         if ctx.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel."
@@ -135,7 +145,7 @@ class AliasManagementTextCommands(commands.Cog):
             requested=["command.alias.delete"],
         )
         msg = await alias_service.delete_alias(
-            alias_name=alias_name, guild_snowflake=ctx.guild.id
+            alias_name=alias_name, guild_snowflake=guild_snowflake
         )
         return await tick.end(success=msg)
 

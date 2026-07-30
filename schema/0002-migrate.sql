@@ -200,3 +200,5 @@ ALTER TABLE active_video_only_channels
 ADD COLUMN expires_in TIMESTAMP WITH TIME ZONE NULL;
 ALTER TABLE vegans
 ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE command_aliases
+ALTER COLUMN channel_snowflake SET NOT NULL;

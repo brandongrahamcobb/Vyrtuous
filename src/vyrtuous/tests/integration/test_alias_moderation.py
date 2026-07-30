@@ -19,69 +19,438 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.tests.integration.test_suite import (
     build_message,
-    capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-ROLE_SNOWFLAKE = 10000000000000200
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member_snowflake",
+    "command, member, duration, reason, extra_permissions",
     [
-        ("Moderator", "testban", "{member_snowflake}"),
-        ("Moderator", "testban", "{member_snowflake}"),
-        ("Moderator", "testmute", "{member_snowflake}"),
-        ("Moderator", "testmute", "{member_snowflake}"),
-        ("Moderator", "testflag", "{member_snowflake}"),
-        ("Moderator", "testflag", "{member_snowflake}"),
-        ("Moderator", "testtmute", "{member_snowflake}"),
-        ("Moderator", "testtmute", "{member_snowflake}"),
-        ("Coordinator", "testrole", "{member_snowflake}"),
+        ("testban", "{member_snowflake}", None, None, ["command.moderation.ban"]),
+        ("testban", "{member_snowflake}", None, None, ["command.moderation.ban"]),
+        ("testban", "{member_snowflake}", "1h", None, ["command.moderation.ban"]),
+        ("testban", "{member_snowflake}", None, None, ["command.moderation.ban"]),
+        (
+            "testban",
+            "{member_snowflake}",
+            "1h",
+            "test reason",
+            ["command.moderation.ban"],
+        ),
+        ("testban", "{member_snowflake}", None, None, ["command.moderation.ban"]),
+        (
+            "testban",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.ban"],
+        ),
+        (
+            "testban",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.ban"],
+        ),
+        (
+            "testban",
+            "{simplified_member_snowflake}",
+            "1h",
+            None,
+            ["command.moderation.ban"],
+        ),
+        (
+            "testban",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.ban"],
+        ),
+        (
+            "testban",
+            "{simplified_member_snowflake}",
+            "1h",
+            "test reason",
+            ["command.moderation.ban"],
+        ),
+        (
+            "testban",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.ban"],
+        ),
+        ("testban", "<@{member_snowflake}>", None, None, ["command.moderation.ban"]),
+        ("testban", "<@{member_snowflake}>", None, None, ["command.moderation.ban"]),
+        ("testban", "<@{member_snowflake}>", "1h", None, ["command.moderation.ban"]),
+        ("testban", "<@{member_snowflake}>", None, None, ["command.moderation.ban"]),
+        (
+            "testban",
+            "<@{member_snowflake}>",
+            "1h",
+            "test reason",
+            ["command.moderation.ban"],
+        ),
+        ("testban", "<@{member_snowflake}>", None, None, ["command.moderation.ban"]),
+        ("testflag", "{member_snowflake}", None, None, ["command.moderation.flag"]),
+        ("testflag", "{member_snowflake}", None, None, ["command.moderation.flag"]),
+        (
+            "testflag",
+            "{member_snowflake}",
+            None,
+            "test reason",
+            ["command.moderation.flag"],
+        ),
+        ("testflag", "{member_snowflake}", None, None, ["command.moderation.flag"]),
+        (
+            "testflag",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.flag"],
+        ),
+        (
+            "testflag",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.flag"],
+        ),
+        (
+            "testflag",
+            "{simplified_member_snowflake}",
+            None,
+            "test reason",
+            ["command.moderation.flag"],
+        ),
+        (
+            "testflag",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.flag"],
+        ),
+        ("testflag", "<@{member_snowflake}>", None, None, ["command.moderation.flag"]),
+        ("testflag", "<@{member_snowflake}>", None, None, ["command.moderation.flag"]),
+        (
+            "testflag",
+            "<@{member_snowflake}>",
+            None,
+            "test reason",
+            ["command.moderation.flag"],
+        ),
+        ("testflag", "<@{member_snowflake}>", None, None, ["command.moderation.flag"]),
+        (
+            "testmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{member_snowflake}",
+            "1h",
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{member_snowflake}",
+            "1h",
+            "test reason",
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{simplified_member_snowflake}",
+            "1h",
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{simplified_member_snowflake}",
+            "1h",
+            "test reason",
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "<@{member_snowflake}>",
+            "1h",
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "<@{member_snowflake}>",
+            "1h",
+            "test reason",
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.voice-mute"],
+        ),
+        (
+            "testtmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{member_snowflake}",
+            "1h",
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{member_snowflake}",
+            "1h",
+            "test reason",
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{simplified_member_snowflake}",
+            "1h",
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{simplified_member_snowflake}",
+            "1h",
+            "test reason",
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "{simplified_member_snowflake}",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "<@{member_snowflake}>",
+            "1h",
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "<@{member_snowflake}>",
+            "1h",
+            "test reason",
+            ["command.moderation.text-mute"],
+        ),
+        (
+            "testtmute",
+            "<@{member_snowflake}>",
+            None,
+            None,
+            ["command.moderation.text-mute"],
+        ),
+        ("testrole", "{member_snowflake}", None, None, ["command.moderation.role"]),
+        ("testrole", "{member_snowflake}", None, None, ["command.moderation.role"]),
+        ("testrole", "<@{member_snowflake}>", None, None, ["command.moderation.role"]),
+        ("testrole", "<@{member_snowflake}>", None, None, ["command.moderation.role"]),
     ],
 )
-async def test_aliases(bot, prefix, command: str, member_snowflake, permission_role):
-    """
-    Create and delete command aliases in the PostgreSQL
-    database 'vyrtuous' in the table 'command_aliases'.
+async def test_alias_text_commands(
+    bot,
+    prefix: str,
+    command: str,
+    member: str,
+    duration: str | None,
+    reason: str | None,
+    extra_permissions: list[str],
+):
+    docstring = """
+    Toggle a ban, flag, role, text-mute or voice-mute.
 
     Parameters
     ----------
-    alias_type
-        The type of alias. Can be one of ban, unban, vmute, unvmute
-        flag, unflag, vegan, carnist, tmute, untmute, role and unrole.
-    alias_name
-        The name of the alias.
-    role_snowflake
-        The snowflake or mention of a role
+    member : str | int
+        Resolves to: int | discord.Member
+        Examples: 10000000000000010 | <@10000000000000010>
+
+    duration (Optional): str
+        Resolves to: DurationObject
+        Examples: 0 | 1 | 30m | 1h | 1d | 1w 
+
+    reason (Optional): str
+        Examples: test reason
 
     Examples
     --------
-    >>> !alias ban testban
-    [{emoji} Alias `testban` created]
-
-    >>> !testban 10000000000000003
-    [{emoji} Member Name was Banned]
-
-    >>> !xalias testban
-    [{emoji} Alias `testban` deleted]
+    >>> !testban 10000000000000010
+    Embed
+    >>> !testflag 10000000000000010
+    Embed
+    >>> !testrole 10000000000000010
+    Embed
+    >>> !testtmute 10000000000000010
+    Embed
+    >>> !testmute 10000000000000010
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    member = member_snowflake.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-    )
-    full = f"{prefix}{command} {member}"
+    assert command in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -90,33 +459,40 @@ async def test_aliases(bot, prefix, command: str, member_snowflake, permission_r
         msg = build_message(
             author=objects.get("author", None),
             channel=objects.get("text_channel", None),
-            content=full,
+            content="",
             guild=objects.get("guild", None),
             state=objects.get("state", None),
         )
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            stack.enter_context(
+                patch(
                     "vyrtuous.tests.integration.mock_discord_channel.MockVoiceChannel.fetch_message",
                     new=AsyncMock(return_value=msg),
                 )
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
-                )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
-                    new=AsyncMock(return_value=True),
-                )
+            m = member.format(
+                member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
             )
-
+            full = f"{prefix}{command} {m}"
+            if duration is None:
+                d = duration
+            else:
+                d = duration
+                full += f" {d}"
+            if reason is None:
+                r = reason
+            else:
+                r = reason
+                full += f" {r}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]

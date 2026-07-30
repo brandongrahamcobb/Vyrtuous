@@ -19,72 +19,86 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.test_suite import check_permissions, send_message
 
-DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-ROLE_SNOWFLAKE = 10000000000000200
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+GUILD_SNOWFLAKE = 10000000000000500
+COMMAND = "xalias"
+BASE_PERMISSIONS = ["command.alias.delete", "command.alias.scope.channel"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, alias_name",
+    "alias_name, guild, extra_permissions",
     [
-        ("Administrator", "xalias", "testban"),
-        ("Administrator", "xalias", "testmute"),
-        ("Administrator", "xalias", "testflag"),
-        ("Administrator", "xalias", "testvegan"),
-        ("Administrator", "xalias", "testtmute"),
-        ("Administrator", "xalias", "testrole"),
+        ("testban", None, []),
+        ("testflag", None, []),
+        ("testtmute", None, []),
+        ("testmute", None, []),
+        ("testban", "{guild_snowflake}", []),
+        ("testflag", "{guild_snowflake}", []),
+        ("testtmute", "{guild_snowflake}", []),
+        ("testmute", "{guild_snowflake}", []),
+        (
+            "testrole",
+            "{guild_snowflake}",
+            ["command.alias.scope.role"],
+        ),
+        (
+            "testrole",
+            None,
+            ["command.alias.scope.role"],
+        ),
     ],
 )
-async def test_xalias(bot, command: str, prefix: str, alias_name, permission_role):
-    """
-    Create and delete command aliases in the PostgreSQL
+async def test_xalias_text_command(
+    bot,
+    prefix: str,
+    alias_name: str,
+    guild: str | None,
+    extra_permissions: list[str],
+):
+    docstring = """
+    Delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
 
     Parameters
     ----------
-    alias_type
-        The type of alias. Can be one of ban, unban, vmute, unvmute
-        flag, unflag, vegan, carnist, tmute, untmute, role and unrole.
-    alias_name
-        The name of the alias.
-    role_snowflake
-        The snowflake or mention of a role
+    alias_name : str
+        Examples: testban, testmute
+
+    guild (Optional) : str | int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010
 
     Examples
     --------
-    >>> !alias ban testban
-    [{emoji} Alias `testban` created]
-
-    >>> !testban 10000000000000003
-    [{emoji} Member Name was Banned]
-
     >>> !xalias testban
-    [{emoji} Alias `testban` deleted]
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    full = f"{prefix}{command} {alias_name}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            full = f"{prefix}{COMMAND} {alias_name}"
+            if guild is None:
+                g = guild
+            else:
+                g = guild.format(
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                )
+                full += f" {g}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
