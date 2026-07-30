@@ -48,6 +48,7 @@ RESET = "\033[0m"
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 VOICE_CHANNEL_TWO_SNOWFLAKE = 10000000000000012
+OTHER_GUILD_CHANNEL_SNOWFLAKE = 10000000000000013
 
 
 @asynccontextmanager
@@ -136,6 +137,15 @@ def setup(bot):
     voice_channel = build_voice_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)
     other_voice_channel = build_voice_channel(
         bot, guild, state, id=VOICE_CHANNEL_TWO_SNOWFLAKE
+    )
+    other_guild_voice_channel = build_voice_channel(
+        bot, other_guild, state, id=OTHER_GUILD_CHANNEL_SNOWFLAKE
+    )
+    other_guild._channels.update(
+        {other_guild_voice_channel.id: other_guild_voice_channel}
+    )
+    other_guild._voice_channels.update(
+        {other_guild_voice_channel.id: other_guild_voice_channel}
     )
     guild._channels.update({text_channel.id: text_channel})
     guild._channels.update({voice_channel.id: voice_channel})

@@ -28,6 +28,7 @@ from vyrtuous.models.duration import AppDuration, DurationObject, DurationWrappe
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -35,7 +36,6 @@ from vyrtuous.utils.moderation import (
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.permissions import permission_service
 from vyrtuous.view.cancel_confirm_view import VerifyView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_infraction_view import ModifyInfractionView
@@ -594,7 +594,7 @@ class ModerationAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-            guild_snowflake = interaction.guild.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         if duration is None:

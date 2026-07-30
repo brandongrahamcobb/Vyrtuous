@@ -30,6 +30,7 @@ from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.models.scope import ScopeObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -37,7 +38,6 @@ from vyrtuous.utils.moderation import (
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.permissions import permission_service
 from vyrtuous.view.cancel_confirm_view import VerifyView
 
 
@@ -194,8 +194,10 @@ class ModerationTextCommands(commands.Cog):
     async def channel_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        channel: (
+            discord.VoiceChannel | discord.StageChannel | None
+        ) = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -222,7 +224,7 @@ class ModerationTextCommands(commands.Cog):
             guild_snowflake = ctx.guild.id
         elif isinstance(
             channel,
-            (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+            (discord.VoiceChannel, discord.StageChannel),
         ):
             channel_snowflake = channel.id
             guild_snowflake = channel.guild.id
@@ -320,8 +322,10 @@ class ModerationTextCommands(commands.Cog):
     async def channel_unmute_text_command(
         self,
         ctx: commands.Context,
-        channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        channel: Union[
+            discord.VoiceChannel | discord.StageChannel, None
+        ] = commands.parameter(
+            converter=MultiConverter,
             default=None,
             description="Specify a channel ID/mention.",
         ),

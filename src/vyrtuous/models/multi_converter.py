@@ -32,6 +32,7 @@ class MultiConverter(commands.Converter):
     async def convert(self, ctx: commands.Context, argument: str) -> Union[
         discord.VoiceChannel,
         discord.StageChannel,
+        discord.TextChannel,
         discord.Guild,
         discord.Member,
         discord.Role,
@@ -47,21 +48,25 @@ class MultiConverter(commands.Converter):
             return uuid
         except ValueError as e:
             bot.logger.warning(e)
-        voice_channel_converter = commands.VoiceChannelConverter()
-        stage_channel_converter = commands.StageChannelConverter()
         guild_converter = commands.GuildConverter()
         member_converter = commands.MemberConverter()
         role_converter = commands.RoleConverter()
-        try:
-            voice_channel = await voice_channel_converter.convert(ctx, argument)
-            return voice_channel
-        except commands.ChannelNotFound as e:
-            bot.logger.warning(e)
-        try:
-            stage_channel = await stage_channel_converter.convert(ctx, argument)
-            return stage_channel
-        except commands.ChannelNotFound as e:
-            bot.logger.warning(e)
+        number = argument.strip("<#>")
+        for guild in bot.guilds:
+            for channel in guild.channels:
+                if (
+                    isinstance(
+                        channel,
+                        (
+                            discord.VoiceChannel,
+                            discord.StageChannel,
+                            discord.TextChannel,
+                        ),
+                    )
+                    and number.isdigit()
+                    and channel.id == int(number)
+                ):
+                    return channel
         try:
             member = await member_converter.convert(ctx, argument)
             return member

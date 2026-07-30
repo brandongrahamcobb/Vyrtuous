@@ -19,136 +19,225 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.duration import AppDuration
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
-ROLE_SNOWFLAKE = 10000000000000200
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+OTHER_GUILD_CHANNEL_SNOWFLAKE = 10000000000000013
+
+BASE_PERMISSIONS = [
+    "command.moderation.voice-mute.channel_mute",
+    # "command.moderation.unvoice-mute.channel_unmute",
+]
+COMMAND = "rmute"
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, channel, duration, reason",
+    "channel, duration, reason, extra_permissions",
     [
-        ("Administrator", "rmute", "{channel_snowflake}", None, None),
-        ("Administrator", "rmute", "<#{channel_snowflake}>", "1h", None),
-        ("Administrator", "rmute", "<#{channel_snowflake}>", "1h", "test reason"),
+        (None, None, None, []),
+        (None, None, None, []),
+        ("{channel_snowflake}", None, None, []),
+        ("<#{channel_snowflake}>", None, None, []),
+        ("{channel_snowflake}", "1h", None, []),
+        ("<#{channel_snowflake}>", "1h", None, []),
+        ("{channel_snowflake}", "1h", "test reason", []),
+        ("<#{channel_snowflake}>", "1h", "test reason", []),
+        ("{other_guild_channel_snowflake}", None, None, ["other_guilds"]),
+        ("<#{other_guild_channel_snowflake}>", None, None, ["other_guilds"]),
+        ("{other_guild_channel_snowflake}", "1h", None, ["other_guilds"]),
+        ("<#{other_guild_channel_snowflake}>", "1h", None, ["other_guilds"]),
+        ("{other_guild_channel_snowflake}", "1h", "test reason", ["other_guilds"]),
+        ("<#{other_guild_channel_snowflake}>", "1h", "test reason", ["other_guilds"]),
     ],
 )
-async def test_rmute_xrmute(
-    bot, command: str, prefix: str, channel, duration, reason, permission_role
+async def test_rmute_text_command(
+    bot,
+    prefix: str,
+    channel: str | None,
+    duration: str | None,
+    reason: str | None,
+    extra_permissions: list[str],
 ):
-    """
-    Voice-mute a whole channel and undo it by adding and removing
-    entries in the PostgreSQL database 'vyrtuous' in the table
-    'active_voice_mutes'.
+    docstring = """
+    Simulate a right-click mute for all member in the voice channel except for the executor
+    and members with higher group privileges.
 
     Parameters
     ----------
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel
-        in any of the guilds Vyrtuous has access inside.
+    channel (Optional) : str | int | None
+        Resolves to: discord.VoiceChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    duration (Optional) : str | int | None
+        Resolves to: DurationObject
+        Examples: 0 | 1 | 30m | 1h | 1d | 1w 
+
+    reason (Optional) : Str
+        Examples: test reason
+
+    Example
     --------
-    >>> !rmute 10000000000000010
-    [{emoji} Room Muted\n Member1\n Member2]
-
-    >>> !xrmute 10000000000000010
-    [{emoji} Room Unmuted\n Member1\n Member2]
-
-    >>> !rmute <#10000000000000010>
-    [{emoji} Room Muted\n Member1\n Member2]
-
-    >>> !xrmute <#10000000000000010>
-    [{emoji} Room Unmuted\n Member1\n Member2]
+    >>> !rmute
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    c = channel.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
-    d = duration
-    r = reason
-    full = f"{prefix}{command} {c}"
-    if d and not r:
-        full = f"{prefix}{command} {c} {d}"
-    elif d and r:
-        full = f"{prefix}{command} {c} {d} {r}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            full = f"{prefix}{COMMAND}"
+            if channel is None:
+                c = channel
+            else:
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    other_guild_channel_snowflake=OTHER_GUILD_CHANNEL_SNOWFLAKE,
+                )
+                full += f" {c}"
+            if duration is None:
+                d = duration
+            else:
+                d = duration
+                full += f" {d}"
+            if reason is None:
+                r = reason
+            else:
+                r = reason
+                full += f" {r}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "channel, duration, reason, extra_permissions",
+    [
+        (None, None, None, []),
+        (None, None, None, []),
+        ("{channel_snowflake}", None, None, []),
+        ("<#{channel_snowflake}>", None, None, []),
+        ("{channel_snowflake}", "1h", None, []),
+        ("<#{channel_snowflake}>", "1h", None, []),
+        ("{channel_snowflake}", "1h", "test reason", []),
+        ("<#{channel_snowflake}>", "1h", "test reason", []),
+        ("{other_guild_channel_snowflake}", None, None, ["other_guilds"]),
+        ("<#{other_guild_channel_snowflake}>", None, None, ["other_guilds"]),
+        ("{other_guild_channel_snowflake}", "1h", None, ["other_guilds"]),
+        ("<#{other_guild_channel_snowflake}>", "1h", None, ["other_guilds"]),
+        ("{other_guild_channel_snowflake}", "1h", "test reason", ["other_guilds"]),
+        ("<#{other_guild_channel_snowflake}>", "1h", "test reason", ["other_guilds"]),
+    ],
+)
+async def test_rmute_app_command(
+    bot,
+    channel: str | None,
+    duration: str | None,
+    reason: str | None,
+    extra_permissions: list[str],
+):
+    docstring = """
+    Simulate a right-click mute for all member in the voice channel except for the executor
+    and members with higher group privileges.
+
+    Parameters
+    ----------
+    channel (Optional) : str | int | None
+        Resolves to: discord.VoiceChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    duration (Optional) : str | int | None
+        Resolves to: DurationObject
+        Examples: 0 | 1 | 30m | 1h | 1d | 1w 
+
+    reason (Optional) : Str
+        Examples: test reason
+
+    Example
+    --------
+    >>> /rmute
+    Embed
+    """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
             cog = bot.get_cog("ModerationAppCommands")
             command = cog.channel_mute_app_command
-            transformer = AppTarget()
-            if c:
-                resolved = await transformer.transform(inx, c)
+            if channel is None:
+                c = channel
             else:
-                resolved = None
-            duration_transformer = AppDuration()
-            if d:
-                resolved_duration = await duration_transformer.transform(inx, d)
-            else:
-                resolved_duration = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    other_guild_channel_snowflake=OTHER_GUILD_CHANNEL_SNOWFLAKE,
                 )
+            if duration is None:
+                d = duration
+            else:
+                d = duration
+            if reason is None:
+                r = reason
+            else:
+                r = reason
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("voice_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("voice_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                duration_transformer = AppDuration()
+                target_transformer = AppTarget()
+                if c:
+                    resolved_channel = await target_transformer.transform(inx, c)
+                else:
+                    resolved_channel = c
+                if d:
+                    resolved_duration = await duration_transformer.transform(inx, d)
+                else:
+                    resolved_duration = d
                 await command.callback(
                     cog,
                     interaction=inx,
-                    channel=resolved,
+                    channel=resolved_channel,
                     duration=resolved_duration,
                     reason=r,
                 )
