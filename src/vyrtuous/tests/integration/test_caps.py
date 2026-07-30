@@ -24,11 +24,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from vyrtuous.cache.registry import PermissionState
+from vyrtuous.db.cap import Cap
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
@@ -37,118 +39,186 @@ GUILD_SNOWFLAKE = 10000000000000500
 OTHER_GUILD_SNOWFLAKE = 10000000000000501
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
+COMMAND = "caps"
+BASE_PERMISSIONS = ["command.info.caps"]
+TABLE_NAME = Cap.__tablename__
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target, guild",
+    "target, extra_permissions",
     [
-        ("Administrator", "caps", "{channel_snowflake}", None),
-        ("Developer", "caps", "<#{channel_snowflake}>", "{other_guild_snowflake}"),
-        ("Administrator", "caps", "{guild_snowflake}", None),
+        ("{channel_snowflake}", ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
+        ("{guild_snowflake}", ["command.info.scope.guild"]),
     ],
 )
-async def test_caps(bot, command: str, prefix: str, target, guild, permission_role):
-    """
-    List caps in the PostgresSQL database
+async def test_caps_text_command(
+    bot, prefix: str, target: str | None, extra_permissions
+):
+    docstring = """
+    List caps which are registered in the PostgreSQL database
     'vyrtuous' in the table 'active_caps'.
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all caps in all guilds
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with caps
-        in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where caps are present.
+    target (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    Example
     --------
-    >>> !caps "all"
-    [{emoji} Caps\n Guild1\n Guild2]
-
-    >>> !caps 10000000000000500
-    [{emoji} Caps\n Guild1]
-
-    >>> !caps <@10000000000000010>
-    [{emoji} Caps for Channel1]
-
-    >>> !caps 10000000000000010
-    [{emoji} Caps for Channel1]
+    >>> /caps
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    t = target.format(
-        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE,
-    )
-    g = None
-    if guild is None:
-        full = f"{prefix}{command} {t}"
-    else:
-        g = guild.format(
-            other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
-        )
-        full = f"{prefix}{command} {t} {g}"
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            full = f"{prefix}{COMMAND}"
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                )
+                full += f" {t}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target, extra_permissions",
+    [
+        ("{channel_snowflake}", ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
+        ("{guild_snowflake}", ["command.info.scope.guild"]),
+    ],
+)
+async def test_caps_app_command(bot, target: str | None, extra_permissions):
+    docstring = """
+    List caps which are registered in the PostgreSQL database
+    'vyrtuous' in the table 'active_caps'.
+
+    Parameters
+    ----------
+    target (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    Example
+    --------
+    >>> /caps
+    Embed
+    """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
             cog = bot.get_cog("InfoAppCommands")
             command = cog.list_caps_app_command
-            transformer = AppTarget()
-            if t:
-                resolved = await transformer.transform(inx, t)
+            if target is None:
+                t = target
             else:
-                resolved = None
-            if g:
-                resolved_guild = await transformer.transform(inx, g)
-            else:
-                resolved_guild = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
                 )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                transformer = AppTarget()
+                if t:
+                    resolved_target = await transformer.transform(inx, t)
+                else:
+                    resolved_target = None
                 await command.callback(
-                    cog, interaction=inx, target=resolved, guild=resolved_guild
+                    cog,
+                    interaction=inx,
+                    target=resolved_target,
                 )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"
+
+
+COLUMNS = [
+    ("channel_snowflake", "bigint", False),
+    ("guild_snowflake", "bigint", False),
+    ("duration_seconds", "integer", False),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
+async def test_caps_database_table(bot, field: str, datatype: str, nullable: bool):
+    async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+            ORDER BY ordinal_position
+        """,
+            TABLE_NAME,
+            field,
+        )
+    assert row is not None
+    assert row["column_name"] == field
+    assert row["data_type"] == datatype
+    assert row["is_nullable"] == ("YES" if nullable else "NO")

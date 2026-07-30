@@ -53,7 +53,7 @@ TABLE_NAME = AutoMute.__tablename__
 async def test_automutes_text_command(
     bot, prefix: str, target: str | None, extra_permissions
 ):
-    """
+    docstring = """
     List automutes which are registered in the PostgreSQL database
     'vyrtuous' in the table 'active_automute_channels'.
 
@@ -68,6 +68,8 @@ async def test_automutes_text_command(
     >>> /automutes
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -109,7 +111,7 @@ async def test_automutes_text_command(
     ],
 )
 async def test_automutes_app_command(bot, target: str | None, extra_permissions):
-    """
+    docstring = """
     List automutes which are registered in the PostgreSQL database
     'vyrtuous' in the table 'active_automute_channels'.
 
@@ -124,6 +126,8 @@ async def test_automutes_app_command(bot, target: str | None, extra_permissions)
     >>> /automutes
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -180,21 +184,24 @@ async def test_automutes_app_command(bot, target: str | None, extra_permissions)
                 assert kind == "success"
 
 
+COLUMNS = [
+    ("channel_snowflake", "bigint", False),
+    ("guild_snowflake", "bigint", False),
+    ("expires_in", "timestamp with time zone", True),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "field, datatype, nullable",
-    [
-        ("channel_snowflake", "bigint", False),
-        ("guild_snowflake", "bigint", False),
-        ("expires_in", "timestamp with time zone", True),
-        ("created_at", "timestamp with time zone", True),
-        ("updated_at", "timestamp with time zone", True),
-    ],
-)
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
 async def test_automute_channels_database_table(
     bot, field: str, datatype: str, nullable: bool
 ):
     async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
         row = await conn.fetchrow(
             f"""
             SELECT

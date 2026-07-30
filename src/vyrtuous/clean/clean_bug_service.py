@@ -24,7 +24,6 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.bug import Bug
 from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.utils.users import developer_service
 
 MODEL = Bug
 

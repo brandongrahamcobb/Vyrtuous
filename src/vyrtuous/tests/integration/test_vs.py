@@ -51,7 +51,7 @@ TABLE_NAME = VideoChannel.__tablename__
     ],
 )
 async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permissions):
-    """
+    docstring = """
     List video-channels which are registered in the PostgreSQL database
     'vyrtuous' in the table 'active_video_only_channels'.
 
@@ -63,9 +63,11 @@ async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permi
 
     Example
     --------
-    >>> /vs
+    >>> !vs
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -107,7 +109,7 @@ async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permi
     ],
 )
 async def test_vs_app_command(bot, target: str | None, extra_permissions):
-    """
+    docstring = """
     List video-channels which are registered in the PostgreSQL database
     'vyrtuous' in the table 'active_video_only_channels'.
 
@@ -122,6 +124,8 @@ async def test_vs_app_command(bot, target: str | None, extra_permissions):
     >>> /vs
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -178,20 +182,23 @@ async def test_vs_app_command(bot, target: str | None, extra_permissions):
                 assert kind == "success"
 
 
+COLUMNS = [
+    ("channel_snowflake", "bigint", False),
+    ("guild_snowflake", "bigint", False),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "field, datatype, nullable",
-    [
-        ("channel_snowflake", "bigint", False),
-        ("guild_snowflake", "bigint", False),
-        ("created_at", "timestamp with time zone", True),
-        ("updated_at", "timestamp with time zone", True),
-    ],
-)
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
 async def test_video_only_channels_database_table(
     bot, field: str, datatype: str, nullable: bool
 ):
     async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
         row = await conn.fetchrow(
             f"""
             SELECT

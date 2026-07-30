@@ -17,7 +17,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from os.path import abspath, dirname, expanduser, join
+from os.path import expanduser, join
+from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -27,7 +28,7 @@ from vyrtuous.utils.errors.error import MemberNotFound
 #### DEVELOPMENT
 RELEASE_MODE = False
 #### DIRECTORIES
-DIR_BASE = abspath(join(dirname(dirname(dirname(dirname(__file__))))))
+DIR_BASE = Path.cwd().parent.parent
 DIR_HOME = expanduser("~")
 #### DISCORD
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
@@ -56,6 +57,7 @@ DISCORD_COGS = [
     "vyrtuous.text_commands.utility_text_commands",
 ]
 DISCORD_COGS_CLASSES = [
+    "AliasManagementTextCommands",
     "ChannelManagementAppCommands",
     "ChannelManagementTextCommands",
     "ChannelEventListeners",

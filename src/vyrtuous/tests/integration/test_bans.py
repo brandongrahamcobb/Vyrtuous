@@ -91,7 +91,7 @@ async def test_bans_text_command(
     other_guild: str | None,
     extra_permissions: list[str],
 ):
-    """
+    docstring = """
     List bans on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
 
@@ -110,6 +110,8 @@ async def test_bans_text_command(
     >>> !bans
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -196,7 +198,7 @@ async def test_bans_app_command(
     other_guild: str | None,
     extra_permissions: list[str],
 ):
-    """
+    docstring = """
     List bans on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
 
@@ -215,6 +217,8 @@ async def test_bans_app_command(
     >>> !bans
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -285,22 +289,25 @@ async def test_bans_app_command(
                 assert kind == "success"
 
 
+COLUMNS = [
+    ("channel_snowflake", "bigint", False),
+    ("guild_snowflake", "bigint", False),
+    ("member_snowflake", "bigint", False),
+    ("expires_in", "timestamp with time zone", True),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "field, datatype, nullable",
-    [
-        ("channel_snowflake", "bigint", False),
-        ("guild_snowflake", "bigint", False),
-        ("member_snowflake", "bigint", False),
-        ("expires_in", "timestamp with time zone", True),
-        ("created_at", "timestamp with time zone", True),
-        ("updated_at", "timestamp with time zone", True),
-    ],
-)
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
 async def test_active_bans_database_table(
     bot, field: str, datatype: str, nullable: bool
 ):
     async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
         row = await conn.fetchrow(
             f"""
             SELECT

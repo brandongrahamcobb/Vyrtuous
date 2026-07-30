@@ -30,7 +30,6 @@ MODEL = Cap
 
 
 async def build_dictionary(
-    guild_snowflake: int,
     obj,
 ) -> dict[int, dict[str, dict[int, dict[str, dict[str, int]]]]]:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -38,43 +37,34 @@ async def build_dictionary(
     dictionary: dict[int, dict[str, dict[int, dict[str, dict[str, int]]]]] = {}
     if isinstance(obj, discord.Guild):
         caps = await database_factory.select(guild_snowflake=obj.id, singular=False)
-        guild_snowflake = obj.id
     elif isinstance(obj, discord.abc.GuildChannel):
         caps = await database_factory.select(
-            channel_snowflake=obj.id, guild_snowflake=guild_snowflake, singular=False
+            channel_snowflake=obj.id, guild_snowflake=obj.guild.id, singular=False
         )
     else:
-        caps = await database_factory.select(
-            guild_snowflake=guild_snowflake, singular=False
-        )
+        caps = await database_factory.select(singular=False)
     if caps:
         for cap in caps:
-            dictionary.setdefault(guild_snowflake, {"channels": {}})
-            dictionary[guild_snowflake]["channels"].setdefault(
+            dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
+            dictionary[cap.guild_snowflake]["channels"].setdefault(
                 cap.channel_snowflake, {"caps": {}}
             )
-            dictionary[guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
+            dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake]["caps"][
                 cap.category
             ] = cap.duration_seconds
     return dictionary
 
 
-async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
+async def build_pages(obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        return "No caps found."
-
     duration_builder = DurationBuilder()
     lines: list[str] = []
     pages: list[discord.Embed] = []
 
-    obj_name = guild.name
-    if not isinstance(obj, int):
-        obj_name = obj.name
+    obj_name = obj.name
     title = f"{emojis.get_random_emoji()} Caps for {obj_name}"
 
-    dictionary = await build_dictionary(guild_snowflake=guild_snowflake, obj=obj)
+    dictionary = await build_dictionary(obj=obj)
     processed_dictionary: list_service.CapDictionary = (
         await list_service.process_dictionary(
             cls=list_service.CapDictionary, dictionary=dictionary

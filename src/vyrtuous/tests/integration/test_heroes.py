@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+from collections import defaultdict
 from contextlib import ExitStack
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -42,6 +43,7 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 COMMAND = "heroes"
 BASE_PERMISSIONS = ["command.info.heroes"]
+REGISTRY_STATE_FIELD = "invincible"
 
 
 @pytest.mark.asyncio
@@ -76,8 +78,8 @@ BASE_PERMISSIONS = ["command.info.heroes"]
 async def test_heroes_text_command(
     bot, prefix: str, target: str | None, other_guild: str | None, extra_permissions
 ):
-    """
-    List heroes which are registered in the cached registry.
+    docstring = """
+    List heroes which are registered in the MemberState field 'invincible'.
 
     Parameters
     ----------
@@ -94,6 +96,8 @@ async def test_heroes_text_command(
     >>> !heroes
     Embed
     """
+    assert REGISTRY_STATE_FIELD in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -167,8 +171,8 @@ async def test_heroes_text_command(
 async def test_heroes_app_command(
     bot, target: str | None, other_guild: str | None, extra_permissions
 ):
-    """
-    List heroes which are registered in the cached registry.
+    docstring = """
+    List heroes which are registered in the MemberState field 'invincible'.
 
     Parameters
     ----------
@@ -185,6 +189,8 @@ async def test_heroes_app_command(
     >>> /heroes
     Embed
     """
+    assert REGISTRY_STATE_FIELD in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -250,3 +256,9 @@ async def test_heroes_app_command(
                 )
             for kind, content in end_results:
                 assert kind == "success"
+
+
+def test_hero_cache(bot):
+    invincible = bot.registry.get(MemberState).invincible
+    assert isinstance(invincible, defaultdict)
+    assert invincible.default_factory is set

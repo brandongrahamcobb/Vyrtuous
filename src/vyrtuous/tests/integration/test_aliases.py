@@ -1,5 +1,5 @@
 """!/bin/python3
-test_cogs.py The purpose of this program is to be the integration test for the cogs list command for Vyrtuous.
+test_cmds.py The purpose of this program is to be the integration test for the cmds list command for Vyrtuous.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -24,83 +24,62 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from vyrtuous.cache.registry import PermissionState
-from vyrtuous.tests.integration.test_suite import (
-    build_message,
-    capture_command,
-    send_message,
-    setup,
-)
+from vyrtuous.tests.integration.test_suite import send_message
 
-DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-ROLE_SNOWFLAKE = 10000000000000200
+GUILD_SNOWFLAKE = 10000000000000500
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member_snowflake",
+    "permission_role, command, target",
     [
-        ("Moderator", "testban", "{member_snowflake}"),
-        ("Moderator", "testban", "{member_snowflake}"),
-        ("Moderator", "testmute", "{member_snowflake}"),
-        ("Moderator", "testmute", "{member_snowflake}"),
-        ("Moderator", "testflag", "{member_snowflake}"),
-        ("Moderator", "testflag", "{member_snowflake}"),
-        ("Moderator", "testtmute", "{member_snowflake}"),
-        ("Moderator", "testtmute", "{member_snowflake}"),
-        ("Coordinator", "testrole", "{member_snowflake}"),
+        ("Moderator", "aliases", "{channel_snowflake}"),
+        ("Moderator", "aliases", "<#{channel_snowflake}>"),
+        ("Administrator", "aliases", "{guild_snowflake}"),
     ],
 )
-async def test_aliases(bot, prefix, command: str, member_snowflake, permission_role):
+async def test_cmds(bot, command: str, prefix: str, target, permission_role):
     """
-    Create and delete command aliases in the PostgreSQL
-    database 'vyrtuous' in the table 'command_aliases'.
+    List channels which are registered in the PostgresSQL database
+    'vyrtuous' in the table 'command_aliases'.
 
     Parameters
     ----------
-    alias_type
-        The type of alias. Can be one of ban, unban, vmute, unvmute
-        flag, unflag, vegan, carnist, tmute, untmute, role and unrole.
-    alias_name
-        The name of the alias.
-    role_snowflake
-        The snowflake or mention of a role
+    all : str, optional
+        Generic showing all command aliases in all guilds
+    channel_snowflake : int | str, optional
+        Mention or snowflake of a channel with command aliases
+        in any of the guilds Vyrtuous has access inside.
+    guild_snowflake : int | str, optional
+        Snowflake of a guild where command aliases are present.
 
     Examples
     --------
-    >>> !alias ban testban
-    [{emoji} Alias `testban` created]
+    >>> !cmds "all"
+    [{emoji} Aliases\n Guild1\n Guild2]
 
-    >>> !testban 10000000000000003
-    [{emoji} Member Name was Banned]
+    >>> !cmds 10000000000000500
+    [{emoji} Aliases\n Guild1]
 
-    >>> !xalias testban
-    [{emoji} Alias `testban` deleted]
+    >>> !cmds <@10000000000000010>
+    [{emoji} Aliases for Channel1]
+
+    >>> !cmds 10000000000000010
+    [{emoji} Aliases for Channel1]
     """
     permission_state = bot.registry.get(PermissionState)
-    member = member_snowflake.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+    t = target.format(
+        channel_snowflake=VOICE_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    full = f"{prefix}{command} {member}"
+    full = f"{prefix}{command} {t}"
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
         with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "vyrtuous.tests.integration.mock_discord_channel.MockVoiceChannel.fetch_message",
-                    new=AsyncMock(return_value=msg),
-                )
-            )
             stack.enter_context(
                 patch(
                     "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
@@ -111,12 +90,5 @@ async def test_aliases(bot, prefix, command: str, member_snowflake, permission_r
                     ),
                 )
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
-                    new=AsyncMock(return_value=True),
-                )
-            )
-
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]

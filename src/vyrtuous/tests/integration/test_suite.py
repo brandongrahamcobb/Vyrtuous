@@ -129,6 +129,7 @@ def setup(bot):
     other_guild = build_guild(OTHER_GUILD_SNOWFLAKE, bot, state)
     role = build_role(guild, state)
     guild._roles.update({role.id: role})
+    other_guild._roles.update({role.id: role})
     bot._guilds.update({guild.id: guild, other_guild.id: other_guild})
     text_channel = build_text_channel(bot, guild, state, id=TEXT_CHANNEL_SNOWFLAKE)
     voice_channel = build_voice_channel(bot, guild, state, id=VOICE_CHANNEL_SNOWFLAKE)

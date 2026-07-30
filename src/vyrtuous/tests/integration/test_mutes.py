@@ -257,6 +257,18 @@ TABLE_NAME = VoiceMute.__tablename__
         ),
         (
             "{member_snowflake}",
+            "server",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.server"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "server",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.server"],
+        ),
+        (
+            "{member_snowflake}",
             "all",
             "{other_guild_snowflake}",
             [
@@ -391,6 +403,12 @@ TABLE_NAME = VoiceMute.__tablename__
         ),
         (
             "{simplified_member_snowflake}",
+            "command",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.server"],
+        ),
+        (
+            "{simplified_member_snowflake}",
             "all",
             "{other_guild_snowflake}",
             [
@@ -417,7 +435,17 @@ TABLE_NAME = VoiceMute.__tablename__
             "{other_guild_snowflake}",
             [
                 "command.info.scope.member",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.server",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "server",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -431,7 +459,7 @@ async def test_mutes_text_command(
     scope: str | None,
     extra_permissions: list[str],
 ):
-    """
+    docstring = """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
 
@@ -456,6 +484,8 @@ async def test_mutes_text_command(
     >>> !mutes
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -537,8 +567,6 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -548,8 +576,6 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -585,6 +611,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -597,6 +624,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -651,6 +679,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
             ],
         ),
         (
@@ -662,6 +691,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
             ],
         ),
         (
@@ -671,8 +701,6 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -682,8 +710,6 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -709,6 +735,18 @@ async def test_mutes_text_command(
             "command",
             None,
             ["command.info.scope.member", "command,info.voice-mutes.command"],
+        ),
+        (
+            "{member_snowflake}",
+            "server",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.server"],
+        ),
+        (
+            "<@{member_snowflake}>",
+            "server",
+            None,
+            ["command.info.scope.member", "command,info.voice-mutes.server"],
         ),
         (
             "{member_snowflake}",
@@ -719,6 +757,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -731,6 +770,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -784,6 +824,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
             ],
         ),
         (
@@ -795,6 +836,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
             ],
         ),
         (
@@ -819,6 +861,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
             ],
         ),
         (
@@ -828,8 +871,6 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -853,6 +894,7 @@ async def test_mutes_text_command(
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
                 "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -872,7 +914,17 @@ async def test_mutes_text_command(
             "{other_guild_snowflake}",
             [
                 "command.info.scope.member",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "server",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
@@ -885,7 +937,7 @@ async def test_mutes_app_command(
     scope: str | None,
     extra_permissions: list[str],
 ):
-    """
+    docstring = """
     List voice-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_voice_mutes'.
 
@@ -910,6 +962,8 @@ async def test_mutes_app_command(
     >>> !mutes
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -987,23 +1041,26 @@ async def test_mutes_app_command(
             assert kind == "success"
 
 
+COLUMNS = [
+    ("channel_snowflake", "bigint", True),
+    ("guild_snowflake", "bigint", False),
+    ("member_snowflake", "bigint", False),
+    ("expires_in", "timestamp with time zone", True),
+    ("target", "text", False),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "field, datatype, nullable",
-    [
-        ("channel_snowflake", "bigint", True),
-        ("guild_snowflake", "bigint", False),
-        ("member_snowflake", "bigint", False),
-        ("expires_in", "timestamp with time zone", True),
-        ("target", "text", False),
-        ("created_at", "timestamp with time zone", True),
-        ("updated_at", "timestamp with time zone", True),
-    ],
-)
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
 async def test_active_voice_mutes_database_table(
     bot, field: str, datatype: str, nullable: bool
 ):
     async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
         row = await conn.fetchrow(
             f"""
             SELECT

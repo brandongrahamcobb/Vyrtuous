@@ -19,43 +19,38 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
+COMMAND = "ping"
+BASE_PERMISSIONS = ["command.utility.ping"]
+
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "permission_role, command",
-    [
-        ("Developer", "ping"),
-    ],
-)
-async def test_ping(bot, command: str, prefix: str, permission_role):
-    """
-    Backup the database 'vyrtuous'.
+async def test_ping_text_command(bot, prefix: str):
+    docstring = """
+    Ping the bot.
 
     Parameters
     ----------
     None
-        No parameter required
 
     Examples
     --------
     >>> !ping
-    [{emoji} Pong!]
+    {emoji} Pong!
     """
-    permission_state = bot.registry.get(PermissionState)
-    full = f"{prefix}{command}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -63,48 +58,58 @@ async def test_ping(bot, command: str, prefix: str, permission_role):
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            full = f"{prefix}{COMMAND}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+async def test_ping_app_command(bot):
+    docstring = """
+    Ping the bot.
+
+    Parameters
+    ----------
+    None
+
+    Examples
+    --------
+    >>> !ping
+    {emoji} Pong!
+    """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content="",
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
             cog = bot.get_cog("UtilityAppCommands")
             command = cog.ping_app_command
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
-                )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
                 await command.callback(cog, interaction=inx)
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"

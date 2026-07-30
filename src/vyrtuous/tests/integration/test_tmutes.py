@@ -25,6 +25,7 @@ from unittest.mock import patch
 import pytest
 
 from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.text_mute import TextMute
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -44,6 +45,7 @@ COMMAND = "tmutes"
 BASE_PERMISSIONS = [
     "command.info.text-mutes",
 ]
+TABLE_NAME = TextMute.__tablename__
 
 
 @pytest.mark.asyncio
@@ -90,7 +92,7 @@ async def test_tmutes_text_command(
     other_guild: str | None,
     extra_permissions: list[str],
 ):
-    """
+    docstring = """
     List text-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_text_mutes'.
 
@@ -110,6 +112,8 @@ async def test_tmutes_text_command(
     >>> !tmutes
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -193,7 +197,7 @@ async def test_tmutes_app_command(
     other_guild: str | None,
     extra_permissions: list[str],
 ):
-    """
+    docstring = """
     List text-mutes on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_text_mutes'.
 
@@ -212,6 +216,8 @@ async def test_tmutes_app_command(
     >>> /tmutes
     Embed
     """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -277,3 +283,43 @@ async def test_tmutes_app_command(
                 )
         for kind, content in end_results:
             assert kind == "success"
+
+
+COLUMNS = [
+    ("channel_snowflake", "bigint", True),
+    ("guild_snowflake", "bigint", False),
+    ("member_snowflake", "bigint", False),
+    ("expires_in", "timestamp with time zone", True),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
+async def test_active_text_mutes_database_table(
+    bot, field: str, datatype: str, nullable: bool
+):
+    async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+            ORDER BY ordinal_position
+        """,
+            TABLE_NAME,
+            field,
+        )
+    assert row is not None
+    assert row["column_name"] == field
+    assert row["data_type"] == datatype
+    assert row["is_nullable"] == ("YES" if nullable else "NO")

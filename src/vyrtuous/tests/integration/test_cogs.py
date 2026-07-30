@@ -17,45 +17,45 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import importlib
+import inspect
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from discord.ext import commands
 
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
+COMMAND = "cogs"
+BASE_PERMISSIONS = ["command.info.cogs"]
+
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "permission_role, command",
-    [
-        ("Developer", "cogs"),
-    ],
-)
-async def test_cogs(bot, command: str, prefix: str, permission_role):
-    """
-    List cogs loaded by 'Vyrtuous'.
+async def test_cogs_text_command(bot, prefix: str):
+    docstring = """
+    List cogs.
 
     Parameters
     ----------
     None
-        Generic showing all cogs
 
     Examples
     --------
     >>> !cogs
-    [{emoji} Cogs\n Cog1\n Cog2]
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    full = f"{prefix}{command}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -63,48 +63,74 @@ async def test_cogs(bot, command: str, prefix: str, permission_role):
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            full = f"{prefix}{COMMAND}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+async def test_cogs_app_command(bot):
+    docstring = """
+    List cogs.
+
+    Parameters
+    ----------
+    None
+
+    Examples
+    --------
+    >>> !cogs
+    Embed
+    """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content="",
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
             cog = bot.get_cog("InfoAppCommands")
             command = cog.list_cogs_app_command
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
-                )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
                 await command.callback(cog, interaction=inx)
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"
+
+
+def test_all_cogs():
+    cogs = []
+    base = Path.cwd().parent
+    for path in base.rglob("*.py"):
+        module = importlib.import_module(
+            str(path.with_suffix("").relative_to(base)).replace("/", ".")
+        )
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            if issubclass(obj, commands.Cog) and obj is not commands.Cog:
+                cogs.append(obj)
+    assert cogs
+    for cog in cogs:
+        assert cog.__module__ in DISCORD_COGS
+        assert cog.__name__ in DISCORD_COGS_CLASSES

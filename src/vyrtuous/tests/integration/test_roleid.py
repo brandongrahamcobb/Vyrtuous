@@ -29,100 +29,135 @@ from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
 ROLE_NAME = "Vegan"
-GUILD_SNOWFLAKE = 10000000000000500
+ROLE_ID = 10000000000000200
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
+
+
+COMMAND = "roleid"
+BASE_PERMISSIONS = ["command.info.roleid", "command.info.scope.role"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, role, guild",
+    "other_guild, extra_permissions",
     [
-        ("Administrator", "roleid", "{role_name}", None),
-        ("Administrator", "roleid", "{role_name}", "{guild_snowflake}"),
+        (None, []),
+        ("{other_guild_snowflake}", ["other_guilds"]),
     ],
 )
-async def test_roleid(bot, command: str, prefix: str, role, guild, permission_role):
-    """
-    Fetch a role snowflake in a guild
+@pytest.mark.asyncio
+async def test_roleid_text_command(
+    bot,
+    prefix: str,
+    other_guild: str | None,
+    extra_permissions: list[str],
+):
+    docstring = """
+    Get the role ID by name.
 
     Parameters
     ----------
-    role_snowflake
-        The snowflake or mention of a role
+    None
 
     Examples
     --------
-    >>> !roleid Vegan
-    [{emoji} Role `Vegan` has the id `10000000000000200`]
-
+    >>> !roleid
+    {emoji} Role `Vegan` has ID `10000000000000200`
     """
-    permission_state = bot.registry.get(PermissionState)
-    r = role.format(role_name=ROLE_NAME)
-    g = None
-    full = f"{prefix}{command} {r}"
-    if guild:
-        g = guild.format(guild_snowflake=GUILD_SNOWFLAKE)
-        full = f"{prefix}{command} {r} {g}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            full = f"{prefix}{COMMAND} {ROLE_NAME}"
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+                full += f" {g}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
-    elif (
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "other_guild, extra_permissions",
+    [
+        (None, []),
+        ("{other_guild_snowflake}", ["other_guilds"]),
+    ],
+)
+async def test_roleid_app_command(
+    bot, other_guild: str | None, extra_permissions: list[str]
+):
+    docstring = """
+    Get the role ID by name.
+
+    Parameters
+    ----------
+    None
+
+    Examples
+    --------
+    >>> /roleid
+    {emoji} Role `Vegan` has ID `10000000000000200`
+    """
+    assert COMMAND in docstring
+    if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.get_role_id_app_command
+            command = cog.get_role_snowflake_app_command
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
             transformer = AppTarget()
             if g:
                 resolved_guild = await transformer.transform(inx, g)
             else:
                 resolved_guild = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
-                )
+
+            async with capture_command() as end_results:
                 await command.callback(
-                    cog, interaction=inx, role_name=r, guild=resolved_guild
+                    cog, interaction=inx, role_name=ROLE_NAME, guild=resolved_guild
                 )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"
