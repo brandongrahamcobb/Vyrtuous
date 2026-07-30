@@ -17,6 +17,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import Literal, Optional, Union
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -26,9 +28,10 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database import Database
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import AppModule, ModuleObject
+from vyrtuous.models.target import AppTarget, TargetObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.permissions import permission_service
 
 
 class DevelopmentAppCommands(commands.Cog):
@@ -129,48 +132,67 @@ class DevelopmentAppCommands(commands.Cog):
             )
         return await tick.end(success=f"Successfully reloaded {module.module}.")
 
-    # @app_commands.command(name="sync", description="Sync app commands.")
-    # async def sync_app_command(
-    #     self,
-    #     interaction: discord.Interaction,
-    #     spec: Optional[Literal["~", "*", "^"]] = None,
-    #     *,
-    #     guilds: Union[commands.Greedy[discord.Object], None] = None,
-    # ) -> discord.Message:
-    #     tick = Tick(bot=self.__bot, interaction=interaction)
-    #     synced = []
-    #     if not guilds:
-    #         if spec == "~":
-    #             synced = await self.__bot.tree.sync(guild=interaction.guild)
-    #         elif spec == "*":
-    #             if interaction.guild is None:
-    #                 return await tick.end(
-    #                     warning="This command must be executed in a server."
-    #                 )
-    #             self.__bot.tree.copy_global_to(guild=interaction.guild)
-    #             synced = await self.__bot.tree.sync(guild=interaction.guild)
-    #         elif spec == "^":
-    #             self.__bot.tree.clear_commands(guild=interaction.guild)
-    #             await self.__bot.tree.sync(guild=interaction.guild)
-    #         else:
-    #             synced = await self.__bot.tree.sync()
-    #         try:
-    #             if spec is None:
-    #                 msg = f"Synced {len(synced)} commands globally."
-    #             else:
-    #                 msg = f"Synced {len(synced)} commands to the current server."
-    #             return await tick.end(success=msg)
-    #         except Exception as e:
-    #             return await tick.end(warning=str(e).capitalize())
-    #     ret = 0
-    #     for guild in guilds:
-    #         try:
-    #             await self.__bot.tree.sync(guild=guild)
-    #         except discord.HTTPException:
-    #             pass
-    #         else:
-    #             ret += 1
-    #     return await tick.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
+    @metadata(permission="command.dev.sync")
+    @app_commands.command(name="sync", description="Sync app commands.")
+    @app_commands.describe(
+        spec="Specify directly to the guild (~), global to guild (*), clear and sync (^) and global sync (None).",
+        guild="Specify which guild to sync.",
+    )
+    async def sync_app_command(
+        self,
+        interaction: discord.Interaction,
+        spec: Optional[Literal["~", "*", "^"]] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            requested=["command.dev.sync"],
+        )
+        ret = 0
+        synced = []
+        if not guild:
+            if spec == "~":
+                synced = await self.__bot.tree.sync(guild=interaction.guild)
+            elif spec == "*":
+                if interaction.guild is None:
+                    return await tick.end(
+                        warning="This command must be executed in a server."
+                    )
+                self.__bot.tree.copy_global_to(guild=interaction.guild)
+                synced = await self.__bot.tree.sync(guild=interaction.guild)
+            elif spec == "^":
+                self.__bot.tree.clear_commands(guild=interaction.guild)
+                await self.__bot.tree.sync(guild=interaction.guild)
+            else:
+                synced = await self.__bot.tree.sync()
+            try:
+                if spec is None:
+                    msg = f"Synced {len(synced)} commands globally."
+                else:
+                    msg = f"Synced {len(synced)} commands to the current server."
+                return await tick.end(success=msg)
+            except Exception as e:
+                return await tick.end(warning=str(e).capitalize())
+        else:
+            try:
+                await self.__bot.tree.sync(guild=guild)
+            except discord.HTTPException:
+                pass
+            else:
+                ret += 1
+        return await tick.end(success=f"Synced the tree to {ret}.")
 
     # @app_commands.command(name="upload", description="Create the upload document.")
     # async def uploads_app_command(self, interaction: discord.Interaction) -> None:

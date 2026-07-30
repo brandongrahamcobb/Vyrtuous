@@ -23,7 +23,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.db.cap import Cap
 from vyrtuous.models.category import AppCategory
 from vyrtuous.models.duration import AppDuration
 from vyrtuous.models.target import AppTarget
@@ -31,54 +31,63 @@ from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+COMMAND = "cap"
+BASE_PERMISSIONS = ["command.channel.cap"]
+TABLE_NAME = Cap.__tablename__
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, category, channel, limit",
+    "channel, category, duration",
     [
-        ("Administrator", "cap", "ban", None, None),
-        ("Administrator", "cap", "ban", "{channel_snowflake}", None),
-        ("Administrator", "cap", "ban", "{channel_snowflake}", "8h"),
+        ("{channel_snowflake}", "ban", None),
+        ("{channel_snowflake}", "tmute", None),
+        ("{channel_snowflake}", "vmute", None),
+        ("<#{channel_snowflake}>", "ban", None),
+        ("<#{channel_snowflake}>", "tmute", None),
+        ("<#{channel_snowflake}>", "vmute", None),
+        ("{channel_snowflake}", "ban", "8h"),
+        ("{channel_snowflake}", "tmute", "8h"),
+        ("{channel_snowflake}", "vmute", "8h"),
+        ("<#{channel_snowflake}>", "ban", "8h"),
+        ("<#{channel_snowflake}>", "tmute", "8h"),
+        ("<#{channel_snowflake}>", "vmute", "8h"),
     ],
 )
-async def test_cap(
-    bot, command: str, prefix: str, channel, category, limit, permission_role
+async def test_cap_text_command(
+    bot, prefix: str, category: str, channel: str, duration: str | None
 ):
-    """
-    Set a expires in limit for a channel by populating the PostgresSQL database
-    'vyrtuous' in the table 'active_caps'.
+    docstring = """
+    Set a moderation duration limit for capped members in a channel by
+    populating the PostgresSQL database 'vyrtuous' in the table 'active_caps'.
 
     Parameters
     ----------
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with cap
-        in any of the guilds Vyrtuous has access inside.
+    channel : int | str
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    category : str
+        Resolves to: CategoryObject
+        Examples: ban, tmute or vmute
+
+    duration : str
+        Resolves to: DurationObject
+        Examples: 0 | 1 | 30m | 1h | 1d | 1w 
+
+    Example
     --------
-    >>> !cap 10000000000000010 ban 8
-    [{emoji} Ban cap created\n Guild1\n Channel1]
+    >>> !cap 10000000000000010 ban
+    "Cap `ban` created for Ask a Vegan successfully."
     """
-    permission_state = bot.registry.get(PermissionState)
-    c = None
-    if channel:
-        c = channel.format(
-            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        )
-    l = None
-    if limit:
-        l = limit
-    full = f"{prefix}{command} {category}"
-    if c and not limit:
-        full = f"{prefix}{command} {category} {c}"
-    elif c and limit:
-        full = f"{prefix}{command} {category} {c} {limit}"
+    assert COMMAND in docstring
+    assert TABLE_NAME in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -86,66 +95,117 @@ async def test_cap(
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            c = channel.format(
+                channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+            )
+            full = f"{prefix}{COMMAND} {category} {c}"
+            if duration is None:
+                d = duration
+            else:
+                d = duration
+                full += f" {d}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "channel, category, duration",
+    [
+        ("{channel_snowflake}", "ban", None),
+        ("{channel_snowflake}", "tmute", None),
+        ("{channel_snowflake}", "vmute", None),
+        ("<#{channel_snowflake}>", "ban", None),
+        ("<#{channel_snowflake}>", "tmute", None),
+        ("<#{channel_snowflake}>", "vmute", None),
+        ("{channel_snowflake}", "ban", "8h"),
+        ("{channel_snowflake}", "tmute", "8h"),
+        ("{channel_snowflake}", "vmute", "8h"),
+        ("<#{channel_snowflake}>", "ban", "8h"),
+        ("<#{channel_snowflake}>", "tmute", "8h"),
+        ("<#{channel_snowflake}>", "vmute", "8h"),
+    ],
+)
+async def test_cap_app_command(bot, category: str, channel: str, duration: str | None):
+    docstring = """
+    Set a moderation duration limit for capped members in a channel by
+    populating the PostgresSQL database 'vyrtuous' in the table 'active_caps'.
+
+    Parameters
+    ----------
+    channel : int | str
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    category : str
+        Resolves to: CategoryObject
+        Examples: ban, tmute or vmute
+
+    duration : str
+        Resolves to: DurationObject
+        Examples: 0 | 1 | 30m | 1h | 1d | 1w 
+
+    Example
+    --------
+    >>> /cap 10000000000000010 ban
+    "Cap `ban` created for Ask a Vegan successfully."
+    """
+    assert COMMAND in docstring
+    assert TABLE_NAME in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
             cog = bot.get_cog("ChannelManagementAppCommands")
             command = cog.cap_app_command
-            category_transformer = AppCategory()
-            resolved_category = await category_transformer.transform(inx, category)
-            target_transformer = AppTarget()
-            if c:
+            c = channel.format(
+                channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+            )
+            if duration is None:
+                d = duration
+            else:
+                d = duration
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                category_transformer = AppCategory()
+                duration_transformer = AppDuration()
+                target_transformer = AppTarget()
                 resolved_channel = await target_transformer.transform(inx, c)
-            else:
-                resolved_channel = None
-            duration_transformer = AppDuration()
-            if l:
-                resolved_limit = await duration_transformer.transform(inx, l)
-            else:
-                resolved_limit = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
-                )
+                resolved_category = await category_transformer.transform(inx, category)
+                if d:
+                    resolved_duration = await duration_transformer.transform(inx, d)
+                else:
+                    resolved_duration = d
                 await command.callback(
                     cog,
                     interaction=inx,
-                    category=resolved_category,
                     channel=resolved_channel,
-                    limit=resolved_limit,
+                    category=resolved_category,
+                    limit=resolved_duration,
                 )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"

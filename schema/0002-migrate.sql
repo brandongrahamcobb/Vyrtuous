@@ -199,6 +199,14 @@ DROP TABLE coordinators;
 ALTER TABLE active_video_only_channels
 ADD COLUMN expires_in TIMESTAMP WITH TIME ZONE NULL;
 ALTER TABLE vegans
-ALTER COLUMN created_at SET NOT NULL;
+ALTER COLUMN created_at DROP NOT NULL;
+ALTER TABLE vegans
+ALTER COLUMN notes SET NOT NULL;
 ALTER TABLE command_aliases
 ALTER COLUMN channel_snowflake SET NOT NULL;
+ALTER TABLE active_text_mutes
+ALTER COLUMN reason SET NOT NULL;
+ALTER TABLE active_voice_mutes
+ALTER COLUMN reason SET NOT NULL;
+ALTER TABLE active_bans
+ALTER COLUMN reason SET NOT NULL;

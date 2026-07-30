@@ -30,6 +30,7 @@ from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
@@ -40,126 +41,196 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 
+BASE_PERMISSIONS = [
+    "command.users.vegan",
+]
+COMMAND = "smute"
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member, guild",
+    "member, reason, other_guild, extra_permissions",
     [
-        ("Moderator", "vcow", "{member_snowflake}", None),
-        ("Moderator", "vcow", "<@{member_snowflake}>", "{other_guild_snowflake}"),
-        ("Moderator", "vcow", "{simplified_member_snowflake}", None),
+        ("{member_snowflake}", None, None, []),
+        ("<@{member_snowflake}>", None, None, []),
+        ("{simplified_member_snowflake}", None, None, []),
         (
-            "Moderator",
-            "vcow",
-            "<@{simplified_member_snowflake}>",
+            "{simplified_member_snowflake}",
+            "test reason",
             "{other_guild_snowflake}",
+            ["other_guilds"],
         ),
     ],
 )
-async def test_vcow(bot, command: str, prefix: str, member, guild, permission_role):
-    """
-    Promote or demote a member with 'Coordinator' by registering them in the PostgresSQL database
-    'vyrtuous' in the table 'coordinators'.
+async def test_vcow_text_command(
+    bot,
+    prefix: str,
+    member: str | None,
+    other_guild: str | None,
+    reason: str | None,
+    extra_permissions: list[str],
+):
+    docstring = """
+    Toggle a new vegan.
 
     Parameters
     ----------
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with coordinators
-        in any of the guilds Vyrtuous has access inside.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who is an coordinator
-        in any of the guilds Vyrtuous has access inside.
+    member : str | int
+        Resolves to: int | discord.Member
+        Examples: 10000000000000010 | <@10000000000000010>
 
-    Examples
+    reason (Optional) : str
+        Examples: test reason
+
+    Example
     --------
-
-    >>> !coord <@10000000000000003> <@10000000000000010>
-    [{emoji} Coordinator granted for Member1]
-
-    >>> !coord 10000000000000003 10000000000000010
-    [{emoji} Coordinator granted for Member1]
+    >>> !vcoww 10000000000000010 
+    {emoji} {emoji} Spawd is going vegan! {emoji} {emoji}
     """
-    permission_state = bot.registry.get(PermissionState)
-    bot.registry.get(MemberState).active.update(
-        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
-    )
-
-    m = member.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
-    )
-    g = None
-    full = f"{prefix}{command} {m} {GUILD_SNOWFLAKE}"
-    if guild:
-        g = guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
+            full = f"{prefix}{COMMAND}"
+            if member is None:
+                m = member
+            else:
+                m = member.format(
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+                )
+                full += f" {m}"
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+                full += f" {g}"
+            if reason is None:
+                r = reason
+            else:
+                r = reason
+                full += f" {r}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
-    elif (
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "member, reason, other_guild, extra_permissions",
+    [
+        ("{member_snowflake}", None, None, []),
+        ("<@{member_snowflake}>", None, None, []),
+        ("{member_snowflake}", "test reason", None, []),
+        ("<@{member_snowflake}>", "test reason", None, []),
+        ("{simplified_member_snowflake}", None, None, []),
+        ("{simplified_member_snowflake}", "test reason", None, []),
+        (
+            "{simplified_member_snowflake}",
+            "test reason",
+            "{other_guild_snowflake}",
+            ["other_guilds"],
+        ),
+    ],
+)
+async def test_smute_app_command(
+    bot,
+    member: str | None,
+    other_guild: str | None,
+    reason: str | None,
+    extra_permissions: list[str],
+):
+    docstring = """
+    Toggle a new vegan.
+
+    Parameters
+    ----------
+    member : str | int
+        Resolves to: int | discord.Member
+        Examples: 10000000000000010 | <@10000000000000010>
+
+    reason (Optional) : str
+        Examples: test reason
+
+    Example
+    --------
+    >>> !vcow 10000000000000010 
+    {emoji} {emoji} Spawd is going vegan! {emoji} {emoji}
+    """
+    assert COMMAND in docstring
+    if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.tests.integration.mock_discord_channel.MockVoiceChannel.fetch_message",
-                    new=AsyncMock(return_value=msg),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+            cog = bot.get_cog("UserManagementAppCommands")
+            command = cog.toggle_vegan_app_command
+            if member is None:
+                m = member
+            else:
+                m = member.format(
+                    member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                    simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
                 )
+            if other_guild is None:
+                g = other_guild
+            else:
+                g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
+            if reason is None:
+                r = reason
+            else:
+                r = reason
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
             )
-
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("voice_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("voice_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
             async with capture_command() as end_results:
-                cog = bot.get_cog("UserManagementAppCommands")
-                command = cog.toggle_vegan_app_command
-                transformer = AppTarget()
-                resolved_member = await transformer.transform(inx, m)
-                if g:
-                    resolved_guild = await transformer.transform(inx, g)
+                target_transformer = AppTarget()
+                if m:
+                    resolved_member = await target_transformer.transform(inx, m)
                 else:
-                    resolved_guild = None
+                    resolved_member = m
+                if g:
+                    resolved_guild = await target_transformer.transform(inx, g)
+                else:
+                    resolved_guild = g
                 await command.callback(
                     cog,
                     interaction=inx,
                     member=resolved_member,
+                    reason=r,
                     guild=resolved_guild,
-                    notes="",
                 )
             for kind, content in end_results:
-                print(content)
                 assert kind == "success"

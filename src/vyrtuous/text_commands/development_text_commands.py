@@ -27,9 +27,9 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database import Database
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import Module, ModuleObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.permissions import permission_service
 
 
 class DevelopmentTextCommands(commands.Cog):
@@ -140,6 +140,21 @@ class DevelopmentTextCommands(commands.Cog):
         guilds: Union[commands.Greedy[discord.Object], None] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if ctx.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            requested=["command.dev.sync"],
+        )
         synced = []
         if not guilds:
             if spec == "~":

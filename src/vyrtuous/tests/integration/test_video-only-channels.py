@@ -187,7 +187,7 @@ COLUMNS = [
     ("guild_snowflake", "bigint", False),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
-    ("expires_in", "timestamp with time zone", False),
+    ("expires_in", "timestamp with time zone", True),
 ]
 
 
