@@ -29,5 +29,6 @@ class VideoChannel:
     category = "video"
     channel_snowflake: int
     guild_snowflake: int
+    expires_in: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1869,7 +1869,7 @@ class InfoTextCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @commands.command(
-        name="vs",
+        name="video-only-channels",
         help="List video channels.",
     )
     @metadata(permission="command.info.video-channels")

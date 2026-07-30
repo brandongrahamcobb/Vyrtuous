@@ -192,3 +192,9 @@ SELECT
 FROM moderators;
 
 COMMIT;
+DROP TABLE moderators;
+DROP TABLE administrators;
+DROP TABLE developers;
+DROP TABLE coordinators;
+ALTER TABLE active_video_only_channels
+ADD COLUMN expires_in TIMESTAMP WITH TIME ZONE NULL;

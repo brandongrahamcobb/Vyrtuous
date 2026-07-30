@@ -78,7 +78,7 @@ async def test_ping_app_command(bot):
 
     Examples
     --------
-    >>> !ping
+    >>> /ping
     {emoji} Pong!
     """
     assert COMMAND in docstring

@@ -29,6 +29,7 @@ from vyrtuous.clean import (
     clean_automute_service,
     clean_ban_service,
     clean_text_mute_service,
+    clean_video_only_channels_service,
     clean_voice_mute_service,
 )
 from vyrtuous.db.database import Database
@@ -62,6 +63,8 @@ class ScheduledTasks(commands.Cog):
             self.cleanup_stale_overwrites.start()
         if not self.notify_loop.is_running():
             self.notify_loop.start()
+        if not self.check_expired_video_only_channels.is_running():
+            self.check_expired_video_only_channels.start()
 
     @tasks.loop(hours=1)
     async def clean_inactive_members(self) -> None:
@@ -128,6 +131,11 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_automutes(self) -> None:
         await clean_automute_service.clean_expired_automutes()
         self.__bot.logger.info("Cleaned up expired automute channels.")
+
+    @tasks.loop(minutes=1)
+    async def check_expired_video_only_channels(self) -> None:
+        await clean_video_only_channels_service.clean_expired_video_only_channels()
+        self.__bot.logger.info("Cleaned up expired video-only channels.")
 
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self) -> None:

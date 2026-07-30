@@ -26,10 +26,10 @@ from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.permissions import permission_service
 from vyrtuous.utils.tracking import stream_service
 
 
@@ -210,15 +210,20 @@ class ChannelManagementTextCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
-    @commands.command(name="v", help="Start/stop video-only channel.")
+    @commands.command(name="video-only", help="Start/stop video-only channel.")
     @metadata(permission="command.channel.video-channel")
-    async def toggle_video_channel_text_command(
+    async def toggle_video_only_channel_text_command(
         self,
         ctx: commands.Context,
         channel: discord.abc.GuildChannel | None = commands.parameter(
             converter=commands.VoiceChannelConverter,
             default=None,
             description="Specify a channel ID/mention.",
+        ),
+        duration: DurationWrapper | None = commands.parameter(
+            converter=Duration,
+            default=None,
+            description="Specify duration as m/h/d.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
@@ -241,6 +246,23 @@ class ChannelManagementTextCommands(commands.Cog):
             guild_snowflake = channel.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
+        if duration is None:
+            duration_obj = DurationObject(number=2, prefix="", sign=1, unit="h")
+        else:
+            duration_obj = duration.duration
+        if cap_service.exceeds_cap(
+            category="vmute",
+            channel_snowflake=channel_snowflake,
+            duration=duration_obj,
+            guild_snowflake=guild_snowflake,
+        ):
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                guild_snowflake=guild_snowflake,
+                channel_snowflake=channel_snowflake,
+                requested=["command.moderation.uncapped"],
+            )
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
@@ -249,7 +271,9 @@ class ChannelManagementTextCommands(commands.Cog):
             requested=["command.channel.video-channel"],
         )
         msg = await video_channel_service.toggle_video_channel(
-            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            duration=duration_obj,
         )
         return await tick.end(success=msg)
 

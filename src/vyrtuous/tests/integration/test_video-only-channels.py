@@ -36,7 +36,7 @@ from vyrtuous.tests.integration.test_suite import (
 
 GUILD_SNOWFLAKE = 10000000000000500
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
-COMMAND = "vs"
+COMMAND = "video-only-channels"
 BASE_PERMISSIONS = ["command.info.video-channels"]
 TABLE_NAME = VideoChannel.__tablename__
 

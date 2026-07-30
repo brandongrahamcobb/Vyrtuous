@@ -1764,7 +1764,7 @@ class InfoAppCommands(commands.Cog):
 
     @metadata(permission="command.info.video-channels")
     @app_commands.command(
-        name="vs",
+        name="video-only-channels",
         description="List video channels.",
     )
     @app_commands.describe(target="Specify one of: a channel ID/mention or server ID.")

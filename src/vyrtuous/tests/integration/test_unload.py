@@ -1,5 +1,5 @@
 """!/bin/python3
-test_backup.py The purpose of this program is to be the integration test for the backup command for Vyrtuous.
+test_unload.py The purpose of this program is to be the test for the unload cog command.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
+from vyrtuous.models.module import AppModule
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -32,23 +33,26 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-COMMAND = "backup"
-BASE_PERMISSIONS = ["command.dev.backup"]
+COG = "vyrtuous.listeners.scheduled_tasks"
+COMMAND = "unload"
+BASE_PERMISSIONS = ["command.dev.unload"]
 
 
 @pytest.mark.asyncio
-async def test_backup_text_command(bot, prefix: str):
+async def test_unload_text_command(bot, prefix: str):
     docstring = """
-    Request a backup file.
+    Unload a cog.
 
     Parameters
     ----------
-    None
+    module : str
+        Resolves to: ModuleObject
+        Examples: vyrtuous.listeners.scheduled_tasks
 
     Examples
     --------
-    >>> !backup
-    File
+    >>> !unload
+    {emoji} Unloaded `vyrtuous.listeners.scheduled_tasks`
     """
     assert COMMAND in docstring
     if (
@@ -62,24 +66,26 @@ async def test_backup_text_command(bot, prefix: str):
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
-            full = f"{prefix}{COMMAND}"
+            full = f"{prefix}{COMMAND} {COG}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
 
 
 @pytest.mark.asyncio
-async def test_backup_app_command(bot):
+async def test_unload_app_command(bot):
     docstring = """
-    Request a backup file.
+    Unloads a cog.
 
     Parameters
     ----------
-    None
+    module : str
+        Resolves to: ModuleObject
+        Examples: vyrtuous.listeners.scheduled_tasks
 
     Examples
     --------
-    >>> /backup
-    File
+    >>> !unload
+    {emoji} Unloaded `vyrtuous.listeners.scheduled_tasks`
     """
     assert COMMAND in docstring
     if (
@@ -94,7 +100,7 @@ async def test_backup_app_command(bot):
                 )
             )
             cog = bot.get_cog("DevelopmentAppCommands")
-            command = cog.backup_app_command
+            command = cog.unload_app_command
             objects = setup(bot)
             msg = build_message(
                 author=objects.get("author", None),
@@ -109,7 +115,9 @@ async def test_backup_app_command(bot):
                 guild=objects.get("guild", None),
                 message=msg,
             )
+            module_transformer = AppModule()
+            resolved_module = await module_transformer.transform(inx, COG)
             async with capture_command() as end_results:
-                await command.callback(cog, interaction=inx)
+                await command.callback(cog, interaction=inx, module=resolved_module)
             for kind, content in end_results:
                 assert kind == "success"

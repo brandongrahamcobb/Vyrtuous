@@ -27,13 +27,16 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import ChannelState, VideoChannelState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.video_channel import VideoChannel
+from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.utils.messaging import emojis
 
 MODEL = VideoChannel
 COOLDOWN = timedelta(minutes=30)
 
 
-async def toggle_video_channel(channel_snowflake: int, guild_snowflake: int) -> str:
+async def toggle_video_channel(
+    channel_snowflake: int, guild_snowflake: int, duration: DurationObject
+) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
@@ -55,8 +58,12 @@ async def toggle_video_channel(channel_snowflake: int, guild_snowflake: int) -> 
             channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
         )
     else:
+        duration_builder: DurationBuilder = DurationBuilder()
+        expires_in = duration_builder.load(duration).to_expires_in()
         video_channel = MODEL(
-            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            expires_in=expires_in,
         )
         await database_factory.create(video_channel)
         video_channels.add(video_channel.channel_snowflake)

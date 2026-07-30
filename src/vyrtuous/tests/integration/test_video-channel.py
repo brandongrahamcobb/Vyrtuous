@@ -1,5 +1,5 @@
 """!/bin/python3
-test_stage.py The purpose of this program is to be the integration test for the stage command for Vyrtuous.
+test_vr.py The purpose of this program is to be the integration test for the vr command for Vyrtuous.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,7 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.db.automute import AutoMute
+from vyrtuous.db.video_channel import VideoChannel
 from vyrtuous.models.duration import AppDuration
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
@@ -37,10 +37,9 @@ from vyrtuous.tests.integration.test_suite import (
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
-
-COMMAND = "automute"
-BASE_PERMISSIONS = ["command.channel.automute"]
-TABLE_NAME = AutoMute.__tablename__
+COMMAND = "video-only"
+BASE_PERMISSIONS = ["command.channel.video-channel"]
+TABLE_NAME = VideoChannel.__tablename__
 
 
 @pytest.mark.asyncio
@@ -51,11 +50,11 @@ TABLE_NAME = AutoMute.__tablename__
         ("<#{channel_snowflake}>", "8h"),
     ],
 )
-async def test_automute_text_command(
+async def test_video_channel_text_command(
     bot, prefix: str, channel: str | None, duration: str | None
 ):
     docstring = """
-    Toggle automute for a channel in the PostgreSQL database table "active_automute_channels".
+    Toggle video-only for a channel in the PostgreSQL database table "active_video_only_channels".
 
     Parameters
     ----------
@@ -68,7 +67,7 @@ async def test_automute_text_command(
 
     Example
     --------
-    >>> !automute
+    >>> !video-channel
     Embed
     """
     assert TABLE_NAME in docstring
@@ -107,9 +106,11 @@ async def test_automute_text_command(
         ("<#{channel_snowflake}>", "8h"),
     ],
 )
-async def test_automute_app_command(bot, channel: str | None, duration: str | None):
+async def test_video_channel_app_command(
+    bot, channel: str | None, duration: str | None
+):
     docstring = """
-    Toggle automute for a channel in the PostgreSQL database table "active_automute_channels".
+    Toggle video-only for a channel in the PostgreSQL database table "active_video_only_channels".
 
     Parameters
     ----------
@@ -122,7 +123,7 @@ async def test_automute_app_command(bot, channel: str | None, duration: str | No
 
     Example
     --------
-    >>> /automute
+    >>> /video-channel
     Embed
     """
     assert TABLE_NAME in docstring
@@ -139,7 +140,7 @@ async def test_automute_app_command(bot, channel: str | None, duration: str | No
                 )
             )
             cog = bot.get_cog("ChannelManagementAppCommands")
-            command = cog.toggle_automute_app_command
+            command = cog.toggle_video_only_channel_app_command
             if channel is None:
                 c = channel
             else:
