@@ -560,7 +560,7 @@ class InfoTextCommands(commands.Cog):
         self,
         ctx,
         lines: int = commands.parameter(
-            default=3, description="Specify the number of lines"
+            default=25, description="Specify the number of lines."
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)
@@ -583,8 +583,8 @@ class InfoTextCommands(commands.Cog):
             member_snowflake=ctx.author.id,
             requested=["command.info.debug"],
         )
-        if lines <= 0:
-            return await tick.end(warning="Lines must be greater than 0")
+        if 25 < lines <= 0:
+            return await tick.end(warning="Lines must be between 0 and 25")
         try:
             with open(PATH_LOG, "r") as f:
                 content = f.readlines()[-lines:]
@@ -1088,7 +1088,7 @@ class InfoTextCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
-    @commands.command(name="ow", help="Overwrite stats.")
+    @commands.command(name="overwrites", help="Overwrite stats.")
     @metadata(permission="command.info.overwrites")
     async def list_overwrites_text_command(
         self,

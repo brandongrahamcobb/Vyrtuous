@@ -25,8 +25,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
-from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import hero_service, vegan_service
 from vyrtuous.view.grant_view import GrantView
 from vyrtuous.view.revoke_view import RevokeView
@@ -94,7 +94,7 @@ class UserManagementAppCommands(commands.Cog):
         member="Specify a member ID/mention.",
         target="Specify `all` or a server ID.",
     )
-    async def toggle_invincibility_app_command(
+    async def toggle_hero_app_command(
         self,
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],

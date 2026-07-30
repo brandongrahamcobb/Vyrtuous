@@ -26,8 +26,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
-from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import hero_service, vegan_service
 
 
@@ -38,7 +38,7 @@ class UserManagementTextCommands(commands.Cog):
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
     @metadata(permission="command.users.hero")
-    async def toggle_invincibility_text_command(
+    async def toggle_hero_text_command(
         self,
         ctx: commands.Context,
         member: int | discord.Member = commands.parameter(

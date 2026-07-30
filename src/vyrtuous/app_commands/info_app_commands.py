@@ -527,7 +527,7 @@ class InfoAppCommands(commands.Cog):
     )
     @app_commands.describe(lines="Specify the number of lines.")
     async def debug_app_command(
-        self, interaction: discord.Interaction, lines: int | None = 3
+        self, interaction: discord.Interaction, lines: int | None = None
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
@@ -550,9 +550,9 @@ class InfoAppCommands(commands.Cog):
             requested=["command.info.debug"],
         )
         if lines is None:
-            return await tick.end(warning="Lines must not be `None`.")
-        if lines <= 0:
-            return await tick.end(warning="Lines must be greater than 0")
+            lines = 25
+        if 25 < lines <= 0:
+            return await tick.end(warning="Lines must be between than 1 and 25")
         try:
             with open(PATH_LOG, "r") as f:
                 content = f.readlines()[-lines:]
@@ -1043,7 +1043,7 @@ class InfoAppCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @metadata(permission="command.info.overwrites")
-    @app_commands.command(name="ow", description="Overwrite stats.")
+    @app_commands.command(name="overwrites", description="Overwrite stats.")
     @app_commands.describe(
         target="Specify a channel ID/mention or server ID.",
     )

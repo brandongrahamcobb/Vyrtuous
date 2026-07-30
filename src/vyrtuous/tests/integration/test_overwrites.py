@@ -1,5 +1,5 @@
 """!/bin/python3
-test_ping.py The purpose of this program is to be the integration test for the ping command for Vyrtuous.
+test_rmute_xrmute.py The purpose of this program is to be the integration test for the rmute and xrmute commands for Vyrtuous.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
+from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
@@ -32,30 +33,36 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-COMMAND = "debug"
-BASE_PERMISSIONS = ["command.info.debug"]
+GUILD_SNOWFLAKE = 10000000000000500
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+COMMAND = "overwrites"
+BASE_PERMISSIONS = ["command.info.overwrites"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "lines",
+    "target, extra_permissions",
     [
-        (None),
-        (10),
+        ("{channel_snowflake}", ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
+        ("{guild_snowflake}", ["command.info.scope.guild"]),
     ],
 )
-async def test_debug_text_command(bot, prefix: str, lines: int | None):
+async def test_overwrites_text_command(
+    bot, prefix: str, target: str | None, extra_permissions
+):
     docstring = """
-    Query the last few statements by line count
+    List member and role overwrites for a channel or guild.
 
     Parameters
     ----------
-    lines : int
-        Number of lines to show (up to 25)
+    target (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    Example
     --------
-    >>> !debug
+    >>> !overwrites
     Embed
     """
     assert COMMAND in docstring
@@ -63,43 +70,49 @@ async def test_debug_text_command(bot, prefix: str, lines: int | None):
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             full = f"{prefix}{COMMAND}"
-            if lines is None:
-                l = lines
+            if target is None:
+                t = target
             else:
-                l = lines
-                full += f" {l}"
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                )
+                full += f" {t}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "lines",
+    "target, extra_permissions",
     [
-        (None),
-        (10),
+        ("{channel_snowflake}", ["command.info.scope.channel"]),
+        ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
+        ("{guild_snowflake}", ["command.info.scope.guild"]),
     ],
 )
-async def test_debug_app_command(bot, lines: int | None):
+async def test_overwrites_app_command(bot, target: str | None, extra_permissions):
     docstring = """
-    Query the last few statements by line count
+    List member and role overwrites for a channel or guild.
 
     Parameters
     ----------
-    lines : int
-        Number of lines to show (up to 25)
+    target (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel |  discord.Guild
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    Example
     --------
-    >>> /debug
+    >>> /overwrites
     Embed
     """
     assert COMMAND in docstring
@@ -107,15 +120,23 @@ async def test_debug_app_command(bot, lines: int | None):
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.debug_app_command
+            command = cog.list_overwrites_app_command
+            if target is None:
+                t = target
+            else:
+                t = target.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                )
             objects = setup(bot)
             msg = build_message(
                 author=objects.get("author", None),
@@ -131,6 +152,15 @@ async def test_debug_app_command(bot, lines: int | None):
                 message=msg,
             )
             async with capture_command() as end_results:
-                await command.callback(cog, interaction=inx, lines=lines)
+                transformer = AppTarget()
+                if t:
+                    resolved_target = await transformer.transform(inx, t)
+                else:
+                    resolved_target = None
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    target=resolved_target,
+                )
             for kind, content in end_results:
                 assert kind == "success"

@@ -65,7 +65,7 @@ async def test_automutes_text_command(
 
     Example
     --------
-    >>> /automutes
+    >>> !automutes
     Embed
     """
     assert TABLE_NAME in docstring

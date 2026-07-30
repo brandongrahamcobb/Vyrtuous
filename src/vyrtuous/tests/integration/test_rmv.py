@@ -19,73 +19,59 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+VOICE_CHANNEL_TWO_SNOWFLAKE = 10000000000000012
+
+COMMAND = "rmv"
+BASE_PERMISSIONS = ["command.utility.move"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, target_channel, source_channel",
+    "target_channel, source_channel",
     [
         (
-            "Administrator",
-            "rmv",
             "{target_channel_snowflake}",
             "{source_channel_snowflake}",
         ),
         (
-            "Administrator",
-            "rmv",
             "{target_channel_snowflake}",
             None,
         ),
     ],
 )
-async def test_rmv(
-    bot, command: str, prefix: str, source_channel, target_channel, permission_role
+async def test_rmv_text_command(
+    bot, prefix: str, target_channel: str, source_channel: str | None
 ):
-    """
-    Move all members from one VC to another
+    docstring = """
+    Move members from one voice-channel to another voice-channel.
 
     Parameters
     ----------
-    source_channel_snowflake
-        The snowflake or mention of a channel
+    target_channel : str | int
+        Resolves to: discord.VoiceChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    target_channel_snowflake
-        The snowflake or mention of a channel
-
-    Examples
+    Example
     --------
-    >>> !!rmv 1000000000000010 1000000000000011
-    [{emoji} Members moved succesfully to Voice Channel One\n Member1\b Member2]
-
+    >>> !rmv 10000000000000011
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    tc = target_channel.format(
-        target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-    )
-    full = f"{prefix}{command} {tc}"
-    sc = None
-    if source_channel:
-        sc = source_channel.format(
-            source_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        )
-        full = f"{prefix}{command} {sc} {tc}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -93,73 +79,99 @@ async def test_rmv(
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
-                    new=AsyncMock(return_value=True),
+            tc = target_channel.format(target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+            full = f"{prefix}{COMMAND} {tc}"
+            if source_channel is None:
+                sc = source_channel
+            else:
+                sc = source_channel.format(
+                    source_channel_snowflake=VOICE_CHANNEL_TWO_SNOWFLAKE,
                 )
-            )
-
+                full += f" {sc}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target_channel, source_channel",
+    [
+        (
+            "{target_channel_snowflake}",
+            "{source_channel_snowflake}",
+        ),
+        (
+            "{target_channel_snowflake}",
+            None,
+        ),
+    ],
+)
+async def test_rmv_app_command(bot, target_channel: str, source_channel: str | None):
+    docstring = """
+    Move members from one voice-channel to another voice-channel.
+
+    Parameters
+    ----------
+    target_channel : str | int
+        Resolves to: discord.VoiceChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    Example
+    --------
+    >>> /rmv 10000000000000011
+    Embed
+    """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("voice_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("voice_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
             cog = bot.get_cog("UtilityAppCommands")
             command = cog.channel_move_all_app_command
-            transformer = AppTarget()
-            resolved_target = await transformer.transform(inx, tc)
-            if sc:
-                resolved_source = await transformer.transform(inx, sc)
+            tc = target_channel.format(target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+            if source_channel is None:
+                sc = source_channel
             else:
-                resolved_source = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+                sc = source_channel.format(
+                    source_channel_snowflake=VOICE_CHANNEL_TWO_SNOWFLAKE,
                 )
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
-                        new=AsyncMock(return_value=True),
-                    )
-                )
-
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("voice_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("voice_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                transformer = AppTarget()
+                resolved_target_channel = await transformer.transform(inx, tc)
+                if sc:
+                    resolved_source_channel = await transformer.transform(inx, sc)
+                else:
+                    resolved_source_channel = None
                 await command.callback(
                     cog,
                     interaction=inx,
-                    target_channel=resolved_target,
-                    source_channel=resolved_source,
+                    target_channel=resolved_target_channel,
+                    source_channel=resolved_source_channel,
                 )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"
