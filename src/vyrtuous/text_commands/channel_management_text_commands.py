@@ -250,7 +250,7 @@ class ChannelManagementTextCommands(commands.Cog):
             duration_obj = DurationObject(number=2, prefix="", sign=1, unit="h")
         else:
             duration_obj = duration.duration
-        if cap_service.exceeds_cap(
+        if await cap_service.exceeds_cap(
             category="vmute",
             channel_snowflake=channel_snowflake,
             duration=duration_obj,

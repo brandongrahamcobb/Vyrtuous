@@ -63,7 +63,7 @@ async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permi
 
     Example
     --------
-    >>> !vs
+    >>> !video-only-channels
     Embed
     """
     assert TABLE_NAME in docstring
@@ -121,7 +121,7 @@ async def test_vs_app_command(bot, target: str | None, extra_permissions):
 
     Example
     --------
-    >>> /vs
+    >>> /video-only-channels
     Embed
     """
     assert TABLE_NAME in docstring
@@ -187,6 +187,7 @@ COLUMNS = [
     ("guild_snowflake", "bigint", False),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
+    ("expires_in", "timestamp with time zone", False),
 ]
 
 

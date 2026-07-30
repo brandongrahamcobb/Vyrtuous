@@ -39,7 +39,6 @@ OTHER_GUILD_CHANNEL_SNOWFLAKE = 10000000000000013
 
 BASE_PERMISSIONS = [
     "command.moderation.voice-mute.channel_mute",
-    # "command.moderation.unvoice-mute.channel_unmute",
 ]
 COMMAND = "rmute"
 

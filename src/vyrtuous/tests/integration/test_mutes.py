@@ -1049,6 +1049,7 @@ COLUMNS = [
     ("target", "text", False),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
+    ("reason", "text", False),
 ]
 
 

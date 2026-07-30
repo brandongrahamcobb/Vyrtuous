@@ -286,12 +286,15 @@ async def test_tmutes_app_command(
 
 
 COLUMNS = [
-    ("channel_snowflake", "bigint", True),
+    ("channel_snowflake", "bigint", False),
     ("guild_snowflake", "bigint", False),
     ("member_snowflake", "bigint", False),
     ("expires_in", "timestamp with time zone", True),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
+    ("last_muted", "timestamp with time zone", True),
+    ("reset", "boolean", True),
+    ("reason", "text", False),
 ]
 
 

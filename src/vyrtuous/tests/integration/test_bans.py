@@ -296,6 +296,10 @@ COLUMNS = [
     ("expires_in", "timestamp with time zone", True),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
+    ("last_kicked", "timestamp with time zone", True),
+    ("blacklisted", "boolean", True),
+    ("reason", "text", False),
+    ("reset", "boolean", True),
 ]
 
 

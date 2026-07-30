@@ -193,6 +193,7 @@ COLUMNS = [
     ("duration_seconds", "integer", False),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
+    ("category", "text", False),
 ]
 
 
