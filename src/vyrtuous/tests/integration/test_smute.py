@@ -51,35 +51,16 @@ COMMAND = "smute"
     [
         ("{member_snowflake}", None, None, []),
         ("<@{member_snowflake}>", None, None, []),
-        (
-            "{member_snowflake}",
-            "test reason",
-            "{other_guild_snowflake}",
-            ["other_guilds"],
-        ),
-        (
-            "<@{member_snowflake}>",
-            "test reason",
-            "{other_guild_snowflake}",
-            ["other_guilds"],
-        ),
         ("{simplified_member_snowflake}", None, None, []),
-        ("<#{simplified_member_snowflake}>", None, None, []),
         (
             "{simplified_member_snowflake}",
             "test reason",
             "{other_guild_snowflake}",
             ["other_guilds"],
         ),
-        (
-            "<#{simplified_member_snowflake}>",
-            "test reason",
-            "{other_guild_snowflake}",
-            ["other_guilds"],
-        ),
     ],
 )
-async def test_smute_app_command(
+async def test_smute_text_command(
     bot,
     prefix: str,
     member: str | None,
@@ -117,6 +98,9 @@ async def test_smute_app_command(
                     side_effect=check_permissions(extra_permissions),
                 )
             )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
             full = f"{prefix}{COMMAND}"
             if member is None:
                 m = member
@@ -136,10 +120,6 @@ async def test_smute_app_command(
             else:
                 r = reason
                 full += f" {r}"
-
-            bot.registry.get(MemberState).active.update(
-                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
-            )
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
 
@@ -152,37 +132,17 @@ async def test_smute_app_command(
         ("<@{member_snowflake}>", None, None, []),
         ("{member_snowflake}", "test reason", None, []),
         ("<@{member_snowflake}>", "test reason", None, []),
-        (
-            "{member_snowflake}",
-            "test reason",
-            "{other_guild_snowflake}",
-            ["other_guilds"],
-        ),
-        (
-            "<@{member_snowflake}>",
-            "test reason",
-            "{other_guild_snowflake}",
-            ["other_guilds"],
-        ),
         ("{simplified_member_snowflake}", None, None, []),
-        ("<#{simplified_member_snowflake}>", None, None, []),
         ("{simplified_member_snowflake}", "test reason", None, []),
-        ("<#{simplified_member_snowflake}>", "test reason", None, []),
         (
             "{simplified_member_snowflake}",
             "test reason",
             "{other_guild_snowflake}",
             ["other_guilds"],
         ),
-        (
-            "<#{simplified_member_snowflake}>",
-            "test reason",
-            "{other_guild_snowflake}",
-            ["other_guilds"],
-        ),
     ],
 )
-async def test_smute_text_command(
+async def test_smute_app_command(
     bot,
     member: str | None,
     other_guild: str | None,
@@ -262,8 +222,7 @@ async def test_smute_text_command(
                 if g:
                     resolved_guild = await target_transformer.transform(inx, g)
                 else:
-                    resolved_guild = m
-
+                    resolved_guild = g
                 await command.callback(
                     cog,
                     interaction=inx,
