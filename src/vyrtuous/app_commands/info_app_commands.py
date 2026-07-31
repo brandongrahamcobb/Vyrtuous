@@ -1560,6 +1560,50 @@ class InfoAppCommands(commands.Cog):
             return await tick.end(success="No infractions found")
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.survey")
+    @app_commands.command(name="survey", description="Survey members.")
+    @app_commands.describe(
+        channel="Specify a channel ID/mention.",
+    )
+    async def survey_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if channel is None:
+            if interaction.guild is None:
+                return await tick.end(warning="This command must be used in a server.")
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must be used in a server channel."
+                )
+            channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
+        elif isinstance(
+            channel.target,
+            (discord.VoiceChannel, discord.StageChannel),
+        ):
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
+        else:
+            return await tick.end(warning="This command must target a valid channel.")
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.users.survey"],
+        )
+        pages = await permission_service.survey(
+            permission_state=permission_state,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+        )
+        return await tick.end(success=pages)
+
     @metadata(permission="command.info.text-mutes")
     @app_commands.command(name="tmutes", description="List text-mutes.")
     @app_commands.describe(

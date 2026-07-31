@@ -1625,35 +1625,47 @@ class InfoTextCommands(commands.Cog):
             return await tick.end(success="No infractions found")
         return await tick.end(success=pages)
 
-    # @commands.command(name="survey", help="Survey stage members.")
-    # async def survey_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
-    #         converter=commands.VoiceChannelConverter,
-    #         default=None,
-    #         description="Tag a channel or include its ID.",
-    #     ),
-    # ) -> discord.Message:
-    #     tick = Tick(bot=self.__bot, ctx=ctx)
-    #     if channel is None:
-    #         if ctx.guild is None:
-    #             return await tick.end(
-    #                 warning="This command must target a valid server."
-    #             )
-    #         if ctx.channel is None:
-    #             return await tick.end(
-    #                 warning="This command must target a valid channel."
-    #             )
-    #         channel_snowflake = ctx.channel.id
-    #         guild_snowflake = ctx.guild.id
-    #     else:
-    #         channel_snowflake = channel.id
-    #         guild_snowflake = channel.guild.id
-    #     pages = await moderator_service.survey(
-    #         channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
-    #     )
-    #     return await tick.end(success=pages)
+    @commands.command(name="survey", help="Survey members.")
+    @metadata(permission="command.info.survey")
+    async def survey_text_command(
+        self,
+        ctx: commands.Context,
+        channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify a channel ID/mention.",
+        ),
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if channel is None:
+            if ctx.guild is None:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            if ctx.channel is None:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+            channel_snowflake = ctx.channel.id
+            guild_snowflake = ctx.guild.id
+        else:
+            channel_snowflake = channel.id
+            guild_snowflake = channel.guild.id
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.info.survey"],
+        )
+        pages = await permission_service.survey(
+            permission_state=permission_state,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake
+        )
+        return await tick.end(success=pages)
 
     @commands.command(name="tmutes", help="List text-mutes.")
     @metadata(permission="command.info.text-mutes")

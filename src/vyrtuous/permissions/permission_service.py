@@ -1,9 +1,17 @@
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import PermissionGroup
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
-from vyrtuous.utils.errors.error import CheckFailure, HasEqualOrLowerRole
+from vyrtuous.utils.errors.error import (
+    ChannelNotFound,
+    CheckFailure,
+    GuildNotFound,
+    HasEqualOrLowerRole,
+)
+from vyrtuous.utils.messaging import emojis
 
 MODEL = PermissionEntry
 
@@ -231,114 +239,80 @@ def get_default_group(permission_state: PermissionState) -> PermissionGroup:
     return next(group for group in permission_state.groups.values() if group.default)
 
 
-# async def survey(channel_snowflake: int, guild_snowflake: int) -> list[discord.Embed]:
-#     bot: DiscordBot = DiscordBot.get_instance()
-#     guild = bot.get_guild(guild_snowflake)
-#     if guild is None:
-#         raise GuildNotFound(str(guild_snowflake))
-#     channel = guild.get_channel(channel_snowflake)
-#     if channel is None:
-#         raise ChannelNotFound(str(channel_snowflake))
-#     if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-#         raise commands.CheckFailure("This command must target a valid channel.")
-#     chunk_size, pages = 7, []
-#     (
-#         sysadmins,
-#         developers,
-#         guild_owners,
-#         administrators,
-#         coordinators,
-#         moderators,
-#     ) = ([], [], [], [], [], [])
-#
-#     for member in channel.members:
-#         try:
-#             if await sysadmin_service.is_sysadmin(member_snowflake=member.id):
-#                 sysadmins.append(member)
-#         except commands.CheckFailure as e:
-#             bot.logger.warning(str(e).capitalize())
-#         try:
-#             if await developer_service.is_developer(member_snowflake=member.id):
-#                 developers.append(member)
-#         except commands.CheckFailure as e:
-#             bot.logger.warning(str(e).capitalize())
-#         try:
-#             if await guild_owner_service.is_guild_owner(
-#                 guild_snowflake=channel.guild.id, member_snowflake=member.id
-#             ):
-#                 guild_owners.append(member)
-#         except commands.CheckFailure as e:
-#             bot.logger.warning(str(e).capitalize())
-#         try:
-#             if await administrator_service.is_administrator(
-#                 guild_snowflake=channel.guild.id, member_snowflake=member.id
-#             ):
-#                 administrators.append(member)
-#         except commands.CheckFailure as e:
-#             bot.logger.warning(str(e).capitalize())
-#         try:
-#             if await coordinator_service.is_coordinator(
-#                 channel_snowflake=channel.id,
-#                 guild_snowflake=channel.guild.id,
-#                 member_snowflake=member.id,
-#             ):
-#                 coordinators.append(member)
-#         except commands.CheckFailure as e:
-#             bot.logger.warning(str(e).capitalize())
-#         try:
-#             if await is_moderator(
-#                 channel_snowflake=channel.id,
-#                 guild_snowflake=channel.guild.id,
-#                 member_snowflake=member.id,
-#             ):
-#                 moderators.append(member)
-#         except commands.CheckFailure as e:
-#             bot.logger.warning(str(e).capitalize())
-#     sysadmins_chunks = [
-#         sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
-#     ]
-#     guild_owners_chunks = [
-#         guild_owners[i : i + chunk_size]
-#         for i in range(0, len(guild_owners), chunk_size)
-#     ]
-#     developers_chunks = [
-#         developers[i : i + chunk_size] for i in range(0, len(developers), chunk_size)
-#     ]
-#     administrators_chunks = [
-#         administrators[i : i + chunk_size]
-#         for i in range(0, len(administrators), chunk_size)
-#     ]
-#     coordinators_chunks = [
-#         coordinators[i : i + chunk_size]
-#         for i in range(0, len(coordinators), chunk_size)
-#     ]
-#     moderators_chunks = [
-#         moderators[i : i + chunk_size] for i in range(0, len(moderators), chunk_size)
-#     ]
-#     roles_chunks = [
-#         ("Sysadmins", sysadmins, sysadmins_chunks),
-#         ("Developers", developers, developers_chunks),
-#         ("Guild Owners", guild_owners, guild_owners_chunks),
-#         ("Administrators", administrators, administrators_chunks),
-#         ("Coordinators", coordinators, coordinators_chunks),
-#         ("Moderators", moderators, moderators_chunks),
-#     ]
-#     max_pages = max(len(c[2]) for c in roles_chunks)
-#     for page in range(max_pages):
-#         embed = discord.Embed(
-#             title=f"{emojis.get_random_emoji()} Survey results for {channel.name}",
-#             description=f"Total surveyed: {len(channel.members)}",
-#             color=discord.Color.blurple(),
-#         )
-#         for role_name, role_list, chunks in roles_chunks:
-#             chunk = chunks[page] if page < len(chunks) else []
-#             embed.add_field(
-#                 name=f"{role_name} ({len(chunk)}/{len(role_list)})",
-#                 value=", ".join(u.mention for u in chunk) if chunk else "*None*",
-#                 inline=False,
-#             )
-#         pages.append(embed)
-#     return pages
+async def survey(
+    permission_state: PermissionState, channel_snowflake: int, guild_snowflake: int
+) -> list[discord.Embed]:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise ChannelNotFound(str(channel_snowflake))
+    if not isinstance(
+        channel,
+        (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
+    ):
+        raise CheckFailure("This command must target a valid channel.")
+    group_members: dict[str, list[discord.Member]] = {}
+    for member in channel.members:
+        group = await resolve_effective_group(
+            permission_state=permission_state,
+            guild_snowflake=guild_snowflake,
+            channel_snowflake=channel_snowflake,
+            member_snowflake=member.id,
+        )
+        if group is None:
+            continue
+        group_members.setdefault(group.alias, []).append(member)
+    groups = sorted(
+        permission_state.groups.values(),
+        key=lambda group: len(group.ancestors),
+        reverse=True,
+    )
+    chunk_size = 7
+    group_chunks: list[tuple[str, list[discord.Member], list[list[discord.Member]]]] = (
+        []
+    )
+    for group in groups:
+        members = group_members.get(group.alias, [])
+        if not members:
+            continue
+        chunks = [
+            members[i : i + chunk_size] for i in range(0, len(members), chunk_size)
+        ]
+        group_chunks.append(
+            (
+                group.name,
+                members,
+                chunks,
+            )
+        )
+    pages: list[discord.Embed] = []
+    max_pages = max(
+        (len(chunks) for _, _, chunks in group_chunks),
+        default=1,
+    )
+    for page in range(max_pages):
+        embed = discord.Embed(
+            title=f"{emojis.get_random_emoji()} Survey results for {channel.name}",
+            description=f"Total surveyed: {len(channel.members)}",
+            color=discord.Color.blurple(),
+        )
+        for name, members, chunks in group_chunks:
+            chunk = chunks[page] if page < len(chunks) else []
+            embed.add_field(
+                name=f"{name} ({len(members)})",
+                value=(
+                    ", ".join(member.mention for member in chunk) if chunk else "*None*"
+                ),
+                inline=False,
+            )
+
+        pages.append(embed)
+    return pages
+
+
 #
 # async def log_mod(
 #     author_snowflake: int,

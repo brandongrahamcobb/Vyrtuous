@@ -19,58 +19,54 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
 
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
+COMMAND = "survey"
+BASE_PERMISSIONS = ["command.info.survey", "command.info.scope.channel"]
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, channel",
+    "channel",
     [
-        ("Moderator", "survey", None),
-        ("Moderator", "survey", "{channel_snowflake}"),
-        ("Moderator", "survey", "<#{channel_snowflake}>"),
+        ("{channel_snowflake}"),
+        ("<#{channel_snowflake}>"),
     ],
 )
-async def test_survey(bot, command: str, prefix: str, channel, permission_role):
-    """
-    Server mute a member localized to the guild
+async def test_survey_text_command(
+    bot,
+    prefix: str,
+    channel: str | None,
+):
+    docstring = """
+    List member-group association from the PermissionState cache.
 
     Parameters
     ----------
-    None
-        No paramers neccesary
+    channel (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    Example
     --------
-
-    >>> !survey <#10000000000000010>
-    [{emoji} Survey results for Channel1]
-
-    >>> !survey 10000000000000010
-    [{emoji} Survey results for Channel1]
+    >>> !survey
+    Embed
     """
-    permission_state = bot.registry.get(PermissionState)
-    full = f"{prefix}{command}"
-    c = None
-    if channel:
-        c = channel.format(
-            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        )
-        full = f"{prefix}{command} {c}"
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -78,53 +74,92 @@ async def test_survey(bot, command: str, prefix: str, channel, permission_role):
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            full = f"{prefix}{COMMAND}"
+            if channel is None:
+                c = channel
+            else:
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                )
+                full += f" {c}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "channel",
+    [
+        ("{channel_snowflake}"),
+        ("<#{channel_snowflake}>"),
+    ],
+)
+async def test_survey_app_command(
+    bot,
+    channel: str | None,
+):
+    docstring = """
+    List member-group association from the PermissionState cache.
+
+    Parameters
+    ----------
+    channel (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    Example
+    --------
+    >>> /survey
+    Embed
+    """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("voice_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("voice_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
-            cog = bot.get_cog("HiddenModeratorAppCommands")
-            command = cog.survey_app_command
-            transformer = AppTarget()
-            if c:
-                resolved_channel = await transformer.transform(inx, c)
-            else:
-                resolved_channel = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
                 )
-                await command.callback(cog, interaction=inx, channel=resolved_channel)
-        for kind, content in end_results:
-            assert kind == "success"
+            )
+            cog = bot.get_cog("InfoAppCommands")
+            command = cog.survey_app_command
+            if channel is None:
+                c = channel
+            else:
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                )
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("text_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("text_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                transformer = AppTarget()
+                if c:
+                    resolved_channel = await transformer.transform(inx, c)
+                else:
+                    resolved_channel = None
+                await command.callback(
+                    cog,
+                    interaction=inx,
+                    channel=resolved_channel,
+                )
+            for kind, content in end_results:
+                assert kind == "success"
