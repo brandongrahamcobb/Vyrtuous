@@ -95,7 +95,7 @@ async def test_video_channel_text_command(
                 d = duration
                 full += f" {d}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

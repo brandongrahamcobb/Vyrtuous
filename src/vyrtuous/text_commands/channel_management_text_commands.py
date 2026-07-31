@@ -25,7 +25,7 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.models.target import Target, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.messaging.tick import Tick
@@ -43,8 +43,8 @@ class ChannelManagementTextCommands(commands.Cog):
     async def toggle_automute_text_command(
         self,
         ctx: commands.Context,
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -67,11 +67,11 @@ class ChannelManagementTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         await permission_service.has_permissions(
@@ -101,8 +101,8 @@ class ChannelManagementTextCommands(commands.Cog):
         category: CategoryObject = commands.parameter(
             converter=Category, description="One of: `ban`, `tmute` or `vmute`."
         ),
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -123,11 +123,11 @@ class ChannelManagementTextCommands(commands.Cog):
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         await permission_service.has_permissions(
@@ -155,12 +155,12 @@ class ChannelManagementTextCommands(commands.Cog):
     async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
-        target_channel: discord.abc.GuildChannel = commands.parameter(
-            converter=commands.TextChannelConverter,
+        target_channel: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a channel ID/mention or server ID where logs will be streamed.",
         ),
-        source: discord.abc.GuildChannel | discord.Guild | None = commands.parameter(
-            converter=MultiConverter,
+        source: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention or server ID where logs will come from.",
         ),
@@ -175,7 +175,7 @@ class ChannelManagementTextCommands(commands.Cog):
                 )
             source_obj = ctx.guild
         elif isinstance(
-            source,
+            source.target,
             (
                 discord.Guild,
                 discord.VoiceChannel,
@@ -183,16 +183,16 @@ class ChannelManagementTextCommands(commands.Cog):
                 discord.StageChannel,
             ),
         ):
-            source_obj = source
+            source_obj = source.target
         else:
             return await tick.end(
                 warning="This command must target a valid channel or server."
             )
         if isinstance(
-            target_channel,
+            target_channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            target_channel_obj = target_channel
+            target_channel_obj = target_channel.target
         else:
             return await tick.end(
                 warning="This command must target a valid target channel."
@@ -215,8 +215,8 @@ class ChannelManagementTextCommands(commands.Cog):
     async def toggle_video_only_channel_text_command(
         self,
         ctx: commands.Context,
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -239,11 +239,11 @@ class ChannelManagementTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         if duration is None:

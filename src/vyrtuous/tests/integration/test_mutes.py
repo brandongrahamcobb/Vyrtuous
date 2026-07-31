@@ -529,7 +529,7 @@ async def test_mutes_text_command(
                 {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
             )
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

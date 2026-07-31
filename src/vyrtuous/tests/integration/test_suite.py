@@ -53,9 +53,11 @@ OTHER_GUILD_CHANNEL_SNOWFLAKE = 10000000000000013
 
 @asynccontextmanager
 async def capture(channel):
+    result = {}
     called = []
     before = list(channel._messages)
     channel._end_result = []
+    channel._end_content = []
     original_end = Tick.end
 
     async def patched_end(self, *args, **kwargs):
@@ -63,10 +65,13 @@ async def capture(channel):
         self._add_reactions = AsyncMock()
         if "success" in kwargs:
             channel._end_result.append("success")
+            channel._end_content.append(kwargs["success"])
         elif "warning" in kwargs:
             channel._end_result.append("warning")
+            channel._end_content.append(kwargs["warning"])
         elif "error" in kwargs:
             channel._end_result.append("error")
+            channel._end_content.append(kwargs["error"])
             print(kwargs)
         else:
             print("   ⚪ No success/warning/error found in kwargs")
@@ -75,7 +80,7 @@ async def capture(channel):
     Tick.end = patched_end
 
     try:
-        yield
+        yield result
         await asyncio.sleep(0.5)
     finally:
         Tick.end = original_end
@@ -83,7 +88,10 @@ async def capture(channel):
         # if not after:
         #     await asyncio.sleep(1)
         new_messages = after[len(before) :]
-        channel._captured = new_messages
+        # channel._captured = new_messages
+        result["messages"] = new_messages
+        result["content"] = channel._end_content
+        result["end_result"] = channel._end_result
 
 
 def build_guild(id, bot, state):
@@ -207,10 +215,10 @@ async def send_message(bot, content: str = None):
         state=objects.get("state", None),
     )
 
-    async with capture(objects.get("voice_channel", None)):
+    async with capture(objects.get("voice_channel", None)) as captured:
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-    return objects.get("voice_channel", None)._end_result
+    return captured
 
 
 @asynccontextmanager

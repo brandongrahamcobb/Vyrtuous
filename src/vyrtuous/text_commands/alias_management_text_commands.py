@@ -17,8 +17,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
@@ -27,7 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.models.target import Target, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
 
@@ -50,13 +48,13 @@ class AliasManagementTextCommands(commands.Cog):
             description="Specify a category for a `ban`, `flag`, `role`, `tmute`, or `vmute` action.",
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention",
         ),
-        role: discord.Role | None = commands.parameter(
-            converter=MultiConverter,
+        role: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a role ID/mention.",
         ),
@@ -74,11 +72,11 @@ class AliasManagementTextCommands(commands.Cog):
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         await permission_service.has_permissions(
@@ -116,8 +114,8 @@ class AliasManagementTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         alias_name: str = commands.parameter(description="Include an alias name"),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -129,8 +127,10 @@ class AliasManagementTextCommands(commands.Cog):
             if ctx.guild is None:
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
+        elif isinstance(guild.target, discord.Guild):
+            guild_snowflake = guild.target.id
         else:
-            guild_snowflake = guild.id
+            return await tick.end(warning="This command must target a valid server.")
         if ctx.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel."

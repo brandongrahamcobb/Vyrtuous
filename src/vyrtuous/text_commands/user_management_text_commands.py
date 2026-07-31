@@ -17,17 +17,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.permissions import PermissionGroup
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.group import Group, GroupObject
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.models.target import Target, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import autoassign_role_service, hero_service, vegan_service
@@ -47,12 +44,12 @@ class UserManagementTextCommands(commands.Cog):
             converter=Group,
             description="Specify a group alias or name.",
         ),
-        role: discord.Role = commands.parameter(
-            converter=MultiConverter,
+        role: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a role ID/mention.",
         ),
-        guild: discord.Guild | None = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -65,25 +62,21 @@ class UserManagementTextCommands(commands.Cog):
         if guild is None:
             guild_snowflake = ctx.guild.id
         else:
-            if not isinstance(guild, discord.Guild):
+            if not isinstance(guild.target, discord.Guild):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-            guild_snowflake = guild.id
+            guild_snowflake = guild.target.id
         if ctx.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel."
             )
         else:
             channel_snowflake = ctx.channel.id
-        if not isinstance(role, discord.Role):
+        if not isinstance(role.target, discord.Role):
             return await tick.end(warning="This command must target a valid role.")
         else:
-            role_snowflake = role.id
-        if group is None:
-            return await tick.end(warning="This command must target a valid group.")
-        else:
-            group_obj = group.group
+            role_snowflake = role.target.id
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
@@ -101,7 +94,7 @@ class UserManagementTextCommands(commands.Cog):
             )
         pages = await autoassign_role_service.toggle_autoassign_role(
             author_snowflake=ctx.author.id,
-            group=group_obj,
+            group=group.group,
             guild_snowflake=guild_snowflake,
             message_snowflake=ctx.message.id,
             message_channel_snowflake=ctx.message.channel.id,
@@ -114,12 +107,12 @@ class UserManagementTextCommands(commands.Cog):
     async def toggle_hero_text_command(
         self,
         ctx: commands.Context,
-        member: int | discord.Member = commands.parameter(
-            converter=MultiConverter,
+        member: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a member ID/mention.",
         ),
-        target: Union[str, discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a `all` or a server ID.",
         ),
@@ -135,8 +128,8 @@ class UserManagementTextCommands(commands.Cog):
                 )
             guilds = [ctx.guild]
         else:
-            if isinstance(target, discord.Guild):
-                guilds = [target]
+            if isinstance(target.target, discord.Guild):
+                guilds = [target.target]
             elif target == "all":
                 guilds = bot.guilds
                 singular = False
@@ -150,17 +143,17 @@ class UserManagementTextCommands(commands.Cog):
             )
         else:
             channel_snowflake = ctx.channel.id
-        if isinstance(member, int):
-            member_snowflake = member
+        if isinstance(member.target, int):
+            member_snowflake = member.target
             member_name = "Unknown"
             simplified_member = self.__bot.registry.get(MemberState).active.get(
                 member_snowflake
             )
             if simplified_member:
                 member_name = simplified_member[0]
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
-            member_name = member.mention
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+            member_name = member.target.mention
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         if not singular:
@@ -211,12 +204,12 @@ class UserManagementTextCommands(commands.Cog):
     async def toggle_vegan_text_command(
         self,
         ctx: commands.Context,
-        member: int | discord.Member = commands.parameter(
-            converter=MultiConverter,
+        member: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a member ID/mention.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=TargetObject,
             default=None,
             description="Specify a server ID.",
         ),
@@ -235,8 +228,8 @@ class UserManagementTextCommands(commands.Cog):
                 )
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -251,10 +244,10 @@ class UserManagementTextCommands(commands.Cog):
             guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id
         ):
             return await tick.end(warning="Author is not a vegan.")
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         await permission_service.has_permissions(

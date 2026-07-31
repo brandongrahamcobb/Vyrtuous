@@ -93,7 +93,7 @@ async def test_rmv_text_command(
                 )
                 full += f" {sc}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

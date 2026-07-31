@@ -77,7 +77,7 @@ async def test_debug_text_command(bot, prefix: str, lines: int | None):
                 l = lines
                 full += f" {l}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

@@ -90,7 +90,7 @@ async def test_roleid_text_command(
                 g = other_guild.format(other_guild_snowflake=OTHER_GUILD_SNOWFLAKE)
                 full += f" {g}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

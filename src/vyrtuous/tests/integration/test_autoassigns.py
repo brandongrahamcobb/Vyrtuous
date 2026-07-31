@@ -91,7 +91,7 @@ async def test_autoassigns_text_command(bot, prefix: str, guild: str | None):
                 )
                 full += f" {g}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

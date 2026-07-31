@@ -49,7 +49,7 @@ async def test_aliases_text_command(
 ):
     docstring = """
     List aliases which are registered in the PostgreSQL database
-    'vyrtuous' in the table 'command aliases'.
+    'vyrtuous' in the table 'command_aliases'.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ async def test_aliases_text_command(
 
     Example
     --------
-    >>> !automutes
+    >>> !aliases
     Embed
     """
     assert TABLE_NAME in docstring
@@ -92,7 +92,7 @@ async def test_aliases_text_command(
                 )
                 full += f" {t}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 COLUMNS = [

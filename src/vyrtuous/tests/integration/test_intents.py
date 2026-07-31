@@ -88,7 +88,7 @@ async def test_intents_text_command(
                 )
                 full += f" {t}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

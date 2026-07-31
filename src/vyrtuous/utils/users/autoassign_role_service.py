@@ -41,7 +41,6 @@ async def toggle_autoassign_role(
     message_channel_snowflake: int,
     role_snowflake: int,
 ) -> list[discord.Embed]:
-    title = f"{emojis.get_random_emoji()} Autoassign Roles"
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
@@ -50,7 +49,7 @@ async def toggle_autoassign_role(
     if role is None:
         raise RoleNotFound(str(role_snowflake))
     autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    autoassign_roles = await autoassign_database_factory.select(
+    autoassign_role = await autoassign_database_factory.select(
         group_alias=group.alias,
         guild_snowflake=guild_snowflake,
         role_snowflake=role_snowflake,
@@ -60,10 +59,11 @@ async def toggle_autoassign_role(
     group_members = await group_database_factory.select(
         group_alias=group.alias,
         guild_snowflake=role.guild.id,
-        role_snowflake=role_snowflake,
+        role_snowflakes=role_snowflake,
+        inside_fields=["role_snowflakes"],
         singular=False,
     )
-    if autoassign_roles:
+    if autoassign_role:
         action = "revoked"
         revoked_members: dict[int, dict[int, list[str]]] = {}
         for group_member in group_members:
@@ -96,10 +96,11 @@ async def toggle_autoassign_role(
             revoked_members.setdefault(guild_snowflake, {}).setdefault(
                 role_snowflake, []
             ).append(display_name)
+        await autoassign_database_factory.delete_by_cls(autoassign_role)
         members = revoked_members.get(guild_snowflake, {}).get(role_snowflake, [])
     else:
         action = "granted"
-        granted_members: dict[int, dict[int, list[discord.Member]]] = {}
+        granted_members: dict[int, dict[int, list[str]]] = {}
         granted_members.setdefault(role.guild.id, {})[role_snowflake] = []
         autoassign_role = AutoAssignRole(
             group_alias=group.alias,
@@ -123,18 +124,20 @@ async def toggle_autoassign_role(
                 message_channel_snowflake=message_channel_snowflake,
                 role_snowflake=role_snowflake,
             )
-            granted_members[role.guild.id][role_snowflake].append(member)
+            granted_members[role.guild.id][role_snowflake].append(member.mention)
         members = granted_members.get(role.guild.id, {}).get(role_snowflake, [])
+    title = f"{emojis.get_random_emoji()} Autoassign Roles"
     embed = discord.Embed(
         title=title,
-        description=f"`{role.name}` was `{action}` `{group.name}.",
+        description=f"`{role.name}` was {action} `{group.name}`.",
         color=discord.Color.red() if action == "revoked" else discord.Color.green(),
     )
     embed.add_field(name="Role ID", value=str(role_snowflake), inline=False)
     embed.add_field(name="Guild", value=str(guild.name), inline=False)
+    pages: list[discord.Embed] = []
+    pages.append(embed)
     chunks = []
     chunk = []
-    pages: list[discord.Embed] = []
     for member in members:
         chunk.append(member)
         if len(chunk) == list_service.CHUNK_SIZE:
@@ -146,16 +149,16 @@ async def toggle_autoassign_role(
     page_number = 1
     for chunk in chunks:
         embed = discord.Embed(
-            title=f"Members {action.capitalize()}",
+            title=f"Members",
             color=(
                 discord.Color.red() if action == "revoked" else discord.Color.green()
             ),
         )
         for member in chunk:
             embed.add_field(
-                name=f"{field_count}. {member}",
-                value=f"{member.mention} ({member.id})",
-                inline=False,
+                name=f"{field_count}",
+                value=f"{member}",
+                inline=True,
             )
             field_count += 1
         embed.set_footer(text=f"Page {page_number}")
@@ -190,7 +193,7 @@ async def added_role(
     group_member = await group_database_factory.select(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
-        role_snowflakes=[role_snowflake],
+        role_snowflakes=role_snowflake,
         inside_fields=["role_snowflakes"],
         singular=True,
     )
@@ -200,7 +203,7 @@ async def added_role(
     if not group_member:
         permission_entry = PermissionEntry(
             guild_snowflake=int(guild_snowflake),
-            group_alias=group_member.group_alias,
+            group_alias=autoassign_role.group_alias,
             member_snowflake=int(member_snowflake),
             role_snowflakes=[int(role_snowflake)],
         )
@@ -241,7 +244,7 @@ async def removed_role(
     group_member = await group_database_factory.select(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
-        role_snowflakes=[role_snowflake],
+        role_snowflakes=role_snowflake,
         inside_fields=["role_snowflakes"],
         singular=True,
     )

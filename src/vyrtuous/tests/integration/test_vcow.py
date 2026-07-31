@@ -132,7 +132,7 @@ async def test_vcow_text_command(
                 r = reason
                 full += f" {r}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

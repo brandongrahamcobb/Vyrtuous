@@ -152,7 +152,7 @@ async def test_bans_text_command(
                 )
                 full += f" {g}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

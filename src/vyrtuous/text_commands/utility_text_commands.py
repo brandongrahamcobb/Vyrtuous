@@ -17,19 +17,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.multi_converter import MultiConverter
+from vyrtuous.models.target import Target, TargetObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.permissions import permission_service
 
 
 class UtilityTextCommands(commands.Cog):
@@ -100,16 +98,16 @@ class UtilityTextCommands(commands.Cog):
     async def purge_text_command(
         self,
         ctx: commands.Context,
-        member: Union[int, discord.Member, None] = commands.parameter(
-            converter=MultiConverter,
+        member: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify the member ID/mention.",
         ),
         amount: int = commands.parameter(
             default=25, description="Number of messages to delete."
         ),
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify the channel ID/mention.",
         ),
@@ -133,20 +131,20 @@ class UtilityTextCommands(commands.Cog):
             guild_snowflake = ctx.guild.id
         else:
             if not isinstance(
-                channel,
+                channel.target,
                 (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
             ):
                 return await tick.end(
                     warning="This command must target a valid channel."
                 )
-            channel_obj = channel
-            guild_snowflake = channel.guild.id
+            channel_obj = channel.target
+            guild_snowflake = channel.target.guild.id
         if member is None:
             member_snowflake = None
             display_name = None
         else:
-            if isinstance(member, int):
-                member_snowflake = member
+            if isinstance(member.target, int):
+                member_snowflake = member.target
                 simplified_member = self.__bot.registry.get(MemberState).active.get(
                     member_snowflake, None
                 )
@@ -154,9 +152,13 @@ class UtilityTextCommands(commands.Cog):
                     display_name = simplified_member[0]
                 else:
                     raise MemberNotFound(str(member))
-            elif isinstance(member, discord.Member):
-                member_snowflake = member.id
-                display_name = str(member.mention)
+            elif isinstance(member.target, discord.Member):
+                member_snowflake = member.target.id
+                display_name = str(member.target.mention)
+            else:
+                return await tick.end(
+                    warning="This command must target a valid member."
+                )
         count = 0
         skipped = 0
         async for msg in channel_obj.history():
@@ -203,17 +205,12 @@ class UtilityTextCommands(commands.Cog):
     async def channel_move_all_text_command(
         self,
         ctx: commands.Context,
-        target_channel: (
-            discord.VoiceChannel | discord.StageChannel | None
-        ) = commands.parameter(
-            converter=MultiConverter,
-            default=None,
+        target_channel: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a `to` channel ID/mention.",
         ),
-        source_channel: (
-            discord.VoiceChannel | discord.StageChannel | None
-        ) = commands.parameter(
-            converter=MultiConverter,
+        source_channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a `from` channel ID/mention.",
         ),
@@ -222,15 +219,15 @@ class UtilityTextCommands(commands.Cog):
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if isinstance(
-            target_channel,
+            target_channel.target,
             (discord.VoiceChannel, discord.StageChannel),
         ):
-            target_guild_snowflake = target_channel.guild.id
-            target_guild_name = target_channel.guild.name
-            target_channel_snowflake = target_channel.id
-            target_channel_name = target_channel.name
-            target_channel_obj = target_channel
-            target_channel_mention = target_channel.mention
+            target_guild_snowflake = target_channel.target.guild.id
+            target_guild_name = target_channel.target.guild.name
+            target_channel_snowflake = target_channel.target.id
+            target_channel_name = target_channel.target.name
+            target_channel_obj = target_channel.target
+            target_channel_mention = target_channel.target.mention
         else:
             return await tick.end(
                 warning="This command must target a valid target channel."
@@ -249,15 +246,15 @@ class UtilityTextCommands(commands.Cog):
             source_channel_members = ctx.channel.members
             source_channel_mention = ctx.channel.mention
         elif isinstance(
-            source_channel,
+            source_channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            source_guild_snowflake = source_channel.guild.id
-            source_guild_name = source_channel.guild.name
-            source_channel_snowflake = source_channel.id
-            source_channel_name = source_channel.name
-            source_channel_members = source_channel.members
-            source_channel_mention = source_channel.mention
+            source_guild_snowflake = source_channel.target.guild.id
+            source_guild_name = source_channel.target.guild.name
+            source_channel_snowflake = source_channel.target.id
+            source_channel_name = source_channel.target.name
+            source_channel_members = source_channel.target.members
+            source_channel_mention = source_channel.target.mention
         else:
             return await tick.end(
                 warning="This command must target a valid source channel."

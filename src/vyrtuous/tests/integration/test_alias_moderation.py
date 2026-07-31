@@ -495,4 +495,4 @@ async def test_alias_text_commands(
                 r = reason
                 full += f" {r}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]

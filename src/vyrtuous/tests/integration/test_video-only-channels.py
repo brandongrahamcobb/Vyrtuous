@@ -96,7 +96,7 @@ async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permi
                 )
                 full += f" {t}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

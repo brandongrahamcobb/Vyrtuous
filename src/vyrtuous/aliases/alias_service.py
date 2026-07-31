@@ -113,6 +113,8 @@ async def create_alias(
     *,
     role_snowflake: int | None = None,
 ) -> str:
+    if category == "role" and role_snowflake is None:
+        return f"Alias of type `{category}` requires a role snowflake."
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)

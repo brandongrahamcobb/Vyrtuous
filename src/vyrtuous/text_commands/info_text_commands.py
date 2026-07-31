@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import timedelta
-from typing import Union
 
 import discord
 from discord.ext import commands
@@ -33,7 +32,6 @@ from vyrtuous.listing import (list_aliases, list_autoassign_roles,
                               list_vegans, list_video_channels,
                               list_voice_mutes)
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.models.scope import Scope, ScopeObject
 from vyrtuous.models.target import Target, TargetObject
 from vyrtuous.permissions import permission_service
@@ -53,8 +51,8 @@ class InfoTextCommands(commands.Cog):
     async def list_autoassignment_roles_text_command(
         self,
         ctx: commands.Context,
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -71,8 +69,8 @@ class InfoTextCommands(commands.Cog):
         if guild is None:
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -102,10 +100,8 @@ class InfoTextCommands(commands.Cog):
     async def list_automute_channels_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.Guild, discord.abc.GuildChannel, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention or server ID.",
         ),
@@ -126,7 +122,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
             obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -181,15 +177,13 @@ class InfoTextCommands(commands.Cog):
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            int, discord.abc.GuildChannel, discord.Guild, discord.Member, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify one of: channel ID/mention, member ID/mention or server ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -204,12 +198,12 @@ class InfoTextCommands(commands.Cog):
                 )
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
+            if isinstance(guild.target, discord.Guild):
                 if ctx.guild is None:
                     return await tick.end(
                         warning="This command must target a valid server."
                     )
-                guild_snowflake = guild.id
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -223,7 +217,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
             obj = ctx.channel
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -302,15 +296,13 @@ class InfoTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: (
-            int | discord.Member | discord.Guild | discord.abc.GuildChannel | None
-        ) = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention, member ID/mention or server ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -325,8 +317,8 @@ class InfoTextCommands(commands.Cog):
                 )
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -340,7 +332,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
             obj = ctx.channel
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -420,10 +412,8 @@ class InfoTextCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.Guild, discord.abc.GuildChannel, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention or server ID.",
         ),
@@ -446,7 +436,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
             obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -501,10 +491,8 @@ class InfoTextCommands(commands.Cog):
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify channel ID/mention, or server ID.",
         ),
@@ -529,7 +517,10 @@ class InfoTextCommands(commands.Cog):
             guild_snowflake=guild_snowflake,
             requested=["command.info.aliases"],
         )
-        obj = target or ctx.channel
+        if target is None:
+            obj = ctx.channel
+        else:
+            obj = target.target
         pages = await list_aliases.build_pages(obj=obj)
         return await tick.end(success=pages)
 
@@ -625,15 +616,13 @@ class InfoTextCommands(commands.Cog):
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            int, discord.abc.GuildChannel, discord.Guild, discord.Member, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify one of: channel ID/mention, member ID/mention, or server ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -646,12 +635,12 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
+            if isinstance(guild.target, discord.Guild):
                 if ctx.guild is None:
                     return await tick.end(
                         warning="This command must target a valid server."
                     )
-                guild_snowflake = guild.id
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -665,7 +654,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.channel
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -743,13 +732,13 @@ class InfoTextCommands(commands.Cog):
     async def list_heroes_text_command(
         self,
         ctx: commands.Context,
-        target: Union[int, discord.Member, discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a member mention/ID or server ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -764,8 +753,8 @@ class InfoTextCommands(commands.Cog):
                 )
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -779,7 +768,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -860,10 +849,8 @@ class InfoTextCommands(commands.Cog):
     async def list_intents_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None= commands.parameter(
+            converter=Target,
             default=None,
             description="Specify one of: channel ID/mention or server ID.",
         ),
@@ -890,7 +877,7 @@ class InfoTextCommands(commands.Cog):
                 )
             obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
@@ -954,10 +941,8 @@ class InfoTextCommands(commands.Cog):
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            int, discord.Member, discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention, member ID/mention, or server ID.",
         ),
@@ -966,8 +951,8 @@ class InfoTextCommands(commands.Cog):
             default=None,
             description="Specify `all`, `click` or `command`.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -980,12 +965,12 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(warning="This command must target a valid server.")
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
+            if isinstance(guild.target, discord.Guild):
                 if ctx.guild is None:
                     return await tick.end(
                         warning="This command must target a valid server."
                     )
-                guild_snowflake = guild.id
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -999,7 +984,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.channel
         else:
-            obj = target
+            obj = target.target
         if scope is None:
             mute_type = "all"
         else:
@@ -1117,10 +1102,8 @@ class InfoTextCommands(commands.Cog):
     async def list_overwrites_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention or server ID.",
         ),
@@ -1143,7 +1126,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.channel
         else:
-            obj = target
+            obj = target.target
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
@@ -1206,8 +1189,8 @@ class InfoTextCommands(commands.Cog):
         self,
         ctx: commands.Context,
         role_name: str,
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -1222,8 +1205,8 @@ class InfoTextCommands(commands.Cog):
         if guild is None:
            guild_obj = ctx.guild
         else:
-            if isinstance(guild, discord.Guild):
-                guild_obj = guild
+            if isinstance(guild.target, discord.Guild):
+                guild_obj = guild.target
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -1264,11 +1247,10 @@ class InfoTextCommands(commands.Cog):
         ctx: commands.Context,
         role: TargetObject = commands.parameter(
             converter=Target,
-            default=None,
             description="Specify a role ID/mention.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -1284,9 +1266,9 @@ class InfoTextCommands(commands.Cog):
             guild_snowflake = ctx.guild.id
             members = ctx.guild.members
         else:
-            if isinstance(guild, discord.Guild):
-                members = guild.members
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                members = guild.target.members
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -1297,11 +1279,11 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             channel_snowflake = ctx.channel.id
-        if isinstance(role, discord.Role):
-            role_name = role.name
+        if isinstance(role.target, discord.Role):
+            role_name = role.target.name
             color = (
-                role.color
-                if role.color.value
+                role.target.color
+                if role.target.color.value
                 else discord.Color.blurple()
             )
         else:
@@ -1386,10 +1368,8 @@ class InfoTextCommands(commands.Cog):
     async def list_streaming_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.Guild, discord.abc.GuildChannel, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention or a server ID.",
         ),
@@ -1416,7 +1396,7 @@ class InfoTextCommands(commands.Cog):
                 )
             obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -1471,8 +1451,8 @@ class InfoTextCommands(commands.Cog):
     async def list_moderation_summary_text_command(
         self,
         ctx: commands.Context,
-        member: int | discord.Member = commands.parameter(
-            converter=MultiConverter,
+        member: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a member ID/mention.",
         ),
         scope: ScopeObject | None = commands.parameter(
@@ -1480,8 +1460,8 @@ class InfoTextCommands(commands.Cog):
             default=None,
             description="Specify one of `all`, `click` or `command`.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -1509,12 +1489,12 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
+            if isinstance(guild.target, discord.Guild):
                 if ctx.guild is None:
                     return await tick.end(
                         warning="This command must be used in a server."
                     )
-                if guild.id != ctx.guild.id:
+                if guild.target.id != ctx.guild.id:
                     await permission_service.has_permissions(
                         permission_state=permission_state,
                         member_snowflake=ctx.author.id,
@@ -1525,15 +1505,15 @@ class InfoTextCommands(commands.Cog):
                     member_snowflake=ctx.author.id,
                     requested=["command.info.scope.guild"],
                 )
-                guild_snowflake = guild.id
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         if scope is None:
@@ -1654,8 +1634,8 @@ class InfoTextCommands(commands.Cog):
     async def survey_text_command(
         self,
         ctx: commands.Context,
-        channel: Union[discord.abc.GuildChannel, None] = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -1666,17 +1646,21 @@ class InfoTextCommands(commands.Cog):
         if channel is None:
             if ctx.guild is None:
                 return await tick.end(
-                    warning="This command must target a valid server."
+                    warning="This command must be used in a server."
                 )
             if ctx.channel is None:
                 return await tick.end(
-                    warning="This command must target a valid channel."
+                    warning="This command must used in a server channel."
                 )
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
+        elif isinstance(channel.target, discord.abc.GuildChannel):
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            return await tick.end(
+                warning="This command must target a valid channel."
+            )
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
@@ -1696,15 +1680,13 @@ class InfoTextCommands(commands.Cog):
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            int, discord.Member, discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention, member ID/mention or server ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -1717,12 +1699,12 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
+            if isinstance(guild.target, discord.Guild):
                 if ctx.guild is None:
                     return await tick.end(
                         warning="This command must be used in a server."
                     )
-                guild_snowflake = guild.id
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -1736,7 +1718,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.channel
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -1816,15 +1798,13 @@ class InfoTextCommands(commands.Cog):
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            int, discord.Member, discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention, member ID/mention, or server ID.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify one a server ID.",
         ),
@@ -1839,8 +1819,8 @@ class InfoTextCommands(commands.Cog):
                 )
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -1854,7 +1834,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -1912,10 +1892,8 @@ class InfoTextCommands(commands.Cog):
     async def list_video_channels_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            discord.abc.GuildChannel, discord.Guild, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        target: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention or server ID.",
         ),
@@ -1942,7 +1920,7 @@ class InfoTextCommands(commands.Cog):
                 )
             obj = ctx.guild
         else:
-            obj = target
+            obj = target.target
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,

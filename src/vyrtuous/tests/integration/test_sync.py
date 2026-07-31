@@ -74,7 +74,7 @@ async def test_sync_text_command(bot, prefix: str, spec: str):
             )
             full = f"{prefix}{COMMAND} {spec}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

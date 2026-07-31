@@ -67,6 +67,8 @@ ALTER TABLE active_members DROP COLUMN guild_snowflake;
 ALTER TABLE video_rooms RENAME TO active_video_only_channels;
 ALTER TABLE active_voice_mutes
 ALTER COLUMN channel_snowflake DROP NOT NULL;
+ALTER TABLE active_voice_mutes
+ALTER COLUMN target SET NOT NULL;
 INSERT INTO active_voice_mutes (
     channel_snowflake,
     created_at,
@@ -122,9 +124,9 @@ CREATE TABLE permission_entries (
     channel_snowflake bigint,
     created_at timestamp with time zone DEFAULT now(),
     guild_snowflake bigint,
-    role_snowflake bigint,
     group_alias TEXT NOT NULL,
     member_snowflake bigint NOT NULL,
+    role_snowflakes bigint[] CONSTRAINT administrators_role_snowflake_not_null NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
 ALTER TABLE permission_entries

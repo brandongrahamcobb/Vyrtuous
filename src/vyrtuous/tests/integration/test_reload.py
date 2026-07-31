@@ -68,7 +68,7 @@ async def test_reload_text_command(bot, prefix: str):
             )
             full = f"{prefix}{COMMAND} {COG}"
             captured = await send_message(bot=bot, content=full)
-            assert captured == ["success"]
+            assert captured["end_result"] == ["success"]
 
 
 @pytest.mark.asyncio

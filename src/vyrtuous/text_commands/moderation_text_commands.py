@@ -17,8 +17,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Union
-
 import discord
 from _pytest.scope import Scope
 from discord.ext import commands
@@ -28,8 +26,8 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.models.scope import ScopeObject
+from vyrtuous.models.target import Target, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
@@ -51,12 +49,12 @@ class ModerationTextCommands(commands.Cog):
     async def toggle_blacklist_text_command(
         self,
         ctx: commands.Context,
-        member: int | discord.Member = commands.parameter(
-            converter=MultiConverter,
+        member: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a member ID/mention.",
         ),
-        channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -74,17 +72,17 @@ class ModerationTextCommands(commands.Cog):
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target valid member.")
         await permission_service.has_permissions(
@@ -112,17 +110,13 @@ class ModerationTextCommands(commands.Cog):
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
-        target: Union[
-            str, int, discord.Guild, discord.abc.GuildChannel, discord.Member, None
-        ] = commands.parameter(
-            converter=MultiConverter,
-            default=None,
+        target: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify 'all', a channel ID/mention, a member ID/mention or server ID.",
         ),
         *,
         category: CategoryObject = commands.parameter(
             converter=Category,
-            default="all",
             description="Specify one of: `admin`, `alias`, `all`, `automute`, `ban`, `coord`, "
             "flag`, `mod`, `tmute`, `stream` or `vmute`.",
         ),
@@ -131,8 +125,8 @@ class ModerationTextCommands(commands.Cog):
             default=None,
             description="Specify one of: `auto`, `click`, `command` or `server`.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=MultiConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -145,8 +139,8 @@ class ModerationTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -194,10 +188,8 @@ class ModerationTextCommands(commands.Cog):
     async def channel_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: (
-            discord.VoiceChannel | discord.StageChannel | None
-        ) = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -223,11 +215,11 @@ class ModerationTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         if duration is None:
@@ -256,12 +248,12 @@ class ModerationTextCommands(commands.Cog):
     async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
-        member: Union[int, discord.Member] = commands.parameter(
-            converter=MultiConverter,
+        member: TargetObject = commands.parameter(
+            converter=Target,
             description="Specify a member ID/mention.",
         ),
-        guild: Union[discord.Guild, None] = commands.parameter(
-            converter=commands.GuildConverter,
+        guild: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a server ID.",
         ),
@@ -278,8 +270,8 @@ class ModerationTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         else:
-            if isinstance(guild, discord.Guild):
-                guild_snowflake = guild.id
+            if isinstance(guild.target, discord.Guild):
+                guild_snowflake = guild.target.id
             else:
                 return await tick.end(
                     warning="This command must target a valid server."
@@ -290,10 +282,10 @@ class ModerationTextCommands(commands.Cog):
             )
         else:
             channel_snowflake = ctx.channel.id
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         await permission_service.has_permissions(
@@ -322,10 +314,8 @@ class ModerationTextCommands(commands.Cog):
     async def channel_unmute_text_command(
         self,
         ctx: commands.Context,
-        channel: Union[
-            discord.VoiceChannel | discord.StageChannel, None
-        ] = commands.parameter(
-            converter=MultiConverter,
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
             default=None,
             description="Specify a channel ID/mention.",
         ),
@@ -343,11 +333,11 @@ class ModerationTextCommands(commands.Cog):
                 return await tick.end(warning="This command must be used in a server.")
             guild_snowflake = ctx.guild.id
         elif isinstance(
-            channel,
+            channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            channel_snowflake = channel.id
-            guild_snowflake = channel.guild.id
+            channel_snowflake = channel.target.id
+            guild_snowflake = channel.target.guild.id
         else:
             return await tick.end(warning="This command must target a valid channel.")
         await permission_service.has_permissions(
