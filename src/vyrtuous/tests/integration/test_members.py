@@ -33,40 +33,43 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-ROLE_NAME = "Vegan"
+ROLE_ID = 10000000000000200
 OTHER_GUILD_SNOWFLAKE = 10000000000000501
 
 
-COMMAND = "roleid"
-BASE_PERMISSIONS = ["command.info.roleid", "command.info.scope.role"]
+COMMAND = "members"
+BASE_PERMISSIONS = ["command.info.members", "command.info.scope.role"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "other_guild, extra_permissions",
+    "role, other_guild, extra_permissions",
     [
-        (None, []),
-        ("{other_guild_snowflake}", ["other_guilds"]),
+        ("{role_snowflake}", None, []),
+        ("{role_snowflake}", "{other_guild_snowflake}", ["other_guilds"]),
     ],
 )
 @pytest.mark.asyncio
-async def test_roleid_text_command(
+async def test_members_text_command(
     bot,
     prefix: str,
+    role: str,
     other_guild: str | None,
     extra_permissions: list[str],
 ):
     docstring = """
-    Get the role ID by name.
+    Get the role members by ID.
 
     Parameters
     ----------
-    None
+    role : str | int
+        Resolves to: TargetObject
+        Examples: 10000000000000010 | <@&10000000000000010>
 
     Examples
     --------
-    >>> !roleid
-    {emoji} Role `Vegan` has ID `10000000000000200`
+    >>> !members 10000000000000010
+    Embed
     """
     assert COMMAND in docstring
     if (
@@ -81,7 +84,8 @@ async def test_roleid_text_command(
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
-            full = f"{prefix}{COMMAND} {ROLE_NAME}"
+            r = role.format(role_snowflake=ROLE_ID)
+            full = f"{prefix}{COMMAND} {r}"
             if other_guild is None:
                 g = other_guild
             else:
@@ -93,26 +97,28 @@ async def test_roleid_text_command(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "other_guild, extra_permissions",
+    "role, other_guild, extra_permissions",
     [
-        (None, []),
-        ("{other_guild_snowflake}", ["other_guilds"]),
+        ("{role_snowflake}", None, []),
+        ("{role_snowflake}", "{other_guild_snowflake}", ["other_guilds"]),
     ],
 )
-async def test_roleid_app_command(
-    bot, other_guild: str | None, extra_permissions: list[str]
+async def test_members_app_command(
+    bot, role: str, other_guild: str | None, extra_permissions: list[str]
 ):
     docstring = """
-    Get the role ID by name.
+    Get the role members by ID.
 
     Parameters
     ----------
-    None
+    role : str | int
+        Resolves to: TargetObject
+        Examples: 10000000000000010 | <@&10000000000000010>
 
     Examples
     --------
-    >>> /roleid
-    {emoji} Role `Vegan` has ID `10000000000000200`
+    >>> /members 10000000000000010
+    Embed
     """
     assert COMMAND in docstring
     if (
@@ -128,7 +134,8 @@ async def test_roleid_app_command(
                 )
             )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.get_role_snowflake_app_command
+            command = cog.list_role_members_app_command
+            r = role.format(role_snowflake=ROLE_ID)
             if other_guild is None:
                 g = other_guild
             else:
@@ -148,6 +155,7 @@ async def test_roleid_app_command(
                 message=msg,
             )
             transformer = AppTarget()
+            resolved_role = await transformer.transform(inx, r)
             if g:
                 resolved_guild = await transformer.transform(inx, g)
             else:
@@ -155,7 +163,7 @@ async def test_roleid_app_command(
 
             async with capture_command() as end_results:
                 await command.callback(
-                    cog, interaction=inx, role_name=ROLE_NAME, guild=resolved_guild
+                    cog, interaction=inx, role=resolved_role, guild=resolved_guild
                 )
             for kind, content in end_results:
                 assert kind == "success"

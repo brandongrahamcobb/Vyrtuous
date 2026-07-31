@@ -1240,8 +1240,8 @@ class InfoTextCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
-    @commands.command(name="roles", help="List role members.")
-    @metadata(permission="command.info.roles")
+    @commands.command(name="members", help="List role members.")
+    @metadata(permission="command.info.members")
     async def list_roles_text_command(
         self,
         ctx: commands.Context,
@@ -1258,11 +1258,11 @@ class InfoTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
+        if ctx.guild is None:
+            return await tick.end(
+                warning="This command must target a valid server."
+            )
         if guild is None:
-            if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
             guild_snowflake = ctx.guild.id
             members = ctx.guild.members
         else:
@@ -1293,8 +1293,16 @@ class InfoTextCommands(commands.Cog):
             member_snowflake=ctx.author.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.info.roles"],
+            requested=["command.info.members", "command.info.scope.role"],
         )
+        if ctx.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
         embeds = []
         members = [member for member in members if role in member.roles]
         chunk_size = 12
@@ -1643,15 +1651,15 @@ class InfoTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
+        if ctx.guild is None:
+            return await tick.end(
+                warning="This command must be used in a server."
+            )
+        if ctx.channel is None:
+            return await tick.end(
+                warning="This command must used in a server channel."
+            )
         if channel is None:
-            if ctx.guild is None:
-                return await tick.end(
-                    warning="This command must be used in a server."
-                )
-            if ctx.channel is None:
-                return await tick.end(
-                    warning="This command must used in a server channel."
-                )
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(channel.target, discord.abc.GuildChannel):
@@ -1666,8 +1674,16 @@ class InfoTextCommands(commands.Cog):
             member_snowflake=ctx.author.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.info.survey"],
+            requested=["command.info.survey", "command.info.scope.channel"],
         )
+        if ctx.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
         pages = await permission_service.survey(
             permission_state=permission_state,
             channel_snowflake=channel_snowflake,

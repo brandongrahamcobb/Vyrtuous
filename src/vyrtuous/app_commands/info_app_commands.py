@@ -877,6 +877,90 @@ class InfoAppCommands(commands.Cog):
         )
         return await tick.end(success=pages)
 
+    @metadata(permission="command.info.members")
+    @app_commands.command(name="members", description="List role members.")
+    @app_commands.describe(
+        role="Specify a role ID/mention.", guild="Specify a server ID."
+    )
+    async def list_role_members_app_command(
+        self,
+        interaction: discord.Interaction,
+        role: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        if interaction.guild is None:
+            return await tick.end(
+                warning="This command must target a valid server."
+            )
+        if guild is None:
+            guild_snowflake = interaction.guild.id
+            members = interaction.guild.members
+        else:
+            if isinstance(guild.target, discord.Guild):
+                members = guild.target.members
+                guild_snowflake = guild.target.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        else:
+            channel_snowflake = interaction.channel.id
+        if isinstance(role.target, discord.Role):
+            role_name = role.target.name
+            color = (
+                role.target.color
+                if role.target.color.value
+                else discord.Color.blurple()
+            )
+        else:
+            return await tick.end(warning="This command must target a valid role.")
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.info.members", "command.info.scope.role"],
+        )
+        if interaction.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=interaction.user.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
+        embeds = []
+        members = [member for member in members if role in member.roles]
+        chunk_size = 12
+        for index in range(0, len(members), chunk_size):
+            chunk = members[index : index + chunk_size]
+            description = "\n".join(
+                f"{position + 1}. {member.mention} ({member.id})"
+                for position, member in enumerate(chunk, start=index)
+            )
+            embed = discord.Embed(
+                title=f"{role_name} Members",
+                description=description or "No members found.",
+                color=color,
+            )
+            embeds.append(embed)
+        if not embeds:
+            embed = discord.Embed(
+                title=f"{role_name} Members",
+                description="No members found.",
+                color=color,
+            )
+            embeds.append(embed)
+        return await tick.end(success=embeds)
+
+
 
     @metadata(permission="command.info.voice-mutes")
     @app_commands.command(name="mutes", description="List mutes.")
@@ -1181,81 +1265,6 @@ class InfoAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"No role named `{role_name}` found in this server."
             )
-
-    @metadata(permission="command.info.roles")
-    @app_commands.command(name="roles", description="List role members.")
-    @app_commands.describe(
-        role="Specify a role ID/mention.", guild="Specify a server ID."
-    )
-    async def list_roles_app_command(
-        self,
-        interaction: discord.Interaction,
-        role: app_commands.Transform[TargetObject, AppTarget],
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
-    ) -> discord.Message:
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        bot: DiscordBot = DiscordBot.get_instance()
-        permission_state: PermissionState = bot.registry.get(PermissionState)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
-            members = interaction.guild.members
-        else:
-            if isinstance(guild.target, discord.Guild):
-                members = guild.target.members
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-        if interaction.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = interaction.channel.id
-        if isinstance(role.target, discord.Role):
-            role_name = role.target.name
-            color = (
-                role.target.color
-                if role.target.color.value
-                else discord.Color.blurple()
-            )
-        else:
-            return await tick.end(warning="This command must target a valid role.")
-        await permission_service.has_permissions(
-            permission_state=permission_state,
-            member_snowflake=interaction.user.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            requested=["command.info.roles"],
-        )
-        embeds = []
-        members = [member for member in members if role in member.roles]
-        chunk_size = 12
-        for index in range(0, len(members), chunk_size):
-            chunk = members[index : index + chunk_size]
-            description = "\n".join(
-                f"{position + 1}. {member.mention} ({member.id})"
-                for position, member in enumerate(chunk, start=index)
-            )
-            embed = discord.Embed(
-                title=f"{role_name} Members",
-                description=description or "No members found.",
-                color=color,
-            )
-            embeds.append(embed)
-        if not embeds:
-            embed = discord.Embed(
-                title=f"{role_name} Members",
-                description="No members found.",
-                color=color,
-            )
-            embeds.append(embed)
-        return await tick.end(success=embeds)
 
     @metadata(permission="command.info.stats")
     @app_commands.command(name="stats", description="Lists stats.")
@@ -1572,13 +1581,13 @@ class InfoAppCommands(commands.Cog):
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
         if channel is None:
-            if interaction.guild is None:
-                return await tick.end(warning="This command must be used in a server.")
-            if interaction.channel is None:
-                return await tick.end(
-                    warning="This command must be used in a server channel."
-                )
             channel_snowflake = interaction.channel.id
             guild_snowflake = interaction.guild.id
         elif isinstance(
@@ -1594,8 +1603,16 @@ class InfoAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.users.survey"],
+            requested=["command.users.survey", "command.info.scope.channel"],
         )
+        if interaction.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=interaction.user.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
         pages = await permission_service.survey(
             permission_state=permission_state,
             channel_snowflake=channel_snowflake,
