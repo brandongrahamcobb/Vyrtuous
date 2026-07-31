@@ -15,8 +15,20 @@ ALTER TABLE active_text_mutes ALTER COLUMN channel_snowflake DROP DEFAULT;
 ALTER TABLE active_voice_mutes DROP COLUMN expired;
 ALTER TABLE active_voice_mutes DROP COLUMN display_name;
 ALTER TABLE active_voice_mutes ALTER COLUMN channel_snowflake DROP DEFAULT;
+ALTER TABLE active_voice_mutes
+DROP CONSTRAINT active_voice_mutes_pkey;
+CREATE UNIQUE INDEX active_voice_mutes_unique_idx
+ON active_voice_mutes (
+    guild_snowflake,
+    member_snowflake,
+    target,
+    channel_snowflake
+)
+NULLS NOT DISTINCT;
 ALTER TABLE administrators DROP COLUMN display_name;
 DROP TABLE ban_roles;
+DELETE FROM command_aliases
+WHERE category = 'vegan';
 ALTER TABLE command_aliases
 DROP CONSTRAINT command_aliases_category_check;
 ALTER TABLE command_aliases
@@ -53,6 +65,8 @@ DROP TABLE temporary_rooms;
 ALTER TABLE vegans ADD COLUMN notes TEXT;
 ALTER TABLE active_members DROP COLUMN guild_snowflake;
 ALTER TABLE video_rooms RENAME TO active_video_only_channels;
+ALTER TABLE active_voice_mutes
+ALTER COLUMN channel_snowflake DROP NOT NULL;
 INSERT INTO active_voice_mutes (
     channel_snowflake,
     created_at,
@@ -73,11 +87,6 @@ SELECT
     'server',
     updated_at
 FROM active_server_voice_mutes;
-ALTER TABLE ONLY active_voice_mutes
-DROP CONSTRAINT active_voice_mutes_pkey;
-ALTER TABLE ONLY active_voice_mutes
-ADD CONSTRAINT active_voice_mutes_pkey
-PRIMARY KEY (guild_snowflake, member_snowflake, target);
 ALTER TABLE active_voice_mutes
 ALTER COLUMN channel_snowflake DROP DEFAULT;
 ALTER TABLE active_voice_mutes
@@ -99,7 +108,12 @@ RENAME COLUMN guild_snowflake to source_guild_snowflake;
 ALTER TABLE streaming
 ALTER COLUMN source_guild_snowflake DROP NOT NULL;
 ALTER TABLE streaming
-ADD COLUMN target_guild_snowflake BIGINT NOT NULL;
+ADD COLUMN target_guild_snowflake BIGINT NOT NULL DEFAULT 801609515391778826;
+UPDATE streaming
+SET target_guild_snowflake = 1347284827350630591
+WHERE target_channel_snowflake = 1390814952285012133;
+ALTER TABLE streaming
+ALTER COLUMN target_guild_snowflake DROP DEFAULT;
 ALTER TABLE streaming
 RENAME COLUMN target_guild_snowflake TO guild_snowflake;
 ALTER TABLE streaming
@@ -200,13 +214,33 @@ ALTER TABLE active_video_only_channels
 ADD COLUMN expires_in TIMESTAMP WITH TIME ZONE NULL;
 ALTER TABLE vegans
 ALTER COLUMN created_at DROP NOT NULL;
+UPDATE vegans
+SET notes = 'No notes provided.'
+WHERE notes is NULL;
 ALTER TABLE vegans
 ALTER COLUMN notes SET NOT NULL;
 ALTER TABLE command_aliases
 ALTER COLUMN channel_snowflake SET NOT NULL;
 ALTER TABLE active_text_mutes
 ALTER COLUMN reason SET NOT NULL;
+UPDATE active_voice_mutes
+SET reason = 'No reason provided.'
+WHERE reason is NULL;
 ALTER TABLE active_voice_mutes
 ALTER COLUMN reason SET NOT NULL;
+UPDATE active_bans
+SET reason = 'No reason provided.'
+WHERE reason is NULL;
 ALTER TABLE active_bans
 ALTER COLUMN reason SET NOT NULL;
+UPDATE active_flags
+SET reason = 'No reason provided.'
+WHERE reason is NULL;
+ALTER TABLE active_flags
+ALTER COLUMN reason SET NOT NULL;
+ALTER TABLE moderation_logs
+ADD COLUMN id SERIAL PRIMARY KEY;
+ALTER TABLE active_members
+ADD PRIMARY KEY (member_snowflake);
+
+

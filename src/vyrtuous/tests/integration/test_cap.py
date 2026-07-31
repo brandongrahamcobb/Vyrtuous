@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from contextlib import ExitStack
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 

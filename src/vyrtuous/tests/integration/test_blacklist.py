@@ -20,16 +20,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 from contextlib import ExitStack
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.ban import Ban
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
+    check_permissions,
     send_message,
     setup,
 )
@@ -38,158 +40,190 @@ GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
+OTHER_GUILD_CHANNEL_SNOWFLAKE = 10000000000000013
+
+
+COMMAND = "blacklist"
+BASE_PERMISSIONS = ["command.moderation.blacklist"]
+TABLE_NAME = Ban.__tablename__
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission_role, command, member, channel",
+    "member, channel, extra_permissions",
     [
+        ("{member_snowflake}", None, []),
+        ("<@{member_snowflake}>", None, []),
+        ("{member_snowflake}", "{channel_snowflake}", []),
+        ("<@{member_snowflake}>", "<#{channel_snowflake}>", []),
+        ("{simplified_member_snowflake}", None, []),
         (
-            "Coordinator",
-            "blacklist",
-            "{member_snowflake}",
-            "{channel_snowflake}",
-        ),
-        (
-            "Coordinator",
-            "blacklist",
-            "<@{member_snowflake}>",
-            None,
-        ),
-        (
-            "Coordinator",
-            "blacklist",
             "{simplified_member_snowflake}",
-            "{channel_snowflake}",
+            "{other_guild_channel_snowflake}",
+            ["other_guilds"],
         ),
         (
-            "Coordinator",
-            "blacklist",
-            "<@{simplified_member_snowflake}>",
-            "<#{channel_snowflake}>",
-        ),
-        (
-            "Coordinator",
-            "blacklist",
-            "<@{member_snowflake}>",
-            "<#{channel_snowflake}>",
+            "{simplified_member_snowflake}",
+            "<#{other_guild_channel_snowflake}>",
+            ["other_guilds"],
         ),
     ],
 )
-async def test_blacklist(
-    bot, command: str, prefix: str, member, channel, permission_role
+async def test_blacklist_text_command(
+    bot, prefix: str, member: str, channel: str | None, extra_permissions: list[str]
 ):
-    """
-    Blacklist or unlisted a member's ban in the PostgresSQL database
+    docstring = """
+    Toggle blacklist for a member's ban in the PostgresSQL database
     'vyrtuous' in the table 'active_bans'.
 
     Parameters
     ----------
-    channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with ban
-        in any of the guilds Vyrtuous has access inside.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who is banned
-        in any of the guilds Vyrtuous has access inside.
+    member : str | int
+        Resolves to: int | discord.Member
+        Examples: 10000000000000010 | <#10000000000000010>
+ 
+    channel (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
 
-    Examples
+    Example
     --------
-
-    >>> !blacklist <@10000000000000003> <@10000000000000010>
-    [{emoji} Member blacklisted in Channel]
-
-    >>> !mod 10000000000000003 10000000000000010
-    [{emoji} Member unlisted in Channel]
+    >>> !blacklist 10000000000000010
+    Spawd (10000000000000010) has been ban blacklisted in Ask a Vegan."
     """
-    permission_state = bot.registry.get(PermissionState)
-    bot.registry.get(MemberState).active.update(
-        {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
-    )
-    m = member.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
-    )
-    full = f"{prefix}{command} {m}"
-    c = None
-    if channel:
-        c = channel.format(
-            channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
-        )
-        full = f"{prefix}{command} {m} {c}"
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                    new=AsyncMock(
-                        return_value=permission_state.groups.get(
-                            permission_role.lower()
-                        )
-                    ),
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
-            stack.enter_context(
-                patch(
-                    "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
-                    new=AsyncMock(return_value=True),
-                )
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
             )
-
+            m = member.format(
+                member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+            )
+            full = f"{prefix}{COMMAND} {m}"
+            if channel is None:
+                c = channel
+            else:
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    other_guild_channel_snowflake=OTHER_GUILD_CHANNEL_SNOWFLAKE,
+                )
+                full += f" {c}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "member, channel, extra_permissions",
+    [
+        ("{member_snowflake}", None, []),
+        ("<@{member_snowflake}>", None, []),
+        ("{member_snowflake}", "{channel_snowflake}", []),
+        ("<@{member_snowflake}>", "<#{channel_snowflake}>", []),
+        ("{simplified_member_snowflake}", None, []),
+        (
+            "{simplified_member_snowflake}",
+            "{other_guild_channel_snowflake}",
+            ["other_guilds"],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "<#{other_guild_channel_snowflake}>",
+            ["other_guilds"],
+        ),
+    ],
+)
+async def test_blacklist_app_command(
+    bot, member: str, channel: str | None, extra_permissions: list[str]
+):
+    docstring = """
+    Toggle blacklist for a member's ban in the PostgresSQL database
+    'vyrtuous' in the table 'active_bans'.
+
+    Parameters
+    ----------
+    member : str | int
+        Resolves to: int | discord.Member
+        Examples: 10000000000000010 | <#10000000000000010>
+ 
+    channel (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010>
+
+    Example
+    --------
+    >>> /blacklist 10000000000000010
+    Spawd (10000000000000010) has been ban blacklisted in Ask a Vegan."
+    """
+    assert TABLE_NAME in docstring
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        objects = setup(bot)
-        msg = build_message(
-            author=objects.get("author", None),
-            channel=objects.get("text_channel", None),
-            content=full,
-            guild=objects.get("guild", None),
-            state=objects.get("state", None),
-        )
-        inx = interaction(
-            bot=bot,
-            channel=objects.get("text_channel", None),
-            guild=objects.get("guild", None),
-            message=msg,
-        )
-        async with capture_command() as end_results:
+        extra_permissions.extend(BASE_PERMISSIONS)
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
             cog = bot.get_cog("ModerationAppCommands")
             command = cog.toggle_blacklist_app_command
-            transformer = AppTarget()
-            resolved_member = await transformer.transform(inx, m)
-            if c:
-                resolved_channel = await transformer.transform(inx, c)
+            bot.registry.get(MemberState).active.update(
+                {DUMMY_MEMBER_SNOWFLAKE_TWO: ("DUMMY", datetime.now(timezone.utc))}
+            )
+            m = member.format(
+                member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+                simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+            )
+            if channel is None:
+                c = channel
             else:
-                resolved_channel = None
-            with ExitStack() as stack:
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.resolve_effective_group",
-                        new=AsyncMock(
-                            return_value=permission_state.groups.get(
-                                permission_role.lower()
-                            )
-                        ),
-                    )
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                    other_guild_channel_snowflake=OTHER_GUILD_CHANNEL_SNOWFLAKE,
                 )
-                stack.enter_context(
-                    patch(
-                        "vyrtuous.utils.permissions.permission_service.has_equal_or_lower_role",
-                        new=AsyncMock(return_value=True),
-                    )
-                )
-
+            objects = setup(bot)
+            msg = build_message(
+                author=objects.get("author", None),
+                channel=objects.get("voice_channel", None),
+                content="",
+                guild=objects.get("guild", None),
+                state=objects.get("state", None),
+            )
+            inx = interaction(
+                bot=bot,
+                channel=objects.get("voice_channel", None),
+                guild=objects.get("guild", None),
+                message=msg,
+            )
+            async with capture_command() as end_results:
+                target_transformer = AppTarget()
+                resolved_member = await target_transformer.transform(inx, m)
+                if c:
+                    resolved_channel = await target_transformer.transform(inx, c)
+                else:
+                    resolved_channel = c
                 await command.callback(
                     cog,
                     interaction=inx,
                     member=resolved_member,
                     channel=resolved_channel,
                 )
-        for kind, content in end_results:
-            assert kind == "success"
+            for kind, content in end_results:
+                assert kind == "success"

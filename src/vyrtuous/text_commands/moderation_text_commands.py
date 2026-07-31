@@ -56,7 +56,7 @@ class ModerationTextCommands(commands.Cog):
             description="Specify a member ID/mention.",
         ),
         channel: discord.abc.GuildChannel | None = commands.parameter(
-            converter=commands.VoiceChannelConverter,
+            converter=MultiConverter,
             default=None,
             description="Specify a channel ID/mention.",
         ),
