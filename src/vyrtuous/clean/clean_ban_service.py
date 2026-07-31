@@ -46,21 +46,21 @@ async def clean_expired_bans() -> int:
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
                 await database_factory.delete(**kwargs)
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate guild {guild_snowflake}, cleaning up expired ban."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
                 await database_factory.delete(**kwargs)
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, cleaning up expired ban."
                 )
                 continue
             member = guild.get_member(member_snowflake)
             if member is None:
                 await database_factory.delete(**kwargs)
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired ban."
                 )
                 continue
@@ -99,19 +99,19 @@ async def clean_ban_overwrites() -> int:
         ):
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate guild {guild_snowflake} for removing overwrite."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) for removing overwrite."
                 )
                 continue
             member = guild.get_member(member_snowflake)
             if member is None:
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) for removing overwrite."
                 )
                 continue

@@ -163,7 +163,7 @@ async def test_smute_app_command(
 
     Example
     --------
-    >>> !smute 10000000000000010 
+    >>> /smute 10000000000000010 
     Successfully server muted Spawd in The Vyrtuous Network.
     """
     assert COMMAND in docstring

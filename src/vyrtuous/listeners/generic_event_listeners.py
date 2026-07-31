@@ -195,12 +195,16 @@ class GenericEventListeners(commands.Cog):
     async def on_command_error(self, ctx, error) -> discord.Message | None:
         tick = Tick(bot=self.__bot, ctx=ctx)
         if isinstance(error, commands.BadArgument):
+            self.__bot.logger.info(str(error))
             return await tick.end(error=str(error))
         elif isinstance(error, commands.CheckFailure):
+            self.__bot.logger.info(str(error))
             return await tick.end(error=str(error))
         elif isinstance(error, commands.CommandInvokeError):
+            self.__bot.logger.info(str(error))
             return await tick.end(error=str(error))
         elif isinstance(error, commands.MissingRequiredArgument):
+            self.__bot.logger.info(str(error))
             missing = error.param.name
             return await tick.end(error=f"Missing required argument: `{missing}`")
         return None

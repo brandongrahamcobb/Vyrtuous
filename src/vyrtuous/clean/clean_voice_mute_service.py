@@ -46,21 +46,21 @@ async def clean_expired_voice_mutes() -> int:
             }
             if guild is None:
                 await database_factory.delete(**kwargs)
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate guild {guild_snowflake}, cleaning up expired voice-mute."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
                 await database_factory.delete(**kwargs)
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
                 )
                 continue
             member = guild.get_member(member_snowflake)
             if member is None:
                 await database_factory.delete(**kwargs)
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.name}), cleaning up expired voice-mute."
                 )
                 continue
@@ -73,7 +73,7 @@ async def clean_expired_voice_mutes() -> int:
             ):
                 try:
                     await member.edit(mute=False)
-                    bot.logger.info(
+                    bot.logger.debug(
                         f"Undone voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
                     )
                 except discord.Forbidden as e:
@@ -81,7 +81,7 @@ async def clean_expired_voice_mutes() -> int:
                         f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                     )
             else:
-                bot.logger.info(
+                bot.logger.debug(
                     f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                 )
     return count

@@ -113,7 +113,7 @@ async def toggle_blacklist(
         set_kwargs = {"blacklisted": True}
         action = "blacklisted"
         await database_factory.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
-    bot.logger.info(
+    bot.logger.debug(
         f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
     )
     return f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
@@ -181,6 +181,6 @@ async def update_last_kicked(
         set_kwargs=set_kwargs,
         where_kwargs=where_kwargs,
     )
-    bot.logger.info(
+    bot.logger.debug(
         f"Updated last_kicked record for {member.display_name} in {channel.name}."
     )

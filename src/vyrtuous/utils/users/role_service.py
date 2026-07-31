@@ -83,7 +83,7 @@ async def added_role(
         msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
         category = category_class(**kwargs)
         await category.create()
-        bot.logger.info(msg)
+        bot.logger.debug(msg)
     else:
         return
 
@@ -106,6 +106,6 @@ async def removed_role(
         kwargs.update({"member_snowflake": role.member_snowflake})
         msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
         await category_class.delete(**kwargs)
-        bot.logger.info(msg)
+        bot.logger.debug(msg)
     else:
         return

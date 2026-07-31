@@ -69,7 +69,7 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=1)
     async def clean_inactive_members(self) -> None:
         count = await clean_active_member_service.clean_inactive_members()
-        self.__bot.logger.info(f"Removed {count} inactive members.")
+        self.__bot.logger.debug(f"Removed {count} inactive members.")
 
     @tasks.loop(minutes=5)
     async def system_monitoring(self) -> None:
@@ -86,11 +86,11 @@ class ScheduledTasks(commands.Cog):
                         if overwrite.is_empty() and isinstance(target, discord.Member):
                             try:
                                 await channel.set_permissions(target, overwrite=None)
-                                self.__bot.logger.info(
+                                self.__bot.logger.debug(
                                     f"Cleaned up stale overwrite for {target.mention} in {channel.mention}."
                                 )
                             except discord.HTTPException:
-                                self.__bot.logger.info(
+                                self.__bot.logger.debug(
                                     f"Failed to cleaned up stale overwrite for {target.mention} in {channel.mention}."
                                 )
 
@@ -115,38 +115,38 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(minutes=1)
     async def save_active_members(self) -> None:
         await active_member_service.save_and_update_active_members()
-        self.__bot.logger.info("Saved active members.")
+        self.__bot.logger.debug("Saved active members.")
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self) -> None:
         await clean_ban_service.clean_expired_bans()
-        self.__bot.logger.info("Cleaned up expired bans.")
+        self.__bot.logger.debug("Cleaned up expired bans.")
 
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self) -> None:
         await clean_voice_mute_service.clean_expired_voice_mutes()
-        self.__bot.logger.info("Cleaned up expired voice-mutes.")
+        self.__bot.logger.debug("Cleaned up expired voice-mutes.")
 
     @tasks.loop(minutes=1)
     async def check_expired_automutes(self) -> None:
         await clean_automute_service.clean_expired_automutes()
-        self.__bot.logger.info("Cleaned up expired automute channels.")
+        self.__bot.logger.debug("Cleaned up expired automute channels.")
 
     @tasks.loop(minutes=1)
     async def check_expired_video_only_channels(self) -> None:
         await clean_video_only_channels_service.clean_expired_video_only_channels()
-        self.__bot.logger.info("Cleaned up expired video-only channels.")
+        self.__bot.logger.debug("Cleaned up expired video-only channels.")
 
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self) -> None:
         await clean_text_mute_service.clean_expired_text_mutes()
-        self.__bot.logger.info("Cleaned up expired text-mutes.")
+        self.__bot.logger.debug("Cleaned up expired text-mutes.")
 
     @tasks.loop(hours=1)
     async def temporarily_cleanup_overwrites(self) -> None:
         await clean_ban_service.clean_ban_overwrites()
         await clean_text_mute_service.clean_text_mute_overwrites()
-        self.__bot.logger.info("Reset ban and text-mute overwrites.")
+        self.__bot.logger.debug("Reset ban and text-mute overwrites.")
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
@@ -154,7 +154,7 @@ class ScheduledTasks(commands.Cog):
             db = Database(config=self.__bot.config)
             db.create_backup_directory()
             db.execute_backup()
-            self.__bot.logger.info("Backup completed successfully.")
+            self.__bot.logger.debug("Backup completed successfully.")
         except Exception as e:
             self.__bot.logger.error(
                 f"Error during database backup: {str(e).capitalize()}"

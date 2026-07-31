@@ -39,4 +39,4 @@ async def create_bug(message, reference) -> None:
         )
         await database_factory.create(bug)
     except discord.Forbidden as e:
-        bot.logger.info(str(e).capitalize())
+        bot.logger.debug(str(e).capitalize())

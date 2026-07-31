@@ -40,6 +40,11 @@ class ChannelManagementAppCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
 
+    async def cog_app_command_error(self, interaction, error):
+        self.__bot.logger.info(str(error))
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
+
     @metadata(permission="command.channel.automute")
     @app_commands.command(name="automute", description="Start/stop automute")
     @app_commands.describe(
@@ -268,10 +273,6 @@ class ChannelManagementAppCommands(commands.Cog):
             duration=duration_obj,
         )
         return await tick.end(success=msg)
-
-    async def cog_app_command_error(self, interaction, error):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

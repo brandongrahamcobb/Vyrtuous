@@ -26,8 +26,9 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES, PATH_LOG
-from vyrtuous.listing import (list_aliases, list_automute_channels, list_bans,
-                              list_caps, list_flags, list_heroes, list_intents,
+from vyrtuous.listing import (list_aliases, list_autoassign_roles,
+                              list_automute_channels, list_bans, list_caps,
+                              list_flags, list_heroes, list_intents,
                               list_overwrites, list_streams, list_text_mutes,
                               list_vegans, list_video_channels,
                               list_voice_mutes)
@@ -46,32 +47,55 @@ class InfoTextCommands(commands.Cog):
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
 
-    # @commands.command(name="aroles", help="Administrator roles.")
-    # async def list_administrator_roles_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    #     guild: Union[discord.Guild, None] = commands.parameter(
-    #         converter=MultiConverter,
-    #         default=None,
-    #         description="Specify a server ID.",
-    #     ),
-    # ) -> discord.Message:
-    #     tick = Tick(bot=self.__bot, ctx=ctx)
-    #     if ctx.guild is None:
-    #         return await tick.end(warning="This command must target a valid server.")
-    #     if guild is None:
-    #         guild_snowflake = ctx.guild.id
-    #     else:
-    #         guild_snowflake = guild.id
-    #     if ctx.guild.id != guild_snowflake:
-    #         await moderator_service.check_minimum_role(
-    #             member_snowflake=ctx.author.id,
-    #             lowest_role="Developer",
-    #         )
-    #     pages = await list_administrator_roles.build_pages(
-    #         guild_snowflake=guild_snowflake,
-    #     )
-    #     return await tick.end(success=pages)
+
+    @metadata(permission="command.info.autoassigns")
+    @commands.command(name="autoassigns", help="List group autoassignment roles.")
+    async def list_autoassignment_roles_text_command(
+        self,
+        ctx: commands.Context,
+        guild: Union[discord.Guild, None] = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify a server ID.",
+        ),
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
+        if ctx.channel is None:
+            return await tick.end(warning="This command must target a valid server channel.")
+        else:
+            channel_snowflake = ctx.channel.id
+        if guild is None:
+            guild_snowflake = ctx.guild.id
+        else:
+            if isinstance(guild, discord.Guild):
+                guild_snowflake = guild.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.info.scope.guild", "command.info.autoassigns"],
+        )
+        if ctx.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
+        pages = await list_autoassign_roles.build_pages(
+            guild_snowflake=guild_snowflake
+        )
+        return await tick.end(success=pages)
 
     @commands.command(name="automutes", help="List automute channels.")
     @metadata(permission="command.info.automutes")

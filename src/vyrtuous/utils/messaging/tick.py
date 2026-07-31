@@ -187,7 +187,7 @@ class Tick:
             try:
                 await user.send(embed=embed)
             except discord.Forbidden as e:
-                self.__bot.logger.info(str(e).capitalize())
+                self.__bot.logger.debug(str(e).capitalize())
 
     async def _report_issue(self, response: discord.Message, user) -> None:
         message_history = self.__bot.registry.get(MessageHistoryState)
@@ -195,7 +195,7 @@ class Tick:
             try:
                 await user.send("You already reported this message.")
             except discord.Forbidden as e:
-                self.__bot.logger.info(str(e).capitalize())
+                self.__bot.logger.debug(str(e).capitalize())
             return
         message_history.reporters[response.id].add(user.id)
         reference = str(uuid.uuid4())

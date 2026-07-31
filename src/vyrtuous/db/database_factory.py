@@ -49,7 +49,7 @@ class DatabaseFactory(Generic[T]):
             """,
                 *values,
             )
-        bot.logger.info(f"Created entry in {table_name}.")
+        bot.logger.debug(f"Created entry in {table_name}.")
 
     async def upsert(self, obj) -> None:
         bot: DiscordBot = DiscordBot.get_instance()
@@ -80,7 +80,7 @@ class DatabaseFactory(Generic[T]):
                 """,
                 *values,
             )
-        bot.logger.info(f"Upserted entry in {table_name}.")
+        bot.logger.debug(f"Upserted entry in {table_name}.")
 
     async def delete(self, **kwargs) -> None:
         bot: DiscordBot = DiscordBot.get_instance()
@@ -96,7 +96,7 @@ class DatabaseFactory(Generic[T]):
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
-        bot.logger.info(f"Deleted entry from {table_name}.")
+        bot.logger.debug(f"Deleted entry from {table_name}.")
 
     async def delete_by_cls(self, cls, **kwargs) -> None:
         bot: DiscordBot = DiscordBot.get_instance()
@@ -112,7 +112,7 @@ class DatabaseFactory(Generic[T]):
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
-        bot.logger.info(f"Deleted entry from {table_name}.")
+        bot.logger.debug(f"Deleted entry from {table_name}.")
 
     @overload
     async def select(
@@ -159,7 +159,7 @@ class DatabaseFactory(Generic[T]):
         for row in rows:
             row_data = {k: row[k] for k in fields if k in row}
             children.append(self.model(**row_data))
-        bot.logger.info(f"Selected entry from {table_name}.")
+        bot.logger.debug(f"Selected entry from {table_name}.")
         return children
 
     async def update(self, *, set_kwargs: dict, where_kwargs: dict) -> None:
@@ -189,7 +189,7 @@ class DatabaseFactory(Generic[T]):
             """,
                 *values,
             )
-        bot.logger.info(f"Updated entry from {table_name}.")
+        bot.logger.debug(f"Updated entry from {table_name}.")
 
     async def primary_keys(self) -> list[str]:
         bot: DiscordBot = DiscordBot.get_instance()

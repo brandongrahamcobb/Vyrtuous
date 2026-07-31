@@ -37,5 +37,5 @@ async def clean_expired_video_only_channels() -> int:
                 channel_snowflake=expired_video_only_channel.channel_snowflake,
                 guild_snowflake=expired_video_only_channel.guild_snowflake,
             )
-        bot.logger.info("Cleaned up expired video-only channels.")
+        bot.logger.debug("Cleaned up expired video-only channels.")
     return count

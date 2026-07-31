@@ -1,5 +1,5 @@
 """!/bin/python3
-permission_level.py The purpose of this program is to provide the permission level database model.
+autoassign.py The purpose of this program is to provide the autoassign role database mode.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -22,13 +22,12 @@ from datetime import datetime, timezone
 
 
 @dataclass(frozen=True)
-class PermissionEntry:
-    __tablename__ = "permission_entries"
-    identifier = "permission_entry"
-    member_snowflake: int
+class AutoAssignRole:
+
+    __tablename__ = "autoassign_roles"
+    identifier = "arole"
     group_alias: str
-    channel_snowflake: int | None = None
-    guild_snowflake: int | None = None
-    role_snowflakes: list[int] = field(default_factory=list)
+    guild_snowflake: int
+    role_snowflake: int
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

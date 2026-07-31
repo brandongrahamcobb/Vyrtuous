@@ -12,6 +12,7 @@ from vyrtuous.utils.errors.error import (
     HasEqualOrLowerRole,
 )
 from vyrtuous.utils.messaging import emojis
+from vyrtuous.utils.tracking import data_builder, stream_service
 
 MODEL = PermissionEntry
 
@@ -313,86 +314,87 @@ async def survey(
     return pages
 
 
-#
-# async def log_mod(
-#     author_snowflake: int,
-#     channel_snowflake: int,
-#     display: bool,
-#     guild_snowflake: int,
-#     member_snowflake: int,
-#     message_snowflake: int | None,
-#     message_channel_snowflake: int | None,
-# ):
-#     duration = DurationObject(number=0, prefix="", sign=1, unit="")
-#     is_channel_scope = None
-#     reason = None
-#     role_snowflake = None
-#     target = None
-#     await data_builder.save_data(
-#         author_snowflake=author_snowflake,
-#         channel_snowflake=channel_snowflake,
-#         duration=duration,
-#         guild_snowflake=guild_snowflake,
-#         identifier="mod",
-#         member_snowflake=member_snowflake,
-#         reason=reason or "No reason provided.",
-#         role_snowflake=role_snowflake or None,
-#         target=target or None,
-#     )
-#     if display:
-#         await stream_service.send_log(
-#             author_snowflake=author_snowflake,
-#             channel_snowflake=channel_snowflake,
-#             identifier="mod",
-#             duration=duration,
-#             guild_snowflake=guild_snowflake,
-#             is_channel_scope=is_channel_scope,
-#             member_snowflake=member_snowflake,
-#             message_snowflake=message_snowflake or None,
-#             message_channel_snowflake=message_channel_snowflake or None,
-#             reason=reason or "No reason provided.",
-#             role_snowflake=role_snowflake or None,
-#             target=target or None,
-#         )
-#
-#
-# async def log_xmod(
-#     author_snowflake: int,
-#     channel_snowflake: int,
-#     display: bool,
-#     guild_snowflake: int,
-#     member_snowflake: int,
-#     message_snowflake: int | None,
-#     message_channel_snowflake: int | None,
-# ):
-#     duration = DurationObject(number=0, prefix="", sign=1, unit="")
-#     is_channel_scope = None
-#     reason = None
-#     role_snowflake = None
-#     target = None
-#     await data_builder.save_data(
-#         author_snowflake=author_snowflake or None,
-#         channel_snowflake=channel_snowflake,
-#         duration=duration,
-#         guild_snowflake=guild_snowflake,
-#         identifier="xmod",
-#         member_snowflake=member_snowflake,
-#         reason=reason or "No reason provided.",
-#         role_snowflake=role_snowflake or None,
-#         target=target or None,
-#     )
-#     if display:
-#         await stream_service.send_log(
-#             author_snowflake=author_snowflake or None,
-#             channel_snowflake=channel_snowflake,
-#             identifier="xmod",
-#             duration=duration,
-#             guild_snowflake=guild_snowflake,
-#             is_channel_scope=is_channel_scope,
-#             member_snowflake=member_snowflake,
-#             message_snowflake=message_snowflake or None,
-#             message_channel_snowflake=message_channel_snowflake or None,
-#             reason=reason or "No reason provided.",
-#             role_snowflake=role_snowflake or None,
-#             target=target or None,
-#         )
+async def log_group(
+    author_snowflake: int | None,
+    display: bool,
+    group_alias: str,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+    role_snowflake: int,
+):
+    channel_snowflake = None
+    duration = None
+    is_channel_scope = None
+    reason = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration=duration or None,
+        guild_snowflake=guild_snowflake,
+        identifier=group_alias,
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier=group_alias,
+            duration=duration or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )
+
+
+async def log_xgroup(
+    author_snowflake: int | None,
+    display: bool,
+    group_alias: str,
+    guild_snowflake: int,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+    role_snowflake: int,
+):
+    channel_snowflake = None
+    duration = None
+    is_channel_scope = None
+    reason = None
+    target = None
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration=duration or None,
+        guild_snowflake=guild_snowflake,
+        identifier=f"x{group_alias}",
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await stream_service.send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier=f"x{group_alias}",
+            duration=duration or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )

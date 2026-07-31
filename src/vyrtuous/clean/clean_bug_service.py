@@ -44,7 +44,7 @@ async def clean_expired_bugs() -> int:
             if bug.created_at < now - timedelta(weeks=1):
                 guild = bot.get_guild(bug.guild_snowflake)
                 if guild is None:
-                    bot.logger.info(
+                    bot.logger.debug(
                         f"Unable to locate guild {guild_snowflake}, not sending developer log."
                     )
                     continue
@@ -58,14 +58,14 @@ async def clean_expired_bugs() -> int:
                     or not isinstance(channel, discord.TextChannel)
                     or not isinstance(channel, discord.VoiceChannel)
                 ):
-                    bot.logger.info(
+                    bot.logger.debug(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, not sending developer log."
                     )
                     continue
                 for member_snowflake in member_snowflakes:
                     member = guild.get_member(member_snowflake)
                     if member is None:
-                        bot.logger.info(
+                        bot.logger.debug(
                             f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
                         )
                         continue

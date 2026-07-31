@@ -122,6 +122,7 @@ CREATE TABLE permission_entries (
     channel_snowflake bigint,
     created_at timestamp with time zone DEFAULT now(),
     guild_snowflake bigint,
+    role_snowflake bigint,
     group_alias TEXT NOT NULL,
     member_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
@@ -241,4 +242,10 @@ ADD COLUMN id SERIAL PRIMARY KEY;
 ALTER TABLE active_members
 ADD PRIMARY KEY (member_snowflake);
 
+ALTER TABLE administrator_roles
+ADD COLUMN group_alias TEXT NOT NULL DEFAULT 'administrator';
 
+ALTER TABLE administrator_roles
+ALTER COLUMN group_alias DROP DEFAULT;
+
+ALTER TABLE administrator_roles RENAME TO autoassign_roles;

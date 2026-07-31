@@ -27,16 +27,21 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.message import AppMessage, MessageObject
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.permissions import permission_service
 
 
 class UtilityAppCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
+
+    async def cog_app_command_error(self, interaction, error):
+        self.__bot.logger.info(str(error))
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
     @metadata(permission="command.utility.delete")
     @app_commands.command(name="del", description="Delete a message.")
@@ -311,10 +316,6 @@ class UtilityAppCommands(commands.Cog):
             text=f"Moved from {source_channel_name} to {target_channel_name}"
         )
         return await tick.end(success=embed)
-
-    async def cog_app_command_error(self, interaction, error):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

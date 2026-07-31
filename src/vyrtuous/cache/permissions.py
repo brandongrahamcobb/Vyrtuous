@@ -31,6 +31,7 @@ PERMISSION_TREE = {
         "utility": ["delete", "ping", "purge", "move"],
         "info": {
             "aliases": [],
+            "autoassigns": [],
             "automutes": [],
             "bans": [],
             "blacklists": [],
@@ -104,7 +105,7 @@ PERMISSION_TREE = {
             "unload",
             "upload",
         ],
-        "users": ["grant", "revoke", "hero", "vegan"],
+        "users": ["autoassign", "grant", "revoke", "hero", "vegan"],
     },
 }
 

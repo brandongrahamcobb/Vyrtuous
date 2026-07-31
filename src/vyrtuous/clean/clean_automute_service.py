@@ -46,7 +46,7 @@ async def clean_expired_automutes() -> int:
                     channel_snowflake=channel_snowflake,
                     guild_snowflake=guild_snowflake,
                 )
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate guild {guild_snowflake}, cleaning up expired automute."
                 )
                 continue
@@ -56,7 +56,7 @@ async def clean_expired_automutes() -> int:
                     channel_snowflake=channel_snowflake,
                     guild_snowflake=guild_snowflake,
                 )
-                bot.logger.info(
+                bot.logger.debug(
                     f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
                 )
                 continue
@@ -89,5 +89,5 @@ async def clean_expired_automutes() -> int:
                             await member.edit(mute=False, reason="Undoing automute")
                         except discord.Forbidden:
                             continue
-        bot.logger.info("Cleaned up expired automutes.")
+        bot.logger.debug("Cleaned up expired automutes.")
     return count

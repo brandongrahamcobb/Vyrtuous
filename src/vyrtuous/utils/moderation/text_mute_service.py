@@ -120,6 +120,6 @@ async def update_last_text_muted(
         set_kwargs=set_kwargs,
         where_kwargs=where_kwargs,
     )
-    bot.logger.info(
+    bot.logger.debug(
         f"Updated last_muted record for {member.display_name} in {channel.name}."
     )

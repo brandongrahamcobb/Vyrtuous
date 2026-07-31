@@ -141,7 +141,7 @@ async def _enforce_video(
     try:
         await member.move_to(None)
     except Exception as e:
-        bot.logger.info(f"Video enforcement failed: {e}")
+        bot.logger.debug(f"Video enforcement failed: {e}")
         return
     try:
         await member.send(

@@ -23,18 +23,91 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.permissions import PermissionGroup
 from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.models.group import Group, GroupObject
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.multi_converter import MultiConverter
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import hero_service, vegan_service
+from vyrtuous.utils.users import autoassign_role_service, hero_service, vegan_service
 
 
 class UserManagementTextCommands(commands.Cog):
 
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
+
+    @metadata(permission="command.users.autoassign")
+    @commands.command(name="autoassign", help="Toggle an autoassign role.")
+    async def toggle_autoassign_role_text_command(
+        self,
+        ctx: commands.Context,
+        group: GroupObject = commands.parameter(
+            converter=Group,
+            description="Specify a group alias or name.",
+        ),
+        role: discord.Role = commands.parameter(
+            converter=MultiConverter,
+            description="Specify a role ID/mention.",
+        ),
+        guild: discord.Guild | None = commands.parameter(
+            converter=MultiConverter,
+            default=None,
+            description="Specify a server ID.",
+        ),
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if ctx.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if guild is None:
+            guild_snowflake = ctx.guild.id
+        else:
+            if not isinstance(guild, discord.Guild):
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = guild.id
+        if ctx.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        else:
+            channel_snowflake = ctx.channel.id
+        if not isinstance(role, discord.Role):
+            return await tick.end(warning="This command must target a valid role.")
+        else:
+            role_snowflake = role.id
+        if group is None:
+            return await tick.end(warning="This command must target a valid group.")
+        else:
+            group_obj = group.group
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.users.autoassign"],
+        )
+        if ctx.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
+        pages = await autoassign_role_service.toggle_autoassign_role(
+            author_snowflake=ctx.author.id,
+            group=group_obj,
+            guild_snowflake=guild_snowflake,
+            message_snowflake=ctx.message.id,
+            message_channel_snowflake=ctx.message.channel.id,
+            role_snowflake=role_snowflake,
+        )
+        return await tick.end(success=pages)
 
     @commands.command(name="hero", help="Grant/revoke invincibility.")
     @metadata(permission="command.users.hero")
@@ -142,14 +215,14 @@ class UserManagementTextCommands(commands.Cog):
             converter=MultiConverter,
             description="Specify a member ID/mention.",
         ),
-        notes: str | None = commands.parameter(
-            default=None,
-            description="Include notes.",
-        ),
         guild: Union[discord.Guild, None] = commands.parameter(
             converter=MultiConverter,
             default=None,
             description="Specify a server ID.",
+        ),
+        notes: str | None = commands.parameter(
+            default=None,
+            description="Include notes.",
         ),
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, ctx=ctx)

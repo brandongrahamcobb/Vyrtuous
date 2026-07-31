@@ -1,5 +1,5 @@
 """!/bin/python3
-test_survey.py The purpose of this program is to be the integration test for the survey command for Vyrtuous.
+test_aroles.py The purpose of this program is to be the integration test for the aroles list command for Vyrtuous.
 
 Copyright (C) 2026  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
+from vyrtuous.db.autoassign import AutoAssignRole
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
 from vyrtuous.tests.integration.test_suite import (
@@ -33,40 +34,41 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+GUILD_SNOWFLAKE = 10000000000000500
+OTHER_GUILD_SNOWFLAKE = 10000000000000501
 
-COMMAND = "survey"
-BASE_PERMISSIONS = ["command.info.survey", "command.info.scope.channel"]
+
+COMMAND = "autoassigns"
+BASE_PERMISSIONS = ["command.info.autoassigns", "command.info.scope.guild"]
+TABLE_NAME = AutoAssignRole.__tablename__
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "channel",
+    "guild",
     [
         (None),
-        ("{channel_snowflake}"),
-        ("<#{channel_snowflake}>"),
+        ("{guild_snowflake}"),
+        ("{other_guild_snowflake}"),
     ],
 )
-async def test_survey_text_command(
-    bot,
-    prefix: str,
-    channel: str | None,
-):
+async def test_autoassigns_text_command(bot, prefix: str, guild: str | None):
     docstring = """
-    List member-group association from the PermissionState cache.
+    List autoassigns which are registered in the PostgreSQL database
+    'vyrtuous' in the table 'autoassign_roles'.
 
     Parameters
     ----------
-    channel (Optional) : str | int
-        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
-        Examples: 10000000000000010 | <#10000000000000010>
+    guild (Optional) : int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010 
 
     Example
     --------
-    >>> !survey
+    >>> !autoassigns
     Embed
     """
+    assert TABLE_NAME in docstring
     assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
@@ -80,44 +82,44 @@ async def test_survey_text_command(
                 )
             )
             full = f"{prefix}{COMMAND}"
-            if channel is None:
-                c = channel
+            if guild is None:
+                g = guild
             else:
-                c = channel.format(
-                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                g = guild.format(
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
                 )
-                full += f" {c}"
+                full += f" {g}"
             captured = await send_message(bot=bot, content=full)
             assert captured == ["success"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "channel",
+    "guild",
     [
         (None),
-        ("{channel_snowflake}"),
-        ("<#{channel_snowflake}>"),
+        ("{guild_snowflake}"),
+        ("{other_guild_snowflake}"),
     ],
 )
-async def test_survey_app_command(
-    bot,
-    channel: str | None,
-):
+async def test_autoassigns_app_command(bot, prefix: str, guild: str | None):
     docstring = """
-    List member-group association from the PermissionState cache.
+    List autoassigns which are registered in the PostgreSQL database
+    'vyrtuous' in the table 'autoassign_roles'.
 
     Parameters
     ----------
-    channel (Optional) : str | int
-        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
-        Examples: 10000000000000010 | <#10000000000000010>
+    guild (Optional) : int
+        Resolves to: discord.Guild
+        Examples: 10000000000000010 
 
     Example
     --------
-    >>> /survey
+    >>> !autoassigns
     Embed
     """
+    assert TABLE_NAME in docstring
     assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
@@ -131,12 +133,13 @@ async def test_survey_app_command(
                 )
             )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.survey_app_command
-            if channel is None:
-                c = channel
+            command = cog.list_autoassignment_roles_app_command
+            if guild is None:
+                g = guild
             else:
-                c = channel.format(
-                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                g = guild.format(
+                    guild_snowflake=GUILD_SNOWFLAKE,
+                    other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
                 )
             objects = setup(bot)
             msg = build_message(
@@ -154,14 +157,53 @@ async def test_survey_app_command(
             )
             async with capture_command() as end_results:
                 transformer = AppTarget()
-                if c:
-                    resolved_channel = await transformer.transform(inx, c)
+                if g:
+                    resolved_guild = await transformer.transform(inx, g)
                 else:
-                    resolved_channel = None
+                    resolved_guild = None
                 await command.callback(
                     cog,
                     interaction=inx,
-                    channel=resolved_channel,
+                    guild=resolved_guild,
                 )
             for kind, content in end_results:
                 assert kind == "success"
+
+
+COLUMNS = [
+    ("group_alias", "text", False),
+    ("guild_snowflake", "bigint", False),
+    ("role_snowflake", "bigint", False),
+    ("created_at", "timestamp with time zone", True),
+    ("updated_at", "timestamp with time zone", True),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
+async def test_automute_channels_database_table(
+    bot, field: str, datatype: str, nullable: bool
+):
+    async with bot.db_pool.acquire() as conn:
+        statement = await conn.prepare(f"SELECT * FROM {TABLE_NAME}")
+        columns = statement.get_attributes()
+        assert len(columns) == len(COLUMNS)
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                column_name,
+                data_type,
+                is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+            ORDER BY ordinal_position
+        """,
+            TABLE_NAME,
+            field,
+        )
+    assert row is not None
+    assert row["column_name"] == field
+    assert row["data_type"] == datatype
+    assert row["is_nullable"] == ("YES" if nullable else "NO")

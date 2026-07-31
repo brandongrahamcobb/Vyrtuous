@@ -17,7 +17,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Literal, Optional, Union
+from typing import Literal, Optional
 
 import discord
 from discord import app_commands
@@ -30,7 +30,7 @@ from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import AppModule, ModuleObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
-from vyrtuous.utils.errors.error import ExtensionError
+from vyrtuous.utils.errors.error import CheckFailure, ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
 
 
@@ -38,6 +38,11 @@ class DevelopmentAppCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
+
+    async def cog_app_command_error(self, interaction, error):
+        self.__bot.logger.info(str(error))
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
     @metadata(permission="command.dev.backup")
     @app_commands.command(name="backup", description="Request a backup file.")
@@ -186,8 +191,12 @@ class DevelopmentAppCommands(commands.Cog):
             except Exception as e:
                 return await tick.end(warning=str(e).capitalize())
         else:
+            if isinstance(guild.target, discord.Guild):
+                guild_obj = guild.target
+            else:
+                raise CheckFailure("This command must target a valid server.")
             try:
-                await self.__bot.tree.sync(guild=guild)
+                await self.__bot.tree.sync(guild=guild_obj)
             except discord.HTTPException:
                 pass
             else:
@@ -229,10 +238,6 @@ class DevelopmentAppCommands(commands.Cog):
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
         return await tick.end(success=f"Successfully unloaded {module.module}.")
-
-    async def cog_app_command_error(self, interaction, error):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

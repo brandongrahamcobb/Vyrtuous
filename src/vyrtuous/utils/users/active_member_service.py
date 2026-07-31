@@ -41,7 +41,7 @@ async def populate() -> None:
             member.display_name,
             member.last_active,
         )
-    bot.logger.info("Populated in-memory active members.")
+    bot.logger.debug("Populated in-memory active members.")
 
 
 async def save_and_update_active_members() -> None:
@@ -60,7 +60,7 @@ async def save_and_update_active_members() -> None:
                 member_snowflake=int(member_snowflake),
             )
             await database_factory.create(active_member)
-            bot.logger.info(f"Saved {data[0]} to active members database table.")
+            bot.logger.debug(f"Saved {data[0]} to active members database table.")
         else:
             saved_member = saved_member_snowflakes.get(member_snowflake)
             if saved_member is not None and data[1] == saved_member.last_active:
@@ -73,6 +73,6 @@ async def save_and_update_active_members() -> None:
                 await database_factory.update(
                     set_kwargs=set_kwargs, where_kwargs=where_kwargs
                 )
-                bot.logger.info(
+                bot.logger.debug(
                     f"Updated {data[0]} last active timestamp in the active members database table."
                 )

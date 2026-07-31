@@ -27,10 +27,12 @@ groups:
     default: false
     permissions:
     - command.clear.scope.guild
+    - command.info.autoassigns
     - command.info.heroes
     - command.info.streams
     - command.channel.stream
     - command.users.hero
+    - command.users.autoassign
     inheritance:
     - administrator
     scope: guild

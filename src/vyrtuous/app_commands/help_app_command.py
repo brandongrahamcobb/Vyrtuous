@@ -26,8 +26,8 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.models.metadata import metadata
-from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.messaging.tick import Tick
 
 
 def skip_app_command_help_discovery():
@@ -41,6 +41,11 @@ class HelpAppCommand(commands.Cog):
 
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
+
+    async def cog_app_command_error(self, interaction, error):
+        self.__bot.logger.info(str(error))
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
 
     async def get_available_commands(self, interaction):
         available = []
@@ -309,10 +314,6 @@ class HelpAppCommand(commands.Cog):
                 warning="\U000026a0\U0000fe0f No commands available to you."
             )
         return await tick.end(success=pages)
-
-    async def cog_app_command_error(self, interaction, error):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

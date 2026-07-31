@@ -51,6 +51,7 @@ class ModerationAppCommands(commands.Cog):
         self.__bot = bot
 
     async def cog_app_command_error(self, interaction, error):
+        self.__bot.logger.info(str(error))
         tick = Tick(bot=self.__bot, interaction=interaction)
         await tick.end(error=str(error))
 

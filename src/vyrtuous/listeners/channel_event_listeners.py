@@ -83,7 +83,6 @@ class ChannelEventListeners(commands.Cog):
                 )
                 return None
         if before.channel != after.channel:
-            bot.logger.info("before!=after")
             if targets := await voice_mute_service.is_voice_muted(
                 channel_snowflake=after.channel.id,
                 guild_snowflake=after.channel.guild.id,

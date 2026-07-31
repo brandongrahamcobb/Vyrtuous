@@ -22,12 +22,14 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.permissions import PermissionGroup
 from vyrtuous.cache.registry import MemberState, PermissionState
+from vyrtuous.models.group import AppGroup, GroupObject
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.users import hero_service, vegan_service
+from vyrtuous.utils.users import autoassign_role_service, hero_service, vegan_service
 from vyrtuous.view.grant_view import GrantView
 from vyrtuous.view.revoke_view import RevokeView
 from vyrtuous.view.view_context import ViewContext
@@ -37,6 +39,79 @@ class UserManagementAppCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.__bot = bot
+
+    async def cog_app_command_error(self, interaction, error):
+        self.__bot.logger.info(str(error))
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.end(error=str(error))
+
+    @metadata(permission="command.users.autoassign")
+    @app_commands.command(name="autoassign", description="Toggle an autoassign role.")
+    @app_commands.describe(
+        group="Specify a group alias/name.",
+        role="Specify a role ID/mention.",
+        guild="Specify a server ID.",
+    )
+    async def toggle_autoassign_role_app_command(
+        self,
+        interaction: discord.Interaction,
+        group: app_commands.Transform[GroupObject, AppGroup],
+        role: app_commands.Transform[TargetObject, AppTarget],
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        if guild is None:
+            guild_snowflake = interaction.guild.id
+        else:
+            if not isinstance(guild.target, discord.Guild):
+                return await tick.end(
+                    warning="This command must target a valid server."
+                )
+            guild_snowflake = guild.target.id
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        else:
+            channel_snowflake = interaction.channel.id
+        if not isinstance(role.target, discord.Role):
+            return await tick.end(warning="This command must target a valid role.")
+        else:
+            role_snowflake = role.target.id
+        if not isinstance(group.group, PermissionGroup):
+            return await tick.end(warning="This command must target a valid group.")
+        else:
+            group_obj = group.group
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.users.autoassign"],
+        )
+        if interaction.guild.id != guild_snowflake:
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=interaction.user.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                requested=["other_guilds"],
+            )
+        message = await interaction.original_response()
+        message_snowflake = message.id
+        pages = await autoassign_role_service.toggle_autoassign_role(
+            author_snowflake=interaction.user.id,
+            group=group_obj,
+            guild_snowflake=guild_snowflake,
+            message_snowflake=message_snowflake,
+            message_channel_snowflake=channel_snowflake,
+            role_snowflake=role_snowflake,
+        )
+        return await tick.end(success=pages)
 
     @metadata(permission="command.users.grant")
     @app_commands.command(name="grant", description="Grant permission levels.")
@@ -270,10 +345,10 @@ class UserManagementAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake, member_snowflake=interaction.user.id
         ):
             return await tick.end(warning="Author is not a vegan.")
-        if isinstance(member, int):
-            member_snowflake = member
-        elif isinstance(member, discord.Member):
-            member_snowflake = member.id
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         await permission_service.has_permissions(
@@ -289,10 +364,6 @@ class UserManagementAppCommands(commands.Cog):
             notes=notes,
         )
         return await tick.end(success=embed)
-
-    async def cog_app_command_error(self, interaction, error):
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
 
 
 async def setup(bot: DiscordBot):

@@ -71,7 +71,7 @@ async def build_pages(
     obj_name = obj.name
     if bot.user is None:
         return "The bot must be in a server."
-    title = f"{emojis.get_random_emoji()} {bot.user.display_name} Missing Permissions in {obj_name}"
+    title = f"{emojis.get_random_emoji()} {bot.user.display_name} Missing Intents in {obj_name}"
 
     dictionary = build_dictionary(obj=obj)
     processed_dictionary: list_service.PermissionDictionary = (
@@ -116,4 +116,6 @@ async def build_pages(
         original_description = embed.description or ""
         embed.description = f"**{original_description} ({perm_n})**"
         pages.append(embed)
+    if not pages:
+        return "All necessary intents are present for this target."
     return pages
