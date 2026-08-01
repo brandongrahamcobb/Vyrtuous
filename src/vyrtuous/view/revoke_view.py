@@ -30,8 +30,8 @@ from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging import emojis
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.view.view_context import ViewContext
 
 MODEL = PermissionEntry
 
@@ -54,12 +54,14 @@ class RevokeView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
-        ctx: ViewContext,
+        ctx: SnowflakeContext,
+        interaction: discord.Interaction,
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
         self.__ctx = ctx
+        self.__interaction = interaction
         self.__tick = tick
         self.__groups: dict[str, PermissionGroup] = {}
         self.__scopes: dict[str, GroupScope] = {}
@@ -320,6 +322,7 @@ class RevokeView(discord.ui.View):
                 content="Please select all fields.", ephemeral=True
             )
         else:
+            await interaction.response.defer()
             record = None
             database_factory: DatabaseFactory = DatabaseFactory(MODEL)
             if (
@@ -362,8 +365,8 @@ class RevokeView(discord.ui.View):
                     member_snowflake=self.__ctx.member_snowflake,
                 )
             await self.__tick.end(success=embed)
-            await self.__ctx.interaction.delete_original_response()
-            self.stop()
+        await interaction.delete_original_response()
+        self.stop()
 
     def build_revoke_embed(
         self,
@@ -411,8 +414,9 @@ class RevokeView(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.stop()
-        await interaction.response.edit_message(content="Cancelled action.", view=None)
 
     async def on_error(
         self,

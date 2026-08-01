@@ -20,44 +20,32 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import re
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
+from vyrtuous.aliases import (
+    unban_alias_service,
+    unflag_alias_service,
+    untext_mute_alias_service,
+    unvoice_mute_alias_service,
+)
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import PermissionScope
 from vyrtuous.cache.registry import PermissionState
-from vyrtuous.db.automute import AutoMute
+from vyrtuous.db.ban import Ban
 from vyrtuous.db.cap import Cap
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.flag import Flag
+from vyrtuous.db.text_mute import TextMute
 from vyrtuous.db.voice_mute import VoiceMute
-from vyrtuous.modal.reason_modal import ReasonModal
+from vyrtuous.modal.infraction_model import InfractionModal
 from vyrtuous.models.duration import DurationBuilder, DurationObject
-from vyrtuous.utils.errors.error import CheckFailure
-from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.utils.moderation import (
-    ban_service,
-    cap_service,
-    flag_service,
-    text_mute_service,
-    voice_mute_service,
-)
 from vyrtuous.permissions import permission_service
-from vyrtuous.view.view_context import ViewContext
+from vyrtuous.utils.errors.error import CheckFailure
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
+from vyrtuous.utils.messaging.tick import Tick
+from vyrtuous.utils.moderation import cap_service
+from vyrtuous.utils.tracking import stream_service
 
-INFRACTION_MODELS = [
-    ban_service.MODEL,
-    flag_service.MODEL,
-    text_mute_service.MODEL,
-    voice_mute_service.MODEL,
-]
-
-UNDO_CATEGORIES = {
-    "ban": "ban",
-    "flag": "flag",
-    "tmute": "text-mute",
-    "vmute": "voice-mute",
-}
 DURATIONS = {
     "1hour",
     "8hour",
@@ -70,19 +58,21 @@ class InfractionView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
-        ctx: ViewContext,
+        ctx: SnowflakeContext,
+        interaction: discord.Interaction,
+        model: type,
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
         self.__channel_snowflake = ctx.channel_snowflake
         self.__ctx = ctx
-        self.__duration = None
         self.__guild_snowflake = ctx.guild_snowflake
-        self.__is_channel_scope: bool = False
+        self.__interaction = interaction
         self.__tick = tick
-        self.__record = None
-        self.__model = None
+        self.__model = model
+        if self.__model == Flag:
+            self.remove_item(self.duration_select)
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -91,8 +81,6 @@ class InfractionView(discord.ui.View):
         available_channels: set[discord.abc.GuildChannel] = set()
         available_guilds: set[discord.Guild] = set()
         available_durations = DURATIONS
-        if self.__ctx.category == "flag":
-            self.duration_select.disabled = True
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         all_assigned_groups = await permission_service.resolve_all_assigned_groups(
@@ -104,7 +92,7 @@ class InfractionView(discord.ui.View):
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
-                if permission_service.has_permissions(
+                if await permission_service.has_permissions(
                     permission_state=permission_state,
                     member_snowflake=self.__author_snowflake,
                     requested=["commands.moderation.uncapped"],
@@ -113,7 +101,7 @@ class InfractionView(discord.ui.View):
                 break
             elif group.scope == PermissionScope.GUILD:
                 for guild in bot.guilds:
-                    if permission_service.has_permissions(
+                    if await permission_service.has_permissions(
                         permission_state=permission_state,
                         member_snowflake=self.__author_snowflake,
                         requested=["other_guilds"],
@@ -146,7 +134,7 @@ class InfractionView(discord.ui.View):
                             for channel in guild.channels:
                                 available_channels.add(channel)
                             available_guilds.add(guild)
-                        if permission_service.has_permissions(
+                        if await permission_service.has_permissions(
                             permission_state=permission_state,
                             channel_snowflake=channel.id,
                             guild_snowflake=guild.id,
@@ -160,15 +148,40 @@ class InfractionView(discord.ui.View):
                 raise CheckFailure(
                     "You do not have sufficient privileges in this channel or server to use this command."
                 )
-        self._build_guild_options(
-            available_channels=available_channels,
-            available_guilds=available_guilds,
-        )
+        self._build_guild_options(available_guilds=available_guilds, default=True)
         limited_channels = self.limit_available_to_top_24_by_member_count(
-            available=available_channels
+            available=list(available_channels)
         )
-        self._build_channel_options(limited_channels=limited_channels)
+        self._build_channel_options(limited_channels=limited_channels, default=True)
         await self.build_duration_options(available_durations=available_durations)
+        database_factory: DatabaseFactory = DatabaseFactory(self.__model)
+        records = await database_factory.select(
+            channel_snowflake=self.__channel_snowflake,
+            guild_snowflake=self.__guild_snowflake,
+            member_snowflake=self.__ctx.member_snowflake,
+            singular=False,
+        )
+        if records:
+            self.remove_item(self.duration_select)
+
+    async def _sync_duration_select(self, rebuild_options: bool = True):
+        database_factory: DatabaseFactory = DatabaseFactory(self.__model)
+        records = await database_factory.select(
+            channel_snowflake=self.__channel_snowflake,
+            guild_snowflake=self.__guild_snowflake,
+            member_snowflake=self.__ctx.member_snowflake,
+            singular=False,
+        )
+        should_show = self.__model != Flag and not records
+        is_shown = self.duration_select in self.children
+        if should_show:
+            if not is_shown:
+                self.add_item(self.duration_select)
+            if rebuild_options:
+                await self.build_duration_options()
+            self.duration_select.disabled = False
+        elif is_shown:
+            self.remove_item(self.duration_select)
 
     async def build_duration_options(self, available_durations: set[str] | None = None):
         def _format_duration_label(duration: str):
@@ -184,7 +197,7 @@ class InfractionView(discord.ui.View):
             duration_builder: DurationBuilder = DurationBuilder()
             database_factory: DatabaseFactory = DatabaseFactory(Cap)
             cap: Cap = await database_factory.select(
-                category=self.__ctx.category,
+                category=self.__model.identifier,
                 channel_snowflake=self.__channel_snowflake,
                 guild_snowflake=self.__ctx.guild_snowflake,
                 singular=True,
@@ -230,14 +243,15 @@ class InfractionView(discord.ui.View):
         return options
 
     def limit_available_to_top_24_by_member_count(self, available):
-        items = set()
-        items = available
+        items = list(available)
         items.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
         top_24 = items[:24]
         return set(top_24)
 
-    def _build_channel_options(self, limited_channels: set[discord.abc.GuildChannel]):
-        channel_options = set()
+    def _build_channel_options(
+        self, limited_channels: set[discord.abc.GuildChannel], default: bool = False
+    ):
+        channel_options = []
         bot: DiscordBot = DiscordBot.get_instance()
         channel = bot.get_channel(self.__ctx.channel_snowflake)
         if channel:
@@ -245,14 +259,14 @@ class InfractionView(discord.ui.View):
                 channel,
                 (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
             ):
-                channel_options.add(
+                channel_options.append(
                     discord.SelectOption(
                         label=channel.name,
                         value=str(self.__ctx.channel_snowflake),
-                        default=True,
+                        default=default,
                     )
                 )
-        channel_options.add(
+        channel_options.extend(
             [
                 discord.SelectOption(label=c.name, value=str(c.id))
                 for c in limited_channels
@@ -265,9 +279,7 @@ class InfractionView(discord.ui.View):
         self.channel_select.options = list(channel_options)
 
     def _build_guild_options(
-        self,
-        available_channels: set[discord.abc.GuildChannel],
-        available_guilds: set[discord.Guild],
+        self, available_guilds: set[discord.Guild], default: bool = False
     ):
         guild_options = []
         bot: DiscordBot = DiscordBot.get_instance()
@@ -277,131 +289,58 @@ class InfractionView(discord.ui.View):
                 discord.SelectOption(
                     label=guild.name,
                     value=str(self.__ctx.guild_snowflake),
-                    default=True,
+                    default=default,
                 )
             )
-        if len(available_guilds) == 1:
-            self.remove_item(self.guild_select)
-            top_24_channels = self.limit_available_to_top_24_by_member_count(
-                available=available_channels
-            )
-            self._build_channel_options(limited_channels=top_24_channels)
-        else:
-            limited_guilds = self.limit_available_to_top_24_by_member_count(
-                available=available_guilds
-            )
-            guild_options.extend(
-                [
-                    discord.SelectOption(label=g.name, value=str(g.id))
-                    for g in limited_guilds
-                    if g.id != self.__ctx.guild_snowflake
-                ]
-            )
-            guild_options.append(discord.SelectOption(label="All", value="all"))
-            self.guild_select.options = guild_options
+        limited_guilds = self.limit_available_to_top_24_by_member_count(
+            available=available_guilds
+        )
+        guild_options.extend(
+            [
+                discord.SelectOption(label=g.name, value=str(g.id))
+                for g in limited_guilds
+                if g.id != self.__ctx.guild_snowflake
+            ]
+        )
+        self.guild_select.options = guild_options
 
     @discord.ui.select(
-        placeholder="Select a guild",
+        placeholder="Select a server",
         options=[],
     )
     async def guild_select(self, interaction, select):
         await interaction.response.defer()
         bot: DiscordBot = DiscordBot.get_instance()
-        if select.values[0] == "all":
-            self.guild_select.placeholder = "All"
-            all_channels = []
-            for guild in bot.guilds:
-                all_channels.extend(guild.channels)
-            limited_channels = self.limit_available_to_top_24_by_member_count(
-                available=all_channels,
-            )
-            self._build_channel_options(limited_channels=limited_channels)
-        else:
-            guild = bot.get_guild(int(select.values[0]))
-            if guild is None:
-                raise commands.GuildNotFound(str(select.values[0]))
-            limited_channels = self.limit_available_to_top_24_by_member_count(
-                available=guild.channels,
-            )
-            self._build_channel_options(limited_channels=limited_channels)
+        guild = bot.get_guild(int(select.values[0]))
+        if guild is None:
+            raise commands.GuildNotFound(str(select.values[0]))
+        limited_channels = self.limit_available_to_top_24_by_member_count(
+            available=guild.channels,
+        )
+        self._build_channel_options(limited_channels=limited_channels, default=False)
+        self.channel_select.placeholder = "Select a channel"
+        self.__channel_snowflake = None
+        self.__guild_snowflake = guild.id
         self.channel_select.disabled = False
-        await interaction.edit_original_response(view=self)
+        await self._sync_duration_select(rebuild_options=False)
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.select(
         placeholder="Select a channel",
         options=[discord.SelectOption(label="Select a guild first", value=str(None))],
     )
     async def channel_select(self, interaction, select):
-        await interaction.response.defer()
         bot: DiscordBot = DiscordBot.get_instance()
-        duration_builder: DurationBuilder = DurationBuilder()
-        permission_state: PermissionState = bot.registry.get(PermissionState)
         channel = bot.get_channel(int(select.values[0]))
         if isinstance(channel, discord.abc.GuildChannel):
             self.channel_select.placeholder = channel.name
             self.__channel_snowflake = channel.id
             self.__guild_snowflake = channel.guild.id
-            await permission_service.has_equal_or_lower_role(
-                permission_state=permission_state,
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__guild_snowflake,
-                author_snowflake=self.__author_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-            )
-        if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-            for member in channel.members:
-                if self.__ctx.member_snowflake == member.id:
-                    self.__is_channel_scope = True
-        self.__model = next(
-            (
-                model
-                for model in INFRACTION_MODELS
-                if model.identifier == self.__ctx.category
-            ),
-            None,
-        )
-        database_factory: DatabaseFactory = DatabaseFactory(AutoMute)
-        automute = await database_factory.select(
-            channel_snowflake=self.__channel_snowflake,
-            guild_snowflake=self.__ctx.guild_snowflake,
-            singular=True,
-        )
-        if self.__model == VoiceMute:
-            if automute:
-                target = "auto"
-            else:
-                target = "command"
-            database_factory: DatabaseFactory = DatabaseFactory(self.__model)
-            record = await database_factory.select(
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-                target=target,
-                singular=True,
-            )
-        else:
-            database_factory: DatabaseFactory = DatabaseFactory(self.__model)
-            record = await database_factory.select(
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
-                member_snowflake=self.__ctx.member_snowflake,
-                singular=True,
-            )
-        if record:
-            self.__record = record
-            self.remove_item(self.duration_select)
-            self.__duration = duration_builder.parse(0).build()
-            if category := UNDO_CATEGORIES.get(self.__ctx.category, None):
-                await interaction.edit_original_response(
-                    content=f"Are you sure you want to undo their {category}?",
-                    view=self,
-                )
-                return None
-        await interaction.edit_original_response(view=self)
+        await self._sync_duration_select(rebuild_options=True)
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.select(placeholder="Select a duration", options=[])
     async def duration_select(self, interaction, select):
-        await interaction.response.defer()
         duration_name = next(
             option.label
             for option in select.options
@@ -411,56 +350,176 @@ class InfractionView(discord.ui.View):
         self.duration_select.placeholder = duration_name
         duration_builder = DurationBuilder()
         self.__duration = duration_builder.parse(duration_value).build()
-        await interaction.edit_original_response(view=self)
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
+        if self.__channel_snowflake is None or self.__guild_snowflake is None:
+            return await interaction.response.send_message(
+                content=f"Please select all fields.",
+                ephemeral=True,
+            )
         bot: DiscordBot = DiscordBot.get_instance()
-        duration_builder = DurationBuilder()
         permission_state: PermissionState = bot.registry.get(PermissionState)
-        if self.__duration is None:
-            if self.__model != Flag:
-                return await interaction.response.send_message(
-                    content="Please select all fields.", ephemeral=True
-                )
-        else:
-            if self.__record is None:
-                if await cap_service.exceeds_cap(
-                    channel_snowflake=self.__channel_snowflake,
-                    category=self.__ctx.category,
-                    duration=self.__duration,
-                    guild_snowflake=self.__guild_snowflake,
-                ):
-                    try:
-                        await permission_service.has_permissions(
-                            permission_state=permission_state,
+        await permission_service.has_equal_or_lower_role(
+            permission_state=permission_state,
+            channel_snowflake=self.__channel_snowflake,
+            guild_snowflake=self.__guild_snowflake,
+            author_snowflake=self.__author_snowflake,
+            member_snowflake=self.__ctx.member_snowflake,
+        )
+        database_factory: DatabaseFactory = DatabaseFactory(self.__model)
+        records = await database_factory.select(
+            channel_snowflake=self.__channel_snowflake,
+            guild_snowflake=self.__guild_snowflake,
+            member_snowflake=self.__ctx.member_snowflake,
+            singular=False,
+        )
+        duration_builder = DurationBuilder()
+        if records:
+            await interaction.response.defer()
+            embed = None
+            is_channel_scope = False
+            target = None
+            for record in records:
+                if hasattr(record, "expires_in"):
+                    duration = duration_builder.from_timestamp(
+                        record.expires_in
+                    ).build()
+                    if await cap_service.exceeds_cap(
+                        channel_snowflake=self.__channel_snowflake,
+                        category=self.__model.identifier,
+                        duration=duration,
+                        guild_snowflake=self.__guild_snowflake,
+                    ):
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
+                                member_snowflake=self.__author_snowflake,
+                                requested=["commands.moderation.uncapped"],
+                            )
+                        except CheckFailure:
+                            return await interaction.response.send_message(
+                                content=f"Duration {duration_builder.load(duration).as_str()} exceeds the channel cap.",
+                                ephemeral=True,
+                            )
+                match record:
+                    case Ban() as ban:
+                        await database_factory.delete_by_cls(ban)
+                        is_channel_scope = await unban_alias_service.disable(
                             channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=self.__guild_snowflake,
                             member_snowflake=self.__ctx.member_snowflake,
-                            requested=["commands.moderation.uncapped"],
+                            reason="Unban",
                         )
-                    except CheckFailure:
-                        return await interaction.response.send_message(
-                            content=f"Duration {duration_builder.load(self.__duration).as_str()} exceeds the channel cap.",
-                            ephemeral=True,
+                        embed = unban_alias_service.build_unban_embed(
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
                         )
-        modal = ReasonModal(
-            author_snowflake=self.__author_snowflake,
-            category=self.__ctx.category,
-            channel_snowflake=self.__channel_snowflake,
-            duration=self.__duration,
-            guild_snowflake=self.__guild_snowflake,
-            member_snowflake=self.__ctx.member_snowflake,
-            is_channel_scope=self.__is_channel_scope,
-            tick=self.__tick,
-        )
-        await modal.setup(is_new=True)
-        await interaction.response.send_modal(modal)
+                    case Flag() as flag:
+                        await database_factory.delete_by_cls(flag)
+                        is_channel_scope = await unflag_alias_service.disable(
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                        )
+                        embed = unflag_alias_service.build_unflag_embed(
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                        )
+                    case TextMute() as tmute:
+                        await database_factory.delete_by_cls(tmute)
+                        is_channel_scope = await untext_mute_alias_service.disable(
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                            reason="Untmute",
+                        )
+                        embed = untext_mute_alias_service.build_untext_mute_embed(
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                        )
+                    case VoiceMute() as vmute:
+                        if vmute.target in ["auto", "click", "command"]:
+                            await database_factory.delete_by_cls(vmute)
+                            target = record.target
+                            is_channel_scope = await unvoice_mute_alias_service.disable(
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
+                                member_snowflake=self.__ctx.member_snowflake,
+                                reason="Unvmute",
+                            )
+                            embed = unvoice_mute_alias_service.build_unvoice_mute_embed(
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
+                                member_snowflake=self.__ctx.member_snowflake,
+                            )
+                await stream_service.log(
+                    author_snowflake=self.__author_snowflake,
+                    channel_snowflake=self.__channel_snowflake,
+                    display=True,
+                    duration=DurationObject(number=0, prefix="", sign=1, unit=""),
+                    guild_snowflake=self.__guild_snowflake,
+                    identifier=record.identifier,
+                    is_channel_scope=is_channel_scope,
+                    member_snowflake=self.__ctx.member_snowflake,
+                    message_snowflake=None,
+                    message_channel_snowflake=None,
+                    reason="No reason provided.",
+                    role_snowflake=None,
+                    target=target,
+                )
+            if embed:
+                await self.__tick.end(success=embed)
+            await interaction.delete_original_response()
+            self.stop()
+        else:
+            if await cap_service.exceeds_cap(
+                channel_snowflake=self.__channel_snowflake,
+                category=self.__model.identifier,
+                duration=self.__duration,
+                guild_snowflake=self.__guild_snowflake,
+            ):
+                try:
+                    bot: DiscordBot = DiscordBot.get_instance()
+                    permission_state: PermissionState = bot.registry.get(
+                        PermissionState
+                    )
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__author_snowflake,
+                        requested=["commands.moderation.uncapped"],
+                    )
+                except CheckFailure:
+                    return await interaction.response.send_message(
+                        content=f"Duration {duration_builder.load(self.__duration).as_str()} exceeds the channel cap.",
+                        ephemeral=True,
+                    )
+            modal = InfractionModal(
+                author_snowflake=self.__author_snowflake,
+                channel_snowflake=self.__channel_snowflake,
+                duration=self.__duration,
+                guild_snowflake=self.__guild_snowflake,
+                member_snowflake=self.__ctx.member_snowflake,
+                model=self.__model,
+                tick=self.__tick,
+            )
+            await modal.setup()
+            await interaction.response.send_modal(modal)
+            self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.stop()
-        await interaction.response.edit_message(content="Cancelled action.", view=None)
 
     async def on_error(
         self,
@@ -468,4 +527,5 @@ class InfractionView(discord.ui.View):
         error: Exception,
         item: discord.ui.Item,
     ) -> None:
+        await interaction.edit_original_response(view=None)
         await self.__tick.end(error=str(error), ephemeral=True)

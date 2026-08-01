@@ -55,22 +55,26 @@ async def has_permissions(
     channel_snowflake: int | None = None,
     guild_snowflake: int | None = None,
 ) -> bool:
+    group = await resolve_effective_group(
+        permission_state=permission_state,
+        member_snowflake=member_snowflake,
+        channel_snowflake=channel_snowflake,
+        guild_snowflake=guild_snowflake,
+    )
     for permission in requested:
-        group = await resolve_effective_group(
-            permission_state=permission_state,
-            member_snowflake=member_snowflake,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-        )
         if group is None:
             raise CheckFailure(
                 f"You do not have sufficient access to do that (`{permission}`)."
             )
-        else:
-            for alias in (group.alias, *group.ancestors):
-                result = group_defines_permission(permission_state, alias, permission)
-                if result is not None:
-                    return True
+        granted = False
+        for alias in (group.alias, *group.ancestors):
+            result = group_defines_permission(permission_state, alias, permission)
+            if result is False:
+                break
+            if result is True:
+                granted = True
+                break
+        if not granted:
             raise CheckFailure(
                 f"You do not have sufficient access to do that (`{permission}`)."
             )
@@ -81,22 +85,30 @@ async def has_permissions_at_all(
     permission_state: PermissionState,
     member_snowflake: int,
     requested: list[str],
-) -> None:
+) -> bool:
+    assigned = await resolve_all_assigned_groups(
+        permission_state=permission_state,
+        member_snowflake=member_snowflake,
+    )
     for permission in requested:
-        assigned = await resolve_all_assigned_groups(
-            permission_state=permission_state,
-            member_snowflake=member_snowflake,
-        )
+        granted = False
         for group, _, _ in assigned:
+            denied = False
             for alias in (group.alias, *group.ancestors):
                 result = group_defines_permission(permission_state, alias, permission)
-                if result is None:
-                    raise CheckFailure(
-                        f"You do not have sufficient access to do that (`{permission}`)."
-                    )
-        raise CheckFailure(
-            f"You do not have sufficient access to do that (`{permission}`)."
-        )
+                if result is False:
+                    denied = True
+                    break
+                if result is True:
+                    granted = True
+                    break
+            if granted or denied:
+                break
+        if not granted:
+            raise CheckFailure(
+                f"You do not have sufficient access to do that (`{permission}`)."
+            )
+    return True
 
 
 def resolve_ancestors(
@@ -312,89 +324,3 @@ async def survey(
 
         pages.append(embed)
     return pages
-
-
-async def log_group(
-    author_snowflake: int | None,
-    display: bool,
-    group_alias: str,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    role_snowflake: int,
-):
-    channel_snowflake = None
-    duration = None
-    is_channel_scope = None
-    reason = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration or None,
-        guild_snowflake=guild_snowflake,
-        identifier=group_alias,
-        member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            identifier=group_alias,
-            duration=duration or None,
-            guild_snowflake=guild_snowflake,
-            is_channel_scope=is_channel_scope,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
-
-
-async def log_xgroup(
-    author_snowflake: int | None,
-    display: bool,
-    group_alias: str,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    role_snowflake: int,
-):
-    channel_snowflake = None
-    duration = None
-    is_channel_scope = None
-    reason = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration or None,
-        guild_snowflake=guild_snowflake,
-        identifier=f"x{group_alias}",
-        member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            identifier=f"x{group_alias}",
-            duration=duration or None,
-            guild_snowflake=guild_snowflake,
-            is_channel_scope=is_channel_scope,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )

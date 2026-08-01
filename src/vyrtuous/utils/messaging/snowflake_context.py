@@ -18,25 +18,34 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
+from vyrtuous.cache.registry import MemberState
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 
 
 class SnowflakeContext:
     def __init__(
         self,
-        *,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        member_snowflake: int,
+        channel_snowflake: int | None,
+        guild_snowflake: int | None,
+        member_snowflake: int | None,
     ):
         self.bot: DiscordBot = DiscordBot.get_instance()
-        self.guild_snowflake = guild_snowflake
-        self.guild = self.bot.get_guild(guild_snowflake)
-        if self.guild is None:
-            raise GuildNotFound(str(guild_snowflake))
-        self.channel_snowflake = channel_snowflake
-        self.channel = self.guild.get_channel(channel_snowflake)
-        if self.channel is None:
-            raise ChannelNotFound(str(channel_snowflake))
-        self.member_snowflake = member_snowflake
-        self.member = self.guild.get_member(member_snowflake)
+        if guild_snowflake:
+            self.guild_snowflake = guild_snowflake
+            self.guild = self.bot.get_guild(guild_snowflake)
+            if self.guild is None:
+                raise GuildNotFound(str(guild_snowflake))
+            if channel_snowflake:
+                self.channel_snowflake = channel_snowflake
+                self.channel = self.guild.get_channel(channel_snowflake)
+                if self.channel is None:
+                    raise ChannelNotFound(str(channel_snowflake))
+            if member_snowflake:
+                self.member_snowflake = member_snowflake
+                member = self.guild.get_member(member_snowflake)
+                if member is None:
+                    simplified_member = self.bot.registry.get(MemberState).active.get(
+                        member_snowflake, None
+                    )
+                    if simplified_member is None:
+                        raise MemberNotFound(str(member_snowflake))

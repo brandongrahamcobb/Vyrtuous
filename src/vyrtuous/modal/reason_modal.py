@@ -34,6 +34,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
@@ -42,7 +43,6 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.permissions import permission_service
 
 INFRACTION_MODELS = [
     ban_service.MODEL,
@@ -356,6 +356,7 @@ class ReasonModal(discord.ui.Modal):
                         member_snowflake=self.__member_snowflake,
                         reason=self.reason_selection.value,
                     )
+        self.stop()
         if embed:
             await self.__tick.end(success=embed)
         return None

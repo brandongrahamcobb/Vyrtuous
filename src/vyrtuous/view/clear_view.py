@@ -38,6 +38,7 @@ from vyrtuous.models.duration import DurationObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.errors.error import CheckFailure, MemberNotFound
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -48,7 +49,6 @@ from vyrtuous.utils.moderation import (
 )
 from vyrtuous.utils.tracking import stream_service
 from vyrtuous.utils.users import autoassign_role_service, vegan_service
-from vyrtuous.view.view_context import ViewContext
 
 MODELS = {
     alias_service.MODEL,
@@ -130,13 +130,15 @@ class ClearView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
-        ctx: ViewContext,
+        ctx: SnowflakeContext,
+        interaction: discord.Interaction,
         obj: Union[str, int, discord.Guild, discord.Member, discord.abc.GuildChannel],
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
         self.__ctx = ctx
+        self.__interaction = interaction
         self.__obj = obj
         self.__tick = tick
         self.available_channels = set()
@@ -664,8 +666,7 @@ class ClearView(discord.ui.View):
         return records
 
     def limit_available_to_top_24_by_member_count(self, available):
-        items = set()
-        items = available
+        items = list(available)
         items.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
         top_24 = items[:24]
         return set(top_24)
@@ -846,23 +847,22 @@ class ClearView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select a scope.", ephemeral=True
             )
+        await interaction.response.defer()
+
         deleted_count = await self.clear(
             interaction=interaction,
         )
         await self.__tick.end(
             success=f"Successfully deleted {deleted_count} record(s)."
         )
-        await self.__ctx.interaction.delete_original_response()
+        await interaction.delete_original_response()
         self.stop()
 
     async def clear(self, interaction: discord.Interaction) -> int:
-        if interaction.message is None:
-            return 0
         bot: DiscordBot = DiscordBot.get_instance()
         display = False
         is_channel_scope = False
         reason = "Clear command."
-        message = interaction.message
         to_delete = self._visible_records(exclude=None)
         deleted_count = 0
         for record in to_delete:
@@ -946,8 +946,8 @@ class ClearView(discord.ui.View):
                     identifier=obj.identifier,
                     is_channel_scope=is_channel_scope,
                     member_snowflake=obj.member_snowflake,
-                    message_snowflake=message.id,
-                    message_channel_snowflake=message.channel.id,
+                    message_snowflake=None,
+                    message_channel_snowflake=None,
                     reason=reason,
                     role_snowflake=None,
                     target=(
@@ -960,8 +960,9 @@ class ClearView(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.stop()
-        await interaction.response.edit_message(content="Cancelled action.", view=None)
 
     async def on_error(
         self,

@@ -30,8 +30,8 @@ from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import CheckFailure, MemberNotFound
 from vyrtuous.utils.messaging import emojis
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.view.view_context import ViewContext
 
 MODEL = PermissionEntry
 
@@ -54,12 +54,14 @@ class GrantView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
-        ctx: ViewContext,
+        ctx: SnowflakeContext,
+        interaction: discord.Interaction,
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
         self.__ctx = ctx
+        self.__interaction = interaction
         self.__tick = tick
         self.__groups: dict[str, PermissionGroup] = {}
         self.__scopes: dict[str, GroupScope] = {}
@@ -293,6 +295,7 @@ class GrantView(discord.ui.View):
                 content="Please select all fields.", ephemeral=True
             )
         else:
+            await interaction.response.defer()
             record = None
             bot: DiscordBot = DiscordBot.get_instance()
             database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -322,7 +325,7 @@ class GrantView(discord.ui.View):
                 if group:
                     if self.__selected_group.alias in group.ancestors:
                         return await interaction.response.send_message(
-                            content=f"You cannot grant {member_str} a group they inherit from..",
+                            content=f"You cannot grant {member_str} a group they inherit from.",
                             ephemeral=True,
                         )
                 record = await database_factory.select(
@@ -353,7 +356,7 @@ class GrantView(discord.ui.View):
                 if group:
                     if self.__selected_group.alias in group.ancestors:
                         return await interaction.response.send_message(
-                            content=f"You cannot grant {member_str} a group they inherit from..",
+                            content=f"You cannot grant {member_str} a group they inherit from.",
                             ephemeral=True,
                         )
                 record = await database_factory.select(
@@ -380,7 +383,7 @@ class GrantView(discord.ui.View):
                 if group:
                     if self.__selected_group.alias in group.ancestors:
                         return await interaction.response.send_message(
-                            content=f"You cannot grant {member_str} a group they inherit from..",
+                            content=f"You cannot grant {member_str} a group they inherit from.",
                             ephemeral=True,
                         )
                 record = await database_factory.select(
@@ -396,7 +399,6 @@ class GrantView(discord.ui.View):
                     group=self.__selected_group,
                     member_snowflake=self.__ctx.member_snowflake,
                 )
-            await self.__ctx.interaction.delete_original_response()
             if record:
                 await self.__tick.end(
                     warning=f"This member is already apart of this group (`{self.__selected_group.name}`).",
@@ -405,7 +407,8 @@ class GrantView(discord.ui.View):
             else:
                 await database_factory.create(entry)
                 await self.__tick.end(success=embed)
-            self.stop()
+        await interaction.delete_original_response()
+        self.stop()
 
     def build_grant_embed(
         self,
@@ -453,8 +456,9 @@ class GrantView(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         self.stop()
-        await interaction.response.edit_message(content="Cancelled action.", view=None)
 
     async def on_error(
         self,

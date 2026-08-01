@@ -28,11 +28,11 @@ from vyrtuous.models.group import AppGroup, GroupObject
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import autoassign_role_service, hero_service, vegan_service
 from vyrtuous.view.grant_view import GrantView
 from vyrtuous.view.revoke_view import RevokeView
-from vyrtuous.view.view_context import ViewContext
 
 
 class UserManagementAppCommands(commands.Cog):
@@ -147,8 +147,7 @@ class UserManagementAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake,
             requested=["command.users.grant"],
         )
-        ctx = ViewContext(
-            interaction=interaction,
+        ctx = SnowflakeContext(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
@@ -156,6 +155,7 @@ class UserManagementAppCommands(commands.Cog):
         view = GrantView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
+            interaction=interaction,
             tick=tick,
         )
         await view.setup()
@@ -293,8 +293,7 @@ class UserManagementAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake,
             requested=["command.users.revoke"],
         )
-        ctx = ViewContext(
-            interaction=interaction,
+        ctx = SnowflakeContext(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
@@ -302,6 +301,7 @@ class UserManagementAppCommands(commands.Cog):
         view = RevokeView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
+            interaction=interaction,
             tick=tick,
         )
         await view.setup()
