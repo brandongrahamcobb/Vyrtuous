@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -28,10 +27,10 @@ from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.permissions import permission_service
 from vyrtuous.view.view_context import ViewContext
 
 MODEL = PermissionEntry
@@ -363,6 +362,8 @@ class RevokeView(discord.ui.View):
                     member_snowflake=self.__ctx.member_snowflake,
                 )
             await self.__tick.end(success=embed)
+            await self.__ctx.interaction.delete_original_response()
+            self.stop()
 
     def build_revoke_embed(
         self,

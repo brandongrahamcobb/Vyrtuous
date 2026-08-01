@@ -22,7 +22,13 @@ from typing import Any, Union
 
 import discord
 
-from vyrtuous.aliases import alias_service
+from vyrtuous.aliases import (
+    alias_service,
+    unban_alias_service,
+    unflag_alias_service,
+    untext_mute_alias_service,
+    unvoice_mute_alias_service,
+)
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.autoassign import AutoAssignRole
@@ -105,7 +111,7 @@ SCOPES = {
 
 @dataclass(frozen=True)
 class ClearRecord:
-    model: type | None
+    model: type
     guild_snowflake: int
     channel_snowflake: int | None
     scope: str | None
@@ -640,7 +646,7 @@ class ClearView(discord.ui.View):
             return value
         return "All"
 
-    def _visible_records(self, *, exclude: str) -> list[ClearRecord]:
+    def _visible_records(self, *, exclude: str | None) -> list[ClearRecord]:
         records = self.records
         if exclude != "model" and self.selected_model not in (None, ALL):
             records = [r for r in records if r.model == self.selected_model]
@@ -820,6 +826,176 @@ class ClearView(discord.ui.View):
         self.selected_scope = ALL if raw == "all" else raw
         self._refresh_options()
         await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
+    async def submit(self, interaction, button):
+        if self.selected_model is None:
+            return await interaction.response.send_message(
+                content="Please select a model.", ephemeral=True
+            )
+        if self.guild_select.disabled is False and self.selected_guild is None:
+            return await interaction.response.send_message(
+                content="Please select a server.", ephemeral=True
+            )
+        if self.channel_select.disabled is False and self.selected_channel is None:
+            return await interaction.response.send_message(
+                content="Please select a channel.", ephemeral=True
+            )
+        if self.scope_select.disabled is False and self.selected_scope is None:
+            return await interaction.response.send_message(
+                content="Please select a scope.", ephemeral=True
+            )
+        deleted_count = await self.clear(
+            interaction=interaction,
+        )
+        await self.__tick.end(
+            success=f"Successfully deleted {deleted_count} record(s)."
+        )
+        await self.__ctx.interaction.delete_original_response()
+        self.stop()
+
+    async def clear(self, interaction: discord.Interaction) -> int:
+        if interaction.message is None:
+            return 0
+        bot: DiscordBot = DiscordBot.get_instance()
+        message = interaction.message
+        to_delete = self._visible_records(exclude=None)
+        deleted_count = 0
+        for record in to_delete:
+            database_factory: DatabaseFactory = DatabaseFactory(record.model)
+            select_kwargs: dict[str, Any] = {"guild_snowflake": record.guild_snowflake}
+            if record.channel_snowflake is not None:
+                select_kwargs["channel_snowflake"] = record.channel_snowflake
+            if record.scope is not None:
+                select_kwargs["target"] = record.scope.lower()
+            objects = await database_factory.select(singular=False, **select_kwargs)
+            for obj in objects:
+                deleted_count += 1
+                await database_factory.delete_by_cls(obj)
+                match obj.identifier:
+                    case "alias":
+                        await alias_service.delete_alias(
+                            alias_name=obj.alias_name,
+                            guild_snowflake=obj.guild_snowflake,
+                        )
+                    case "automute":
+                        await automute_channel_service.toggle_automute(
+                            author_snowflake=self.__author_snowflake,
+                            channel_snowflake=obj.channel_snowflake,
+                            duration=None,
+                            guild_snowflake=obj.guild_snowflake,
+                        )
+                    case "ban":
+                        await unban_alias_service.unban(
+                            channel_snowflake=obj.channel_snowflake,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                        )
+                        await unban_alias_service.log_unban(
+                            author_snowflake=self.__author_snowflake,
+                            channel_snowflake=obj.channel_snowflake,
+                            display=False,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                            message_snowflake=message.id,
+                            message_channel_snowflake=message.channel.id,
+                            reason="Clear command.",
+                        )
+                    case "flag":
+                        await unflag_alias_service.unflag(
+                            channel_snowflake=obj.channel_snowflake,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                        )
+                        await unflag_alias_service.log_unflag(
+                            author_snowflake=self.__author_snowflake,
+                            channel_snowflake=obj.channel_snowflake,
+                            display=False,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                            message_snowflake=message.id,
+                            message_channel_snowflake=message.channel.id,
+                            reason="Clear command.",
+                        )
+                    case "stream":
+                        target_channel = bot.get_channel(obj.channel_snowflake)
+                        if isinstance(
+                            target_channel,
+                            (
+                                discord.VoiceChannel,
+                                discord.TextChannel,
+                                discord.StageChannel,
+                            ),
+                        ):
+                            guild = bot.get_guild(obj.guild_snowflake)
+                            await stream_service.toggle_stream(
+                                target_channel=target_channel,
+                                source=guild,
+                            )
+                    case "tmute":
+                        await untext_mute_alias_service.untext_mute(
+                            channel_snowflake=obj.channel_snowflake,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                        )
+                        await untext_mute_alias_service.log_untext_mute(
+                            author_snowflake=self.__author_snowflake,
+                            channel_snowflake=obj.channel_snowflake,
+                            display=False,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                            message_snowflake=message.id,
+                            message_channel_snowflake=message.channel.id,
+                            reason="Clear command.",
+                        )
+                    case "video":
+                        await video_channel_service.toggle_video_channel(
+                            channel_snowflake=obj.channel_snowflake,
+                            duration=None,
+                            guild_snowflake=obj.guild_snowflake,
+                        )
+                    case "vmute":
+                        if isinstance(self.selected_scope, _All):
+                            targets = ["auto", "click", "command", "server"]
+                            for target in targets:
+                                await unvoice_mute_alias_service.unvoice_mute(
+                                    channel_snowflake=obj.channel_snowflake,
+                                    guild_snowflake=obj.guild_snowflake,
+                                    member_snowflake=obj.member_snowflake,
+                                    target=target,
+                                )
+                                await unvoice_mute_alias_service.log_unvoice_mute(
+                                    author_snowflake=self.__author_snowflake,
+                                    channel_snowflake=obj.channel_snowflake,
+                                    display=False,
+                                    guild_snowflake=obj.guild_snowflake,
+                                    is_channel_scope=False,
+                                    member_snowflake=obj.member_snowflake,
+                                    message_snowflake=message.id,
+                                    message_channel_snowflake=message.channel.id,
+                                    reason="Clear command.",
+                                    target=target,
+                                )
+                        elif self.selected_scope is not None:
+                            await unvoice_mute_alias_service.unvoice_mute(
+                                channel_snowflake=obj.channel_snowflake,
+                                guild_snowflake=obj.guild_snowflake,
+                                member_snowflake=obj.member_snowflake,
+                                target=self.selected_scope.lower(),
+                            )
+                            await unvoice_mute_alias_service.log_unvoice_mute(
+                                author_snowflake=self.__author_snowflake,
+                                channel_snowflake=obj.channel_snowflake,
+                                display=False,
+                                guild_snowflake=obj.guild_snowflake,
+                                is_channel_scope=False,
+                                member_snowflake=obj.member_snowflake,
+                                message_snowflake=message.id,
+                                message_channel_snowflake=message.channel.id,
+                                reason="Clear command.",
+                                target=self.selected_scope.lower(),
+                            )
+        return deleted_count
 
     # @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     # async def confirm(self, interaction, button):

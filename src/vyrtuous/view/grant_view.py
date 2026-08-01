@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -28,10 +27,10 @@ from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import CheckFailure, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
-from vyrtuous.permissions import permission_service
 from vyrtuous.view.view_context import ViewContext
 
 MODEL = PermissionEntry
@@ -397,6 +396,7 @@ class GrantView(discord.ui.View):
                     group=self.__selected_group,
                     member_snowflake=self.__ctx.member_snowflake,
                 )
+            await self.__ctx.interaction.delete_original_response()
             if record:
                 await self.__tick.end(
                     warning=f"This member is already apart of this group (`{self.__selected_group.name}`).",
@@ -405,6 +405,7 @@ class GrantView(discord.ui.View):
             else:
                 await database_factory.create(entry)
                 await self.__tick.end(success=embed)
+            self.stop()
 
     def build_grant_embed(
         self,

@@ -254,7 +254,10 @@ class ModerationAppCommands(commands.Cog):
         view = ClearView(
             author_snowflake=interaction.user.id, ctx=ctx, obj=target.target, tick=tick
         )
-        await view.setup()
+        try:
+            await view.setup()
+        except CheckFailure as e:
+            return await tick.end(warning=str(e))
         await interaction.response.send_message(
             content="Specify what to clear.", view=view, ephemeral=True
         )

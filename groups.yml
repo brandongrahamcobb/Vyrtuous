@@ -100,8 +100,8 @@ groups:
     - command.info.bans
     - command.info.flags
     - command.info.help
+    - command.info.members
     - command.info.roleid
-    - command.info.roles
     - command.info.scope.channel
     - command.info.scope.member
     - command.info.scope.role
