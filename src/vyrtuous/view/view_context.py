@@ -40,7 +40,7 @@ class ViewContext:
         interaction: discord.Interaction,
         channel_snowflake: int,
         guild_snowflake: int,
-        member_snowflake: int,
+        member_snowflake: int | None,
     ):
         self._category: str
         self.channel_snowflake = channel_snowflake

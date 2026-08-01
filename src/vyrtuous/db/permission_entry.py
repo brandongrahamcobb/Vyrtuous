@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class PermissionEntry:
     __tablename__ = "permission_entries"
     identifier = "permission_entry"
+    name = "Group"
     member_snowflake: int
     group_alias: str
     channel_snowflake: int | None = None

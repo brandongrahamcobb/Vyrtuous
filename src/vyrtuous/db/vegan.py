@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class Vegan:
     __tablename__ = "vegans"
     identifier = "vegan"
+    name = "Vegan"
     guild_snowflake: int
     member_snowflake: int
     notes: str | None

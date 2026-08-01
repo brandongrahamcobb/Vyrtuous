@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
 from discord import app_commands
+from discord.abc import GuildChannel
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -29,6 +30,7 @@ from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
     ban_service,
@@ -37,6 +39,7 @@ from vyrtuous.utils.moderation import (
     voice_mute_service,
 )
 from vyrtuous.view.cancel_confirm_view import VerifyView
+from vyrtuous.view.clear_view import ClearView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_infraction_view import ModifyInfractionView
 from vyrtuous.view.view_context import ViewContext
@@ -192,35 +195,20 @@ class ModerationAppCommands(commands.Cog):
     @metadata(permission="command.clear")
     @app_commands.command(name="clear", description="Reset records.")
     @app_commands.describe(
-        category="Specify one of: `alias`, `all`, `automute`, `ban`, `flag`, `tmute`, `stream` or `vmute`.",
-        scope="Specify one of: `auto`, `server`, `user`",
         target="Specify `all`, a channel ID/mention, member ID/mention, or server ID.",
-        guild="Specify a server ID.",
     )
     async def clear_channel_access_app_command(
         self,
         interaction: discord.Interaction,
         target: app_commands.Transform[TargetObject, AppTarget],
-        category: app_commands.Transform[CategoryObject, AppCategory],
-        scope: app_commands.Transform[ScopeObject, AppScope],
-        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
-        if guild is None:
-            if interaction.guild is None:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
-            guild_snowflake = interaction.guild.id
+        if interaction.guild is None:
+            return await tick.end(warning="This command must target a valid server.")
         else:
-            if isinstance(guild.target, discord.Guild):
-                guild_snowflake = guild.target.id
-            else:
-                return await tick.end(
-                    warning="This command must target a valid server."
-                )
+            guild_snowflake = interaction.guild.id
         if interaction.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel."
@@ -234,28 +222,58 @@ class ModerationAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake,
             requested=["command.clear"],
         )
-        view = VerifyView(
-            author_snowflake=interaction.user.id,
-            category=str(category),
-            obj=target,
-        )
-        embed = view.build_embed()
-        await tick.end(success=embed, view=view)
-        await view.wait()
-        tick = Tick(bot=self.__bot, interaction=interaction)
-        message = await interaction.original_response()
-        message_snowflake = message.id
-        msg = await clear_service.clear(
-            author_snowflake=interaction.user.id,
-            category=category.category,
+        if not isinstance(
+            target.target,
+            (str, int, discord.Guild, discord.Member, discord.abc.GuildChannel),
+        ):
+            return await tick.end(
+                warning="Invalid target. Must be a `channel`, `member`, `server` or `all`."
+            )
+        if isinstance(target.target, int):
+            await permission_service.has_equal_or_lower_role(
+                permission_state=permission_state,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                author_snowflake=interaction.user.id,
+                member_snowflake=target.target,
+            )
+        elif isinstance(target.target, discord.Member):
+            await permission_service.has_equal_or_lower_role(
+                permission_state=permission_state,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                author_snowflake=interaction.user.id,
+                member_snowflake=target.target.id,
+            )
+        ctx = ViewContext(
+            interaction=interaction,
+            channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            message_snowflake=message_snowflake,
-            message_channel_snowflake=message.channel.id,
-            obj=target,
-            target=scope.scope,
-            view=view,
+            member_snowflake=None,
         )
-        return await tick.end(success=msg)
+        view = ClearView(
+            author_snowflake=interaction.user.id, ctx=ctx, obj=target.target, tick=tick
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Specify what to clear.", view=view, ephemeral=True
+        )
+        #
+        #
+        # tick = Tick(bot=self.__bot, interaction=interaction)
+        # message = await interaction.original_response()
+        # message_snowflake = message.id
+        # msg = await clear_service.clear(
+        #     author_snowflake=interaction.user.id,
+        #     category=category.category,
+        #     guild_snowflake=guild_snowflake,
+        #     message_snowflake=message_snowflake,
+        #     message_channel_snowflake=message.channel.id,
+        #     obj=target,
+        #     target=scope.scope,
+        #     view=view,
+        # )
+        # return await tick.end(success=msg)
 
     @metadata(permission="command.moderation.duration")
     @app_commands.command(name="duration", description="Modify a duration.")

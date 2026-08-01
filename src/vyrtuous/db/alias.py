@@ -27,6 +27,7 @@ from discord.ext import commands
 class Alias:
     __tablename__ = "command_aliases"
     identifier = "alias"
+    name = "Alias"
     alias_name: str
     category: str
     channel_snowflake: int

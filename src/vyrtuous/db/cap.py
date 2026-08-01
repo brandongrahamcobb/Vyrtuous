@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class Cap:
     __tablename__ = "active_caps"
     identifier = "cap"
+    name = "Cap"
     category: str
     channel_snowflake: int
     duration_seconds: int

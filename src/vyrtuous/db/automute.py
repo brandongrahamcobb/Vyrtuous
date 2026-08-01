@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class AutoMute:
     __tablename__ = "active_automute_channels"
     identifier = "automute"
+    name = "Automute"
     channel_snowflake: int
     guild_snowflake: int
     expires_in: datetime | None = None

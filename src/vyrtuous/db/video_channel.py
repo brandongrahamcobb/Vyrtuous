@@ -26,6 +26,7 @@ class VideoChannel:
 
     __tablename__ = "active_video_only_channels"
     identifier = "video_channel"
+    name = "Video-Only Channel"
     category = "video"
     channel_snowflake: int
     guild_snowflake: int

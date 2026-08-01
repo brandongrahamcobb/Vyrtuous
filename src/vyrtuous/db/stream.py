@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class Stream:
     __tablename__ = "streaming"
     identifier = "stream"
+    name = "Stream"
     channel_snowflake: int
     guild_snowflake: int
     source_guild_snowflake: int | None = None

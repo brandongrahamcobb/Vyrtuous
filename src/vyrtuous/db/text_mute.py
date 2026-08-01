@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class TextMute:
     __tablename__ = "active_text_mutes"
     identifier = "tmute"
+    name = "Text-Mute"
     channel_snowflake: int
     guild_snowflake: int
     member_snowflake: int

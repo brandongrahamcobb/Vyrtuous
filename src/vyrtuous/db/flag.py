@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class Flag:
     __tablename__ = "active_flags"
     identifier = "flag"
+    name = "Flag"
     channel_snowflake: int
     guild_snowflake: int
     member_snowflake: int

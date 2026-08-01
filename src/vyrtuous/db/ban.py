@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 class Ban:
     __tablename__ = "active_bans"
     identifier = "ban"
+    name = "Ban"
     channel_snowflake: int
     guild_snowflake: int
     member_snowflake: int

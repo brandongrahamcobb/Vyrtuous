@@ -26,6 +26,7 @@ class AutoAssignRole:
 
     __tablename__ = "autoassign_roles"
     identifier = "arole"
+    name = "Autoassign"
     group_alias: str
     guild_snowflake: int
     role_snowflake: int
