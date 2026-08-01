@@ -28,7 +28,7 @@ from vyrtuous.db.flag import Flag
 from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.tracking import data_builder, stream_service
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = Flag
 
@@ -44,67 +44,37 @@ class FlagMessageContext:
     reason: str
 
 
-async def log_flag(
-    author_snowflake: int | None,
-    channel_snowflake: int,
-    display: bool,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    reason: str | None,
-) -> None:
-    duration = DurationObject(number=0, prefix="", sign=1, unit="")
-    is_channel_scope = None
-    role_snowflake = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="flag",
-        member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            identifier="flag",
-            is_channel_scope=is_channel_scope or None,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
-
-
 async def flag_by_message(
     ctx: FlagMessageContext, display: bool = True
 ) -> discord.Embed:
-    await flag(
+    is_channel_scope = await enable(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
-        reason=ctx.reason,
     )
-    await log_flag(
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
+        duration=DurationObject(number=0, prefix="", sign=1, unit=""),
         guild_snowflake=ctx.guild_snowflake,
+        identifier="flag",
+        is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
         reason=ctx.reason,
+        role_snowflake=None,
+        target=None,
     )
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    flag = MODEL(
+        channel_snowflake=ctx.channel_snowflake,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
+    )
+    await database_factory.create(flag)
     embed = build_flag_embed(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
@@ -114,14 +84,13 @@ async def flag_by_message(
     return embed
 
 
-async def flag(
+async def enable(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
-    reason: str,
-) -> None:
+) -> bool:
+    is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise GuildNotFound(str(guild_snowflake))
@@ -132,15 +101,16 @@ async def flag(
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
             raise MemberNotFound(str(member_snowflake))
-    flag = MODEL(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-        reason=reason,
-    )
-    await database_factory.create(flag)
+    if member:
+        if (
+            member.voice
+            and member.voice.channel
+            and member.voice.channel.id == channel_snowflake
+        ):
+            is_channel_scope = True
     original_set = bot.registry.get(MemberState).flagged
     original_set[guild_snowflake].add(member_snowflake)
+    return is_channel_scope
 
 
 def build_flag_embed(

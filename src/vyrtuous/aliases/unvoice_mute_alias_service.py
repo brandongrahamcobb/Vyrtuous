@@ -26,10 +26,10 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.permissions import permission_service
 from vyrtuous.utils.tracking import data_builder, stream_service
 
 MODEL = VoiceMute
@@ -45,80 +45,6 @@ class UnvoiceMuteMessageContext:
     message_channel_snowflake: int
     target: str
     reason: str = "No reason provided."
-
-
-async def log_unvoice_mute(
-    author_snowflake: int | None,
-    channel_snowflake: int,
-    display: bool,
-    guild_snowflake: int,
-    is_channel_scope: bool,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    reason: str,
-    target: str,
-) -> None:
-    duration = DurationObject(number=0, prefix="", sign=1, unit="")
-    role_snowflake = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="unvmute",
-        member_snowflake=member_snowflake,
-        reason=reason,
-        role_snowflake=role_snowflake or None,
-        target=target,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            identifier="unvmute",
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            is_channel_scope=is_channel_scope,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason,
-            role_snowflake=role_snowflake or None,
-            target=target,
-        )
-
-
-async def set_unvoice_mute_overwrite(
-    channel_snowflake: int,
-    guild_snowflake: int,
-    member_snowflake: int,
-) -> bool:
-    is_channel_scope = False
-    reason = None
-    bot: DiscordBot = DiscordBot.get_instance()
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise GuildNotFound(str(guild_snowflake))
-    channel = guild.get_channel(channel_snowflake)
-    if channel is None:
-        raise ChannelNotFound(str(channel_snowflake))
-    member = guild.get_member(member_snowflake)
-    if member is None:
-        simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
-        if not simplified_member:
-            raise MemberNotFound(str(member_snowflake))
-    else:
-        if member.voice and member.voice.channel:
-            if member.voice.channel.id == channel_snowflake:
-                is_channel_scope = True
-                try:
-                    await member.edit(
-                        mute=False, reason=reason or "No reason provided."
-                    )
-                except discord.Forbidden:
-                    raise
-    return is_channel_scope
 
 
 async def unvoice_mute_by_message(
@@ -149,22 +75,31 @@ async def unvoice_mute_by_message(
             member_snowflake=ctx.author_snowflake,
             requested=["command.moderation.uncapped"],
         )
-    is_channel_scope = await unvoice_mute(
+    is_channel_scope = await disable(
+        channel_snowflake=ctx.channel_snowflake,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
+    )
+    await database_factory.delete(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         target=ctx.target,
     )
-    await log_unvoice_mute(
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
+        duration=DurationObject(number=0, prefix="", sign=1, unit=""),
         guild_snowflake=ctx.guild_snowflake,
+        identifier="unvmute",
         is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
         reason=ctx.reason,
+        role_snowflake=None,
         target=ctx.target,
     )
     embed = build_unvoice_mute_embed(
@@ -175,15 +110,14 @@ async def unvoice_mute_by_message(
     return embed
 
 
-async def unvoice_mute(
+async def disable(
     channel_snowflake: int,
     guild_snowflake: int,
     member_snowflake: int,
-    target: str,
+    reason: str,
 ) -> bool:
     is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise GuildNotFound(str(guild_snowflake))
@@ -196,17 +130,13 @@ async def unvoice_mute(
         if not simplified_member:
             raise MemberNotFound(str(member_snowflake))
     else:
-        is_channel_scope = await set_unvoice_mute_overwrite(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-        )
-    await database_factory.delete(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-        target=target,
-    )
+        if member.voice and member.voice.channel:
+            if member.voice.channel.id == channel_snowflake:
+                is_channel_scope = True
+                try:
+                    await member.edit(mute=False, reason=reason)
+                except discord.Forbidden:
+                    raise
     return is_channel_scope
 
 

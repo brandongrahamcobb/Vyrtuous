@@ -28,7 +28,7 @@ from vyrtuous.db.flag import Flag
 from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.tracking import data_builder, stream_service
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = Flag
 
@@ -47,20 +47,31 @@ class UnflagMessageContext:
 async def unflag_by_message(
     ctx: UnflagMessageContext, display: bool = True
 ) -> discord.Embed:
-    await unflag(
+    is_channel_scope = await disable(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
     )
-    await log_unflag(
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    await database_factory.delete(
+        channel_snowflake=ctx.channel_snowflake,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+    )
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
+        duration=DurationObject(number=0, prefix="", sign=1, unit=""),
         guild_snowflake=ctx.guild_snowflake,
+        identifier="unflag",
+        is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
         reason=ctx.reason,
+        role_snowflake=None,
+        target=None,
     )
     embed = build_unflag_embed(
         channel_snowflake=ctx.channel_snowflake,
@@ -70,53 +81,11 @@ async def unflag_by_message(
     return embed
 
 
-async def log_unflag(
-    author_snowflake: int | None,
-    channel_snowflake: int,
-    display: bool,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    reason: str,
-) -> None:
-    duration = DurationObject(number=0, prefix="", sign=1, unit="")
-    is_channel_scope = None
-    role_snowflake = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="unflag",
-        member_snowflake=member_snowflake,
-        reason=reason,
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            identifier="unflag",
-            is_channel_scope=is_channel_scope or None,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason,
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
-
-
-async def unflag(
+async def disable(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
-) -> None:
+) -> bool:
+    is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise GuildNotFound(str(guild_snowflake))
@@ -125,13 +94,16 @@ async def unflag(
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
             raise MemberNotFound(str(member_snowflake))
-    await database_factory.delete(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-    )
+    else:
+        if (
+            member.voice
+            and member.voice.channel
+            and member.voice.channel.id == channel_snowflake
+        ):
+            is_channel_scope = True
     original_set = bot.registry.get(MemberState).flagged
     original_set[guild_snowflake].remove(member_snowflake)
+    return is_channel_scope
 
 
 def build_unflag_embed(

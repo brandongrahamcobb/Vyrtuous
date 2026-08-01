@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.aliases import unvoice_mute_alias_service, voice_mute_alias_service
 from vyrtuous.aliases.alias_context import AliasContext
@@ -28,6 +27,7 @@ from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import (
     ChannelNotFound,
     CheckFailure,
@@ -35,7 +35,7 @@ from vyrtuous.utils.errors.error import (
     HasEqualOrLowerRole,
 )
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.permissions import permission_service
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = VoiceMute
 
@@ -51,25 +51,28 @@ async def enforce_or_undo(
         guild_snowflake=alias_ctx.guild_snowflake,
         singular=True,
     )
-    if await is_voice_muted(
+    if targets := await is_voice_muted(
         channel_snowflake=alias_ctx.channel_snowflake,
         guild_snowflake=alias_ctx.guild_snowflake,
         member_snowflake=alias_ctx.member_snowflake,
-        targets=["command"],
+        targets=["auto", "command"],
     ):
-        unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
-            author_snowflake=message.author.id,
-            channel_snowflake=alias_ctx.channel_snowflake,
-            guild_snowflake=alias_ctx.guild_snowflake,
-            member_snowflake=alias_ctx.member_snowflake,
-            message_snowflake=message.id,
-            message_channel_snowflake=message.channel.id,
-            target="command",
-        )
-        embed = await unvoice_mute_alias_service.unvoice_mute_by_message(
-            ctx=unvoice_mute_ctx, display=True
-        )
-        return embed
+        embeds = []
+        for target in targets:
+            unvoice_mute_ctx = unvoice_mute_alias_service.UnvoiceMuteMessageContext(
+                author_snowflake=message.author.id,
+                channel_snowflake=alias_ctx.channel_snowflake,
+                guild_snowflake=alias_ctx.guild_snowflake,
+                member_snowflake=alias_ctx.member_snowflake,
+                message_snowflake=message.id,
+                message_channel_snowflake=message.channel.id,
+                target=target,
+            )
+            embed = await unvoice_mute_alias_service.unvoice_mute_by_message(
+                ctx=unvoice_mute_ctx, display=True
+            )
+            embeds.append(embed)
+        return embeds[0]
     elif auto_mute_channel:
         target = "auto"
         voice_mute_ctx = voice_mute_alias_service.VoiceMuteMessageContext(
@@ -168,17 +171,19 @@ async def channel_mute(
             target=target,
         )
         await database_factory.create(voice_mute)
-        await voice_mute_alias_service.log_voice_mute(
+        await stream_service.log(
             author_snowflake=author_snowflake,
             channel_snowflake=channel_snowflake,
             display=True,
             duration=duration,
             guild_snowflake=guild_snowflake,
+            identifier="vmute",
             is_channel_scope=True,
             member_snowflake=member.id,
             message_snowflake=None,
             message_channel_snowflake=None,
             reason=reason,
+            role_snowflake=None,
             target=target,
         )
         if target == "auto":
@@ -247,7 +252,7 @@ async def channel_unmute(
         if not voice_mutes:
             skipped_members.append(member)
             continue
-        if len(voice_mutes) and member.voice and member.voice.channel:
+        if member.voice and member.voice.channel:
             if member.voice.channel.id == channel.id:
                 try:
                     await member.edit(mute=False)
@@ -261,16 +266,19 @@ async def channel_unmute(
                         f"{str(e).capitalize()}"
                     )
                     failed_members.append(member)
-        await unvoice_mute_alias_service.log_unvoice_mute(
+        await stream_service.log(
             author_snowflake=author_snowflake,
             channel_snowflake=channel_snowflake,
             display=True,
+            duration=DurationObject(number=0, prefix="", sign=1, unit=""),
             guild_snowflake=guild_snowflake,
+            identifier="unvmute",
             is_channel_scope=True,
             member_snowflake=member.id,
             message_snowflake=None,
             message_channel_snowflake=None,
             reason=reason or "No reason provided.",
+            role_snowflake=None,
             target=target,
         )
         if target == "auto":

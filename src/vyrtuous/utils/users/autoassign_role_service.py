@@ -26,9 +26,10 @@ from vyrtuous.db.autoassign import AutoAssignRole
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.listing import list_service
-from vyrtuous.permissions import permission_service
-from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
+from vyrtuous.models.duration import DurationObject
+from vyrtuous.utils.errors.error import GuildNotFound, RoleNotFound
 from vyrtuous.utils.messaging import emojis
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = AutoAssignRole
 
@@ -41,6 +42,7 @@ async def toggle_autoassign_role(
     message_channel_snowflake: int,
     role_snowflake: int,
 ) -> list[discord.Embed]:
+    is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
@@ -64,44 +66,50 @@ async def toggle_autoassign_role(
         singular=False,
     )
     if autoassign_role:
-        action = "revoked"
-        revoked_members: dict[int, dict[int, list[str]]] = {}
+        members = []
         for group_member in group_members:
-            member = role.guild.get_member(group_member.member_snowflake)
+            member = guild.get_member(group_member.member_snowflake)
             if member is None:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     group_member.member_snowflake, None
                 )
                 if simplified_member is None:
-                    raise MemberNotFound(str(group_member.member_snowflake))
+                    continue
                 else:
-                    display_name = simplified_member[0]
+                    member_snowflake = group_member.member_snowflake
             else:
-                display_name = member.mention
-                await removed_role(
-                    guild_snowflake=role.guild.id,
-                    member_snowflake=group_member.member_snowflake,
-                    role_snowflake=role_snowflake,
-                )
-            await permission_service.log_xgroup(
+                if member.voice and member.voice.channel:
+                    is_channel_scope = True
+                member_snowflake = member.id
+            await removed_role(
+                guild_snowflake=role.guild.id,
+                member_snowflake=member_snowflake,
+                role_snowflake=role_snowflake,
+            )
+            await stream_service.log(
                 author_snowflake=author_snowflake,
+                channel_snowflake=None,
                 display=True,
-                group_alias=group.alias,
+                duration=DurationObject(number=0, prefix="", sign=1, unit=""),
+                identifier=f"x{group.alias}",
+                is_channel_scope=is_channel_scope,
                 guild_snowflake=role.guild.id,
                 member_snowflake=group_member.member_snowflake,
                 message_snowflake=message_snowflake,
                 message_channel_snowflake=message_channel_snowflake,
+                reason="No reason provided.",
                 role_snowflake=role_snowflake,
+                target=None,
             )
-            revoked_members.setdefault(guild_snowflake, {}).setdefault(
-                role_snowflake, []
-            ).append(display_name)
+            members.append(member)
+        pages = await disable(
+            group=group,
+            guild_snowflake=guild_snowflake,
+            members=members,
+            role_snowflake=role_snowflake,
+        )
         await autoassign_database_factory.delete_by_cls(autoassign_role)
-        members = revoked_members.get(guild_snowflake, {}).get(role_snowflake, [])
     else:
-        action = "granted"
-        granted_members: dict[int, dict[int, list[str]]] = {}
-        granted_members.setdefault(role.guild.id, {})[role_snowflake] = []
         autoassign_role = AutoAssignRole(
             group_alias=group.alias,
             guild_snowflake=role.guild.id,
@@ -114,19 +122,48 @@ async def toggle_autoassign_role(
                 member_snowflake=member.id,
                 role_snowflake=role_snowflake,
             )
-            await permission_service.log_group(
+            await stream_service.log(
                 author_snowflake=author_snowflake,
+                channel_snowflake=None,
                 display=True,
-                group_alias=group.alias,
+                duration=DurationObject(number=0, prefix="", sign=1, unit=""),
+                identifier=group.alias,
+                is_channel_scope=is_channel_scope,
                 guild_snowflake=role.guild.id,
                 member_snowflake=member.id,
                 message_snowflake=message_snowflake,
                 message_channel_snowflake=message_channel_snowflake,
+                reason="No reason provided.",
                 role_snowflake=role_snowflake,
+                target=None,
             )
-            granted_members[role.guild.id][role_snowflake].append(member.mention)
-        members = granted_members.get(role.guild.id, {}).get(role_snowflake, [])
+        pages = await enable(
+            group=group,
+            guild_snowflake=guild_snowflake,
+            members=role.members,
+            role_snowflake=role_snowflake,
+        )
+    return pages
+
+
+async def enable(
+    group: PermissionGroup,
+    guild_snowflake: int,
+    members: list[discord.Member],
+    role_snowflake: int,
+) -> list[discord.Embed]:
+    pages: list[discord.Embed] = []
+    chunks = []
+    chunk = []
+    action = "revoked"
     title = f"{emojis.get_random_emoji()} Autoassign Roles"
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    role = guild.get_role(role_snowflake)
+    if role is None:
+        raise RoleNotFound(str(role_snowflake))
     embed = discord.Embed(
         title=title,
         description=f"`{role.name}` was {action} `{group.name}`.",
@@ -134,10 +171,7 @@ async def toggle_autoassign_role(
     )
     embed.add_field(name="Role ID", value=str(role_snowflake), inline=False)
     embed.add_field(name="Guild", value=str(guild.name), inline=False)
-    pages: list[discord.Embed] = []
     pages.append(embed)
-    chunks = []
-    chunk = []
     for member in members:
         chunk.append(member)
         if len(chunk) == list_service.CHUNK_SIZE:
@@ -150,9 +184,60 @@ async def toggle_autoassign_role(
     for chunk in chunks:
         embed = discord.Embed(
             title=f"Members",
-            color=(
-                discord.Color.red() if action == "revoked" else discord.Color.green()
-            ),
+            color=discord.Color.green(),
+        )
+        for member in chunk:
+            embed.add_field(
+                name=f"{field_count}",
+                value=f"{member}",
+                inline=True,
+            )
+            field_count += 1
+        embed.set_footer(text=f"Page {page_number}")
+        pages.append(embed)
+        page_number += 1
+    return pages
+
+
+async def disable(
+    group: PermissionGroup,
+    guild_snowflake: int,
+    members: list[discord.Member],
+    role_snowflake: int,
+) -> list[discord.Embed]:
+    pages: list[discord.Embed] = []
+    chunks = []
+    chunk = []
+    action = "revoked"
+    title = f"{emojis.get_random_emoji()} Autoassign Roles"
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    role = guild.get_role(role_snowflake)
+    if role is None:
+        raise RoleNotFound(str(role_snowflake))
+    embed = discord.Embed(
+        title=title,
+        description=f"`{role.name}` was {action} `{group.name}`.",
+        color=discord.Color.red() if action == "revoked" else discord.Color.green(),
+    )
+    embed.add_field(name="Role ID", value=str(role_snowflake), inline=False)
+    embed.add_field(name="Guild", value=str(guild.name), inline=False)
+    pages.append(embed)
+    for member in members:
+        chunk.append(member)
+        if len(chunk) == list_service.CHUNK_SIZE:
+            chunks.append(chunk)
+            chunk = []
+    if chunk:
+        chunks.append(chunk)
+    field_count = 1
+    page_number = 1
+    for chunk in chunks:
+        embed = discord.Embed(
+            title=f"Members",
+            color=discord.Color.red(),
         )
         for member in chunk:
             embed.add_field(

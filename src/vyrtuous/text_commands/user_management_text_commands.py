@@ -130,7 +130,7 @@ class UserManagementTextCommands(commands.Cog):
         else:
             if isinstance(target.target, discord.Guild):
                 guilds = [target.target]
-            elif target == "all":
+            elif target.target == "all":
                 guilds = bot.guilds
                 singular = False
             else:

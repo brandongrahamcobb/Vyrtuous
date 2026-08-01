@@ -26,11 +26,11 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.text_mute import TextMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.permissions import permission_service
-from vyrtuous.utils.tracking import data_builder, stream_service
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = TextMute
 
@@ -45,48 +45,6 @@ class TextMuteMessageContext:
     message_snowflake: int
     message_channel_snowflake: int
     reason: str
-
-
-async def log_text_mute(
-    author_snowflake: int | None,
-    channel_snowflake: int,
-    display: bool,
-    duration: DurationObject,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    reason: str,
-) -> None:
-    is_channel_scope = None
-    role_snowflake = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="tmute",
-        member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            identifier="tmute",
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            is_channel_scope=is_channel_scope or None,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
 
 
 async def set_text_mute_overwrite(
@@ -130,23 +88,37 @@ async def text_mute_by_message(
             member_snowflake=ctx.author_snowflake,
             requested=["command.moderation.uncapped"],
         )
-    await text_mute(
+    is_channel_scope = await enable(
         channel_snowflake=ctx.channel_snowflake,
-        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         reason=ctx.reason,
     )
-    await log_text_mute(
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    duration_builder = DurationBuilder()
+    expires_in = duration_builder.load(ctx.duration).to_expires_in()
+    text_mute = MODEL(
+        channel_snowflake=ctx.channel_snowflake,
+        expires_in=expires_in,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
+    )
+    await database_factory.create(text_mute)
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
         duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
+        identifier="tmute",
+        is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
         reason=ctx.reason,
+        target=None,
+        role_snowflake=None,
     )
     embed = build_text_mute_embed(
         channel_snowflake=ctx.channel_snowflake,
@@ -158,15 +130,14 @@ async def text_mute_by_message(
     return embed
 
 
-async def text_mute(
+async def enable(
     channel_snowflake: int,
-    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
-) -> None:
+) -> bool:
+    is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         raise GuildNotFound(str(guild_snowflake))
@@ -181,22 +152,19 @@ async def text_mute(
         if not simplified_member:
             raise MemberNotFound(str(member_snowflake))
     else:
-        await set_text_mute_overwrite(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
+        if (
+            member.voice
+            and member.voice.channel
+            and member.voice.channel.id == channel_snowflake
+        ):
+            is_channel_scope = True
+        await channel.set_permissions(
+            target=member,
+            send_messages=False,
+            add_reactions=False,
             reason=reason,
         )
-    duration_builder = DurationBuilder()
-    expires_in = duration_builder.load(duration).to_expires_in()
-    text_mute = MODEL(
-        channel_snowflake=channel_snowflake,
-        expires_in=expires_in,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-        reason=reason,
-    )
-    await database_factory.create(text_mute)
+    return is_channel_scope
 
 
 def build_text_mute_embed(

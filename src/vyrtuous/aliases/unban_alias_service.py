@@ -26,55 +26,13 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.permissions import permission_service
-from vyrtuous.utils.tracking import data_builder, stream_service
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = Ban
-
-
-async def log_unban(
-    author_snowflake: int | None,
-    channel_snowflake: int,
-    display: bool,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    reason: str,
-) -> None:
-    duration = DurationObject(number=0, prefix="", sign=1, unit="")
-    is_channel_scope = False
-    role_snowflake = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="unban",
-        member_snowflake=member_snowflake,
-        reason=reason,
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            identifier="unban",
-            is_channel_scope=is_channel_scope or False,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason,
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
 
 
 @dataclass(frozen=True)
@@ -124,20 +82,32 @@ async def unban_by_message(
             guild_snowflake=ctx.guild_snowflake,
             member_snowflake=ctx.member_snowflake,
         )
-    await unban(
+    is_channel_scope = await disable(
+        channel_snowflake=ctx.channel_snowflake,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
+    )
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    await database_factory.delete(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
     )
-    await log_unban(
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
+        duration=DurationObject(number=0, prefix="", sign=1, unit=""),
         guild_snowflake=ctx.guild_snowflake,
+        identifier="unban",
+        is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
         reason=ctx.reason,
+        role_snowflake=None,
+        target=None,
     )
     return build_unban_embed(
         channel_snowflake=ctx.channel_snowflake,
@@ -146,11 +116,10 @@ async def unban_by_message(
     )
 
 
-async def unset_ban_overwrite(
-    channel_snowflake: int,
-    guild_snowflake: int,
-    member_snowflake: int,
-) -> None:
+async def disable(
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int, reason: str
+) -> bool:
+    is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
@@ -160,44 +129,12 @@ async def unset_ban_overwrite(
         raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
-        try:
-            await channel.set_permissions(
-                member,
-                view_channel=None,
-            )
-        except discord.Forbidden:
-            raise
-
-
-async def unban(
-    channel_snowflake: int,
-    guild_snowflake: int,
-    member_snowflake: int,
-) -> None:
-    bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise GuildNotFound(str(guild_snowflake))
-    channel = guild.get_channel(channel_snowflake)
-    if channel is None:
-        raise ChannelNotFound(str(channel_snowflake))
-    member = guild.get_member(member_snowflake)
-    if member:
-        await unset_ban_overwrite(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-        )
+        await channel.set_permissions(member, view_channel=None, reason=reason)
     else:
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
             raise MemberNotFound(str(member_snowflake))
-    await database_factory.delete(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-    )
+    return is_channel_scope
 
 
 def build_unban_embed(

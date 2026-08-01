@@ -37,14 +37,6 @@ COOLDOWN = timedelta(minutes=30)
 async def toggle_video_channel(
     channel_snowflake: int, guild_snowflake: int, duration: DurationObject
 ) -> str:
-    bot: DiscordBot = DiscordBot.get_instance()
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
-    channel = guild.get_channel(channel_snowflake)
-    if channel is None:
-        raise commands.ChannelNotFound(str(channel_snowflake))
-    video_channels = bot.registry.get(ChannelState).video
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     video_channel = await database_factory.select(
         channel_snowflake=channel_snowflake,
@@ -52,9 +44,10 @@ async def toggle_video_channel(
         singular=True,
     )
     if video_channel:
-        action = "disabled"
-        video_channels.remove(video_channel.channel_snowflake)
         await database_factory.delete(
+            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+        )
+        msg = disable(
             channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
         )
     else:
@@ -66,8 +59,43 @@ async def toggle_video_channel(
             expires_in=expires_in,
         )
         await database_factory.create(video_channel)
-        video_channels.add(video_channel.channel_snowflake)
-        action = "enabled"
+        msg = enable(
+            channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake
+        )
+    return msg
+
+
+def enable(
+    channel_snowflake: int,
+    guild_snowflake: int,
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
+    video_channels = bot.registry.get(ChannelState).video
+    video_channels.add(channel_snowflake)
+    action = "enabled"
+    return f"Video-only channel {action} in {channel.mention}."
+
+
+def disable(
+    channel_snowflake: int,
+    guild_snowflake: int,
+) -> str:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise commands.GuildNotFound(str(guild_snowflake))
+    channel = guild.get_channel(channel_snowflake)
+    if channel is None:
+        raise commands.ChannelNotFound(str(channel_snowflake))
+    video_channels = bot.registry.get(ChannelState).video
+    action = "disabled"
+    video_channels.remove(channel_snowflake)
     return f"Video-only channel {action} in {channel.mention}."
 
 

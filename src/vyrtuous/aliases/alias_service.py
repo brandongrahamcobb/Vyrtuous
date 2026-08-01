@@ -70,14 +70,12 @@ CATEGORY_TO_PERMISSION = {
 }
 
 
-async def delete_alias(alias_name: str, guild_snowflake: int) -> str:
+async def disable(alias_name: str, guild_snowflake: int) -> str:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    where_kwargs = {
-        "alias_name": alias_name,
-        "guild_snowflake": int(guild_snowflake),
-    }
-    alias = await database_factory.select(singular=True, **where_kwargs)
+    alias = await database_factory.select(
+        alias_name=alias_name, guild_snowflake=guild_snowflake, singular=True
+    )
     if not alias:
         return f"No aliases found for `{alias_name}`."
     guild = bot.get_guild(guild_snowflake)
@@ -101,16 +99,14 @@ async def delete_alias(alias_name: str, guild_snowflake: int) -> str:
             f"`{alias.category}` for channel {channel.mention} "
             f"deleted successfully."
         )
-    await database_factory.delete(**where_kwargs)
     return msg
 
 
-async def create_alias(
+async def enable(
     alias_name: str,
     category: str,
     channel_snowflake: int,
     guild_snowflake: int,
-    *,
     role_snowflake: int | None = None,
 ) -> str:
     if category == "role" and role_snowflake is None:
@@ -146,22 +142,6 @@ async def create_alias(
             f"Alias `{alias_name}` of type `{category}` "
             f"created successfully for channel {channel.mention} with role {role.mention}."
         )
-        alias = MODEL(
-            alias_name=alias_name,
-            category=category,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            role_snowflake=role_snowflake,
-        )
-        await database_factory.create(alias)
-    else:
-        alias = MODEL(
-            alias_name=alias_name,
-            category=category,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-        )
-        await database_factory.create(alias)
     return msg
 
 

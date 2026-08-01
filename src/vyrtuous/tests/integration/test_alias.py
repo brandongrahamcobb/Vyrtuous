@@ -120,5 +120,4 @@ async def test_alias_text_command(
                 )
                 full += f" {r}"
             captured = await send_message(bot=bot, content=full)
-            print(captured["content"])
             assert captured["end_result"] == ["success"]

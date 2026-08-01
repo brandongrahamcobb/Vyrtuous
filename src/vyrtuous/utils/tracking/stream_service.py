@@ -24,10 +24,11 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.stream import Stream
 from vyrtuous.models.duration import DurationObject
-from vyrtuous.utils.errors.error import GuildNotFound
+from vyrtuous.permissions import permission_service
+from vyrtuous.utils.errors.error import CheckFailure, GuildNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.paginator import Paginator
-from vyrtuous.permissions import permission_service
+from vyrtuous.utils.tracking import data_builder
 from vyrtuous.utils.tracking.stream_embed import StreamEmbed
 
 MODEL = Stream
@@ -141,10 +142,72 @@ async def send_log(
     return
 
 
-async def toggle_stream(
-    target_channel: discord.abc.GuildChannel,
+def enable(
+    target_channel_snowflake: int,
+    guild_snowflake: int,
     source: discord.Guild | discord.abc.GuildChannel | None,
 ) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    target_channel = guild.get_channel(target_channel_snowflake)
+    if not isinstance(target_channel, discord.abc.GuildChannel):
+        raise CheckFailure("Target channel is invalid.")
+    if source:
+        if isinstance(source, discord.Guild):
+            source_text = f"from {source.name}"
+        else:
+            source_text = f"from {source.mention}"
+    else:
+        source_text = f"from all servers"
+    action = "enabled"
+    embed = discord.Embed(
+        title=f"{emojis.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}.",
+        color=0x00FF00,
+    )
+    return embed
+
+
+def disable(
+    target_channel_snowflake: int,
+    guild_snowflake: int,
+    source: discord.Guild | discord.abc.GuildChannel | None,
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    target_channel = guild.get_channel(target_channel_snowflake)
+    if not isinstance(target_channel, discord.abc.GuildChannel):
+        raise CheckFailure("Target channel is invalid.")
+    if source:
+        if isinstance(source, discord.Guild):
+            source_text = f"from {source.name}"
+        else:
+            source_text = f"from {source.mention}"
+    else:
+        source_text = f"from all servers"
+    action = "disabled"
+    embed = discord.Embed(
+        title=f"{emojis.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}.",
+        color=0x00FF00,
+    )
+    return embed
+
+
+async def toggle_stream(
+    target_channel_snowflake: int,
+    guild_snowflake: int,
+    source: discord.Guild | discord.abc.GuildChannel | None,
+) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    target_channel = guild.get_channel(target_channel_snowflake)
+    if not isinstance(target_channel, discord.abc.GuildChannel):
+        raise CheckFailure("Target channel is invalid.")
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     if source:
         if isinstance(source, discord.Guild):
@@ -155,19 +218,28 @@ async def toggle_stream(
                 singular=True,
             )
             if stream:
+                embed = disable(
+                    target_channel_snowflake=target_channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    source=source,
+                )
                 await database_factory.delete(
                     source_guild_snowflake=source.id,
                     channel_snowflake=target_channel.id,
                     guild_snowflake=target_channel.guild.id,
                 )
             else:
+                embed = enable(
+                    target_channel_snowflake=target_channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    source=source,
+                )
                 stream = Stream(
                     channel_snowflake=target_channel.id,
                     guild_snowflake=target_channel.guild.id,
                     source_guild_snowflake=source.id,
                 )
                 await database_factory.create(stream)
-            source_text = f"from {source.name}"
         else:
             stream = await database_factory.select(
                 channel_snowflake=target_channel.id,
@@ -176,19 +248,28 @@ async def toggle_stream(
                 singular=True,
             )
             if stream:
+                embed = disable(
+                    target_channel_snowflake=target_channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    source=source,
+                )
                 await database_factory.delete(
                     guild_snowflake=target_channel.guild.id,
                     source_channel_snowflake=source.id,
                     channel_snowflake=target_channel.id,
                 )
             else:
+                embed = enable(
+                    target_channel_snowflake=target_channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    source=source,
+                )
                 stream = Stream(
                     channel_snowflake=target_channel.id,
                     guild_snowflake=target_channel.guild.id,
                     source_channel_snowflake=source.id,
                 )
                 await database_factory.create(stream)
-            source_text = f"from {source.mention}"
     else:
         stream = await database_factory.select(
             source_guild_snowflake=None,
@@ -198,6 +279,11 @@ async def toggle_stream(
             singular=True,
         )
         if stream:
+            embed = disable(
+                target_channel_snowflake=target_channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                source=source,
+            )
             await database_factory.delete(
                 source_guild_snowflake=None,
                 source_channel_snowflake=None,
@@ -212,13 +298,52 @@ async def toggle_stream(
                 source_guild_snowflake=None,
             )
             await database_factory.create(stream)
-        source_text = f"from all servers"
-    if stream:
-        action = "disabled"
-    else:
-        action = "enabled"
-    embed = discord.Embed(
-        title=f"{emojis.get_random_emoji()} Tracking {action.capitalize()} {source_text} to {target_channel.mention}.",
-        color=0x00FF00,
-    )
+            embed = enable(
+                target_channel_snowflake=target_channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                source=source,
+            )
     return embed
+
+
+async def log(
+    author_snowflake: int | None,
+    channel_snowflake: int,
+    display: bool,
+    duration: DurationObject | None,
+    guild_snowflake: int,
+    identifier: str,
+    is_channel_scope: bool,
+    member_snowflake: int,
+    message_snowflake: int | None,
+    message_channel_snowflake: int | None,
+    reason: str,
+    role_snowflake: int | None,
+    target: str | None,
+):
+    await data_builder.save_data(
+        author_snowflake=author_snowflake or None,
+        channel_snowflake=channel_snowflake,
+        duration=duration or None,
+        guild_snowflake=guild_snowflake,
+        identifier=identifier,
+        member_snowflake=member_snowflake,
+        reason=reason or "No reason provided.",
+        role_snowflake=role_snowflake or None,
+        target=target or None,
+    )
+    if display:
+        await send_log(
+            author_snowflake=author_snowflake or None,
+            channel_snowflake=channel_snowflake,
+            identifier=identifier,
+            duration=duration or None,
+            guild_snowflake=guild_snowflake,
+            is_channel_scope=is_channel_scope or False,
+            member_snowflake=member_snowflake,
+            message_snowflake=message_snowflake or None,
+            message_channel_snowflake=message_channel_snowflake or None,
+            reason=reason or "No reason provided.",
+            role_snowflake=role_snowflake or None,
+            target=target or None,
+        )

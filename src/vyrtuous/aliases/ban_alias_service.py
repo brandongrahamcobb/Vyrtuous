@@ -27,11 +27,11 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder, DurationObject
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.moderation import cap_service
-from vyrtuous.permissions import permission_service
-from vyrtuous.utils.tracking import data_builder, stream_service
+from vyrtuous.utils.tracking import stream_service
 
 MODEL = Ban
 
@@ -46,48 +46,6 @@ class BanMessageContext:
     message_snowflake: int
     message_channel_snowflake: int
     reason: str
-
-
-async def log_ban(
-    author_snowflake: int | None,
-    channel_snowflake: int,
-    display: bool,
-    duration: DurationObject,
-    guild_snowflake: int,
-    is_channel_scope: bool,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    reason: str,
-):
-    role_snowflake = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="ban",
-        member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
-            identifier="ban",
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            is_channel_scope=is_channel_scope,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
 
 
 async def ban_by_message(
@@ -109,24 +67,37 @@ async def ban_by_message(
             member_snowflake=ctx.author_snowflake,
             requested=["command.moderation.uncapped"],
         )
-    is_channel_scope = await ban(
+    is_channel_scope = await enable(
         channel_snowflake=ctx.channel_snowflake,
-        duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         reason=ctx.reason,
     )
-    await log_ban(
+    duration_builder = DurationBuilder()
+    expires_in = duration_builder.load(duration=ctx.duration).to_expires_in()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    ban = MODEL(
+        channel_snowflake=ctx.channel_snowflake,
+        expires_in=expires_in,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
+    )
+    await database_factory.create(ban)
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
         channel_snowflake=ctx.channel_snowflake,
         display=display,
         duration=ctx.duration,
         guild_snowflake=ctx.guild_snowflake,
+        identifier="ban",
         is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake or None,
         reason=ctx.reason,
+        role_snowflake=None,
+        target=None,
     )
     embed = build_ban_embed(
         channel_snowflake=ctx.channel_snowflake,
@@ -138,31 +109,8 @@ async def ban_by_message(
     return embed
 
 
-async def set_ban_overwrite(
-    channel_snowflake: int, guild_snowflake: int, member_snowflake: int, reason: str
-) -> None:
-    bot: DiscordBot = DiscordBot.get_instance()
-    guild = bot.get_guild(guild_snowflake)
-    if guild is None:
-        raise GuildNotFound(str(guild_snowflake))
-    channel = guild.get_channel(channel_snowflake)
-    if channel is None:
-        raise ChannelNotFound(str(channel_snowflake))
-    member = guild.get_member(member_snowflake)
-    if member:
-        try:
-            await channel.set_permissions(
-                member,
-                view_channel=False,
-                reason=reason,
-            )
-        except discord.Forbidden:
-            raise
-
-
-async def ban(
+async def enable(
     channel_snowflake: int,
-    duration: DurationObject,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
@@ -180,10 +128,9 @@ async def ban(
         raise ChannelNotFound(str(channel_snowflake))
     member = guild.get_member(member_snowflake)
     if member:
-        await set_ban_overwrite(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
+        await channel.set_permissions(
+            member,
+            view_channel=False,
             reason=reason,
         )
         if (
@@ -210,16 +157,6 @@ async def ban(
         simplified_member = bot.registry.get(MemberState).active.get(member_snowflake)
         if not simplified_member:
             raise MemberNotFound(str(member_snowflake))
-    duration_builder = DurationBuilder()
-    expires_in = duration_builder.load(duration=duration).to_expires_in()
-    ban = MODEL(
-        channel_snowflake=channel_snowflake,
-        expires_in=expires_in,
-        guild_snowflake=guild_snowflake,
-        member_snowflake=member_snowflake,
-        reason=reason,
-    )
-    await database_factory.create(ban)
     return is_channel_scope
 
 

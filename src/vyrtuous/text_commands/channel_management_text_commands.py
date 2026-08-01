@@ -192,7 +192,8 @@ class ChannelManagementTextCommands(commands.Cog):
             target_channel.target,
             (discord.VoiceChannel, discord.StageChannel, discord.TextChannel),
         ):
-            target_channel_obj = target_channel.target
+            guild_snowflake = target_channel.target.guild.id
+            target_channel_snowflake = target_channel.target.id
         else:
             return await tick.end(
                 warning="This command must target a valid target channel."
@@ -200,12 +201,13 @@ class ChannelManagementTextCommands(commands.Cog):
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            guild_snowflake=target_channel_obj.guild.id,
-            channel_snowflake=target_channel_obj.id,
+            guild_snowflake=guild_snowflake,
+            channel_snowflake=target_channel_snowflake,
             requested=["command.channel.stream"],
         )
         pages = await stream_service.toggle_stream(
-            target_channel=target_channel_obj,
+            target_channel_snowflake=target_channel_snowflake,
+            guild_snowflake=guild_snowflake,
             source=source_obj,
         )
         return await tick.end(success=pages)

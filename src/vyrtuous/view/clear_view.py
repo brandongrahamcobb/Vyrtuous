@@ -34,6 +34,7 @@ from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.autoassign import AutoAssignRole
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
+from vyrtuous.models.duration import DurationObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.channels import automute_channel_service, video_channel_service
 from vyrtuous.utils.errors.error import CheckFailure, MemberNotFound
@@ -858,6 +859,9 @@ class ClearView(discord.ui.View):
         if interaction.message is None:
             return 0
         bot: DiscordBot = DiscordBot.get_instance()
+        display = False
+        is_channel_scope = False
+        reason = "Clear command."
         message = interaction.message
         to_delete = self._visible_records(exclude=None)
         deleted_count = 0
@@ -874,162 +878,95 @@ class ClearView(discord.ui.View):
                 await database_factory.delete_by_cls(obj)
                 match obj.identifier:
                     case "alias":
-                        await alias_service.delete_alias(
+                        await alias_service.disable(
                             alias_name=obj.alias_name,
                             guild_snowflake=obj.guild_snowflake,
                         )
+                    case "autoassign":
+                        pass
                     case "automute":
-                        await automute_channel_service.toggle_automute(
+                        await voice_mute_service.channel_unmute(
                             author_snowflake=self.__author_snowflake,
                             channel_snowflake=obj.channel_snowflake,
-                            duration=None,
                             guild_snowflake=obj.guild_snowflake,
                         )
                     case "ban":
-                        await unban_alias_service.unban(
+                        is_channel_scope = await unban_alias_service.disable(
                             channel_snowflake=obj.channel_snowflake,
                             guild_snowflake=obj.guild_snowflake,
                             member_snowflake=obj.member_snowflake,
-                        )
-                        await unban_alias_service.log_unban(
-                            author_snowflake=self.__author_snowflake,
-                            channel_snowflake=obj.channel_snowflake,
-                            display=False,
-                            guild_snowflake=obj.guild_snowflake,
-                            member_snowflake=obj.member_snowflake,
-                            message_snowflake=message.id,
-                            message_channel_snowflake=message.channel.id,
-                            reason="Clear command.",
+                            reason=reason,
                         )
                     case "flag":
-                        await unflag_alias_service.unflag(
+                        is_channel_scope = await unflag_alias_service.disable(
                             channel_snowflake=obj.channel_snowflake,
                             guild_snowflake=obj.guild_snowflake,
                             member_snowflake=obj.member_snowflake,
-                        )
-                        await unflag_alias_service.log_unflag(
-                            author_snowflake=self.__author_snowflake,
-                            channel_snowflake=obj.channel_snowflake,
-                            display=False,
-                            guild_snowflake=obj.guild_snowflake,
-                            member_snowflake=obj.member_snowflake,
-                            message_snowflake=message.id,
-                            message_channel_snowflake=message.channel.id,
-                            reason="Clear command.",
                         )
                     case "stream":
-                        target_channel = bot.get_channel(obj.channel_snowflake)
-                        if isinstance(
-                            target_channel,
-                            (
-                                discord.VoiceChannel,
-                                discord.TextChannel,
-                                discord.StageChannel,
-                            ),
-                        ):
-                            guild = bot.get_guild(obj.guild_snowflake)
-                            await stream_service.toggle_stream(
-                                target_channel=target_channel,
-                                source=guild,
-                            )
-                    case "tmute":
-                        await untext_mute_alias_service.untext_mute(
-                            channel_snowflake=obj.channel_snowflake,
-                            guild_snowflake=obj.guild_snowflake,
-                            member_snowflake=obj.member_snowflake,
+                        channel = bot.get_guild(obj.source_channel_snowflake)
+                        if channel:
+                            source = channel
+                        else:
+                            guild = bot.get_guild(obj.source_guild_snowflake)
+                            if guild:
+                                source = guild
+                            else:
+                                source = None
+                        stream_service.disable(
+                            target_channel_snowflake=obj.channel_snowflake,
+                            guild_snowflake=obj.target_guild_snowflake,
+                            source=source,
                         )
-                        await untext_mute_alias_service.log_untext_mute(
-                            author_snowflake=self.__author_snowflake,
+                    case "tmute":
+                        is_channel_scope = await untext_mute_alias_service.disable(
                             channel_snowflake=obj.channel_snowflake,
-                            display=False,
                             guild_snowflake=obj.guild_snowflake,
                             member_snowflake=obj.member_snowflake,
-                            message_snowflake=message.id,
-                            message_channel_snowflake=message.channel.id,
-                            reason="Clear command.",
+                            reason=reason,
                         )
                     case "video":
-                        await video_channel_service.toggle_video_channel(
+                        video_channel_service.disable(
                             channel_snowflake=obj.channel_snowflake,
-                            duration=None,
                             guild_snowflake=obj.guild_snowflake,
                         )
                     case "vmute":
-                        if isinstance(self.selected_scope, _All):
-                            targets = ["auto", "click", "command", "server"]
-                            for target in targets:
-                                await unvoice_mute_alias_service.unvoice_mute(
-                                    channel_snowflake=obj.channel_snowflake,
-                                    guild_snowflake=obj.guild_snowflake,
-                                    member_snowflake=obj.member_snowflake,
-                                    target=target,
-                                )
-                                await unvoice_mute_alias_service.log_unvoice_mute(
-                                    author_snowflake=self.__author_snowflake,
-                                    channel_snowflake=obj.channel_snowflake,
-                                    display=False,
-                                    guild_snowflake=obj.guild_snowflake,
-                                    is_channel_scope=False,
-                                    member_snowflake=obj.member_snowflake,
-                                    message_snowflake=message.id,
-                                    message_channel_snowflake=message.channel.id,
-                                    reason="Clear command.",
-                                    target=target,
-                                )
-                        elif self.selected_scope is not None:
-                            await unvoice_mute_alias_service.unvoice_mute(
-                                channel_snowflake=obj.channel_snowflake,
-                                guild_snowflake=obj.guild_snowflake,
-                                member_snowflake=obj.member_snowflake,
-                                target=self.selected_scope.lower(),
-                            )
-                            await unvoice_mute_alias_service.log_unvoice_mute(
-                                author_snowflake=self.__author_snowflake,
-                                channel_snowflake=obj.channel_snowflake,
-                                display=False,
-                                guild_snowflake=obj.guild_snowflake,
-                                is_channel_scope=False,
-                                member_snowflake=obj.member_snowflake,
-                                message_snowflake=message.id,
-                                message_channel_snowflake=message.channel.id,
-                                reason="Clear command.",
-                                target=self.selected_scope.lower(),
-                            )
+                        is_channel_scope = await unvoice_mute_alias_service.disable(
+                            channel_snowflake=obj.channel_snowflake,
+                            guild_snowflake=obj.guild_snowflake,
+                            member_snowflake=obj.member_snowflake,
+                            reason=reason,
+                        )
+                await stream_service.log(
+                    author_snowflake=self.__author_snowflake,
+                    channel_snowflake=obj.channel_snowflake,
+                    display=display,
+                    duration=DurationObject(number=0, prefix="", sign=1, unit=""),
+                    guild_snowflake=obj.guild_snowflake,
+                    identifier=obj.identifier,
+                    is_channel_scope=is_channel_scope,
+                    member_snowflake=obj.member_snowflake,
+                    message_snowflake=message.id,
+                    message_channel_snowflake=message.channel.id,
+                    reason=reason,
+                    role_snowflake=None,
+                    target=(
+                        self.selected_scope
+                        if isinstance(self.selected_scope, str)
+                        else None
+                    ),
+                )
         return deleted_count
 
-    # @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
-    # async def confirm(self, interaction, button):
-    #     self._result = True
-    #     await interaction.message.delete()
-    #     self.stop()
-    #
-    # @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
-    # async def cancel(self, interaction, button):
-    #     self._result = False
-    #     await interaction.message.delete()
-    #     self.stop()
-    #
-    # def build_embed(self):
-    #     embed = discord.Embed(
-    #         title="\U000026a0\U0000fe0f Clear Command Confirmation",
-    #         description=f"**Action:** {self.__action}\n**Target:** {self.__mention}",
-    #         color=discord.Color.orange(),
-    #     )
-    #     embed.set_footer(text="Please confirm or cancel this action.")
-    #     return embed
-    #
-    # @property
-    # def channel_snowflake(self):
-    #     return self._channel_snowflake
-    #
-    # @property
-    # def guild_snowflake(self):
-    #     return self._guild_snowflake
-    #
-    # @property
-    # def member_snowflake(self):
-    #     return self._member_snowflake
-    #
-    # @property
-    # def result(self):
-    #     return self._result
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction, button):
+        self.stop()
+        await interaction.response.edit_message(content="Cancelled action.", view=None)
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item: discord.ui.Item,
+    ) -> None:
+        await self.__tick.end(error=str(error), ephemeral=True)

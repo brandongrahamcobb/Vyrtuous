@@ -23,6 +23,8 @@ from discord.ext import commands
 from vyrtuous.aliases import alias_service
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
+from vyrtuous.db.alias import Alias
+from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import Target, TargetObject
@@ -86,27 +88,43 @@ class AliasManagementTextCommands(commands.Cog):
             channel_snowflake=channel_snowflake,
             requested=["command.alias.create"],
         )
+        database_factory: DatabaseFactory = DatabaseFactory(Alias)
         if role is None:
-            msg = await alias_service.create_alias(
+            msg = await alias_service.enable(
+                alias_name=alias_name,
+                category=category.category,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                role_snowflake=None,
+            )
+            alias = Alias(
                 alias_name=alias_name,
                 category=category.category,
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=guild_snowflake,
             )
-            return await tick.end(success=msg)
+            await database_factory.create(alias)
         else:
             if isinstance(role, discord.Role):
                 role_snowflake = role.id
             else:
                 return await tick.end(warning="This command must target a valid role.")
-            msg = await alias_service.create_alias(
+            msg = await alias_service.enable(
                 alias_name=alias_name,
                 category=category.category,
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=guild_snowflake,
                 role_snowflake=role_snowflake,
             )
-            return await tick.end(success=msg)
+            alias = Alias(
+                alias_name=alias_name,
+                category=category.category,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                role_snowflake=role_snowflake,
+            )
+            await database_factory.create(alias)
+        return await tick.end(success=msg)
 
     @commands.command(name="xalias", help="Delete alias.")
     @metadata(permission="command.alias.delete")
@@ -144,7 +162,11 @@ class AliasManagementTextCommands(commands.Cog):
             channel_snowflake=channel_snowflake,
             requested=["command.alias.delete"],
         )
-        msg = await alias_service.delete_alias(
+        msg = await alias_service.disable(
+            alias_name=alias_name, guild_snowflake=guild_snowflake
+        )
+        database_factory: DatabaseFactory = DatabaseFactory(Alias)
+        await database_factory.delete(
             alias_name=alias_name, guild_snowflake=guild_snowflake
         )
         return await tick.end(success=msg)

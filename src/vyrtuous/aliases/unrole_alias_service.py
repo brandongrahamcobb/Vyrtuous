@@ -26,12 +26,13 @@ from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.tracking import data_builder, stream_service
+from vyrtuous.utils.tracking import stream_service
 
 
 @dataclass(frozen=True)
 class UnroleMessageContext:
     author_snowflake: int
+    channel_snowflake: int
     guild_snowflake: int
     member_snowflake: int
     message_snowflake: int
@@ -39,9 +40,14 @@ class UnroleMessageContext:
     role_snowflake: int
 
 
-async def set_unrole_overwrite(
-    guild_snowflake: int, member_snowflake: int, role_snowflake: int
-) -> None:
+async def disable(
+    channel_snowflake: int,
+    guild_snowflake: int,
+    member_snowflake: int,
+    role_snowflake: int,
+    reason: str = "No reason provided.",
+) -> bool:
+    is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
@@ -57,10 +63,17 @@ async def set_unrole_overwrite(
         if simplified_member is None:
             raise MemberNotFound(str(member_snowflake))
     else:
+        if (
+            member.voice
+            and member.voice.channel
+            and member.voice.channel.id == channel_snowflake
+        ):
+            is_channel_scope = True
         try:
-            await member.remove_roles(role, reason="Revoking role.")
+            await member.remove_roles(role, reason=reason)
         except discord.Forbidden:
             raise
+    return is_channel_scope
 
 
 def build_unrole_embed(
@@ -98,64 +111,29 @@ def build_unrole_embed(
     return embed
 
 
-async def log_unrole(
-    author_snowflake: int | None,
-    display: bool,
-    guild_snowflake: int,
-    member_snowflake: int,
-    message_snowflake: int | None,
-    message_channel_snowflake: int | None,
-    role_snowflake: int,
-) -> None:
-    channel_snowflake = None
-    duration = DurationObject(number=0, prefix="", sign=1, unit="")
-    is_channel_scope = None
-    reason = None
-    target = None
-    await data_builder.save_data(
-        author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake or None,
-        duration=duration,
-        guild_snowflake=guild_snowflake,
-        identifier="unrole",
-        member_snowflake=member_snowflake,
-        reason=reason or "No reason provided.",
-        role_snowflake=role_snowflake or None,
-        target=target or None,
-    )
-    if display:
-        await stream_service.send_log(
-            author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake or None,
-            identifier="unrole",
-            duration=duration,
-            guild_snowflake=guild_snowflake,
-            is_channel_scope=is_channel_scope or None,
-            member_snowflake=member_snowflake,
-            message_snowflake=message_snowflake or None,
-            message_channel_snowflake=message_channel_snowflake or None,
-            reason=reason or "No reason provided.",
-            role_snowflake=role_snowflake or None,
-            target=target or None,
-        )
-
-
 async def unrole_by_message(
     ctx: UnroleMessageContext, display: bool = True
 ) -> discord.Embed:
-    await set_unrole_overwrite(
+    is_channel_scope = await disable(
+        channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         role_snowflake=ctx.role_snowflake,
     )
-    await log_unrole(
+    await stream_service.log(
         author_snowflake=ctx.author_snowflake,
+        channel_snowflake=ctx.channel_snowflake,
         display=display,
+        duration=DurationObject(number=0, prefix="", sign=1, unit=""),
         guild_snowflake=ctx.guild_snowflake,
+        identifier="unrole",
+        is_channel_scope=is_channel_scope,
         member_snowflake=ctx.member_snowflake,
         message_snowflake=ctx.message_snowflake,
         message_channel_snowflake=ctx.message_channel_snowflake,
+        reason="No reason provided.",
         role_snowflake=ctx.role_snowflake,
+        target=None,
     )
     embed = build_unrole_embed(
         guild_snowflake=ctx.guild_snowflake,
