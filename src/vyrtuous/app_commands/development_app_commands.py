@@ -209,7 +209,7 @@ class DevelopmentAppCommands(commands.Cog):
     #     return await upload_service.build_latex_document()
 
     @metadata(permission="command.dev.unload")
-    @app_commands.command(name="unload", description="Unloads a cog`.")
+    @app_commands.command(name="unload", description="Unloads a cog.")
     @app_commands.describe(module="Specify the cog name.")
     async def unload_app_command(
         self,

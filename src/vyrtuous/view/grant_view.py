@@ -363,7 +363,7 @@ class GrantView(discord.ui.View):
             record = await database_factory.select(
                 guild_snowflake=self.__selected_guild.id,
                 member_snowflake=self.__member_snowflake,
-                group_name=self.__selected_group.alias,
+                group_alias=self.__selected_group.alias,
                 singular=True,
             )
             entry = PermissionEntry(
@@ -389,9 +389,10 @@ class GrantView(discord.ui.View):
                     )
             record = await database_factory.select(
                 member_snowflake=self.__member_snowflake,
-                group_name=self.__selected_group.alias,
+                group_alias=self.__selected_group.alias,
                 singular=True,
             )
+            bot.logger.info(record)
             entry = PermissionEntry(
                 group_alias=self.__selected_group.alias,
                 member_snowflake=self.__member_snowflake,

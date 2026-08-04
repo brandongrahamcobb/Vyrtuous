@@ -215,7 +215,7 @@ async def resolve_effective_group(
                 continue
         if entry.channel_snowflake is None and entry.guild_snowflake is None:
             global_group = group
-    return channel_group or guild_group or global_group
+    return global_group or guild_group or channel_group
 
 
 async def has_equal_or_lower_role(

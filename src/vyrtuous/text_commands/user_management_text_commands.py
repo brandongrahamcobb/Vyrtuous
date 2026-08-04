@@ -278,7 +278,7 @@ class UserManagementTextCommands(commands.Cog):
         embed = await vegan_service.toggle_vegan(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
-            notes=notes,
+            notes=notes or "No notes provided.",
         )
         return await tick.end(success=embed)
 

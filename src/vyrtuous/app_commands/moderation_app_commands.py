@@ -750,6 +750,7 @@ class ModerationAppCommands(commands.Cog):
         view = InfractionView(
             author_snowflake=interaction.user.id,
             ctx=ctx,
+            interaction=interaction,
             model=TextMute,
             tick=tick,
         )

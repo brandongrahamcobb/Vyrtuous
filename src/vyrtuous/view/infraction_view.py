@@ -92,34 +92,43 @@ class InfractionView(discord.ui.View):
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
-                if await permission_service.has_permissions(
-                    permission_state=permission_state,
-                    member_snowflake=self.__author_snowflake,
-                    requested=["command.moderation.uncapped"],
-                ):
+                try:
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        member_snowflake=self.__author_snowflake,
+                        requested=["command.moderation.uncapped"],
+                    )
                     available_durations.add("0")
+                except:
+                    continue
                 break
             elif group.scope == PermissionScope.GUILD:
                 for guild in bot.guilds:
-                    if await permission_service.has_permissions(
-                        permission_state=permission_state,
-                        member_snowflake=self.__author_snowflake,
-                        requested=["other_guilds"],
-                    ):
+                    try:
+                        await permission_service.has_permissions(
+                            permission_state=permission_state,
+                            member_snowflake=self.__author_snowflake,
+                            requested=["other_guilds"],
+                        )
                         for channel in guild.channels:
                             available_channels.add(channel)
                         available_guilds.add(guild)
-                    elif guild == self.__ctx.guild_snowflake:
+                    except:
+                        continue
+                    if guild == self.__ctx.guild_snowflake:
                         for channel in guild.channels:
                             available_channels.add(channel)
                         available_guilds.add(guild)
-                    if await permission_service.has_permissions(
-                        permission_state=permission_state,
-                        guild_snowflake=guild.id,
-                        member_snowflake=self.__author_snowflake,
-                        requested=["command.moderation.uncapped"],
-                    ):
+                    try:
+                        await permission_service.has_permissions(
+                            permission_state=permission_state,
+                            guild_snowflake=guild.id,
+                            member_snowflake=self.__author_snowflake,
+                            requested=["command.moderation.uncapped"],
+                        )
                         available_durations.add("0")
+                    except:
+                        continue
                 break
             elif group.scope == PermissionScope.CHANNEL:
                 for guild in bot.guilds:
@@ -134,15 +143,17 @@ class InfractionView(discord.ui.View):
                             for channel in guild.channels:
                                 available_channels.add(channel)
                             available_guilds.add(guild)
-                        if await permission_service.has_permissions(
-                            permission_state=permission_state,
-                            channel_snowflake=channel.id,
-                            guild_snowflake=guild.id,
-                            member_snowflake=self.__author_snowflake,
-                            requested=["command.moderation.uncapped"],
-                        ):
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                channel_snowflake=channel.id,
+                                guild_snowflake=guild.id,
+                                member_snowflake=self.__author_snowflake,
+                                requested=["command.moderation.uncapped"],
+                            )
                             available_durations.add("0")
-
+                        except:
+                            continue
                 break
             else:
                 raise CheckFailure(

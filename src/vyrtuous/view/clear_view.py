@@ -174,113 +174,22 @@ class ClearView(discord.ui.View):
                 )
                 for guild in bot.guilds:
                     for permission, model in permissions.items():
-                        try:
-                            database_factory: DatabaseFactory = DatabaseFactory(model)
-                            await permission_service.has_permissions(
-                                permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=guild.id,
-                                member_snowflake=self.__author_snowflake,
-                                requested=[permission],
-                            )
-                            items = await database_factory.select(
-                                guild_snowflake=guild.id, singular=False
-                            )
-                            if items:
-                                self.available_guilds.add(guild)
-                                for item in items:
-                                    channel_snowflake = getattr(
-                                        item, "channel_snowflake", None
-                                    )
-                                    channel = (
-                                        guild.get_channel(channel_snowflake)
-                                        if channel_snowflake
-                                        else None
-                                    )
-                                    if channel:
-                                        self.available_channels.add(channel)
-                                    self.records.append(
-                                        ClearRecord(
-                                            model=model,
-                                            guild_snowflake=guild.id,
-                                            channel_snowflake=(
-                                                channel.id if channel else None
-                                            ),
-                                            scope=None,
-                                        )
-                                    )
-                        except CheckFailure:
-                            continue
-                    for permission, scope in SCOPES.items():
-                        try:
-                            database_factory: DatabaseFactory = DatabaseFactory(
-                                VoiceMute
-                            )
-                            await permission_service.has_permissions(
-                                permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
-                                member_snowflake=self.__author_snowflake,
-                                requested=[permission],
-                            )
-                            items = await database_factory.select(
-                                guild_snowflake=guild.id,
-                                target=scope.lower(),
-                                singular=False,
-                            )
-                            for item in items:
-                                channel_snowflake = getattr(
-                                    item, "channel_snowflake", None
-                                )
-                                channel = (
-                                    guild.get_channel(channel_snowflake)
-                                    if channel_snowflake
-                                    else None
-                                )
-                                self.records.append(
-                                    ClearRecord(
-                                        model=VoiceMute,
-                                        guild_snowflake=guild.id,
-                                        channel_snowflake=(
-                                            channel.id if channel else None
-                                        ),
-                                        scope=scope,
-                                    )
-                                )
-                        except CheckFailure:
-                            continue
-            case discord.Guild() as guild:
-                self.remove_item(self.channel_select)
-                self.remove_item(self.guild_select)
-                self.available_guilds.add(guild)
-                self.available_channels = (
-                    self.limit_available_to_top_24_by_member_count(
-                        available=[channel for channel in guild.channels]
-                    )
-                )
-                await permission_service.has_permissions(
-                    permission_state=permission_state,
-                    channel_snowflake=self.__ctx.channel_snowflake,
-                    guild_snowflake=guild.id,
-                    member_snowflake=self.__author_snowflake,
-                    requested=[
-                        "command.clear.scope.guild",
-                    ],
-                )
-                for permission, model in GUILD_PERMISSIONS.items():
-                    try:
                         database_factory: DatabaseFactory = DatabaseFactory(model)
-                        await permission_service.has_permissions(
-                            permission_state=permission_state,
-                            channel_snowflake=self.__ctx.channel_snowflake,
-                            guild_snowflake=guild.id,
-                            member_snowflake=self.__author_snowflake,
-                            requested=[permission],
-                        )
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                channel_snowflake=self.__ctx.channel_snowflake,
+                                guild_snowflake=guild.id,
+                                member_snowflake=self.__author_snowflake,
+                                requested=[permission],
+                            )
+                        except CheckFailure:
+                            continue
                         items = await database_factory.select(
                             guild_snowflake=guild.id, singular=False
                         )
                         if items:
+                            self.available_guilds.add(guild)
                             for item in items:
                                 channel_snowflake = getattr(
                                     item, "channel_snowflake", None
@@ -302,18 +211,18 @@ class ClearView(discord.ui.View):
                                         scope=None,
                                     )
                                 )
-                    except CheckFailure:
-                        continue
-                for permission, scope in SCOPES.items():
-                    try:
+                    for permission, scope in SCOPES.items():
                         database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
-                        await permission_service.has_permissions(
-                            permission_state=permission_state,
-                            channel_snowflake=self.__ctx.channel_snowflake,
-                            guild_snowflake=guild.id,
-                            member_snowflake=self.__author_snowflake,
-                            requested=[permission],
-                        )
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                channel_snowflake=self.__ctx.channel_snowflake,
+                                guild_snowflake=self.__ctx.guild_snowflake,
+                                member_snowflake=self.__author_snowflake,
+                                requested=[permission],
+                            )
+                        except:
+                            continue
                         items = await database_factory.select(
                             guild_snowflake=guild.id,
                             target=scope.lower(),
@@ -330,12 +239,93 @@ class ClearView(discord.ui.View):
                                 ClearRecord(
                                     model=VoiceMute,
                                     guild_snowflake=guild.id,
-                                    channel_snowflake=channel.id if channel else None,
+                                    channel_snowflake=(channel.id if channel else None),
                                     scope=scope,
                                 )
                             )
+            case discord.Guild() as guild:
+                self.remove_item(self.channel_select)
+                self.remove_item(self.guild_select)
+                self.available_guilds.add(guild)
+                self.available_channels = (
+                    self.limit_available_to_top_24_by_member_count(
+                        available=[channel for channel in guild.channels]
+                    )
+                )
+                await permission_service.has_permissions(
+                    permission_state=permission_state,
+                    channel_snowflake=self.__ctx.channel_snowflake,
+                    guild_snowflake=guild.id,
+                    member_snowflake=self.__author_snowflake,
+                    requested=[
+                        "command.clear.scope.guild",
+                    ],
+                )
+                for permission, model in GUILD_PERMISSIONS.items():
+                    database_factory: DatabaseFactory = DatabaseFactory(model)
+                    try:
+                        await permission_service.has_permissions(
+                            permission_state=permission_state,
+                            channel_snowflake=self.__ctx.channel_snowflake,
+                            guild_snowflake=guild.id,
+                            member_snowflake=self.__author_snowflake,
+                            requested=[permission],
+                        )
                     except CheckFailure:
                         continue
+                    items = await database_factory.select(
+                        guild_snowflake=guild.id, singular=False
+                    )
+                    if items:
+                        for item in items:
+                            channel_snowflake = getattr(item, "channel_snowflake", None)
+                            channel = (
+                                guild.get_channel(channel_snowflake)
+                                if channel_snowflake
+                                else None
+                            )
+                            if channel:
+                                self.available_channels.add(channel)
+                            self.records.append(
+                                ClearRecord(
+                                    model=model,
+                                    guild_snowflake=guild.id,
+                                    channel_snowflake=(channel.id if channel else None),
+                                    scope=None,
+                                )
+                            )
+                for permission, scope in SCOPES.items():
+                    database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
+                    try:
+                        await permission_service.has_permissions(
+                            permission_state=permission_state,
+                            channel_snowflake=self.__ctx.channel_snowflake,
+                            guild_snowflake=guild.id,
+                            member_snowflake=self.__author_snowflake,
+                            requested=[permission],
+                        )
+                    except CheckFailure:
+                        continue
+                    items = await database_factory.select(
+                        guild_snowflake=guild.id,
+                        target=scope.lower(),
+                        singular=False,
+                    )
+                    for item in items:
+                        channel_snowflake = getattr(item, "channel_snowflake", None)
+                        channel = (
+                            guild.get_channel(channel_snowflake)
+                            if channel_snowflake
+                            else None
+                        )
+                        self.records.append(
+                            ClearRecord(
+                                model=VoiceMute,
+                                guild_snowflake=guild.id,
+                                channel_snowflake=channel.id if channel else None,
+                                scope=scope,
+                            )
+                        )
                 self.available_channels = self.available_channels | (
                     self.limit_available_to_top_24_by_member_count(
                         available=[channel for channel in guild.channels]
@@ -353,8 +343,8 @@ class ClearView(discord.ui.View):
                 )
                 for guild in bot.guilds:
                     for permission, model in MEMBER_PERMISSIONS.items():
+                        database_factory: DatabaseFactory = DatabaseFactory(model)
                         try:
-                            database_factory: DatabaseFactory = DatabaseFactory(model)
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
                                 channel_snowflake=self.__ctx.channel_snowflake,
@@ -362,53 +352,15 @@ class ClearView(discord.ui.View):
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
-                            items = await database_factory.select(
-                                guild_snowflake=guild.id,
-                                member_snowflake=member.id,
-                                singular=False,
-                            )
-                            if items:
-                                self.available_guilds.add(guild)
-                                for item in items:
-                                    channel_snowflake = getattr(
-                                        item, "channel_snowflake", None
-                                    )
-                                    channel = (
-                                        guild.get_channel(channel_snowflake)
-                                        if channel_snowflake
-                                        else None
-                                    )
-                                    if channel:
-                                        self.available_channels.add(channel)
-                                    self.records.append(
-                                        ClearRecord(
-                                            model=model,
-                                            guild_snowflake=guild.id,
-                                            channel_snowflake=(
-                                                channel.id if channel else None
-                                            ),
-                                            scope=None,
-                                        )
-                                    )
                         except CheckFailure:
                             continue
-                    for permission, scope in SCOPES.items():
-                        try:
-                            database_factory: DatabaseFactory = DatabaseFactory(
-                                VoiceMute
-                            )
-                            await permission_service.has_permissions(
-                                permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
-                                member_snowflake=self.__author_snowflake,
-                                requested=[permission],
-                            )
-                            items = await database_factory.select(
-                                member_snowflake=member.id,
-                                target=scope.lower(),
-                                singular=False,
-                            )
+                        items = await database_factory.select(
+                            guild_snowflake=guild.id,
+                            member_snowflake=member.id,
+                            singular=False,
+                        )
+                        if items:
+                            self.available_guilds.add(guild)
                             for item in items:
                                 channel_snowflake = getattr(
                                     item, "channel_snowflake", None
@@ -418,18 +370,50 @@ class ClearView(discord.ui.View):
                                     if channel_snowflake
                                     else None
                                 )
+                                if channel:
+                                    self.available_channels.add(channel)
                                 self.records.append(
                                     ClearRecord(
-                                        model=VoiceMute,
+                                        model=model,
                                         guild_snowflake=guild.id,
                                         channel_snowflake=(
                                             channel.id if channel else None
                                         ),
-                                        scope=scope,
+                                        scope=None,
                                     )
                                 )
+                    for permission, scope in SCOPES.items():
+                        database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                channel_snowflake=self.__ctx.channel_snowflake,
+                                guild_snowflake=self.__ctx.guild_snowflake,
+                                member_snowflake=self.__author_snowflake,
+                                requested=[permission],
+                            )
                         except CheckFailure:
                             continue
+                        items = await database_factory.select(
+                            member_snowflake=member.id,
+                            target=scope.lower(),
+                            singular=False,
+                        )
+                        for item in items:
+                            channel_snowflake = getattr(item, "channel_snowflake", None)
+                            channel = (
+                                guild.get_channel(channel_snowflake)
+                                if channel_snowflake
+                                else None
+                            )
+                            self.records.append(
+                                ClearRecord(
+                                    model=VoiceMute,
+                                    guild_snowflake=guild.id,
+                                    channel_snowflake=(channel.id if channel else None),
+                                    scope=scope,
+                                )
+                            )
             case int() as member_snowflake:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None
@@ -447,8 +431,8 @@ class ClearView(discord.ui.View):
                 )
                 for guild in bot.guilds:
                     for permission, model in MEMBER_PERMISSIONS.items():
+                        database_factory: DatabaseFactory = DatabaseFactory(model)
                         try:
-                            database_factory: DatabaseFactory = DatabaseFactory(model)
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
                                 channel_snowflake=self.__ctx.channel_snowflake,
@@ -456,53 +440,15 @@ class ClearView(discord.ui.View):
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
-                            items = await database_factory.select(
-                                guild_snowflake=guild.id,
-                                member_snowflake=member_snowflake,
-                                singular=False,
-                            )
-                            if items:
-                                self.available_guilds.add(guild)
-                                for item in items:
-                                    channel_snowflake = getattr(
-                                        item, "channel_snowflake", None
-                                    )
-                                    channel = (
-                                        guild.get_channel(channel_snowflake)
-                                        if channel_snowflake
-                                        else None
-                                    )
-                                    if channel:
-                                        self.available_channels.add(channel)
-                                    self.records.append(
-                                        ClearRecord(
-                                            model=model,
-                                            guild_snowflake=guild.id,
-                                            channel_snowflake=(
-                                                channel.id if channel else None
-                                            ),
-                                            scope=None,
-                                        )
-                                    )
                         except CheckFailure:
                             continue
-                    for permission, scope in SCOPES.items():
-                        try:
-                            database_factory: DatabaseFactory = DatabaseFactory(
-                                VoiceMute
-                            )
-                            await permission_service.has_permissions(
-                                permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
-                                member_snowflake=self.__author_snowflake,
-                                requested=[permission],
-                            )
-                            items = await database_factory.select(
-                                member_snowflake=member_snowflake,
-                                target=scope.lower(),
-                                singular=False,
-                            )
+                        items = await database_factory.select(
+                            guild_snowflake=guild.id,
+                            member_snowflake=member_snowflake,
+                            singular=False,
+                        )
+                        if items:
+                            self.available_guilds.add(guild)
                             for item in items:
                                 channel_snowflake = getattr(
                                     item, "channel_snowflake", None
@@ -512,18 +458,50 @@ class ClearView(discord.ui.View):
                                     if channel_snowflake
                                     else None
                                 )
+                                if channel:
+                                    self.available_channels.add(channel)
                                 self.records.append(
                                     ClearRecord(
-                                        model=VoiceMute,
+                                        model=model,
                                         guild_snowflake=guild.id,
                                         channel_snowflake=(
                                             channel.id if channel else None
                                         ),
-                                        scope=scope,
+                                        scope=None,
                                     )
                                 )
-                        except CheckFailure:
+                    for permission, scope in SCOPES.items():
+                        database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                channel_snowflake=self.__ctx.channel_snowflake,
+                                guild_snowflake=self.__ctx.guild_snowflake,
+                                member_snowflake=self.__author_snowflake,
+                                requested=[permission],
+                            )
+                        except:
                             continue
+                        items = await database_factory.select(
+                            member_snowflake=member_snowflake,
+                            target=scope.lower(),
+                            singular=False,
+                        )
+                        for item in items:
+                            channel_snowflake = getattr(item, "channel_snowflake", None)
+                            channel = (
+                                guild.get_channel(channel_snowflake)
+                                if channel_snowflake
+                                else None
+                            )
+                            self.records.append(
+                                ClearRecord(
+                                    model=VoiceMute,
+                                    guild_snowflake=guild.id,
+                                    channel_snowflake=(channel.id if channel else None),
+                                    scope=scope,
+                                )
+                            )
             case discord.abc.GuildChannel() as channel:
                 self.remove_item(self.guild_select)
                 self.remove_item(self.channel_select)
@@ -539,8 +517,8 @@ class ClearView(discord.ui.View):
                     ],
                 )
                 for permission, model in CHANNEL_PERMISSIONS.items():
+                    database_factory: DatabaseFactory = DatabaseFactory(model)
                     try:
-                        database_factory: DatabaseFactory = DatabaseFactory(model)
                         await permission_service.has_permissions(
                             permission_state=permission_state,
                             channel_snowflake=self.__ctx.channel_snowflake,
@@ -548,25 +526,25 @@ class ClearView(discord.ui.View):
                             member_snowflake=self.__author_snowflake,
                             requested=[permission],
                         )
-                        items = await database_factory.select(
-                            channel_snowflake=channel.id,
-                            guild_snowflake=channel.guild.id,
-                            singular=False,
-                        )
-                        if items:
-                            self.records.append(
-                                ClearRecord(
-                                    model=model,
-                                    guild_snowflake=channel.guild.id,
-                                    channel_snowflake=channel.id,
-                                    scope=None,
-                                )
-                            )
                     except CheckFailure:
                         continue
+                    items = await database_factory.select(
+                        channel_snowflake=channel.id,
+                        guild_snowflake=channel.guild.id,
+                        singular=False,
+                    )
+                    if items:
+                        self.records.append(
+                            ClearRecord(
+                                model=model,
+                                guild_snowflake=channel.guild.id,
+                                channel_snowflake=channel.id,
+                                scope=None,
+                            )
+                        )
                 for permission, scope in SCOPES.items():
+                    database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
                     try:
-                        database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
                         await permission_service.has_permissions(
                             permission_state=permission_state,
                             channel_snowflake=self.__ctx.channel_snowflake,
@@ -574,23 +552,23 @@ class ClearView(discord.ui.View):
                             member_snowflake=self.__author_snowflake,
                             requested=[permission],
                         )
-                        items = await database_factory.select(
-                            channel_snowflake=channel.id,
-                            guild_snowflake=channel.guild.id,
-                            target=scope.lower(),
-                            singular=False,
-                        )
-                        if items:
-                            self.records.append(
-                                ClearRecord(
-                                    model=VoiceMute,
-                                    guild_snowflake=channel.guild.id,
-                                    channel_snowflake=channel.id,
-                                    scope=scope,
-                                )
-                            )
                     except CheckFailure:
                         continue
+                    items = await database_factory.select(
+                        channel_snowflake=channel.id,
+                        guild_snowflake=channel.guild.id,
+                        target=scope.lower(),
+                        singular=False,
+                    )
+                    if items:
+                        self.records.append(
+                            ClearRecord(
+                                model=VoiceMute,
+                                guild_snowflake=channel.guild.id,
+                                channel_snowflake=channel.id,
+                                scope=scope,
+                            )
+                        )
         if not self.records:
             raise CheckFailure("No records to clear found.")
         guild_objs = self.limit_available_to_top_24_by_member_count(
