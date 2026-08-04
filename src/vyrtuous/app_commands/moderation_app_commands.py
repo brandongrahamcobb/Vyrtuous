@@ -27,6 +27,8 @@ from vyrtuous.db.ban import Ban
 from vyrtuous.db.flag import Flag
 from vyrtuous.db.text_mute import TextMute
 from vyrtuous.db.voice_mute import VoiceMute
+from vyrtuous.modal.duration_modal import DurationModal
+from vyrtuous.modal.reason_modal import ReasonModal
 from vyrtuous.models.duration import AppDuration, DurationObject, DurationWrapper
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.target import AppTarget, TargetObject
@@ -41,6 +43,7 @@ from vyrtuous.utils.moderation import (
 )
 from vyrtuous.view.clear_view import ClearView
 from vyrtuous.view.infraction_view import InfractionView
+from vyrtuous.view.modify_view import ModifyView
 
 
 class ModerationAppCommands(commands.Cog):
@@ -263,78 +266,72 @@ class ModerationAppCommands(commands.Cog):
             content="Specify what to clear.", view=view, ephemeral=True
         )
 
-    # @metadata(permission="command.moderation.duration")
-    # @app_commands.command(name="duration", description="Modify a duration.")
-    # @app_commands.describe(member="Specify a member ID/mention.")
-    # async def change_moderation_duration_app_command(
-    #     self,
-    #     interaction: discord.Interaction,
-    #     member: app_commands.Transform[TargetObject, AppTarget],
-    #     channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
-    # ):
-    #     tick = Tick(bot=self.__bot, interaction=interaction)
-    #     bot: DiscordBot = DiscordBot.get_instance()
-    #     permission_state = bot.registry.get(PermissionState)
-    #     if channel is None:
-    #         if interaction.guild is None:
-    #             return await tick.end(warning="This command must be used in a server.")
-    #         if interaction.channel is None:
-    #             return await tick.end(
-    #                 warning="This command must be used in a server channel."
-    #             )
-    #         channel_snowflake = interaction.channel.id
-    #         guild_snowflake = interaction.guild.id
-    #     else:
-    #         if isinstance(channel.target, discord.abc.GuildChannel):
-    #             if interaction.guild is None:
-    #                 return await tick.end(
-    #                     warning="This command must be used in a server."
-    #                 )
-    #             if channel.target.guild.id != interaction.guild.id:
-    #                 await permission_service.has_permissions(
-    #                     permission_state=permission_state,
-    #                     member_snowflake=interaction.user.id,
-    #                     requested=["other_guilds"],
-    #                 )
-    #             channel_snowflake = channel.target.id
-    #             guild_snowflake = channel.target.guild.id
-    #         else:
-    #             return await tick.end(
-    #                 warning="This command must target a valid channel."
-    #             )
-    #     if isinstance(member.target, int):
-    #         member_snowflake = member.target
-    #     elif isinstance(member.target, discord.Member):
-    #         member_snowflake = member.target.id
-    #     else:
-    #         return await tick.end(warning=f"This command must target a valid member.")
-    #     if interaction.channel is None:
-    #         return await tick.end(
-    #             warning="This command must be used in a server channel."
-    #         )
-    #     else:
-    #         channel_snowflake = interaction.channel.id
-    #     await permission_service.has_permissions_at_all(
-    #         permission_state=permission_state,
-    #         member_snowflake=interaction.user.id,
-    #         requested=["command.moderation.duration"],
-    #     )
-    #     ctx = ViewContext(
-    #         interaction=interaction,
-    #         channel_snowflake=channel_snowflake,
-    #         guild_snowflake=guild_snowflake,
-    #         member_snowflake=member_snowflake,
-    #     )
-    #     view = ModifyInfractionView(
-    #         author_snowflake=interaction.user.id,
-    #         ctx=ctx,
-    #         modal="duration",
-    #         tick=tick,
-    #     )
-    #     await view.setup()
-    #     await interaction.response.send_message(
-    #         content="Select a channel and a category", view=view, ephemeral=True
-    #     )
+    @metadata(permission="command.moderation.duration")
+    @app_commands.command(name="duration", description="Modify a duration.")
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def change_moderation_duration_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if channel is None:
+            if interaction.guild is None:
+                return await tick.end(warning="This command must be used in a server.")
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must be used in a server channel."
+                )
+            channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(channel.target, discord.abc.GuildChannel):
+                if interaction.guild is None:
+                    return await tick.end(
+                        warning="This command must be used in a server."
+                    )
+                if channel.target.guild.id != interaction.guild.id:
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        member_snowflake=interaction.user.id,
+                        requested=["other_guilds"],
+                    )
+                channel_snowflake = channel.target.id
+                guild_snowflake = channel.target.guild.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.moderation.duration"],
+        )
+        ctx = SnowflakeContext(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        view = ModifyView(
+            author_snowflake=interaction.user.id,
+            ctx=ctx,
+            interaction=interaction,
+            modal=DurationModal,
+            tick=tick,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel and a category", view=view, ephemeral=True
+        )
 
     @metadata(permission="command.moderation.flag")
     @app_commands.command(name="flag", description="Create a flag.")
@@ -499,72 +496,72 @@ class ModerationAppCommands(commands.Cog):
             content="Specify the voice-mute", view=view, ephemeral=True
         )
 
-    # @metadata(permission="command.moderation.reason")
-    # @app_commands.command(name="reason", description="Modify a reason.")
-    # @app_commands.describe(member="Specify a member ID/mention.")
-    # async def change_moderation_reason_app_command(
-    #     self,
-    #     interaction: discord.Interaction,
-    #     member: app_commands.Transform[TargetObject, AppTarget],
-    #     channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
-    # ):
-    #     tick = Tick(bot=self.__bot, interaction=interaction)
-    #     bot: DiscordBot = DiscordBot.get_instance()
-    #     permission_state = bot.registry.get(PermissionState)
-    #     if channel is None:
-    #         if interaction.guild is None:
-    #             return await tick.end(warning="This command must be used in a server.")
-    #         if interaction.channel is None:
-    #             return await tick.end(
-    #                 warning="This command must be used in a server channel."
-    #             )
-    #         channel_snowflake = interaction.channel.id
-    #         guild_snowflake = interaction.guild.id
-    #     else:
-    #         if isinstance(channel.target, discord.abc.GuildChannel):
-    #             if interaction.guild is None:
-    #                 return await tick.end(
-    #                     warning="This command must be used in a server."
-    #                 )
-    #             if channel.target.guild.id != interaction.guild.id:
-    #                 await permission_service.has_permissions(
-    #                     permission_state=permission_state,
-    #                     member_snowflake=interaction.user.id,
-    #                     requested=["other_guilds"],
-    #                 )
-    #             channel_snowflake = channel.target.id
-    #             guild_snowflake = channel.target.guild.id
-    #         else:
-    #             return await tick.end(
-    #                 warning="This command must target a valid channel."
-    #             )
-    #     if isinstance(member.target, int):
-    #         member_snowflake = member.target
-    #     elif isinstance(member.target, discord.Member):
-    #         member_snowflake = member.target.id
-    #     else:
-    #         return await tick.end(warning=f"This command must target a valid member.")
-    #     await permission_service.has_permissions_at_all(
-    #         permission_state=permission_state,
-    #         member_snowflake=interaction.user.id,
-    #         requested=["command.moderation.reason"],
-    #     )
-    #     ctx = ViewContext(
-    #         interaction=interaction,
-    #         channel_snowflake=channel_snowflake,
-    #         guild_snowflake=guild_snowflake,
-    #         member_snowflake=member_snowflake,
-    #     )
-    #     view = ModifyInfractionView(
-    #         author_snowflake=interaction.user.id,
-    #         ctx=ctx,
-    #         modal="reason",
-    #         tick=tick,
-    #     )
-    #     await view.setup()
-    #     await interaction.response.send_message(
-    #         content="Select a channel and a category", view=view, ephemeral=True
-    #     )
+    @metadata(permission="command.moderation.reason")
+    @app_commands.command(name="reason", description="Modify a reason.")
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def change_moderation_reason_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if channel is None:
+            if interaction.guild is None:
+                return await tick.end(warning="This command must be used in a server.")
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must be used in a server channel."
+                )
+            channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(channel.target, discord.abc.GuildChannel):
+                if interaction.guild is None:
+                    return await tick.end(
+                        warning="This command must be used in a server."
+                    )
+                if channel.target.guild.id != interaction.guild.id:
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        member_snowflake=interaction.user.id,
+                        requested=["other_guilds"],
+                    )
+                channel_snowflake = channel.target.id
+                guild_snowflake = channel.target.guild.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.moderation.reason"],
+        )
+        ctx = SnowflakeContext(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        view = ModifyView(
+            author_snowflake=interaction.user.id,
+            ctx=ctx,
+            interaction=interaction,
+            modal=ReasonModal,
+            tick=tick,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Select a channel and a category", view=view, ephemeral=True
+        )
 
     @metadata(permission="command.moderation.voice-mute.channel_mute")
     @app_commands.command(name="rmute", description="Room mute (except yourself).")
