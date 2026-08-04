@@ -155,10 +155,14 @@ class GroupsView(discord.ui.View):
         self.group_select.options = group_options
 
     def _build_channel_options(
-        self, available_channels: list[discord.abc.GuildChannel], default: bool
+        self,
+        available_channels: list[
+            discord.VoiceChannel | discord.TextChannel | discord.StageChannel
+        ],
+        default: bool,
     ):
-        limited_channels = self.limit_available_to_top_24_by_member_count(
-            available=available_channels
+        limited_channels = self.limit_channels_to_top_24(
+            available=set(available_channels)
         )
         channel_options = []
         channel_options.extend(
@@ -175,6 +179,24 @@ class GroupsView(discord.ui.View):
                 if int(option.value) == self.__channel_snowflake and default:
                     option.default = True
         self.channel_select.options = channel_options
+
+    def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
+        relevant = [
+            c
+            for c in available
+            if isinstance(
+                c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+            )
+        ]
+        relevant.sort(
+            key=lambda c: (
+                len(c.members)
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                else 0
+            ),
+            reverse=True,
+        )
+        return relevant[:24]
 
     def _build_guild_options(
         self, available_guilds: list[discord.Guild], default: bool
@@ -205,7 +227,16 @@ class GroupsView(discord.ui.View):
         bot: DiscordBot = DiscordBot.get_instance()
         scope = self.__scopes.get(group_alias, GroupScope(group=group))
         guilds = list(scope.guilds.values())
-        channels = list(scope.channels.values())
+        channels = list(
+            [
+                channel
+                for channel in scope.channels.values()
+                if isinstance(
+                    channel,
+                    (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
+                )
+            ]
+        )
         self.__selected_guild = None
         self.__selected_channel = None
         if self.guild_select in self.children:
@@ -229,11 +260,44 @@ class GroupsView(discord.ui.View):
                         c
                         for c in scope.channels.values()
                         if c.guild.id == self.__selected_guild.id
+                        and isinstance(
+                            c,
+                            (
+                                discord.TextChannel,
+                                discord.VoiceChannel,
+                                discord.StageChannel,
+                            ),
+                        )
                     ]
                 else:
-                    channels = list(self.__selected_guild.channels)
+                    channels = list(
+                        [
+                            c
+                            for c in self.__selected_guild.channels
+                            if isinstance(
+                                c,
+                                (
+                                    discord.TextChannel,
+                                    discord.VoiceChannel,
+                                    discord.StageChannel,
+                                ),
+                            )
+                        ]
+                    )
             elif not channels:
-                channels = [c for g in guilds for c in g.channels]
+                channels = [
+                    c
+                    for g in guilds
+                    for c in g.channels
+                    if isinstance(
+                        c,
+                        (
+                            discord.TextChannel,
+                            discord.VoiceChannel,
+                            discord.StageChannel,
+                        ),
+                    )
+                ]
             if interaction.channel and interaction.channel.id in {
                 c.id for c in channels
             }:
@@ -261,6 +325,14 @@ class GroupsView(discord.ui.View):
                 channel
                 for channel in scope.channels.values()
                 if channel.guild.id == guild_snowflake
+                and isinstance(
+                    channel,
+                    (
+                        discord.TextChannel,
+                        discord.VoiceChannel,
+                        discord.StageChannel,
+                    ),
+                )
             ]
             if len(channels) == 1:
                 self.__selected_channel = channels[0]

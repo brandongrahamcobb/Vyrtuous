@@ -77,6 +77,24 @@ class GrantView(discord.ui.View):
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
 
+    def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
+        relevant = [
+            c
+            for c in available
+            if isinstance(
+                c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+            )
+        ]
+        relevant.sort(
+            key=lambda c: (
+                len(c.members)
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                else 0
+            ),
+            reverse=True,
+        )
+        return relevant[:24]
+
     def limit_available_to_top_24_by_member_count(self, available):
         items = []
         items.extend(available)
@@ -159,8 +177,8 @@ class GrantView(discord.ui.View):
     def _build_channel_options(
         self, available_channels: list[discord.abc.GuildChannel], default: bool
     ):
-        limited_channels = self.limit_available_to_top_24_by_member_count(
-            available=available_channels
+        limited_channels = self.limit_channels_to_top_24(
+            available=set(available_channels)
         )
         channel_options = []
         channel_options.extend(

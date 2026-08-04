@@ -186,8 +186,8 @@ class ModifyView(discord.ui.View):
                 if g is not None
             ]
         )
-        channel_objs = self.limit_available_to_top_24_by_member_count(
-            available=[
+        channel_objs = self.limit_channels_to_top_24(
+            available={
                 c
                 for c in (
                     bot.get_channel(cs)
@@ -195,8 +195,10 @@ class ModifyView(discord.ui.View):
                         r.channel_snowflake for r in self.records if r.channel_snowflake
                     }
                 )
-                if c is not None
-            ]
+                if isinstance(
+                    c, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
+                )
+            }
         )
         allowed_guilds = {g.id for g in guild_objs}
         allowed_channels = {c.id for c in channel_objs}
@@ -207,6 +209,24 @@ class ModifyView(discord.ui.View):
             and (r.channel_snowflake is None or r.channel_snowflake in allowed_channels)
         ]
         self._refresh_options()
+
+    def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
+        relevant = [
+            c
+            for c in available
+            if isinstance(
+                c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+            )
+        ]
+        relevant.sort(
+            key=lambda c: (
+                len(c.members)
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                else 0
+            ),
+            reverse=True,
+        )
+        return relevant[:24]
 
     def _apply_ctx_defaults(self) -> None:
         if self.selected_model is None:

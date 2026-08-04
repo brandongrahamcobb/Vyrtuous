@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import re
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.aliases import (
     unban_alias_service,
@@ -284,7 +283,7 @@ class InfractionView(discord.ui.View):
             ),
             reverse=True,
         )
-        return set(relevant[:24])
+        return relevant[:24]
 
     def limit_available_to_cap(self, duration_seconds: int):
         duration_builder: DurationBuilder = DurationBuilder()
@@ -305,7 +304,7 @@ class InfractionView(discord.ui.View):
 
     def _build_channel_options(
         self,
-        limited_channels: set[
+        limited_channels: list[
             discord.TextChannel | discord.VoiceChannel | discord.StageChannel
         ],
         default: bool = False,

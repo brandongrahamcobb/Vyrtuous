@@ -247,11 +247,7 @@ class ClearView(discord.ui.View):
                 self.remove_item(self.channel_select)
                 self.remove_item(self.guild_select)
                 self.available_guilds.add(guild)
-                self.available_channels = (
-                    self.limit_available_to_top_24_by_member_count(
-                        available=[channel for channel in guild.channels]
-                    )
-                )
+                self.available_channels = {channel for channel in guild.channels}
                 await permission_service.has_permissions(
                     permission_state=permission_state,
                     channel_snowflake=self.__ctx.channel_snowflake,
@@ -326,11 +322,9 @@ class ClearView(discord.ui.View):
                                 scope=scope,
                             )
                         )
-                self.available_channels = self.available_channels | (
-                    self.limit_available_to_top_24_by_member_count(
-                        available=[channel for channel in guild.channels]
-                    )
-                )
+                self.available_channels = self.available_channels | {
+                    channel for channel in guild.channels
+                }
             case discord.Member() as member:
                 await permission_service.has_permissions(
                     permission_state=permission_state,
@@ -505,7 +499,18 @@ class ClearView(discord.ui.View):
             case discord.abc.GuildChannel() as channel:
                 self.remove_item(self.guild_select)
                 self.remove_item(self.channel_select)
-                self.available_channels.add(channel)
+                (
+                    self.available_channels.add(channel)
+                    if isinstance(
+                        channel,
+                        (
+                            discord.TextChannel,
+                            discord.VoiceChannel,
+                            discord.StageChannel,
+                        ),
+                    )
+                    else None
+                )
                 self.available_guilds.add(channel.guild)
                 await permission_service.has_permissions(
                     permission_state=permission_state,
@@ -571,30 +576,33 @@ class ClearView(discord.ui.View):
                         )
         if not self.records:
             raise CheckFailure("No records to clear found.")
-        guild_objs = self.limit_available_to_top_24_by_member_count(
-            available=[
-                g
-                for g in (
-                    bot.get_guild(gs)
-                    for gs in {r.guild_snowflake for r in self.records}
-                )
-                if g is not None
-            ]
-        )
-        channel_objs = self.limit_available_to_top_24_by_member_count(
-            available=[
-                c
-                for c in (
-                    bot.get_channel(cs)
-                    for cs in {
-                        r.channel_snowflake for r in self.records if r.channel_snowflake
-                    }
-                )
-                if c is not None
-            ]
-        )
+        guild_objs = [
+            g
+            for g in (
+                bot.get_guild(gs) for gs in {r.guild_snowflake for r in self.records}
+            )
+            if g is not None
+        ]
+        list_of_channels = [
+            c
+            for c in (
+                bot.get_channel(cs)
+                for cs in {
+                    r.channel_snowflake for r in self.records if r.channel_snowflake
+                }
+            )
+            if c is not None
+        ]
+        available_channels = {
+            channel
+            for channel in list_of_channels
+            if isinstance(
+                channel,
+                (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
+            )
+        }
         allowed_guilds = {g.id for g in guild_objs}
-        allowed_channels = {c.id for c in channel_objs}
+        allowed_channels = {c.id for c in available_channels}
         self.records = [
             r
             for r in self.records
@@ -643,12 +651,6 @@ class ClearView(discord.ui.View):
             records = [r for r in records if r.scope in (None, self.selected_scope)]
         return records
 
-    def limit_available_to_top_24_by_member_count(self, available):
-        items = list(available)
-        items.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
-        top_24 = items[:24]
-        return set(top_24)
-
     def _refresh_options(self) -> None:
         self._build_model_options(
             models={r.model for r in self._visible_records(exclude="model") if r.model}
@@ -696,6 +698,14 @@ class ClearView(discord.ui.View):
             return "Error"
 
     def _build_guild_options(self, guild_snowflakes: set[int], default: bool = False):
+        bot = DiscordBot.get_instance()
+        guilds = [
+            g
+            for g in (bot.get_guild(snowflake) for snowflake in guild_snowflakes)
+            if g is not None
+        ]
+        guilds.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
+        top_24 = guilds[:24]
         guild_options = []
         guild_options.append(
             discord.SelectOption(
@@ -707,9 +717,9 @@ class ClearView(discord.ui.View):
         guild_options.extend(
             [
                 discord.SelectOption(
-                    label=self._guild_label(guild_snowflake), value=str(guild_snowflake)
+                    label=self._guild_label(guild.id), value=str(guild.id)
                 )
-                for guild_snowflake in guild_snowflakes
+                for guild in top_24
             ]
         )
         self.guild_select.options = guild_options
@@ -725,24 +735,27 @@ class ClearView(discord.ui.View):
     def _build_channel_options(
         self, channel_snowflakes: set[int], default: bool = False
     ):
-        channel_options = []
-        channel_options.append(
-            discord.SelectOption(
-                label="All",
-                value="all",
-                default=default,
+        bot = DiscordBot.get_instance()
+        channels = [
+            c
+            for c in (bot.get_channel(snowflake) for snowflake in channel_snowflakes)
+            if isinstance(
+                c,
+                (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
             )
+        ]
+        channels.sort(
+            key=lambda c: (
+                len(c.members)
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                else 0
+            ),
+            reverse=True,
         )
-        channel_options.extend(
-            [
-                discord.SelectOption(
-                    label=self._channel_label(channel_snowflake),
-                    value=str(channel_snowflake),
-                )
-                for channel_snowflake in channel_snowflakes
-            ]
-        )
-        self.channel_select.options = channel_options
+        self.channel_select.options = [
+            discord.SelectOption(label="All", value="all", default=default),
+            *[discord.SelectOption(label=c.name, value=str(c.id)) for c in channels],
+        ]
 
     def _build_scope_options(self, scopes: set[str], default: bool = False):
         scope_options = []
