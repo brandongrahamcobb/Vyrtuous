@@ -54,7 +54,8 @@ class DevelopmentAppCommands(commands.Cog):
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be used in a server channel."
+                warning="This command must be used in a server channel.",
+                source=interaction,
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)

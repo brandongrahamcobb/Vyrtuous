@@ -266,6 +266,15 @@ class Tick:
         )
         return response
 
+    def update_source(
+        self,
+        *,
+        ctx: commands.Context | None = None,
+        interaction: discord.Interaction | None = None,
+        message: discord.Message | None = None,
+    ):
+        self.source = ctx or interaction or message
+
 
 # async def report_issue(author, message, reference) -> None:
 #     bot: DiscordBot = DiscordBot.get_instance()

@@ -20,17 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass, field
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
-from vyrtuous.cache.registry import MemberState, PermissionState
-from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.permission_entry import PermissionEntry
+from vyrtuous.listing import list_groups
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import CheckFailure
-from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 
 MODEL = PermissionEntry
@@ -50,17 +47,21 @@ SCOPE_REQUIREMENTS: dict[PermissionScope, frozenset[str]] = {
 }
 
 
-class RevokeView(discord.ui.View):
+class GroupsView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
-        ctx: SnowflakeContext,
+        channel_snowflake: int,
+        guild_snowflake: int,
         interaction: discord.Interaction,
+        member_snowflake: int | None,
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
-        self.__ctx = ctx
+        self.__channel_snowflake = channel_snowflake
+        self.__guild_snowflake = guild_snowflake
+        self.__member_snowflake = member_snowflake
         self.__interaction = interaction
         self.__tick = tick
         self.__groups: dict[str, PermissionGroup] = {}
@@ -83,17 +84,14 @@ class RevokeView(discord.ui.View):
 
     async def setup(self):
         bot: DiscordBot = DiscordBot.get_instance()
-        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
         permission_state = bot.registry.get(PermissionState)
         self.__groups.clear()
         self.__scopes.clear()
-        author_assigned = await permission_service.resolve_all_assigned_groups(
+        assigned = await permission_service.resolve_all_assigned_groups(
             permission_state=permission_state,
             member_snowflake=self.__author_snowflake,
         )
-        author_groups: dict[str, PermissionGroup] = {}
-        author_scopes: dict[str, GroupScope] = {}
-        for group, guild_snowflake, channel_snowflake in author_assigned:
+        for group, guild_snowflake, channel_snowflake in assigned:
             scope = GroupScope(group=group)
             if guild_snowflake is not None:
                 guild = bot.get_guild(guild_snowflake)
@@ -111,79 +109,38 @@ class RevokeView(discord.ui.View):
                     (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
                 ):
                     scope.channels[channel.id] = channel
-            self._merge_scope(author_scopes, scope)
-            self.add_selectable_group(group, scope, author_groups, author_scopes)
-        records = await database_factory.select(
-            member_snowflake=self.__ctx.member_snowflake,
-            singular=False,
-        )
-        for role in records:
-            group = permission_state.groups.get(role.group_alias)
-            if group is None:
-                continue
-            author_scope = author_scopes.get(group.alias)
-            if author_scope is None:
-                continue
-            if group.scope != PermissionScope.GLOBAL:
-                if (
-                    author_scope.guilds
-                    and role.guild_snowflake not in author_scope.guilds
-                ):
-                    continue
-                if (
-                    role.channel_snowflake is not None
-                    and author_scope.channels
-                    and role.channel_snowflake not in author_scope.channels
-                ):
-                    continue
-            scope = self.__scopes.setdefault(group.alias, GroupScope(group=group))
-            if role.guild_snowflake is not None:
-                guild = bot.get_guild(role.guild_snowflake)
-                if guild is not None:
-                    scope.guilds[guild.id] = guild
-            if role.channel_snowflake is not None:
-                channel = bot.get_channel(role.channel_snowflake)
-                if channel is not None and isinstance(
-                    channel,
-                    (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
-                ):
-                    scope.channels[channel.id] = channel
-            self.__groups.setdefault(group.alias, group)
+            self.add_group_scope(scope)
+            self.add_selectable_group(group, scope)
         if not self.__groups:
             raise CheckFailure(
                 "You do not have sufficient privileges in this channel or server to use this command."
             )
         self._build_group_options(available_groups=list(self.__groups.keys()))
 
-    @staticmethod
-    def _merge_scope(scopes: dict[str, GroupScope], scope: GroupScope) -> None:
-        existing = scopes.setdefault(scope.group.alias, GroupScope(group=scope.group))
+    def add_group_scope(self, scope: GroupScope):
+        existing = self.__scopes.setdefault(
+            scope.group.alias,
+            GroupScope(group=scope.group),
+        )
         existing.guilds.update(scope.guilds)
         existing.channels.update(scope.channels)
 
-    def add_group_scope(self, scope: GroupScope):
-        self._merge_scope(self.__scopes, scope)
-
-    def add_selectable_group(
-        self,
-        group: PermissionGroup,
-        scope: GroupScope,
-        author_groups: dict[str, PermissionGroup],
-        author_scopes: dict[str, GroupScope],
-    ):
+    def add_selectable_group(self, group: PermissionGroup, scope: GroupScope):
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
-        author_groups.setdefault(group.alias, group)
-        for ancestor_alias in permission_service.resolve_ancestors(
-            group_alias=group.alias, groups=permission_state.groups
-        ):
+        ancestors = permission_service.resolve_ancestors(
+            group_alias=group.alias,
+            groups=permission_state.groups,
+        )
+        for ancestor_alias in ancestors:
             ancestor = permission_state.groups[ancestor_alias]
-            author_groups.setdefault(ancestor.alias, ancestor)
+            if ancestor.is_sysadmin or ancestor.is_guild_owner or ancestor.default:
+                continue
+            self.__groups.setdefault(ancestor.alias, ancestor)
             ancestor_scope = GroupScope(group=ancestor)
-            if ancestor.scope != PermissionScope.GLOBAL:
-                ancestor_scope.guilds.update(scope.guilds)
-                ancestor_scope.channels.update(scope.channels)
-            self._merge_scope(author_scopes, ancestor_scope)
+            ancestor_scope.guilds.update(scope.guilds)
+            ancestor_scope.channels.update(scope.channels)
+            self.add_group_scope(ancestor_scope)
 
     def _build_group_options(self, available_groups: list[str]):
         group_options = []
@@ -215,7 +172,7 @@ class RevokeView(discord.ui.View):
         )
         for option in channel_options:
             if option.value.isdigit():
-                if int(option.value) == self.__ctx.channel_snowflake and default:
+                if int(option.value) == self.__channel_snowflake and default:
                     option.default = True
         self.channel_select.options = channel_options
 
@@ -234,7 +191,7 @@ class RevokeView(discord.ui.View):
         )
         for option in guild_options:
             if option.value.isdigit():
-                if int(option.value) == self.__ctx.guild_snowflake and default:
+                if int(option.value) == self.__guild_snowflake and default:
                     option.default = True
         self.guild_select.options = guild_options
 
@@ -266,7 +223,16 @@ class RevokeView(discord.ui.View):
             self._build_guild_options(guilds, default=True)
             self.add_item(self.guild_select)
         if "channel" in required:
-            if not channels:
+            if self.__selected_guild:
+                if scope.channels:
+                    channels = [
+                        c
+                        for c in scope.channels.values()
+                        if c.guild.id == self.__selected_guild.id
+                    ]
+                else:
+                    channels = list(self.__selected_guild.channels)
+            elif not channels:
                 channels = [c for g in guilds for c in g.channels]
             if interaction.channel and interaction.channel.id in {
                 c.id for c in channels
@@ -303,7 +269,9 @@ class RevokeView(discord.ui.View):
                 self.__selected_channel = None
                 self.channel_select.disabled = False
             self._build_channel_options(channels, default=False)
-            await interaction.edit_original_response(view=self)
+            for option in self.guild_select.options:
+                option.default = False
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(
         placeholder="Select a channel",
@@ -322,7 +290,7 @@ class RevokeView(discord.ui.View):
                 self.__selected_guild = self.__selected_channel.guild
             for option in self.channel_select.options:
                 option.default = False
-            await interaction.edit_original_response(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
@@ -331,89 +299,29 @@ class RevokeView(discord.ui.View):
                 content="Please select all fields.", ephemeral=True
             )
         self.__tick.update_source(interaction=interaction)
-        record = None
-        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
         if self.__selected_group and self.__selected_channel and self.__selected_guild:
-            await database_factory.delete(
-                channel_snowflake=self.__selected_channel.id,
-                guild_snowflake=self.__selected_guild.id,
-                member_snowflake=self.__ctx.member_snowflake,
-                group_alias=self.__selected_group.alias,
-                singular=True,
-            )
-            embed = self.build_revoke_embed(
+            pages = await list_groups.build_pages(
                 group=self.__selected_group,
-                member_snowflake=self.__ctx.member_snowflake,
-                channel_snowflake=self.__selected_channel.id,
+                member_snowflake=self.__member_snowflake,
                 guild_snowflake=self.__selected_guild.id,
+                channel_snowflake=self.__selected_channel.id,
             )
         elif self.__selected_group and self.__selected_guild:
-            await database_factory.delete(
-                guild_snowflake=self.__selected_guild.id,
-                member_snowflake=self.__ctx.member_snowflake,
-                group_name=self.__selected_group.alias,
-                singular=True,
-            )
-            embed = self.build_revoke_embed(
+            pages = await list_groups.build_pages(
                 group=self.__selected_group,
-                member_snowflake=self.__ctx.member_snowflake,
+                member_snowflake=self.__member_snowflake,
                 guild_snowflake=self.__selected_guild.id,
+                channel_snowflake=None,
             )
         else:
-            await database_factory.delete(
-                member_snowflake=self.__ctx.member_snowflake,
-                group_name=self.__selected_group.alias,
-            )
-            embed = self.build_revoke_embed(
+            pages = await list_groups.build_pages(
                 group=self.__selected_group,
-                member_snowflake=self.__ctx.member_snowflake,
+                member_snowflake=self.__member_snowflake,
+                guild_snowflake=None,
+                channel_snowflake=None,
             )
-        await self.__tick.end(success=embed)
+        await self.__tick.end(success=pages)
         self.stop()
-
-    def build_revoke_embed(
-        self,
-        group: PermissionGroup,
-        member_snowflake: int,
-        channel_snowflake: int | None = None,
-        guild_snowflake: int | None = None,
-    ) -> discord.Embed:
-        bot: DiscordBot = DiscordBot.get_instance()
-        description = ""
-        author = bot.get_user(self.__author_snowflake)
-        if author:
-            description += f"**Author:** {author.mention}\n"
-        member = bot.get_user(member_snowflake)
-        if member:
-            display_name = member.display_name
-            member_str = member.mention
-        else:
-            simplified_member = bot.registry.get(MemberState).active.get(
-                member_snowflake
-            )
-            if not simplified_member:
-                raise commands.MemberNotFound(str(member_snowflake))
-            display_name = simplified_member[0]
-            member_str = display_name
-        description += f"**User:** {member_str}\n"
-        if guild_snowflake:
-            guild = bot.get_guild(guild_snowflake)
-            if guild is None:
-                raise commands.GuildNotFound(str(guild_snowflake))
-            description += f"**Server:** {guild.name}\n"
-            if channel_snowflake:
-                channel = guild.get_channel(channel_snowflake)
-                if channel is None:
-                    raise commands.ChannelNotFound(str(channel_snowflake))
-                description += f"**Channel:** {channel.mention}"
-        embed = discord.Embed(
-            title=f"{emojis.get_random_emoji()} {display_name} has been revoked {group.name}",
-            description=description,
-            color=discord.Color.blue(),
-        )
-        if member:
-            embed.set_thumbnail(url=member.display_avatar.url)
-        return embed
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

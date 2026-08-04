@@ -59,9 +59,12 @@ class GrantView(discord.ui.View):
         tick: Tick,
     ):
         super().__init__(timeout=120)
+        if ctx.member_snowflake is None:
+            raise CheckFailure("Member not found.")
         self.__author_snowflake = author_snowflake
         self.__ctx = ctx
         self.__interaction = interaction
+        self.__member_snowflake = ctx.member_snowflake
         self.__tick = tick
         self.__groups: dict[str, PermissionGroup] = {}
         self.__scopes: dict[str, GroupScope] = {}
@@ -196,6 +199,7 @@ class GrantView(discord.ui.View):
 
     @discord.ui.select(placeholder="Select a group", options=[])
     async def group_select(self, interaction, select):
+        await interaction.response.defer()
         group_alias = select.values[0]
         group = self.__groups[group_alias]
         self.group_select.placeholder = group.name
@@ -240,13 +244,14 @@ class GrantView(discord.ui.View):
                 self.__selected_channel = channels[0]
             self._build_channel_options(channels, default=True)
             self.add_item(self.channel_select)
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(
         placeholder="Select a guild",
         options=[discord.SelectOption(label="Select a group first", value=str(None))],
     )
     async def guild_select(self, interaction, select):
+        await interaction.response.defer()
         guild_snowflake = int(select.values[0])
         if self.__selected_group:
             scope = self.__scopes.get(
@@ -268,13 +273,14 @@ class GrantView(discord.ui.View):
             self._build_channel_options(channels, default=False)
             for option in self.guild_select.options:
                 option.default = False
-            await interaction.response.edit_message(view=self)
+            await interaction.edit_original_response(view=self)
 
     @discord.ui.select(
         placeholder="Select a channel",
         options=[discord.SelectOption(label="Select a guild first", value=str(None))],
     )
     async def channel_select(self, interaction, select):
+        await interaction.response.defer()
         channel_snowflake = int(select.values[0])
         if self.__selected_group:
             scope = self.__scopes.get(
@@ -286,7 +292,7 @@ class GrantView(discord.ui.View):
                 self.__selected_guild = self.__selected_channel.guild
             for option in self.channel_select.options:
                 option.default = False
-            await interaction.response.edit_message(view=self)
+            await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
@@ -294,120 +300,113 @@ class GrantView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
+        self.__tick.update_source(interaction=interaction)
+        record = None
+        bot: DiscordBot = DiscordBot.get_instance()
+        database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+        permission_state: PermissionState = bot.registry.get(PermissionState)
+        member = bot.get_user(self.__member_snowflake)
+        if member:
+            member_str = member.mention
         else:
-            await interaction.response.defer()
-            record = None
-            bot: DiscordBot = DiscordBot.get_instance()
-            database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-            permission_state: PermissionState = bot.registry.get(PermissionState)
-            member = bot.get_user(self.__ctx.member_snowflake)
-            if member:
-                member_str = member.mention
-            else:
-                simplified_member = bot.registry.get(MemberState).active.get(
-                    self.__ctx.member_snowflake
-                )
-                if not simplified_member:
-                    raise MemberNotFound(str(self.__ctx.member_snowflake))
-                display_name = simplified_member[0]
-                member_str = display_name
-            if (
-                self.__selected_group
-                and self.__selected_channel
-                and self.__selected_guild
-            ):
-                group = await permission_service.resolve_effective_group(
-                    permission_state=permission_state,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    guild_snowflake=self.__selected_guild.id,
-                    channel_snowflake=self.__selected_channel.id,
-                )
-                if group:
-                    if self.__selected_group.alias in group.ancestors:
-                        return await interaction.response.send_message(
-                            content=f"You cannot grant {member_str} a group they inherit from.",
-                            ephemeral=True,
-                        )
-                record = await database_factory.select(
-                    channel_snowflake=self.__selected_channel.id,
-                    guild_snowflake=self.__selected_guild.id,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    group_alias=self.__selected_group.alias,
-                    singular=True,
-                )
-                entry = PermissionEntry(
-                    channel_snowflake=self.__selected_channel.id,
-                    group_alias=self.__selected_group.alias,
-                    guild_snowflake=self.__selected_guild.id,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                embed = self.build_grant_embed(
-                    group=self.__selected_group,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    channel_snowflake=self.__selected_channel.id,
-                    guild_snowflake=self.__selected_guild.id,
-                )
-            elif self.__selected_group and self.__selected_guild:
-                group = await permission_service.resolve_effective_group(
-                    permission_state=permission_state,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    guild_snowflake=self.__selected_guild.id,
-                )
-                if group:
-                    if self.__selected_group.alias in group.ancestors:
-                        return await interaction.response.send_message(
-                            content=f"You cannot grant {member_str} a group they inherit from.",
-                            ephemeral=True,
-                        )
-                record = await database_factory.select(
-                    guild_snowflake=self.__selected_guild.id,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    group_name=self.__selected_group.alias,
-                    singular=True,
-                )
-                entry = PermissionEntry(
-                    group_alias=self.__selected_group.alias,
-                    guild_snowflake=self.__selected_guild.id,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                embed = self.build_grant_embed(
-                    group=self.__selected_group,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    guild_snowflake=self.__selected_guild.id,
-                )
-            else:
-                group = await permission_service.resolve_effective_group(
-                    permission_state=permission_state,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                if group:
-                    if self.__selected_group.alias in group.ancestors:
-                        return await interaction.response.send_message(
-                            content=f"You cannot grant {member_str} a group they inherit from.",
-                            ephemeral=True,
-                        )
-                record = await database_factory.select(
-                    member_snowflake=self.__ctx.member_snowflake,
-                    group_name=self.__selected_group.alias,
-                    singular=True,
-                )
-                entry = PermissionEntry(
-                    group_alias=self.__selected_group.alias,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-                embed = self.build_grant_embed(
-                    group=self.__selected_group,
-                    member_snowflake=self.__ctx.member_snowflake,
-                )
-            if record:
-                await self.__tick.end(
-                    warning=f"This member is already apart of this group (`{self.__selected_group.name}`).",
-                    ephemeral=True,
-                )
-            else:
-                await database_factory.create(entry)
-                await self.__tick.end(success=embed)
-        await interaction.delete_original_response()
+            simplified_member = bot.registry.get(MemberState).active.get(
+                self.__member_snowflake
+            )
+            if not simplified_member:
+                raise MemberNotFound(str(self.__member_snowflake))
+            display_name = simplified_member[0]
+            member_str = display_name
+        if self.__selected_group and self.__selected_channel and self.__selected_guild:
+            group = await permission_service.resolve_effective_group(
+                permission_state=permission_state,
+                member_snowflake=self.__member_snowflake,
+                guild_snowflake=self.__selected_guild.id,
+                channel_snowflake=self.__selected_channel.id,
+            )
+            if group:
+                if self.__selected_group.alias in group.ancestors:
+                    return await interaction.response.send_message(
+                        content=f"You cannot grant {member_str} a group they inherit from.",
+                        ephemeral=True,
+                    )
+            record = await database_factory.select(
+                channel_snowflake=self.__selected_channel.id,
+                guild_snowflake=self.__selected_guild.id,
+                member_snowflake=self.__member_snowflake,
+                group_alias=self.__selected_group.alias,
+                singular=True,
+            )
+            entry = PermissionEntry(
+                channel_snowflake=self.__selected_channel.id,
+                group_alias=self.__selected_group.alias,
+                guild_snowflake=self.__selected_guild.id,
+                member_snowflake=self.__member_snowflake,
+            )
+            embed = self.build_grant_embed(
+                group=self.__selected_group,
+                member_snowflake=self.__member_snowflake,
+                channel_snowflake=self.__selected_channel.id,
+                guild_snowflake=self.__selected_guild.id,
+            )
+        elif self.__selected_group and self.__selected_guild:
+            group = await permission_service.resolve_effective_group(
+                permission_state=permission_state,
+                member_snowflake=self.__member_snowflake,
+                guild_snowflake=self.__selected_guild.id,
+            )
+            if group:
+                if self.__selected_group.alias in group.ancestors:
+                    return await interaction.response.send_message(
+                        content=f"You cannot grant {member_str} a group they inherit from.",
+                        ephemeral=True,
+                    )
+            record = await database_factory.select(
+                guild_snowflake=self.__selected_guild.id,
+                member_snowflake=self.__member_snowflake,
+                group_name=self.__selected_group.alias,
+                singular=True,
+            )
+            entry = PermissionEntry(
+                group_alias=self.__selected_group.alias,
+                guild_snowflake=self.__selected_guild.id,
+                member_snowflake=self.__member_snowflake,
+            )
+            embed = self.build_grant_embed(
+                group=self.__selected_group,
+                member_snowflake=self.__member_snowflake,
+                guild_snowflake=self.__selected_guild.id,
+            )
+        else:
+            group = await permission_service.resolve_effective_group(
+                permission_state=permission_state,
+                member_snowflake=self.__member_snowflake,
+            )
+            if group:
+                if self.__selected_group.alias in group.ancestors:
+                    return await interaction.response.send_message(
+                        content=f"You cannot grant {member_str} a group they inherit from.",
+                        ephemeral=True,
+                    )
+            record = await database_factory.select(
+                member_snowflake=self.__member_snowflake,
+                group_name=self.__selected_group.alias,
+                singular=True,
+            )
+            entry = PermissionEntry(
+                group_alias=self.__selected_group.alias,
+                member_snowflake=self.__member_snowflake,
+            )
+            embed = self.build_grant_embed(
+                group=self.__selected_group,
+                member_snowflake=self.__member_snowflake,
+            )
+        if record:
+            return await self.__tick.end(
+                warning=f"This member is already apart of this group (`{self.__selected_group.name}`).",
+                ephemeral=True,
+            )
+        await database_factory.create(entry)
+        await self.__tick.end(success=embed)
         self.stop()
 
     def build_grant_embed(

@@ -39,6 +39,7 @@ PERMISSION_TREE = {
             "cogs": [],
             "debug": [],
             "flags": [],
+            "groups": [],
             "guilds": [],
             "intents": [],
             "help": [],

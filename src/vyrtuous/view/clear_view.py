@@ -847,15 +847,13 @@ class ClearView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select a scope.", ephemeral=True
             )
-        await interaction.response.defer()
-
+        self.__tick.update_source(interaction=interaction)
         deleted_count = await self.clear(
             interaction=interaction,
         )
         await self.__tick.end(
             success=f"Successfully deleted {deleted_count} record(s)."
         )
-        await interaction.delete_original_response()
         self.stop()
 
     async def clear(self, interaction: discord.Interaction) -> int:

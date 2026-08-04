@@ -25,9 +25,9 @@ from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound, MemberNo
 class SnowflakeContext:
     def __init__(
         self,
-        channel_snowflake: int | None,
-        guild_snowflake: int | None,
-        member_snowflake: int | None,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
     ):
         self.bot: DiscordBot = DiscordBot.get_instance()
         if guild_snowflake:

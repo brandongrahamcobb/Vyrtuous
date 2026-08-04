@@ -27,17 +27,19 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES, PATH_LOG
 from vyrtuous.listing import (list_autoassign_roles, list_automute_channels,
-                              list_bans, list_caps, list_flags, list_heroes,
-                              list_intents, list_overwrites, list_streams,
-                              list_text_mutes, list_vegans,
+                              list_bans, list_caps, list_flags, list_groups,
+                              list_heroes, list_intents, list_overwrites,
+                              list_streams, list_text_mutes, list_vegans,
                               list_video_channels, list_voice_mutes)
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging import emojis
+from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.statistics import system_monitoring_service
+from vyrtuous.view.groups_view import GroupsView
 
 
 class InfoAppCommands(commands.Cog):
@@ -673,6 +675,55 @@ class InfoAppCommands(commands.Cog):
                 )
         pages = await list_flags.build_pages(guild_snowflake=guild_snowflake, obj=obj)
         return await tick.end(success=pages)
+
+    @metadata(permission="command.info.groups")
+    @app_commands.command(name="groups", description="List groups.")
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def grant_group_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if interaction.guild is None:
+            return await tick.end(warning="This command must be used in a server.")
+        else:
+            guild_snowflake = interaction.guild.id
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
+        else:
+            channel_snowflake = interaction.channel.id
+        if member is None:
+            member_snowflake = None
+        elif isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        await permission_service.has_permissions(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            requested=["command.info.groups"],
+        )
+        view = GroupsView(
+            author_snowflake=interaction.user.id,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            interaction=interaction,
+            tick=tick,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Specify the group", view=view, ephemeral=True
+        )
 
     @metadata(permission="command.info.heroes")
     @app_commands.command(name="heroes", description="List heroes.")

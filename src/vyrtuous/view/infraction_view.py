@@ -323,13 +323,14 @@ class InfractionView(discord.ui.View):
         self.__guild_snowflake = guild.id
         self.channel_select.disabled = False
         await self._sync_duration_select(rebuild_options=False)
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(
         placeholder="Select a channel",
         options=[discord.SelectOption(label="Select a guild first", value=str(None))],
     )
     async def channel_select(self, interaction, select):
+        await interaction.response.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         channel = bot.get_channel(int(select.values[0]))
         if isinstance(channel, discord.abc.GuildChannel):
@@ -337,10 +338,11 @@ class InfractionView(discord.ui.View):
             self.__channel_snowflake = channel.id
             self.__guild_snowflake = channel.guild.id
         await self._sync_duration_select(rebuild_options=True)
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(placeholder="Select a duration", options=[])
     async def duration_select(self, interaction, select):
+        await interaction.response.defer()
         duration_name = next(
             option.label
             for option in select.options
@@ -350,7 +352,7 @@ class InfractionView(discord.ui.View):
         self.duration_select.placeholder = duration_name
         duration_builder = DurationBuilder()
         self.__duration = duration_builder.parse(duration_value).build()
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
@@ -359,6 +361,7 @@ class InfractionView(discord.ui.View):
                 content=f"Please select all fields.",
                 ephemeral=True,
             )
+        self.__tick.update_source(interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_equal_or_lower_role(
@@ -476,7 +479,6 @@ class InfractionView(discord.ui.View):
                 )
             if embed:
                 await self.__tick.end(success=embed)
-            await interaction.delete_original_response()
             self.stop()
         else:
             if await cap_service.exceeds_cap(
@@ -527,5 +529,4 @@ class InfractionView(discord.ui.View):
         error: Exception,
         item: discord.ui.Item,
     ) -> None:
-        await interaction.edit_original_response(view=None)
         await self.__tick.end(error=str(error), ephemeral=True)

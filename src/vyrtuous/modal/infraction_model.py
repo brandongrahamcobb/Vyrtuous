@@ -71,6 +71,7 @@ class InfractionModal(discord.ui.Modal):
         self.add_item(self.reason_selection)
 
     async def on_submit(self, interaction) -> None:
+        self.__tick.update_source(interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         database_factory: DatabaseFactory = DatabaseFactory(self.__model)
         duration_builder: DurationBuilder = DurationBuilder()
@@ -90,7 +91,6 @@ class InfractionModal(discord.ui.Modal):
         display = True
         embed = None
         is_channel_scope = False
-        message = interaction.message
         target = None
         match self.__model.identifier:
             case "ban":
@@ -204,8 +204,6 @@ class InfractionModal(discord.ui.Modal):
             role_snowflake=None,
             target=target,
         )
-        await interaction.response.defer()
-        await interaction.delete_original_response()
         if embed:
             await self.__tick.end(success=embed)
         return None
@@ -215,9 +213,4 @@ class InfractionModal(discord.ui.Modal):
         interaction: discord.Interaction,
         error: Exception,
     ):
-        if isinstance(error, commands.BadArgument):
-            await self.__tick.end(error=str(error))
-        elif isinstance(error, commands.CheckFailure):
-            await self.__tick.end(error=str(error))
-        else:
-            raise error
+        await self.__tick.end(error=str(error), ephemeral=True)
