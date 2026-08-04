@@ -58,6 +58,10 @@ async def build_dictionary(
                 guild_snowflake=guild_snowflake,
                 singular=False,
             )
+        elif isinstance(obj, int):
+            voice_mutes = await database_factory.select(
+                member_snowflake=obj, guild_snowflake=guild_snowflake, singular=False
+            )
         else:
             voice_mutes = await database_factory.select(
                 guild_snowflake=guild_snowflake, singular=False
@@ -78,6 +82,13 @@ async def build_dictionary(
         elif isinstance(obj, discord.Member):
             voice_mutes = await database_factory.select(
                 member_snowflake=obj.id,
+                guild_snowflake=guild_snowflake,
+                target=mute_type,
+                singular=False,
+            )
+        elif isinstance(obj, int):
+            voice_mutes = await database_factory.select(
+                member_snowflake=obj,
                 guild_snowflake=guild_snowflake,
                 target=mute_type,
                 singular=False,

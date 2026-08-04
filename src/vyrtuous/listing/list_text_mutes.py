@@ -54,6 +54,10 @@ async def build_dictionary(
         text_mutes = await database_factory.select(
             guild_snowflake=guild_snowflake, member_snowflake=obj.id, singular=False
         )
+    elif isinstance(obj, int):
+        text_mutes = await database_factory.select(
+            guild_snowflake=guild_snowflake, member_snowflake=obj, singular=False
+        )
     else:
         text_mutes = await database_factory.select(
             guild_snowflake=guild_snowflake, singular=False

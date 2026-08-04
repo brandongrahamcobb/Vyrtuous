@@ -64,6 +64,8 @@ class InfractionView(discord.ui.View):
         tick: Tick,
     ):
         super().__init__(timeout=120)
+        self.available_channels = set()
+        self.available_guilds = set()
         self.__author_snowflake = author_snowflake
         self.__channel_snowflake = ctx.channel_snowflake
         self.__ctx = ctx
@@ -80,7 +82,7 @@ class InfractionView(discord.ui.View):
     async def setup(self):
         available_channels: set[discord.abc.GuildChannel] = set()
         available_guilds: set[discord.Guild] = set()
-        available_durations = DURATIONS
+        available_durations = set(DURATIONS)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         all_assigned_groups = await permission_service.resolve_all_assigned_groups(
@@ -159,9 +161,11 @@ class InfractionView(discord.ui.View):
                 raise CheckFailure(
                     "You do not have sufficient privileges in this channel or server to use this command."
                 )
+        self.available_guilds = available_guilds
+        self.available_channels = available_channels
         self._build_guild_options(available_guilds=available_guilds, default=True)
-        limited_channels = self.limit_available_to_top_24_by_member_count(
-            available=list(available_channels)
+        limited_channels = self.limit_channels_to_top_24(
+            available=set(available_channels)
         )
         self._build_channel_options(limited_channels=limited_channels, default=True)
         await self.build_duration_options(available_durations=available_durations)
@@ -205,33 +209,55 @@ class InfractionView(discord.ui.View):
             return f"{amount} {unit}"
 
         if available_durations is None:
+            bot: DiscordBot = DiscordBot.get_instance()
+            cap = None
             duration_builder: DurationBuilder = DurationBuilder()
             database_factory: DatabaseFactory = DatabaseFactory(Cap)
-            cap: Cap = await database_factory.select(
-                category=self.__model.identifier,
-                channel_snowflake=self.__channel_snowflake,
-                guild_snowflake=self.__ctx.guild_snowflake,
-                singular=True,
-            )
-            if cap:
-                available_durations = self.limit_available_to_cap(
-                    duration_seconds=cap.duration_seconds
+            permission_state: PermissionState = bot.registry.get(PermissionState)
+            try:
+                await permission_service.has_permissions(
+                    permission_state=permission_state,
+                    channel_snowflake=self.__channel_snowflake,
+                    guild_snowflake=self.__guild_snowflake,
+                    member_snowflake=self.__author_snowflake,
+                    requested=["command.moderation.uncapped"],
                 )
+            except CheckFailure:
+                cap = await database_factory.select(
+                    category=self.__model.identifier,
+                    channel_snowflake=self.__channel_snowflake,
+                    guild_snowflake=self.__guild_snowflake,
+                    singular=True,
+                )
+                if cap:
+                    available_durations = self.limit_available_to_cap(
+                        duration_seconds=cap.duration_seconds
+                    )
+                else:
+                    duration_seconds = duration_builder.load(
+                        DurationObject(number=8, prefix="", sign=1, unit="")
+                    ).to_seconds()
+                    available_durations = self.limit_available_to_cap(
+                        duration_seconds=duration_seconds
+                    )
+                duration_options = [
+                    discord.SelectOption(
+                        label=_format_duration_label(d),
+                        value=d,
+                    )
+                    for d in available_durations
+                ]
+                self.duration_select.options = duration_options
             else:
-                duration_seconds = duration_builder.load(
-                    DurationObject(number=8, prefix="", sign=1, unit="")
-                ).to_seconds()
-                available_durations = self.limit_available_to_cap(
-                    duration_seconds=duration_seconds
-                )
-            duration_options = [
-                discord.SelectOption(
-                    label=_format_duration_label(d),
-                    value=d,
-                )
-                for d in available_durations
-            ]
-            self.duration_select.options = duration_options
+                durations = set(DURATIONS)
+                durations.add("0")
+                duration_options = [
+                    discord.SelectOption(
+                        label=_format_duration_label(d),
+                        value=d,
+                    )
+                    for d in durations
+                ]
         else:
             duration_options = [
                 discord.SelectOption(
@@ -241,6 +267,24 @@ class InfractionView(discord.ui.View):
                 for d in available_durations
             ]
             self.duration_select.options = duration_options
+
+    def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
+        relevant = [
+            c
+            for c in available
+            if isinstance(
+                c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
+            )
+        ]
+        relevant.sort(
+            key=lambda c: (
+                len(c.members)
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                else 0
+            ),
+            reverse=True,
+        )
+        return set(relevant[:24])
 
     def limit_available_to_cap(self, duration_seconds: int):
         duration_builder: DurationBuilder = DurationBuilder()
@@ -260,7 +304,11 @@ class InfractionView(discord.ui.View):
         return set(top_24)
 
     def _build_channel_options(
-        self, limited_channels: set[discord.abc.GuildChannel], default: bool = False
+        self,
+        limited_channels: set[
+            discord.TextChannel | discord.VoiceChannel | discord.StageChannel
+        ],
+        default: bool = False,
     ):
         channel_options = []
         bot: DiscordBot = DiscordBot.get_instance()
@@ -325,8 +373,14 @@ class InfractionView(discord.ui.View):
         guild = bot.get_guild(int(select.values[0]))
         if guild is None:
             raise GuildNotFound(str(select.values[0]))
-        limited_channels = self.limit_available_to_top_24_by_member_count(
-            available=guild.channels,
+        for option in self.guild_select.options:
+            option.default = False
+        self.guild_select.placeholder = guild.name
+        available_channels = {
+            channel for channel in self.available_channels if channel in guild.channels
+        }
+        limited_channels = self.limit_channels_to_top_24(
+            available=available_channels,
         )
         self._build_channel_options(limited_channels=limited_channels, default=False)
         self.channel_select.placeholder = "Select a channel"
@@ -343,6 +397,8 @@ class InfractionView(discord.ui.View):
     async def channel_select(self, interaction, select):
         await interaction.response.defer()
         bot: DiscordBot = DiscordBot.get_instance()
+        for option in self.channel_select.options:
+            option.default = False
         channel = bot.get_channel(int(select.values[0]))
         if isinstance(channel, discord.abc.GuildChannel):
             self.channel_select.placeholder = channel.name
