@@ -65,8 +65,8 @@ CATEGORY_TO_DESCRIPTION = {
 CATEGORY_TO_PERMISSION = {
     "ban": "command.moderation.ban",
     "flag": "command.moderation.flag",
-    "tmute": "commands.moderation.text-mute",
-    "vmute": "commands.moderation.voice-mute",
+    "tmute": "command.moderation.text-mute",
+    "vmute": "command.moderation.voice-mute",
 }
 
 

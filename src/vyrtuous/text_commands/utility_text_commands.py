@@ -98,13 +98,13 @@ class UtilityTextCommands(commands.Cog):
     async def purge_text_command(
         self,
         ctx: commands.Context,
+        amount: int = commands.parameter(
+            default=25, description="Number of messages to delete."
+        ),
         member: TargetObject | None = commands.parameter(
             converter=Target,
             default=None,
             description="Specify the member ID/mention.",
-        ),
-        amount: int = commands.parameter(
-            default=25, description="Number of messages to delete."
         ),
         channel: TargetObject | None = commands.parameter(
             converter=Target,
@@ -179,6 +179,8 @@ class UtilityTextCommands(commands.Cog):
                     guild_snowflake=guild_snowflake,
                     requested=["command.utility.purge"],
                 )
+                if msg.id == ctx.message.id:
+                    continue
                 if member_snowflake is not None:
                     if msg.author.id == member_snowflake:
                         await msg.delete()

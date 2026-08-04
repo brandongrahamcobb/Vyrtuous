@@ -46,8 +46,8 @@ class InfoTextCommands(commands.Cog):
         self.__bot = bot
 
 
-    @metadata(permission="command.info.autoassigns")
     @commands.command(name="autoassigns", help="List group autoassignment roles.")
+    @metadata(permission="command.info.autoassigns")
     async def list_autoassignment_roles_text_command(
         self,
         ctx: commands.Context,
@@ -875,7 +875,7 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-            obj = ctx.guild
+            obj = ctx.channel
         else:
             obj = target.target
         await permission_service.has_permissions(
@@ -1537,9 +1537,9 @@ class InfoTextCommands(commands.Cog):
                         channel_snowflake=channel_snowflake,
                         guild_snowflake=guild_snowflake,
                         requested=[
-                            "command.info.voice-mutes.auto"
-                            "command.info.voice-mutes.click"
-                            "command.info.voice-mutes.command"
+                            "command.info.voice-mutes.auto",
+                            "command.info.voice-mutes.click",
+                            "command.info.voice-mutes.command",
                         ],
                     )
                 case "auto":
@@ -1637,7 +1637,7 @@ class InfoTextCommands(commands.Cog):
             return await tick.end(success="No infractions found")
         return await tick.end(success=pages)
 
-    @commands.command(name="survey", help="Survey members.")
+    @commands.command(name="survey", help="Show member permissions.")
     @metadata(permission="command.info.survey")
     async def survey_text_command(
         self,

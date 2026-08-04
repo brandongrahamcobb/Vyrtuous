@@ -101,14 +101,10 @@ class UserManagementAppCommands(commands.Cog):
                 guild_snowflake=guild_snowflake,
                 requested=["other_guilds"],
             )
-        message = await interaction.original_response()
-        message_snowflake = message.id
         pages = await autoassign_role_service.toggle_autoassign_role(
             author_snowflake=interaction.user.id,
             group=group_obj,
             guild_snowflake=guild_snowflake,
-            message_snowflake=message_snowflake,
-            message_channel_snowflake=channel_snowflake,
             role_snowflake=role_snowflake,
         )
         return await tick.end(success=pages)
@@ -310,7 +306,7 @@ class UserManagementAppCommands(commands.Cog):
         )
 
     @metadata(permission="command.users.vegan")
-    @app_commands.command(name="vcow", description="Toggle vegan.")
+    @app_commands.command(name="vegan", description="Toggle vegan.")
     @app_commands.describe(member="Specify member ID/mention.", notes="Include notes.")
     async def toggle_vegan_app_command(
         self,

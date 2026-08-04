@@ -44,7 +44,7 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 BASE_PERMISSIONS = [
     "command.users.vegan",
 ]
-COMMAND = "vcow"
+COMMAND = "vegan"
 
 
 @pytest.mark.asyncio
@@ -62,7 +62,7 @@ COMMAND = "vcow"
         ),
     ],
 )
-async def test_vcow_text_command(
+async def test_vegan_text_command(
     bot,
     prefix: str,
     member: str | None,
@@ -84,7 +84,7 @@ async def test_vcow_text_command(
 
     Example
     --------
-    >>> !vcow 10000000000000010 
+    >>> !vegan 10000000000000010 
     {emoji} {emoji} Spawd is going vegan! {emoji} {emoji}
     """
     assert COMMAND in docstring
@@ -150,7 +150,7 @@ async def test_vcow_text_command(
         ),
     ],
 )
-async def test_vcow_app_command(
+async def test_vegan_app_command(
     bot,
     member: str | None,
     other_guild: str | None,
@@ -171,7 +171,7 @@ async def test_vcow_app_command(
 
     Example
     --------
-    >>> /vcow 10000000000000010 
+    >>> /vegan 10000000000000010 
     {emoji} {emoji} Spawd is going vegan! {emoji} {emoji}
     """
     assert COMMAND in docstring

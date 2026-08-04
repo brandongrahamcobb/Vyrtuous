@@ -816,7 +816,7 @@ class InfoAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-            obj = interaction.guild
+            obj = interaction.channel
         else:
             obj = target.target
         await permission_service.has_permissions(
@@ -1471,9 +1471,9 @@ class InfoAppCommands(commands.Cog):
                         channel_snowflake=channel_snowflake,
                         guild_snowflake=guild_snowflake,
                         requested=[
-                            "command.info.voice-mutes.auto"
-                            "command.info.voice-mutes.click"
-                            "command.info.voice-mutes.command"
+                            "command.info.voice-mutes.auto",
+                            "command.info.voice-mutes.click",
+                            "command.info.voice-mutes.command",
                         ],
                     )
                 case "auto":
@@ -1569,7 +1569,7 @@ class InfoAppCommands(commands.Cog):
         return await tick.end(success=pages)
 
     @metadata(permission="command.info.survey")
-    @app_commands.command(name="survey", description="Survey members.")
+    @app_commands.command(name="survey", description="Show member permissions.")
     @app_commands.describe(
         channel="Specify a channel ID/mention.",
     )
@@ -1603,7 +1603,7 @@ class InfoAppCommands(commands.Cog):
             member_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.users.survey", "command.info.scope.channel"],
+            requested=["command.info.survey", "command.info.scope.channel"],
         )
         if interaction.guild.id != guild_snowflake:
             await permission_service.has_permissions(

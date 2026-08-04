@@ -415,7 +415,9 @@ class ModerationAppCommands(commands.Cog):
 
     @metadata(permission="command.moderation.voice-mute")
     @app_commands.command(name="mute", description="Create a voice mute.")
-    @app_commands.describe(member="Specify a member ID/mention.")
+    @app_commands.describe(
+        member="Specify a member ID/mention.", channel="Specify a channel ID/mention."
+    )
     async def create_voice_mute_app_command(
         self,
         interaction: discord.Interaction,

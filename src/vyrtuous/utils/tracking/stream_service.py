@@ -308,7 +308,7 @@ async def toggle_stream(
 
 async def log(
     author_snowflake: int | None,
-    channel_snowflake: int,
+    channel_snowflake: int | None,
     display: bool,
     duration: DurationObject | None,
     guild_snowflake: int,
@@ -323,7 +323,7 @@ async def log(
 ):
     await data_builder.save_data(
         author_snowflake=author_snowflake or None,
-        channel_snowflake=channel_snowflake,
+        channel_snowflake=channel_snowflake or None,
         duration=duration or None,
         guild_snowflake=guild_snowflake,
         identifier=identifier,
@@ -335,7 +335,7 @@ async def log(
     if display:
         await send_log(
             author_snowflake=author_snowflake or None,
-            channel_snowflake=channel_snowflake,
+            channel_snowflake=channel_snowflake or None,
             identifier=identifier,
             duration=duration or None,
             guild_snowflake=guild_snowflake,

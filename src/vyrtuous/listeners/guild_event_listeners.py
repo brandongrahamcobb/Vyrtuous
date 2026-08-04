@@ -49,7 +49,7 @@ class GuildEventListeners(commands.Cog):
         )
         if added_roles:
             for added_role in added_roles:
-                if added_role in autoassign_role_snowflakes:
+                if int(added_role) in autoassign_role_snowflakes:
                     await autoassign_role_service.added_role(
                         guild_snowflake=guild_snowflake,
                         member_snowflake=before.id,
@@ -68,7 +68,7 @@ class GuildEventListeners(commands.Cog):
                         *roles, reason="Hero restricts role addition"
                     )
                 except discord.HTTPException:
-                    bot.logger.info(
+                    bot.logger.debug(
                         f"Unable to remove roles added to hero {after.display_name}."
                     )
         elif removed_roles:

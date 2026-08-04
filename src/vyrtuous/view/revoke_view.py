@@ -124,13 +124,18 @@ class RevokeView(discord.ui.View):
             author_scope = author_scopes.get(group.alias)
             if author_scope is None:
                 continue
-            if author_scope.guilds and role.guild_snowflake not in author_scope.guilds:
-                continue
-            if (
-                author_scope.channels
-                and role.channel_snowflake not in author_scope.channels
-            ):
-                continue
+            if group.scope != PermissionScope.GLOBAL:
+                if (
+                    author_scope.guilds
+                    and role.guild_snowflake not in author_scope.guilds
+                ):
+                    continue
+                if (
+                    role.channel_snowflake is not None
+                    and author_scope.channels
+                    and role.channel_snowflake not in author_scope.channels
+                ):
+                    continue
             scope = self.__scopes.setdefault(group.alias, GroupScope(group=group))
             if role.guild_snowflake is not None:
                 guild = bot.get_guild(role.guild_snowflake)
@@ -175,8 +180,9 @@ class RevokeView(discord.ui.View):
             ancestor = permission_state.groups[ancestor_alias]
             author_groups.setdefault(ancestor.alias, ancestor)
             ancestor_scope = GroupScope(group=ancestor)
-            ancestor_scope.guilds.update(scope.guilds)
-            ancestor_scope.channels.update(scope.channels)
+            if ancestor.scope != PermissionScope.GLOBAL:
+                ancestor_scope.guilds.update(scope.guilds)
+                ancestor_scope.channels.update(scope.channels)
             self._merge_scope(author_scopes, ancestor_scope)
 
     def _build_group_options(self, available_groups: list[str]):

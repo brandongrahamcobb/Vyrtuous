@@ -18,15 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import discord
-from _pytest.scope import Scope
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
-from vyrtuous.models.category import Category, CategoryObject
 from vyrtuous.models.duration import Duration, DurationObject, DurationWrapper
 from vyrtuous.models.metadata import metadata
-from vyrtuous.models.scope import ScopeObject
 from vyrtuous.models.target import Target, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging.tick import Tick
@@ -35,7 +32,6 @@ from vyrtuous.utils.moderation import (
     server_mute_service,
     voice_mute_service,
 )
-from vyrtuous.view.cancel_confirm_view import VerifyView
 
 
 class ModerationTextCommands(commands.Cog):

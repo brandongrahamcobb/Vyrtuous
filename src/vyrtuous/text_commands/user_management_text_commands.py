@@ -35,8 +35,8 @@ class UserManagementTextCommands(commands.Cog):
     def __init__(self, *, bot: DiscordBot):
         self.__bot = bot
 
-    @metadata(permission="command.users.autoassign")
     @commands.command(name="autoassign", help="Toggle an autoassign role.")
+    @metadata(permission="command.users.autoassign")
     async def toggle_autoassign_role_text_command(
         self,
         ctx: commands.Context,
@@ -96,8 +96,6 @@ class UserManagementTextCommands(commands.Cog):
             author_snowflake=ctx.author.id,
             group=group.group,
             guild_snowflake=guild_snowflake,
-            message_snowflake=ctx.message.id,
-            message_channel_snowflake=ctx.message.channel.id,
             role_snowflake=role_snowflake,
         )
         return await tick.end(success=pages)
@@ -199,7 +197,7 @@ class UserManagementTextCommands(commands.Cog):
         msg = header + ", ".join(guild_names) + "."
         return await tick.end(success=msg)
 
-    @commands.command(name="vcow", help="Toggle vegan.")
+    @commands.command(name="vegan", help="Toggle vegan.")
     @metadata(permission="command.users.vegan")
     async def toggle_vegan_text_command(
         self,

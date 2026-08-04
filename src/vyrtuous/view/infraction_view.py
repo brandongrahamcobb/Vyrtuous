@@ -40,7 +40,7 @@ from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.modal.infraction_model import InfractionModal
 from vyrtuous.models.duration import DurationBuilder, DurationObject
 from vyrtuous.permissions import permission_service
-from vyrtuous.utils.errors.error import CheckFailure
+from vyrtuous.utils.errors.error import CheckFailure, GuildNotFound
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import cap_service
@@ -95,7 +95,7 @@ class InfractionView(discord.ui.View):
                 if await permission_service.has_permissions(
                     permission_state=permission_state,
                     member_snowflake=self.__author_snowflake,
-                    requested=["commands.moderation.uncapped"],
+                    requested=["command.moderation.uncapped"],
                 ):
                     available_durations.add("0")
                 break
@@ -113,11 +113,11 @@ class InfractionView(discord.ui.View):
                         for channel in guild.channels:
                             available_channels.add(channel)
                         available_guilds.add(guild)
-                    if permission_service.has_permissions(
+                    if await permission_service.has_permissions(
                         permission_state=permission_state,
                         guild_snowflake=guild.id,
                         member_snowflake=self.__author_snowflake,
-                        requested=["commands.moderation.uncapped"],
+                        requested=["command.moderation.uncapped"],
                     ):
                         available_durations.add("0")
                 break
@@ -139,7 +139,7 @@ class InfractionView(discord.ui.View):
                             channel_snowflake=channel.id,
                             guild_snowflake=guild.id,
                             member_snowflake=self.__author_snowflake,
-                            requested=["commands.moderation.uncapped"],
+                            requested=["command.moderation.uncapped"],
                         ):
                             available_durations.add("0")
 
@@ -313,7 +313,7 @@ class InfractionView(discord.ui.View):
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(int(select.values[0]))
         if guild is None:
-            raise commands.GuildNotFound(str(select.values[0]))
+            raise GuildNotFound(str(select.values[0]))
         limited_channels = self.limit_available_to_top_24_by_member_count(
             available=guild.channels,
         )
@@ -398,7 +398,7 @@ class InfractionView(discord.ui.View):
                                 channel_snowflake=self.__channel_snowflake,
                                 guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
-                                requested=["commands.moderation.uncapped"],
+                                requested=["command.moderation.uncapped"],
                             )
                         except CheckFailure:
                             return await interaction.response.send_message(
@@ -495,7 +495,7 @@ class InfractionView(discord.ui.View):
                         channel_snowflake=self.__channel_snowflake,
                         guild_snowflake=self.__guild_snowflake,
                         member_snowflake=self.__author_snowflake,
-                        requested=["commands.moderation.uncapped"],
+                        requested=["command.moderation.uncapped"],
                     )
                 except CheckFailure:
                     return await interaction.response.send_message(

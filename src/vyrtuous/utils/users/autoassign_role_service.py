@@ -38,8 +38,6 @@ async def toggle_autoassign_role(
     author_snowflake: int,
     group: PermissionGroup,
     guild_snowflake: int,
-    message_snowflake: int,
-    message_channel_snowflake: int,
     role_snowflake: int,
 ) -> list[discord.Embed]:
     is_channel_scope = False
@@ -95,8 +93,8 @@ async def toggle_autoassign_role(
                 is_channel_scope=is_channel_scope,
                 guild_snowflake=role.guild.id,
                 member_snowflake=group_member.member_snowflake,
-                message_snowflake=message_snowflake,
-                message_channel_snowflake=message_channel_snowflake,
+                message_snowflake=None,
+                message_channel_snowflake=None,
                 reason="No reason provided.",
                 role_snowflake=role_snowflake,
                 target=None,
@@ -131,8 +129,8 @@ async def toggle_autoassign_role(
                 is_channel_scope=is_channel_scope,
                 guild_snowflake=role.guild.id,
                 member_snowflake=member.id,
-                message_snowflake=message_snowflake,
-                message_channel_snowflake=message_channel_snowflake,
+                message_snowflake=None,
+                message_channel_snowflake=None,
                 reason="No reason provided.",
                 role_snowflake=role_snowflake,
                 target=None,
@@ -155,7 +153,7 @@ async def enable(
     pages: list[discord.Embed] = []
     chunks = []
     chunk = []
-    action = "revoked"
+    action = "granted"
     title = f"{emojis.get_random_emoji()} Autoassign Roles"
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)

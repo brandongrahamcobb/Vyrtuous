@@ -25,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder
+from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import CheckFailure, GuildNotFound
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.moderation import (
@@ -34,7 +35,6 @@ from vyrtuous.utils.moderation import (
     text_mute_service,
     voice_mute_service,
 )
-from vyrtuous.permissions import permission_service
 
 INFRACTION_MODELS = [
     ban_service.MODEL,
@@ -132,7 +132,7 @@ class DurationModal(discord.ui.Modal):
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    requested=["commands.moderation.uncapped"],
+                    requested=["command.moderation.uncapped"],
                 )
             except CheckFailure:
                 return await interaction.response.send_message(

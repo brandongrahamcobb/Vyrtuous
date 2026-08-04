@@ -187,6 +187,9 @@ class UtilityAppCommands(commands.Cog):
                 )
                 if member_snowflake is not None:
                     if msg.author.id == member_snowflake:
+                        if interaction.message:
+                            if msg.id == interaction.message.id:
+                                continue
                         await msg.delete()
                         count += 1
                 else:
