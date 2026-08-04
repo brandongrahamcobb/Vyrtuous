@@ -20,14 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.permissions import PermissionGroup
+from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.autoassign import AutoAssignRole
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.listing import list_service
 from vyrtuous.models.duration import DurationObject
-from vyrtuous.utils.errors.error import GuildNotFound, RoleNotFound
+from vyrtuous.utils.errors.error import CheckFailure, GuildNotFound, RoleNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import stream_service
 
@@ -37,9 +37,13 @@ MODEL = AutoAssignRole
 async def toggle_autoassign_role(
     author_snowflake: int,
     group: PermissionGroup,
-    guild_snowflake: int,
     role_snowflake: int,
+    guild_snowflake: int,
+    channel_snowflake: int | None = None,
 ) -> list[discord.Embed]:
+    if group.scope == PermissionScope.CHANNEL:
+        if channel_snowflake is None:
+            raise CheckFailure("This group requires a specific channel.")
     is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
@@ -49,22 +53,31 @@ async def toggle_autoassign_role(
     if role is None:
         raise RoleNotFound(str(role_snowflake))
     autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     autoassign_role = await autoassign_database_factory.select(
-        group_alias=group.alias,
         guild_snowflake=guild_snowflake,
         role_snowflake=role_snowflake,
         singular=True,
     )
-    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
-    group_members = await group_database_factory.select(
-        group_alias=group.alias,
-        guild_snowflake=role.guild.id,
-        role_snowflakes=role_snowflake,
-        inside_fields=["role_snowflakes"],
-        singular=False,
-    )
     if autoassign_role:
         members = []
+        if channel_snowflake:
+            group_members = await group_database_factory.select(
+                group_alias=group.alias,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=role.guild.id,
+                role_snowflakes=role_snowflake,
+                inside_fields=["role_snowflakes"],
+                singular=False,
+            )
+        else:
+            group_members = await group_database_factory.select(
+                group_alias=group.alias,
+                guild_snowflake=role.guild.id,
+                role_snowflakes=role_snowflake,
+                inside_fields=["role_snowflakes"],
+                singular=False,
+            )
         for group_member in group_members:
             member = guild.get_member(group_member.member_snowflake)
             if member is None:
@@ -80,6 +93,7 @@ async def toggle_autoassign_role(
                     is_channel_scope = True
                 member_snowflake = member.id
             await removed_role(
+                channel_snowflake=channel_snowflake,
                 guild_snowflake=role.guild.id,
                 member_snowflake=member_snowflake,
                 role_snowflake=role_snowflake,
@@ -108,14 +122,24 @@ async def toggle_autoassign_role(
         )
         await autoassign_database_factory.delete_by_cls(autoassign_role)
     else:
-        autoassign_role = AutoAssignRole(
-            group_alias=group.alias,
-            guild_snowflake=role.guild.id,
-            role_snowflake=role_snowflake,
-        )
+        if channel_snowflake:
+            autoassign_role = AutoAssignRole(
+                group_alias=group.alias,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=role.guild.id,
+                role_snowflake=role_snowflake,
+            )
+        else:
+            autoassign_role = AutoAssignRole(
+                group_alias=group.alias,
+                channel_snowflake=None,
+                guild_snowflake=role.guild.id,
+                role_snowflake=role_snowflake,
+            )
         await autoassign_database_factory.create(autoassign_role)
         for member in role.members:
             await added_role(
+                channel_snowflake=channel_snowflake,
                 guild_snowflake=role.guild.id,
                 member_snowflake=member.id,
                 role_snowflake=role_snowflake,
@@ -262,18 +286,22 @@ async def get_autoassign_roles(guild_snowflake=None) -> list[int]:
 
 
 async def added_role(
-    guild_snowflake: int, member_snowflake: int, role_snowflake: int
+    guild_snowflake: int,
+    member_snowflake: int,
+    role_snowflake: int,
+    channel_snowflake: int | None = None,
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     autoassign_role_snowflakes = []
+    autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     autoassign_role = await autoassign_database_factory.select(
-        guild_snwoflake=guild_snowflake,
+        guild_snowflake=guild_snowflake,
         role_snowflake=role_snowflake,
         singular=True,
     )
-    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     group_member = await group_database_factory.select(
+        channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
         role_snowflakes=role_snowflake,
@@ -285,6 +313,7 @@ async def added_role(
         return
     if not group_member:
         permission_entry = PermissionEntry(
+            channel_snowflake=int(channel_snowflake) if channel_snowflake else None,
             guild_snowflake=int(guild_snowflake),
             group_alias=autoassign_role.group_alias,
             member_snowflake=int(member_snowflake),
@@ -304,6 +333,8 @@ async def added_role(
         "guild_snowflake": int(guild_snowflake),
         "member_snowflake": member_snowflake,
     }
+    if channel_snowflake:
+        where_kwargs["channel_snowflake"] = int(channel_snowflake)
     set_kwargs = {"role_snowflakes": autoassign_role_snowflakes}
     await group_database_factory.update(
         set_kwargs=set_kwargs, where_kwargs=where_kwargs
@@ -314,17 +345,21 @@ async def added_role(
 
 
 async def removed_role(
-    guild_snowflake: int, member_snowflake: int, role_snowflake: int
+    guild_snowflake: int,
+    member_snowflake: int,
+    role_snowflake: int,
+    channel_snowflake: int | None = None,
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     autoassign_role = await autoassign_database_factory.select(
-        guild_snwoflake=guild_snowflake,
+        guild_snowflake=guild_snowflake,
         role_snowflake=role_snowflake,
         singular=True,
     )
-    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     group_member = await group_database_factory.select(
+        channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
         role_snowflakes=role_snowflake,
@@ -348,6 +383,8 @@ async def removed_role(
             "guild_snowflake": int(guild_snowflake),
             "member_snowflake": member_snowflake,
         }
+        if channel_snowflake:
+            where_kwargs["channel_snowflake"] = int(channel_snowflake)
         set_kwargs = {"role_snowflakes": autoassign_role_snowflakes}
         await group_database_factory.update(
             set_kwargs=set_kwargs, where_kwargs=where_kwargs

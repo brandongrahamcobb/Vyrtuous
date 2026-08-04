@@ -49,6 +49,11 @@ class UserManagementTextCommands(commands.Cog):
             converter=Target,
             description="Specify a role ID/mention.",
         ),
+        channel: TargetObject | None = commands.parameter(
+            converter=Target,
+            default=None,
+            description="Specify a channel ID/mention.",
+        ),
         guild: TargetObject | None = commands.parameter(
             converter=Target,
             default=None,
@@ -68,12 +73,14 @@ class UserManagementTextCommands(commands.Cog):
                     warning="This command must target a valid server."
                 )
             guild_snowflake = guild.target.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
+        if channel is None:
+            channel_snowflake = None
         else:
-            channel_snowflake = ctx.channel.id
+            if not isinstance(channel.target, discord.abc.GuildChannel):
+                return await tick.end(
+                    warning="This command must be used in a server channel."
+                )
+            channel_snowflake = channel.target.id
         if not isinstance(role.target, discord.Role):
             return await tick.end(warning="This command must target a valid role.")
         else:
@@ -85,7 +92,7 @@ class UserManagementTextCommands(commands.Cog):
             effective_group = await permission_service.resolve_effective_group(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
+                channel_snowflake=channel_snowflake or ctx.channel.id,
                 guild_snowflake=guild_snowflake,
             )
             if effective_group:
@@ -100,7 +107,7 @@ class UserManagementTextCommands(commands.Cog):
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
+            channel_snowflake=channel_snowflake or ctx.channel.id,
             guild_snowflake=guild_snowflake,
             requested=["command.users.autoassign"],
         )
@@ -108,12 +115,13 @@ class UserManagementTextCommands(commands.Cog):
             await permission_service.has_permissions(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
+                channel_snowflake=channel_snowflake or ctx.channel.id,
                 guild_snowflake=guild_snowflake,
                 requested=["other_guilds"],
             )
         pages = await autoassign_role_service.toggle_autoassign_role(
             author_snowflake=ctx.author.id,
+            channel_snowflake=channel_snowflake,
             group=group.group,
             guild_snowflake=guild_snowflake,
             role_snowflake=role_snowflake,

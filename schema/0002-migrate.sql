@@ -251,3 +251,5 @@ ALTER TABLE administrator_roles
 ALTER COLUMN group_alias DROP DEFAULT;
 
 ALTER TABLE administrator_roles RENAME TO autoassign_roles;
+ALTER TABLE autoassign_roles ADD COLUMN channel_snowflake BIGINT;
+ALTER TABLE autoassign_roles RENAME CONSTRAINT administrator_roles_pkey TO autoassign_roles_pkey;

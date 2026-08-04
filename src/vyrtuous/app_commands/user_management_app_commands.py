@@ -50,6 +50,7 @@ class UserManagementAppCommands(commands.Cog):
     @app_commands.describe(
         group="Specify a group alias/name.",
         role="Specify a role ID/mention.",
+        channel="Specify a channel ID/mention.",
         guild="Specify a server ID.",
     )
     async def toggle_autoassign_role_app_command(
@@ -57,6 +58,7 @@ class UserManagementAppCommands(commands.Cog):
         interaction: discord.Interaction,
         group: app_commands.Transform[GroupObject, AppGroup],
         role: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
@@ -64,6 +66,10 @@ class UserManagementAppCommands(commands.Cog):
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
+        if interaction.channel is None:
+            return await tick.end(
+                warning="This command must be used in a server channel."
+            )
         if guild is None:
             guild_snowflake = interaction.guild.id
         else:
@@ -72,12 +78,14 @@ class UserManagementAppCommands(commands.Cog):
                     warning="This command must target a valid server."
                 )
             guild_snowflake = guild.target.id
-        if interaction.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
+        if channel is None:
+            channel_snowflake = None
         else:
-            channel_snowflake = interaction.channel.id
+            if not isinstance(channel.target, discord.abc.GuildChannel):
+                return await tick.end(
+                    warning="This command must be used in a server channel."
+                )
+            channel_snowflake = channel.target.id
         if not isinstance(role.target, discord.Role):
             return await tick.end(warning="This command must target a valid role.")
         else:
@@ -89,7 +97,7 @@ class UserManagementAppCommands(commands.Cog):
             effective_group = await permission_service.resolve_effective_group(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
-                channel_snowflake=channel_snowflake,
+                channel_snowflake=channel_snowflake or interaction.channel.id,
                 guild_snowflake=guild_snowflake,
             )
             if effective_group:
@@ -104,7 +112,7 @@ class UserManagementAppCommands(commands.Cog):
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
-            channel_snowflake=channel_snowflake,
+            channel_snowflake=channel_snowflake or interaction.channel.id,
             guild_snowflake=guild_snowflake,
             requested=["command.users.autoassign"],
         )
@@ -112,12 +120,13 @@ class UserManagementAppCommands(commands.Cog):
             await permission_service.has_permissions(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
-                channel_snowflake=channel_snowflake,
+                channel_snowflake=channel_snowflake or interaction.channel.id,
                 guild_snowflake=guild_snowflake,
                 requested=["other_guilds"],
             )
         pages = await autoassign_role_service.toggle_autoassign_role(
             author_snowflake=interaction.user.id,
+            channel_snowflake=channel_snowflake,
             group=group_obj,
             guild_snowflake=guild_snowflake,
             role_snowflake=role_snowflake,

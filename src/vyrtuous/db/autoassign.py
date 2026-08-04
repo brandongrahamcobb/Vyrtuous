@@ -30,5 +30,6 @@ class AutoAssignRole:
     group_alias: str
     guild_snowflake: int
     role_snowflake: int
+    channel_snowflake: int | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
