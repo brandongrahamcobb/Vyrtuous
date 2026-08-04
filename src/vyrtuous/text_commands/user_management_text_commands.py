@@ -21,6 +21,7 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.permissions import PermissionGroup
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.group import Group, GroupObject
 from vyrtuous.models.metadata import metadata
@@ -77,6 +78,25 @@ class UserManagementTextCommands(commands.Cog):
             return await tick.end(warning="This command must target a valid role.")
         else:
             role_snowflake = role.target.id
+        if not isinstance(group.group, PermissionGroup):
+            return await tick.end(warning="This command must target a valid group.")
+        else:
+            group_obj = group.group
+            effective_group = await permission_service.resolve_effective_group(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+            )
+            if effective_group:
+                if group_obj.alias not in effective_group.ancestors:
+                    return await tick.end(
+                        warning="You cannot autoassign a group you do not inherit."
+                    )
+            else:
+                return await tick.end(
+                    warning="You cannot autoassign a group you do not inherit."
+                )
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,

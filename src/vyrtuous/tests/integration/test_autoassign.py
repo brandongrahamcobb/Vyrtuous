@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
+from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.autoassign import AutoAssignRole
 from vyrtuous.models.group import AppGroup
 from vyrtuous.models.target import AppTarget
@@ -86,11 +87,19 @@ async def test_autoassign_text_command(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        permission_state = bot.registry.get(PermissionState)
+        permission_group = permission_state.groups.get(group)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
                     side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.resolve_effective_group",
+                    return_value=permission_group,
                 )
             )
             r = role.format(role_snowflake=ROLE_SNOWFLAKE)
