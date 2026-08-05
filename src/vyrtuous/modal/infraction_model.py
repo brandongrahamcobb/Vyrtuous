@@ -193,7 +193,7 @@ class InfractionModal(discord.ui.Modal):
             author_snowflake=self.__author_snowflake,
             channel_snowflake=self.__channel_snowflake,
             display=display,
-            duration=DurationObject(number=0, prefix="", sign=1, unit=""),
+            duration=self.__duration,
             guild_snowflake=self.__guild_snowflake,
             identifier=self.__model.identifier,
             is_channel_scope=is_channel_scope,
