@@ -33,6 +33,7 @@ from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.users import autoassign_role_service, hero_service, vegan_service
 from vyrtuous.view.grant_view import GrantView
 from vyrtuous.view.revoke_view import RevokeView
+from vyrtuous.view.role_view import RoleView
 
 
 class UserManagementAppCommands(commands.Cog):
@@ -327,6 +328,77 @@ class UserManagementAppCommands(commands.Cog):
         await view.setup()
         await interaction.response.send_message(
             content="Specify the group", view=view, ephemeral=True
+        )
+
+    @metadata(permission="command.moderation.role")
+    @app_commands.command(name="role", description="Toggle a role.")
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def toggle_role_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if channel is None:
+            if interaction.guild is None:
+                return await tick.end(warning="This command must be used in a server.")
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must be used in a server channel."
+                )
+            channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(channel.target, discord.abc.GuildChannel):
+                if interaction.guild is None:
+                    return await tick.end(
+                        warning="This command must be used in a server."
+                    )
+                if channel.target.guild.id != interaction.guild.id:
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        member_snowflake=interaction.user.id,
+                        requested=["other_guilds"],
+                    )
+                channel_snowflake = channel.target.id
+                guild_snowflake = channel.target.guild.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid channel."
+                )
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(warning=f"This command must target a valid member.")
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.moderation.role"],
+        )
+        if invincible := bot.registry.get(MemberState).invincible.get(
+            guild_snowflake, None
+        ):
+            if member_snowflake in invincible:
+                return
+        ctx = SnowflakeContext(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        view = RoleView(
+            author_snowflake=interaction.user.id,
+            ctx=ctx,
+            interaction=interaction,
+            tick=tick,
+        )
+        await view.setup()
+        await interaction.response.send_message(
+            content="Specify the role.", view=view, ephemeral=True
         )
 
     @metadata(permission="command.users.vegan")

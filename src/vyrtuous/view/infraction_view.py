@@ -105,21 +105,18 @@ class InfractionView(discord.ui.View):
                 break
             elif group.scope == PermissionScope.GUILD:
                 for guild in bot.guilds:
-                    try:
-                        await permission_service.has_permissions(
-                            permission_state=permission_state,
-                            member_snowflake=self.__author_snowflake,
-                            requested=["other_guilds"],
-                        )
-                        for channel in guild.channels:
-                            available_channels.add(channel)
-                        available_guilds.add(guild)
-                    except:
-                        continue
-                    if guild == self.__ctx.guild_snowflake:
-                        for channel in guild.channels:
-                            available_channels.add(channel)
-                        available_guilds.add(guild)
+                    if guild.id != self.__ctx.guild_snowflake:
+                        try:
+                            await permission_service.has_permissions(
+                                permission_state=permission_state,
+                                member_snowflake=self.__author_snowflake,
+                                requested=["other_guilds"],
+                            )
+                        except:
+                            continue
+                    for channel in guild.channels:
+                        available_channels.add(channel)
+                    available_guilds.add(guild)
                     try:
                         await permission_service.has_permissions(
                             permission_state=permission_state,

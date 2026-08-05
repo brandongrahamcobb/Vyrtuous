@@ -51,7 +51,6 @@ DROP TABLE hide_roles;
 ALTER TABLE moderators DROP COLUMN display_name;
 ALTER TABLE moderation_logs ADD COLUMN target TEXT DEFAULT 'user';
 ALTER TABLE moderation_logs ADD COLUMN role_snowflake BIGINT;
-DROP TABLE roles;
 DROP TABLE sysadmin;
 DROP TABLE temporary_blacklist;
 DROP TABLE text_mute_roles;
@@ -253,3 +252,9 @@ ALTER COLUMN group_alias DROP DEFAULT;
 ALTER TABLE administrator_roles RENAME TO autoassign_roles;
 ALTER TABLE autoassign_roles ADD COLUMN channel_snowflake BIGINT;
 ALTER TABLE autoassign_roles RENAME CONSTRAINT administrator_roles_pkey TO autoassign_roles_pkey;
+ALTER TABLE roles DROP COLUMN member_snowflake;
+ALTER TABLE roles DROP COLUMN display_name;
+INSERT INTO roles (guild_snowflake, channel_snowflake, role_snowflake)
+SELECT guild_snowflake, channel_snowflake, role_snowflake
+FROM command_aliases
+WHERE role_snowflake IS NOT NULL;

@@ -17,6 +17,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import asyncio
 from datetime import datetime, timezone
 
 import discord
@@ -26,6 +27,7 @@ from vyrtuous.aliases.alias_context import AliasContext
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.alias import NotAlias
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.errors.error import BadArgument, CheckFailure
 from vyrtuous.utils.messaging.tick import Tick
@@ -85,6 +87,7 @@ class GenericEventListeners(commands.Cog):
 
         tick = Tick(bot=self.__bot, message=message)
         bot: DiscordBot = DiscordBot.get_instance()
+        duration_builder: DurationBuilder = DurationBuilder()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         try:
             alias_ctx = AliasContext(
@@ -121,7 +124,15 @@ class GenericEventListeners(commands.Cog):
                     embed = await ban_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
-                    return await tick.end(success=embed)
+                    await tick.end(success=embed)
+                    date = datetime(2026, 9, 9, tzinfo=timezone.utc)
+                    unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
+                    msg = await message.reply(
+                        f"This command will be deprecated {unix_ts}. Please use /ban instead."
+                    )
+                    await asyncio.sleep(5)
+                    await msg.delete()
+                    return
                 case "flag":
                     await permission_service.has_permissions(
                         permission_state=permission_state,
@@ -133,7 +144,15 @@ class GenericEventListeners(commands.Cog):
                     embed = await flag_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
-                    return await tick.end(success=embed)
+                    await tick.end(success=embed)
+                    date = datetime(2026, 9, 9, tzinfo=timezone.utc)
+                    unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
+                    msg = await message.reply(
+                        f"This command will be deprecated {unix_ts}. Please use /flag instead."
+                    )
+                    await asyncio.sleep(5)
+                    await msg.delete()
+                    return
                 case "role":
                     await permission_service.has_permissions(
                         permission_state=permission_state,
@@ -145,7 +164,15 @@ class GenericEventListeners(commands.Cog):
                     embed = await role_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
-                    return await tick.end(success=embed)
+                    await tick.end(success=embed)
+                    date = datetime(2026, 9, 9, tzinfo=timezone.utc)
+                    unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
+                    msg = await message.reply(
+                        f"This command will be deprecated {unix_ts}. Please use /role instead."
+                    )
+                    await asyncio.sleep(5)
+                    await msg.delete()
+                    return
                 case "tmute":
                     await permission_service.has_permissions(
                         permission_state=permission_state,
@@ -157,7 +184,14 @@ class GenericEventListeners(commands.Cog):
                     embed = await text_mute_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
-                    return await tick.end(success=embed)
+                    await tick.end(success=embed)
+                    date = datetime(2026, 9, 9, tzinfo=timezone.utc)
+                    unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
+                    msg = await message.reply(
+                        f"This command will be deprecated {unix_ts}. Please use /tmute instead."
+                    )
+                    await asyncio.sleep(5)
+                    await msg.delete()
                 case "vmute":
                     await permission_service.has_permissions(
                         permission_state=permission_state,
@@ -175,7 +209,15 @@ class GenericEventListeners(commands.Cog):
                     embed = await voice_mute_service.enforce_or_undo(
                         alias_ctx=alias_ctx, message=message
                     )
-                    return await tick.end(success=embed)
+                    await tick.end(success=embed)
+                    date = datetime(2026, 9, 9, tzinfo=timezone.utc)
+                    unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
+                    msg = await message.reply(
+                        f"This command will be deprecated {unix_ts}. Please use /mute instead."
+                    )
+                    await asyncio.sleep(5)
+                    await msg.delete()
+                    return
         except (
             BadArgument,
             CheckFailure,
