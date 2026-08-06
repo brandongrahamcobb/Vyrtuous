@@ -189,7 +189,9 @@ class DurationBuilder:
         base = base or datetime.now(timezone.utc)
         return base + self.to_timedelta()
 
-    def from_timestamp(self, expires_in: datetime) -> Self:
+    def from_timestamp(self, expires_in: datetime | None) -> Self:
+        if expires_in is None:
+            return self.parse(0)
         now = datetime.now(timezone.utc)
         remaining = expires_in - now
         total_seconds = max(0, int(remaining.total_seconds()))

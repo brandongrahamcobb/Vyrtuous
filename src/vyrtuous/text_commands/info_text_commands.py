@@ -295,7 +295,6 @@ class InfoTextCommands(commands.Cog):
     async def list_blacklists_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: TargetObject | None = commands.parameter(
             converter=Target,
             default=None,
@@ -520,7 +519,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
             obj = ctx.channel
         else:
-            obj = target.target
+            obj = target.target if target.target != "all" else ctx.guild
         pages = await list_aliases.build_pages(obj=obj)
         return await tick.end(success=pages)
 
@@ -1660,6 +1659,10 @@ class InfoTextCommands(commands.Cog):
                 warning="This command must used in a server channel."
             )
         if channel is None:
+            if not isinstance(ctx.channel, (discord.VoiceChannel, discord.StageChannel)):
+                return await tick.end(
+                    warning="This command must be used in a voice channel or stage channel."
+                )
             channel_snowflake = ctx.channel.id
             guild_snowflake = ctx.guild.id
         elif isinstance(channel.target, discord.abc.GuildChannel):

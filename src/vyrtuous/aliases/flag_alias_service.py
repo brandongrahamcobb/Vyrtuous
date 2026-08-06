@@ -46,7 +46,9 @@ class FlagMessageContext:
 
 async def flag_by_message(
     ctx: FlagMessageContext, display: bool = True
-) -> discord.Embed:
+) -> discord.Embed | str:
+    if ctx.reason == "No reason provided.":
+        return "You must provide a reason for a flag."
     is_channel_scope = await enable(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,

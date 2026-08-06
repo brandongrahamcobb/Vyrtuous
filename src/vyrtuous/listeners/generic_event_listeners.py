@@ -128,7 +128,7 @@ class GenericEventListeners(commands.Cog):
                     date = datetime(2026, 9, 9, tzinfo=timezone.utc)
                     unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
                     msg = await message.reply(
-                        f"This command will be deprecated {unix_ts}. Please use /ban instead."
+                        f"Aliases will be deprecated {unix_ts}. Please use /ban instead."
                     )
                     await asyncio.sleep(5)
                     await msg.delete()
@@ -148,7 +148,7 @@ class GenericEventListeners(commands.Cog):
                     date = datetime(2026, 9, 9, tzinfo=timezone.utc)
                     unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
                     msg = await message.reply(
-                        f"This command will be deprecated {unix_ts}. Please use /flag instead."
+                        f"Aliases will be deprecated {unix_ts}. Please use /flag instead."
                     )
                     await asyncio.sleep(5)
                     await msg.delete()
@@ -168,7 +168,7 @@ class GenericEventListeners(commands.Cog):
                     date = datetime(2026, 9, 9, tzinfo=timezone.utc)
                     unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
                     msg = await message.reply(
-                        f"This command will be deprecated {unix_ts}. Please use /role instead."
+                        f"Aliases will be deprecated {unix_ts}. Please use /role instead."
                     )
                     await asyncio.sleep(5)
                     await msg.delete()
@@ -188,7 +188,7 @@ class GenericEventListeners(commands.Cog):
                     date = datetime(2026, 9, 9, tzinfo=timezone.utc)
                     unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
                     msg = await message.reply(
-                        f"This command will be deprecated {unix_ts}. Please use /tmute instead."
+                        f"Aliases will be deprecated {unix_ts}. Please use /tmute instead."
                     )
                     await asyncio.sleep(5)
                     await msg.delete()
@@ -213,7 +213,7 @@ class GenericEventListeners(commands.Cog):
                     date = datetime(2026, 9, 9, tzinfo=timezone.utc)
                     unix_ts = duration_builder.from_timestamp(date).to_unix_ts()
                     msg = await message.reply(
-                        f"This command will be deprecated {unix_ts}. Please use /mute instead."
+                        f"Aliases will be deprecated {unix_ts}. Please use /mute instead."
                     )
                     await asyncio.sleep(5)
                     await msg.delete()
@@ -239,12 +239,12 @@ class GenericEventListeners(commands.Cog):
         if isinstance(error, commands.BadArgument):
             self.__bot.logger.info(str(error))
             return await tick.end(error=str(error))
-        elif isinstance(error, commands.CheckFailure):
+        elif isinstance(error, CheckFailure):
             self.__bot.logger.info(str(error))
             return await tick.end(error=str(error))
         elif isinstance(error, commands.CommandInvokeError):
             self.__bot.logger.info(str(error))
-            return await tick.end(error=str(error))
+            return await tick.end(error="Incorrect command invocation.")
         elif isinstance(error, commands.MissingRequiredArgument):
             self.__bot.logger.info(str(error))
             missing = error.param.name

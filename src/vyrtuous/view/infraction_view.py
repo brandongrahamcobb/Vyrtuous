@@ -68,6 +68,7 @@ class InfractionView(discord.ui.View):
         self.__author_snowflake = author_snowflake
         self.__channel_snowflake = ctx.channel_snowflake
         self.__ctx = ctx
+        self.__duration = None
         self.__guild_snowflake = ctx.guild_snowflake
         self.__interaction = interaction
         self.__tick = tick
@@ -544,29 +545,30 @@ class InfractionView(discord.ui.View):
                 await self.__tick.end(success=embed)
             self.stop()
         else:
-            if await cap_service.exceeds_cap(
-                channel_snowflake=self.__channel_snowflake,
-                category=self.__model.identifier,
-                duration=self.__duration,
-                guild_snowflake=self.__guild_snowflake,
-            ):
-                try:
-                    bot: DiscordBot = DiscordBot.get_instance()
-                    permission_state: PermissionState = bot.registry.get(
-                        PermissionState
-                    )
-                    await permission_service.has_permissions(
-                        permission_state=permission_state,
-                        channel_snowflake=self.__channel_snowflake,
-                        guild_snowflake=self.__guild_snowflake,
-                        member_snowflake=self.__author_snowflake,
-                        requested=["command.moderation.uncapped"],
-                    )
-                except CheckFailure:
-                    return await interaction.response.send_message(
-                        content=f"Duration {duration_builder.load(self.__duration).as_str()} exceeds the channel cap.",
-                        ephemeral=True,
-                    )
+            if self.__duration:
+                if await cap_service.exceeds_cap(
+                    channel_snowflake=self.__channel_snowflake,
+                    category=self.__model.identifier,
+                    duration=self.__duration,
+                    guild_snowflake=self.__guild_snowflake,
+                ):
+                    try:
+                        bot: DiscordBot = DiscordBot.get_instance()
+                        permission_state: PermissionState = bot.registry.get(
+                            PermissionState
+                        )
+                        await permission_service.has_permissions(
+                            permission_state=permission_state,
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__author_snowflake,
+                            requested=["command.moderation.uncapped"],
+                        )
+                    except CheckFailure:
+                        return await interaction.response.send_message(
+                            content=f"Duration {duration_builder.load(self.__duration).as_str()} exceeds the channel cap.",
+                            ephemeral=True,
+                        )
             modal = InfractionModal(
                 author_snowflake=self.__author_snowflake,
                 channel_snowflake=self.__channel_snowflake,

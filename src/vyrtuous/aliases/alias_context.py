@@ -116,7 +116,7 @@ class AliasContext:
             elif field == "member":
                 self.member_snowflake = int(value.replace("<@", "").replace(">", ""))
             elif field == "reason":
-                if value is None:
+                if value is None or value == "":
                     self.reason = "No reason provided."
                 else:
                     self.reason = value

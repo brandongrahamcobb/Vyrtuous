@@ -1639,6 +1639,10 @@ class InfoAppCommands(commands.Cog):
                 warning="This command must be used in a server channel."
             )
         if channel is None:
+            if not isinstance(interaction.channel, (discord.VoiceChannel, discord.StageChannel)):
+                return await tick.end(
+                    warning="This command must be used in a voice channel or stage channel."
+                )
             channel_snowflake = interaction.channel.id
             guild_snowflake = interaction.guild.id
         elif isinstance(

@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from enum import Flag
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.aliases import (
     ban_alias_service,
@@ -46,7 +45,7 @@ class InfractionModal(discord.ui.Modal):
         self,
         author_snowflake: int,
         channel_snowflake: int,
-        duration: DurationObject,
+        duration: DurationObject | None,
         guild_snowflake: int,
         member_snowflake: int,
         model: type,
@@ -92,35 +91,45 @@ class InfractionModal(discord.ui.Modal):
         embed = None
         is_channel_scope = False
         target = None
+        if self.reason_selection.value == "":
+            if self.__model == Flag:
+                return await interaction.response.send_message(
+                    "A reason is required for flags."
+                )
+            reason = "No reason provided."
+        else:
+            reason = self.reason_selection.value
         match self.__model.identifier:
             case "ban":
+                if self.__duration is None:
+                    return
                 ban = Ban(
                     channel_snowflake=self.__channel_snowflake,
                     expires_in=expires_in,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
                 await database_factory.create(ban)
                 is_channel_scope = await ban_alias_service.enable(
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
                 embed = ban_alias_service.build_ban_embed(
                     channel_snowflake=self.__channel_snowflake,
                     duration=self.__duration,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
             case "flag":
                 flag = Flag(
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
                 await database_factory.create(flag)
                 await flag_alias_service.enable(
@@ -132,31 +141,35 @@ class InfractionModal(discord.ui.Modal):
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
             case "tmute":
+                if self.__duration is None:
+                    return
                 tmute = TextMute(
                     channel_snowflake=self.__channel_snowflake,
                     expires_in=expires_in,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
                 await database_factory.create(tmute)
                 await text_mute_alias_service.enable(
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
                 embed = text_mute_alias_service.build_text_mute_embed(
                     channel_snowflake=self.__channel_snowflake,
                     duration=self.__duration,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
             case "vmute":
+                if self.__duration is None:
+                    return
                 automute_database_factory: DatabaseFactory = DatabaseFactory(AutoMute)
                 automute = await automute_database_factory.select(
                     channel_snowflake=self.__channel_snowflake,
@@ -172,7 +185,7 @@ class InfractionModal(discord.ui.Modal):
                     expires_in=expires_in,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                     target=target,
                 )
                 await database_factory.create(vmute)
@@ -180,14 +193,14 @@ class InfractionModal(discord.ui.Modal):
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
                 embed = voice_mute_alias_service.build_voice_mute_embed(
                     channel_snowflake=self.__channel_snowflake,
                     duration=self.__duration,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
-                    reason=self.reason_selection.value,
+                    reason=reason,
                 )
         await stream_service.log(
             author_snowflake=self.__author_snowflake,
@@ -200,7 +213,7 @@ class InfractionModal(discord.ui.Modal):
             member_snowflake=self.__member_snowflake,
             message_snowflake=None,
             message_channel_snowflake=None,
-            reason=self.reason_selection.value,
+            reason=reason,
             role_snowflake=None,
             target=target,
         )
