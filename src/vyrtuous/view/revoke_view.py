@@ -93,6 +93,7 @@ class RevokeView(discord.ui.View):
         )
         author_groups: dict[str, PermissionGroup] = {}
         author_scopes: dict[str, GroupScope] = {}
+        ancestor_only: dict[str.PermissionGroup] = {}
         for group, guild_snowflake, channel_snowflake in author_assigned:
             scope = GroupScope(group=group)
             if guild_snowflake is not None:
@@ -112,7 +113,9 @@ class RevokeView(discord.ui.View):
                 ):
                     scope.channels[channel.id] = channel
             self._merge_scope(author_scopes, scope)
-            self.add_selectable_group(group, scope, author_groups, author_scopes)
+            self.add_selectable_group(
+                group, scope, author_groups, author_scopes, ancestor_only
+            )
         records = await database_factory.select(
             member_snowflake=self.__ctx.member_snowflake,
             singular=False,
@@ -120,6 +123,8 @@ class RevokeView(discord.ui.View):
         for role in records:
             group = permission_state.groups.get(role.group_alias)
             if group is None:
+                continue
+            if group.alias not in ancestor_only:
                 continue
             author_scope = author_scopes.get(group.alias)
             if author_scope is None:
@@ -150,9 +155,7 @@ class RevokeView(discord.ui.View):
                     scope.channels[channel.id] = channel
             self.__groups.setdefault(group.alias, group)
         if not self.__groups:
-            raise CheckFailure(
-                "You do not have sufficient privileges in this channel or server to use this command."
-            )
+            raise CheckFailure("No groups are available for you to revoke.")
         self._build_group_options(available_groups=list(self.__groups.keys()))
 
     @staticmethod
@@ -170,6 +173,7 @@ class RevokeView(discord.ui.View):
         scope: GroupScope,
         author_groups: dict[str, PermissionGroup],
         author_scopes: dict[str, GroupScope],
+        ancestor_only: dict[str, PermissionGroup],
     ):
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
@@ -179,6 +183,7 @@ class RevokeView(discord.ui.View):
         ):
             ancestor = permission_state.groups[ancestor_alias]
             author_groups.setdefault(ancestor.alias, ancestor)
+            ancestor_only.setdefault(ancestor.alias, ancestor)
             ancestor_scope = GroupScope(group=ancestor)
             if ancestor.scope != PermissionScope.GLOBAL:
                 ancestor_scope.guilds.update(scope.guilds)

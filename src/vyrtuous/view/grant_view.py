@@ -132,9 +132,7 @@ class GrantView(discord.ui.View):
             self.add_group_scope(scope)
             self.add_selectable_group(group, scope)
         if not self.__groups:
-            raise CheckFailure(
-                "You do not have sufficient privileges in this channel or server to use this command."
-            )
+            raise CheckFailure("No groups are available for you to grant.")
         self._build_group_options(available_groups=list(self.__groups.keys()))
 
     def add_group_scope(self, scope: GroupScope):

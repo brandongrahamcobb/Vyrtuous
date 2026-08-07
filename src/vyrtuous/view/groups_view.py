@@ -97,6 +97,8 @@ class GroupsView(discord.ui.View):
                 guild = bot.get_guild(guild_snowflake)
                 if guild is not None:
                     scope.guilds[guild.id] = guild
+                    for channel in guild.channels:
+                        scope.channels[channel.id] = channel
             elif guild_snowflake is None and group.scope == PermissionScope.GLOBAL:
                 for guild in bot.guilds:
                     for channel in guild.channels:
