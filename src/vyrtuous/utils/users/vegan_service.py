@@ -157,7 +157,7 @@ async def notify(
                 timeout=900.0,
             ):
                 embed = discord.Embed(
-                    title=f"{emojis.get_random_emoji()}) {member.display_name} is a recent Vegan!",
+                    title=f"{emojis.get_random_emoji()} {member.display_name} is a recent Vegan!",
                     description=f"**Notes:** {vegan_data[0]}",
                     color=discord.Color.green(),
                 )

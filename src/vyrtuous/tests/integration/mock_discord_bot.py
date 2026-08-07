@@ -40,6 +40,7 @@ from vyrtuous.system.logger import logger, setup_logging
 class MockBot(commands.Bot):
     def __init__(self, config: Config, db_pool: asyncpg.Pool):
         intents = discord.Intents.all()
+        intents.message_content = False
         setup_logging(config, PATH_LOG)
         self.config = config
         self.db_pool = db_pool

@@ -262,3 +262,4 @@ ALTER TABLE active_automute_channels RENAME CONSTRAINT active_stages_pkey TO act
 DROP TABLE active_server_voice_mutes;
 ALTER TABLE active_video_only_channels RENAME CONSTRAINT video_rooms_pkey TO active_video_only_channels_pkey;
 RENAME SEQUENCE history_id_seq TO streaming_id_seq;
+DELETE FROM moderation_logs WHERE reason='Right-click voice unmute';
