@@ -49,6 +49,8 @@ class Paginator:
         if isinstance(source, discord.Interaction):
             if not source.response.is_done():
                 await source.response.send_message(embed=embed, ephemeral=ephemeral)
+            else:
+                await source.followup.send(embed=embed, ephemeral=ephemeral)
             message: discord.Message | discord.interactions.InteractionMessage = (
                 await source.original_response()
             )

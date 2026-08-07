@@ -71,6 +71,13 @@ class Tick:
         self.success = False
         self.start_time = self._resolve_start_time()
 
+    async def defer(self, *, ephemeral: bool = False) -> None:
+        if (
+            isinstance(self.source, discord.Interaction)
+            and not self.source.response.is_done()
+        ):
+            await self.source.response.defer(ephemeral=ephemeral)
+
     @property
     def health_type(self) -> str:
         if self.elapsed <= 2.0:

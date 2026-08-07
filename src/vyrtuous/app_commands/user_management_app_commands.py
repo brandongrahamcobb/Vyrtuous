@@ -63,6 +63,7 @@ class UserManagementAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
