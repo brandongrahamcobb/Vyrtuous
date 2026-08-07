@@ -96,14 +96,17 @@ async def test_autoassigns_text_command(bot, prefix: str, guild: str | None):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "guild",
+    "channel, guild",
     [
-        (None),
-        ("{guild_snowflake}"),
-        ("{other_guild_snowflake}"),
+        (None, None),
+        ("{channel_snowflake}", None),
+        ("{channel_snowflake}", "{guild_snowflake}"),
+        ("{other_channel_snowflake}", "{other_guild_snowflake}"),
     ],
 )
-async def test_autoassigns_app_command(bot, prefix: str, guild: str | None):
+async def test_autoassigns_app_command(
+    bot, prefix: str, channel: str | None, guild: str | None
+):
     docstring = """
     List autoassigns which are registered in the PostgreSQL database
     'vyrtuous' in the table 'autoassign_roles'.
@@ -161,17 +164,14 @@ async def test_autoassigns_app_command(bot, prefix: str, guild: str | None):
                     resolved_guild = await transformer.transform(inx, g)
                 else:
                     resolved_guild = None
-                await command.callback(
-                    cog,
-                    interaction=inx,
-                    guild=resolved_guild,
-                )
+                await command.callback(cog, interaction=inx, guild=resolved_guild)
             for kind, content in end_results:
                 assert kind == "success"
 
 
 COLUMNS = [
     ("group_alias", "text", False),
+    ("channel_snowflake", "bigint", True),
     ("guild_snowflake", "bigint", False),
     ("role_snowflake", "bigint", False),
     ("created_at", "timestamp with time zone", True),
@@ -181,7 +181,7 @@ COLUMNS = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("field, datatype, nullable", COLUMNS)
-async def test_automute_channels_database_table(
+async def test_autoassign_channels_database_table(
     bot, field: str, datatype: str, nullable: bool
 ):
     async with bot.db_pool.acquire() as conn:

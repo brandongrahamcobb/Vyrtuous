@@ -53,6 +53,7 @@ async def flag_by_message(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
     )
     await stream_service.log(
         author_snowflake=ctx.author_snowflake,
@@ -87,9 +88,7 @@ async def flag_by_message(
 
 
 async def enable(
-    channel_snowflake: int,
-    guild_snowflake: int,
-    member_snowflake: int,
+    channel_snowflake: int, guild_snowflake: int, member_snowflake: int, reason: str
 ) -> bool:
     is_channel_scope = False
     bot: DiscordBot = DiscordBot.get_instance()
@@ -111,7 +110,9 @@ async def enable(
         ):
             is_channel_scope = True
     original_set = bot.registry.get(MemberState).flagged
-    original_set[guild_snowflake].add(member_snowflake)
+    original_set[guild_snowflake].setdefault(
+        member_snowflake, (channel_snowflake, reason)
+    )
     return is_channel_scope
 
 

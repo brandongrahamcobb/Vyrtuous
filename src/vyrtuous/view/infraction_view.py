@@ -132,11 +132,13 @@ class InfractionView(discord.ui.View):
             elif group.scope == PermissionScope.CHANNEL:
                 for guild in bot.guilds:
                     for channel in guild.channels:
-                        effective_group = permission_service.resolve_effective_group(
-                            permission_state=permission_state,
-                            member_snowflake=self.__author_snowflake,
-                            channel_snowflake=channel.id,
-                            guild_snowflake=guild.id,
+                        effective_group = (
+                            await permission_service.resolve_effective_group(
+                                permission_state=permission_state,
+                                member_snowflake=self.__author_snowflake,
+                                channel_snowflake=channel.id,
+                                guild_snowflake=guild.id,
+                            )
                         )
                         if effective_group == group:
                             for channel in guild.channels:

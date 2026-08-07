@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from typing import Self
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
@@ -121,7 +120,7 @@ class StreamEmbed(discord.Embed):
     ) -> Self:
         fields = []
         if target:
-            fields.append(f"Type: {target}")
+            fields.append(f"**Type:** {target}")
         bot: DiscordBot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         if guild is None:

@@ -52,8 +52,11 @@ class Registry:
 class MemberState:
     active: dict[int, tuple[str, datetime]] = field(default_factory=dict)
     automuted: dict[int, set[int]] = field(default_factory=lambda: defaultdict(set))
-    flagged: defaultdict[int, set[int]] = field(
-        default_factory=lambda: defaultdict(set)
+    flagged: defaultdict[int, dict[int, tuple[int, str]]] = field(
+        default_factory=lambda: defaultdict(dict)
+    )
+    vegan: defaultdict[int, dict[int, str]] = field(
+        default_factory=lambda: defaultdict(dict)
     )
     invincible: defaultdict[int, set[int]] = field(
         default_factory=lambda: defaultdict(set)

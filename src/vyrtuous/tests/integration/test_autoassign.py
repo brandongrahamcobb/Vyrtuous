@@ -36,6 +36,7 @@ from vyrtuous.tests.integration.test_suite import (
     setup,
 )
 
+VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 GUILD_SNOWFLAKE = 10000000000000500
 OTHER_GUILD_SNOWFLAKE = 10000000000000501
 ROLE_SNOWFLAKE = 10000000000000200
@@ -48,15 +49,40 @@ TABLE_NAME = AutoAssignRole.__tablename__
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "group, role, guild",
+    "elevated_group, group, role, channel, guild",
     [
-        ("administrator", "{role_snowflake}", None),
-        ("administrator", "{role_snowflake}", "{guild_snowflake}"),
-        ("administrator", "{role_snowflake}", "{other_guild_snowflake}"),
+        ("guild_owner", "administrator", "{role_snowflake}", None, None),
+        (
+            "guild_owner",
+            "administrator",
+            "{role_snowflake}",
+            "{channel_snowflake}",
+            None,
+        ),
+        (
+            "guild_owner",
+            "administrator",
+            "{role_snowflake}",
+            "{channel_snowflake}",
+            "{guild_snowflake}",
+        ),
+        (
+            "guild_owner",
+            "administrator",
+            "{role_snowflake}",
+            "{channel_snowflake}",
+            "{other_guild_snowflake}",
+        ),
     ],
 )
 async def test_autoassign_text_command(
-    bot, prefix: str, group: str, role: str, guild: str | None
+    bot,
+    prefix: str,
+    elevated_group: str,
+    group: str,
+    role: str,
+    guild: str | None,
+    channel: str | None,
 ):
     docstring = """
     Toggle autoassignment roles which are registered in the PostgreSQL database
@@ -71,6 +97,10 @@ async def test_autoassign_text_command(
     role : str | int
         Resolves to: discord.Role
         Examples: 10000000000000010 | <@&10000000000000010>
+
+    channel (Optional) : str | int
+        Resolves to: discord.VoiceChannel | discord.TextChannel | discord.StageChannel
+        Examples: 10000000000000010 | <#10000000000000010> 
 
     guild (Optional) : int
         Resolves to: discord.Guild
@@ -88,7 +118,7 @@ async def test_autoassign_text_command(
         or os.environ["TEST_MODE"].lower() == "all"
     ):
         permission_state = bot.registry.get(PermissionState)
-        permission_group = permission_state.groups.get(group)
+        elevated_group = permission_state.groups.get(elevated_group)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
@@ -99,11 +129,18 @@ async def test_autoassign_text_command(
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.resolve_effective_group",
-                    return_value=permission_group,
+                    return_value=elevated_group,
                 )
             )
             r = role.format(role_snowflake=ROLE_SNOWFLAKE)
             full = f"{prefix}{COMMAND} {group} {r}"
+            if channel is None:
+                c = channel
+            else:
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                )
+                full += f" {c}"
             if guild is None:
                 g = guild
             else:
@@ -118,14 +155,40 @@ async def test_autoassign_text_command(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "group, role, guild",
+    "elevated_group, group, role, channel, guild",
     [
-        ("administrator", "{role_snowflake}", None),
-        ("administrator", "{role_snowflake}", "{guild_snowflake}"),
-        ("administrator", "{role_snowflake}", "{other_guild_snowflake}"),
+        ("guild_owner", "administrator", "{role_snowflake}", None, None),
+        (
+            "guild_owner",
+            "administrator",
+            "{role_snowflake}",
+            "{channel_snowflake}",
+            None,
+        ),
+        (
+            "guild_owner",
+            "administrator",
+            "{role_snowflake}",
+            "{channel_snowflake}",
+            "{guild_snowflake}",
+        ),
+        (
+            "guild_owner",
+            "administrator",
+            "{role_snowflake}",
+            None,
+            "{other_guild_snowflake}",
+        ),
     ],
 )
-async def test_autoassign_app_command(bot, group: str, role: str, guild: str | None):
+async def test_autoassign_app_command(
+    bot,
+    elevated_group: str,
+    group: str,
+    role: str,
+    channel: str | None,
+    guild: str | None,
+):
     docstring = """
     Toggle autoassignment roles which are registered in the PostgreSQL database
     'vyrtuous' in the table 'autoassign_roles'.
@@ -155,6 +218,8 @@ async def test_autoassign_app_command(bot, group: str, role: str, guild: str | N
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        permission_state = bot.registry.get(PermissionState)
+        elevated_group = permission_state.groups.get(elevated_group)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
@@ -162,9 +227,21 @@ async def test_autoassign_app_command(bot, group: str, role: str, guild: str | N
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.resolve_effective_group",
+                    return_value=elevated_group,
+                )
+            )
             cog = bot.get_cog("UserManagementAppCommands")
             command = cog.toggle_autoassign_role_app_command
             r = role.format(role_snowflake=ROLE_SNOWFLAKE)
+            if channel is None:
+                c = channel
+            else:
+                c = channel.format(
+                    channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+                )
             if guild is None:
                 g = guild
             else:
@@ -191,6 +268,10 @@ async def test_autoassign_app_command(bot, group: str, role: str, guild: str | N
                 resolved_group = await group_transformer.transform(inx, group)
                 target_transformer = AppTarget()
                 resolved_role = await target_transformer.transform(inx, r)
+                if c:
+                    resolved_channel = await target_transformer.transform(inx, c)
+                else:
+                    resolved_channel = None
                 if g:
                     resolved_guild = await target_transformer.transform(inx, g)
                 else:
@@ -200,6 +281,7 @@ async def test_autoassign_app_command(bot, group: str, role: str, guild: str | N
                     interaction=inx,
                     group=resolved_group,
                     role=resolved_role,
+                    channel=resolved_channel,
                     guild=resolved_guild,
                 )
             for kind, content in end_results:

@@ -141,14 +141,14 @@ async def test_survey_app_command(
             objects = setup(bot)
             msg = build_message(
                 author=objects.get("author", None),
-                channel=objects.get("text_channel", None),
+                channel=objects.get("voice_channel", None),
                 content="",
                 guild=objects.get("guild", None),
                 state=objects.get("state", None),
             )
             inx = interaction(
                 bot=bot,
-                channel=objects.get("text_channel", None),
+                channel=objects.get("voice_channel", None),
                 guild=objects.get("guild", None),
                 message=msg,
             )

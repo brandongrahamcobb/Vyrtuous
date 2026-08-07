@@ -32,7 +32,7 @@ MODEL = Flag
 async def enforce_or_undo(
     alias_ctx: AliasContext,
     message: discord.Message,
-) -> discord.Embed:
+) -> discord.Embed | str:
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     obj = await database_factory.select(
         channel_snowflake=alias_ctx.channel_snowflake,
@@ -63,8 +63,10 @@ async def enforce_or_undo(
             message_channel_snowflake=message.channel.id,
             reason=alias_ctx.reason,
         )
-        embed = await flag_alias_service.flag_by_message(ctx=flag_ctx, display=True)
-        return embed
+        embed_or_message = await flag_alias_service.flag_by_message(
+            ctx=flag_ctx, display=True
+        )
+        return embed_or_message
 
 
 async def warn(
@@ -80,10 +82,9 @@ async def warn(
     member = guild.get_member(member_snowflake)
     if member is None:
         return
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    flags = await database_factory.select(singular=False)
-    for flag in flags:
-        if flag.channel_snowflake == channel.id and flag.member_snowflake == member.id:
+    flags = bot.registry.get(MemberState).flagged
+    for flag_member_snowflake, flag_data in flags[guild_snowflake].items():
+        if flag_data[0] == channel.id and flag_member_snowflake == member.id:
             if isinstance(channel, discord.channel.VocalGuildChannel):
                 if bot.registry.get(ChannelState).should_notify(
                     channel_snowflake=channel_snowflake,
@@ -93,7 +94,7 @@ async def warn(
                 ):
                     embed = discord.Embed(
                         title=f"\u26a0\ufe0f {member.display_name} is flagged",
-                        description=f"**Channel:** {channel.mention}\n**Reason:** {flag.reason}",
+                        description=f"**Channel:** {channel.mention}\n**Reason:** {flag_data[1]}",
                         color=discord.Color.red(),
                     )
                     embed.set_thumbnail(url=member.display_avatar.url)
@@ -108,7 +109,9 @@ async def warn(
 async def populate() -> None:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    original_set = bot.registry.get(MemberState).flagged
+    original_dict = bot.registry.get(MemberState).flagged
     flags = await database_factory.select(singular=False)
     for flag in flags:
-        original_set[flag.guild_snowflake].add(flag.member_snowflake)
+        original_dict[flag.guild_snowflake].setdefault(
+            flag.member_snowflake, (flag.channel_snowflake, flag.reason)
+        )

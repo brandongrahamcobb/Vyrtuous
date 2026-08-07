@@ -28,8 +28,8 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.data import Data
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.models.duration import DurationBuilder, DurationObject
-from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.errors.error import ChannelNotFound, GuildNotFound
 
 MODEL = Data
 
@@ -46,12 +46,16 @@ class DataBuilder:
         online_members=0,
         total_voice_members=0,
     ) -> Self:
-        self.__data = replace(
-            self.__data, current_channel_members=current_channel_members
-        )
-        self.__data = replace(self.__data, total_guild_members=total_guild_members)
-        self.__data = replace(self.__data, online_members=online_members)
-        self.__data = replace(self.__data, total_voice_members=total_voice_members)
+        if current_channel_members is not None:
+            self.__data = replace(
+                self.__data, current_channel_members=current_channel_members
+            )
+        if total_guild_members is not None:
+            self.__data = replace(self.__data, total_guild_members=total_guild_members)
+        if online_members is not None:
+            self.__data = replace(self.__data, online_members=online_members)
+        if total_voice_members is not None:
+            self.__data = replace(self.__data, total_voice_members=total_voice_members)
         return self
 
     def set_snowflakes(
@@ -166,36 +170,32 @@ async def save_data(
         if guild is None:
             raise GuildNotFound(str(guild_snowflake))
         total_guild_members = sum(1 for member in guild.members if not member.bot)
-        data.set_counts(total_guild_members=total_guild_members)
         online_members = sum(
             1
             for member in guild.members
             if not member.bot and member.status != discord.Status.offline
         )
-        data.set_counts(online_members=online_members)
         total_voice_members = sum(
             len([member for member in channel.members if not member.bot])
             for channel in guild.voice_channels
         )
-        data.set_counts(
-            total_guild_members=total_guild_members,
-            online_members=online_members,
-            total_voice_members=total_voice_members,
-        )
+        current_channel_members = 0
         if channel_snowflake:
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
                 raise ChannelNotFound(str(channel_snowflake))
             if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
                 current_channel_members = len(channel.members)
-                data.set_counts(current_channel_members=current_channel_members)
-        else:
-            data.set_counts(current_channel_members=0)
+        data.set_counts(
+            current_channel_members=current_channel_members,
+            total_guild_members=total_guild_members,
+            online_members=online_members,
+            total_voice_members=total_voice_members,
+        )
     duration_builder = DurationBuilder()
     if duration is not None:
         expires_at = duration_builder.load(duration=duration).to_expires_in()
-        data.set_expires_at(expires_at=expires_at)
     else:
         expires_at = None
-        data.set_expires_at(expires_at=expires_at)
+    data.set_expires_at(expires_at=expires_at)
     await data.create()

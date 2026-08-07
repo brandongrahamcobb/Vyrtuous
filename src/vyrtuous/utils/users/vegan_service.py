@@ -45,8 +45,9 @@ def is_vegan(guild_snowflake: int, member_snowflake: int) -> bool:
 
 
 async def toggle_vegan(
-    guild_snowflake: int, member_snowflake: int, notes: str | None
+    guild_snowflake: int, member_snowflake: int, notes: str
 ) -> discord.Embed:
+    bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     vegan = await database_factory.select(
         guild_snowflake=guild_snowflake,
@@ -62,6 +63,8 @@ async def toggle_vegan(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
+        original_set = bot.registry.get(MemberState).vegan
+        del original_set[guild_snowflake][member_snowflake]
         return embed
     else:
         vegan = MODEL(
@@ -75,11 +78,13 @@ async def toggle_vegan(
             member_snowflake=member_snowflake,
             notes=notes,
         )
+        original_set = bot.registry.get(MemberState).vegan
+        original_set[guild_snowflake].setdefault(member_snowflake, notes)
         return embed
 
 
 async def build_vegan_embed(
-    guild_snowflake: int, member_snowflake: int, notes: str | None
+    guild_snowflake: int, member_snowflake: int, notes: str
 ) -> discord.Embed:
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
@@ -142,10 +147,9 @@ async def notify(
     channel: discord.channel.VocalGuildChannel, member: discord.Member
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    vegans = await database_factory.select(singular=False)
-    for vegan in vegans:
-        if "Vegan" in channel.name and vegan.member_snowflake == member.id:
+    vegans = bot.registry.get(MemberState).vegan
+    for vegan_member_snowflake, vegan_data in vegans[channel.guild.id].items():
+        if "Vegan" in channel.name and vegan_member_snowflake == member.id:
             if bot.registry.get(ChannelState).should_notify(
                 channel_snowflake=channel.id,
                 guild_snowflake=channel.guild.id,
@@ -154,7 +158,7 @@ async def notify(
             ):
                 embed = discord.Embed(
                     title=f"{emojis.get_random_emoji()}) {member.display_name} is a recent Vegan!",
-                    description=f"**Notes:** {vegan.notes}",
+                    description=f"**Notes:** {vegan_data[0]}",
                     color=discord.Color.green(),
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)
@@ -164,3 +168,14 @@ async def notify(
                 guild_snowflake=channel.guild.id,
                 member_snowflake=member.id,
             )
+
+
+async def populate() -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    original_set = bot.registry.get(MemberState).vegan
+    vegans = await database_factory.select(singular=False)
+    for vegan in vegans:
+        original_set[vegan.guild_snowflake].setdefault(
+            vegan.member_snowflake, vegan.notes
+        )

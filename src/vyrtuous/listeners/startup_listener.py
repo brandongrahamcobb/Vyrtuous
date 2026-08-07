@@ -20,11 +20,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import PermissionState
 from vyrtuous.permissions import load_permissions
 from vyrtuous.utils.channels import video_channel_service
 from vyrtuous.utils.moderation import flag_service, voice_mute_service
-from vyrtuous.utils.users import active_member_service
+from vyrtuous.utils.users import active_member_service, vegan_service
 
 
 class Startup(commands.Cog):
@@ -36,6 +35,7 @@ class Startup(commands.Cog):
         await active_member_service.populate()
         await flag_service.populate()
         load_permissions.populate()
+        await vegan_service.populate()
         await video_channel_service.populate()
         await voice_mute_service.populate(target="auto")
 

@@ -258,3 +258,7 @@ INSERT INTO roles (guild_snowflake, channel_snowflake, role_snowflake)
 SELECT guild_snowflake, channel_snowflake, role_snowflake
 FROM command_aliases
 WHERE role_snowflake IS NOT NULL;
+ALTER TABLE active_automute_channels RENAME CONSTRAINT active_stages_pkey TO active_automute_channels_pkey;
+DROP TABLE active_server_voice_mutes;
+ALTER TABLE active_video_only_channels RENAME CONSTRAINT video_rooms_pkey TO active_video_only_channels_pkey;
+RENAME SEQUENCE history_id_seq TO streaming_id_seq;
