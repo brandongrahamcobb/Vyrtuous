@@ -166,7 +166,15 @@ class InfractionView(discord.ui.View):
         limited_channels = self.limit_channels_to_top_24(
             available=set(available_channels)
         )
-        self._build_channel_options(limited_channels=limited_channels, default=True)
+        if self.__model == VoiceMute:
+            types = (discord.VoiceChannel, discord.StageChannel)
+        elif self.__model == TextMute:
+            types = (discord.TextChannel,)
+        else:
+            types = (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
+        self._build_channel_options(
+            limited_channels=limited_channels, default=True, types=types
+        )
         await self.build_duration_options(available_durations=available_durations)
         database_factory: DatabaseFactory = DatabaseFactory(self.__model)
         records = await database_factory.select(
@@ -307,6 +315,9 @@ class InfractionView(discord.ui.View):
         limited_channels: list[
             discord.TextChannel | discord.VoiceChannel | discord.StageChannel
         ],
+        types: tuple[
+            type[discord.VoiceChannel | discord.StageChannel | discord.TextChannel], ...
+        ],
         default: bool = False,
     ):
         channel_options = []
@@ -315,7 +326,7 @@ class InfractionView(discord.ui.View):
         if channel:
             if isinstance(
                 channel,
-                (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
+                types,
             ):
                 channel_options.append(
                     discord.SelectOption(
@@ -328,10 +339,7 @@ class InfractionView(discord.ui.View):
             [
                 discord.SelectOption(label=c.name, value=str(c.id))
                 for c in limited_channels
-                if isinstance(
-                    c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
-                )
-                and c.id != self.__ctx.channel_snowflake
+                if isinstance(c, types) and c.id != self.__ctx.channel_snowflake
             ]
         )
         self.channel_select.options = list(channel_options)
@@ -381,7 +389,15 @@ class InfractionView(discord.ui.View):
         limited_channels = self.limit_channels_to_top_24(
             available=available_channels,
         )
-        self._build_channel_options(limited_channels=limited_channels, default=False)
+        if self.__model == VoiceMute:
+            types = (discord.VoiceChannel, discord.StageChannel)
+        elif self.__model == TextMute:
+            types = (discord.TextChannel,)
+        else:
+            types = (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
+        self._build_channel_options(
+            limited_channels=limited_channels, default=False, types=types
+        )
         self.channel_select.placeholder = "Select a channel"
         self.__channel_snowflake = None
         self.__guild_snowflake = guild.id
