@@ -187,8 +187,13 @@ class GrantView(discord.ui.View):
         channel_options = []
         bot: DiscordBot = DiscordBot.get_instance()
         channel = bot.get_channel(self.__ctx.channel_snowflake)
-        if channel and isinstance(
-            channel, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
+        if (
+            channel
+            and isinstance(
+                channel,
+                (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
+            )
+            and channel in available_channels
         ):
             channel_options.append(
                 discord.SelectOption(
