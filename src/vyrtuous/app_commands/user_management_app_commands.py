@@ -146,20 +146,33 @@ class UserManagementAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        else:
-            guild_snowflake = interaction.guild.id
         if interaction.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel."
             )
+        if guild is None:
+            guild_snowflake = interaction.guild.id
+        elif isinstance(guild.target, discord.Guild):
+            guild_snowflake = guild.target.id
         else:
+            return await tick.end(warning="This command must target a valid server.")
+        if channel is None:
             channel_snowflake = interaction.channel.id
+        elif isinstance(
+            channel.target,
+            (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
+        ):
+            channel_snowflake = channel.target.id
+        else:
+            return await tick.end(warning="This command must target a valid channel")
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
@@ -293,20 +306,33 @@ class UserManagementAppCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        else:
-            guild_snowflake = interaction.guild.id
         if interaction.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel."
             )
+        if guild is None:
+            guild_snowflake = interaction.guild.id
+        elif isinstance(guild.target, discord.Guild):
+            guild_snowflake = guild.target.id
         else:
+            return await tick.end(warning="This command must target a valid server.")
+        if channel is None:
             channel_snowflake = interaction.channel.id
+        elif isinstance(
+            channel.target,
+            (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
+        ):
+            channel_snowflake = channel.target.id
+        else:
+            return await tick.end(warning="This command must target a valid channel")
         if isinstance(member.target, int):
             member_snowflake = member.target
         elif isinstance(member.target, discord.Member):
