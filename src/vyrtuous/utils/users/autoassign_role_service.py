@@ -101,7 +101,7 @@ async def toggle_autoassign_role(
             await stream_service.log(
                 author_snowflake=author_snowflake,
                 channel_snowflake=None,
-                display=True,
+                display=False,
                 duration=DurationObject(number=0, prefix="", sign=1, unit=""),
                 identifier=f"x{group.alias}",
                 is_channel_scope=is_channel_scope,

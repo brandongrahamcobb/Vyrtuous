@@ -391,8 +391,6 @@ class InfractionView(discord.ui.View):
         )
         if self.__model == VoiceMute:
             types = (discord.VoiceChannel, discord.StageChannel)
-        elif self.__model == TextMute:
-            types = (discord.TextChannel,)
         else:
             types = (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
         self._build_channel_options(

@@ -66,6 +66,7 @@ class GrantView(discord.ui.View):
         self.__interaction = interaction
         self.__member_snowflake = ctx.member_snowflake
         self.__tick = tick
+        self.__guild_snowflake = ctx.guild_snowflake
         self.__groups: dict[str, PermissionGroup] = {}
         self.__scopes: dict[str, GroupScope] = {}
         self.__selected_group: PermissionGroup | None = None
@@ -112,6 +113,11 @@ class GrantView(discord.ui.View):
             member_snowflake=self.__author_snowflake,
         )
         for group, guild_snowflake, channel_snowflake in assigned:
+            if (
+                guild_snowflake is not None
+                and guild_snowflake != self.__guild_snowflake
+            ):
+                continue
             scope = GroupScope(group=group)
             if guild_snowflake is not None:
                 guild = bot.get_guild(guild_snowflake)

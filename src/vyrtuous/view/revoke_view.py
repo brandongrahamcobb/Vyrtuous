@@ -63,6 +63,7 @@ class RevokeView(discord.ui.View):
         self.__ctx = ctx
         self.__interaction = interaction
         self.__tick = tick
+        self.__guild_snowflake = ctx.guild_snowflake
         self.__groups: dict[str, PermissionGroup] = {}
         self.__scopes: dict[str, GroupScope] = {}
         self.__selected_group: PermissionGroup | None = None
@@ -93,8 +94,13 @@ class RevokeView(discord.ui.View):
         )
         author_groups: dict[str, PermissionGroup] = {}
         author_scopes: dict[str, GroupScope] = {}
-        ancestor_only: dict[str.PermissionGroup] = {}
+        ancestor_only: dict[str, PermissionGroup] = {}
         for group, guild_snowflake, channel_snowflake in author_assigned:
+            if (
+                guild_snowflake is not None
+                and guild_snowflake != self.__guild_snowflake
+            ):
+                continue
             scope = GroupScope(group=group)
             if guild_snowflake is not None:
                 guild = bot.get_guild(guild_snowflake)
@@ -129,18 +135,14 @@ class RevokeView(discord.ui.View):
             author_scope = author_scopes.get(group.alias)
             if author_scope is None:
                 continue
-            if group.scope != PermissionScope.GLOBAL:
-                if (
-                    author_scope.guilds
-                    and role.guild_snowflake not in author_scope.guilds
-                ):
-                    continue
-                if (
-                    role.channel_snowflake is not None
-                    and author_scope.channels
-                    and role.channel_snowflake not in author_scope.channels
-                ):
-                    continue
+            if author_scope.guilds and role.guild_snowflake not in author_scope.guilds:
+                continue
+            if (
+                role.channel_snowflake is not None
+                and author_scope.channels
+                and role.channel_snowflake not in author_scope.channels
+            ):
+                continue
             scope = self.__scopes.setdefault(group.alias, GroupScope(group=group))
             if role.guild_snowflake is not None:
                 guild = bot.get_guild(role.guild_snowflake)
@@ -185,9 +187,8 @@ class RevokeView(discord.ui.View):
             author_groups.setdefault(ancestor.alias, ancestor)
             ancestor_only.setdefault(ancestor.alias, ancestor)
             ancestor_scope = GroupScope(group=ancestor)
-            if ancestor.scope != PermissionScope.GLOBAL:
-                ancestor_scope.guilds.update(scope.guilds)
-                ancestor_scope.channels.update(scope.channels)
+            ancestor_scope.guilds.update(scope.guilds)
+            ancestor_scope.channels.update(scope.channels)
             self._merge_scope(author_scopes, ancestor_scope)
 
     def _build_group_options(self, available_groups: list[str]):
