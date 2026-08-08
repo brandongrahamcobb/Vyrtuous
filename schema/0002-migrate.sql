@@ -270,7 +270,7 @@ DROP TABLE active_server_voice_mutes;
 ALTER TABLE active_video_only_channels RENAME CONSTRAINT video_rooms_pkey TO active_video_only_channels_pkey;
 ALTER SEQUENCE history_id_seq RENAME TO streaming_id_seq;
 DELETE FROM moderation_logs WHERE reason='Right-click voice unmute';
-DELETE * FROM roles;
+DELETE FROM roles;
 INSERT INTO public.roles (
     channel_snowflake,
     guild_snowflake,
