@@ -104,13 +104,25 @@ class ScheduledTasks(commands.Cog):
             guild_snowflake,
             member_snowflake,
         ), joined in joined_at.items():
-            elapsed = now - joined
-            if elapsed >= 900 and int(elapsed // 900) > int((elapsed - 60) // 900):
-                await flag_service.warn(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                )
+            guild = bot.get_guild(guild_snowflake)
+            if guild is None:
+                continue
+            channel = guild.get_channel(channel_snowflake)
+            if channel is None or not isinstance(
+                channel, discord.channel.VocalGuildChannel
+            ):
+                continue
+            member = guild.get_member(member_snowflake)
+            if member is None:
+                continue
+            if member in channel.members:
+                elapsed = now - joined
+                if elapsed >= 900 and int(elapsed // 900) > int((elapsed - 60) // 900):
+                    await flag_service.warn(
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
+                        member_snowflake=member_snowflake,
+                    )
 
     @tasks.loop(minutes=1)
     async def save_active_members(self) -> None:

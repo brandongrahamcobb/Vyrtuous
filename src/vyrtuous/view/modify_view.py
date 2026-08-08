@@ -209,6 +209,10 @@ class ModifyView(discord.ui.View):
             and (r.channel_snowflake is None or r.channel_snowflake in allowed_channels)
         ]
         self._refresh_options()
+        if not self.guild_select.options or not self.channel_select.options:
+            await self.__tick.end(
+                warning="You have insufficient privileges to do that."
+            )
 
     def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
         relevant = [
