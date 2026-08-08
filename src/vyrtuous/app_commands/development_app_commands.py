@@ -50,13 +50,16 @@ class DevelopmentAppCommands(commands.Cog):
         self, interaction: discord.Interaction
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.defer()
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(
+                warning="This command must be used in a server.", ephemeral=True
+            )
         if interaction.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel.",
+                ephemeral=True,
             )
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_permissions(
@@ -83,15 +86,17 @@ class DevelopmentAppCommands(commands.Cog):
         module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.defer()
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(
+                warning="This command must be used in a server.", ephemeral=True
+            )
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be used in a server channel."
+                warning="This command must be used in a server channel.", ephemeral=True
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
+        await tick.defer()
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -116,15 +121,17 @@ class DevelopmentAppCommands(commands.Cog):
         module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.defer()
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(
+                warning="This command must be used in a server.", ephemeral=True
+            )
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be used in a server channel."
+                warning="This command must be used in a server channel.", ephemeral=True
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
+        await tick.defer()
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -153,15 +160,17 @@ class DevelopmentAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.defer()
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(
+                warning="This command must be used in a server.", ephemeral=True
+            )
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be used in a server channel."
+                warning="This command must be used in a server channel.", ephemeral=True
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
+        await tick.defer()
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -177,7 +186,8 @@ class DevelopmentAppCommands(commands.Cog):
             elif spec == "*":
                 if interaction.guild is None:
                     return await tick.end(
-                        warning="This command must be executed in a server."
+                        warning="This command must be executed in a server.",
+                        ephemeral=True,
                     )
                 self.__bot.tree.copy_global_to(guild=interaction.guild)
                 synced = await self.__bot.tree.sync(guild=interaction.guild)
@@ -198,7 +208,9 @@ class DevelopmentAppCommands(commands.Cog):
             if isinstance(guild.target, discord.Guild):
                 guild_obj = guild.target
             else:
-                raise CheckFailure("This command must target a valid server.")
+                return await tick.end(
+                    warning="This command must target a valid server.", ephemeral=True
+                )
             try:
                 await self.__bot.tree.sync(guild=guild_obj)
             except discord.HTTPException:
@@ -220,15 +232,17 @@ class DevelopmentAppCommands(commands.Cog):
         module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.defer()
         if interaction.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(
+                warning="This command must be used in a server.", ephemeral=True
+            )
         if interaction.channel is None:
             return await tick.end(
-                warning="This command must be used in a server channel."
+                warning="This command must be used in a server channel.", ephemeral=True
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
+        await tick.defer()
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,

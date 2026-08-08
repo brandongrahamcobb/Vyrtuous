@@ -168,19 +168,21 @@ class HelpAppCommand(commands.Cog):
         self, interaction: discord.Interaction, *, command_name: str | None = None
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.defer()
-        bot = DiscordBot.get_instance()
-        permission_state: PermissionState = bot.registry.get(PermissionState)
         guild = interaction.guild
         if guild is None:
-            return await tick.end(warning="This command must be used in a server.")
+            return await tick.end(
+                warning="This command must be used in a server.", ephemeral=True
+            )
         channel = interaction.channel
         if not isinstance(
             channel, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
         ):
             return await tick.end(
-                warning="This command must be used in a server channel."
+                warning="This command must be used in a server channel.", ephemeral=True
             )
+        await tick.defer()
+        bot = DiscordBot.get_instance()
+        permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
