@@ -228,7 +228,9 @@ class RoleView(discord.ui.View):
                 content=f"Please select all fields.",
                 ephemeral=True,
             )
+        self.stop()
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_equal_or_lower_role(
@@ -279,7 +281,6 @@ class RoleView(discord.ui.View):
             )
             if embed:
                 await self.__tick.end(success=embed)
-            self.stop()
         else:
             embed = None
             target = None
@@ -312,7 +313,6 @@ class RoleView(discord.ui.View):
             )
             if embed:
                 await self.__tick.end(success=embed)
-            self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

@@ -497,6 +497,10 @@ class ClearView(discord.ui.View):
                                 )
                             )
             case discord.abc.GuildChannel() as channel:
+                # self.selected_guild = channel.guild.id
+                # self.selected_channel = channel.id
+                # self.guild_select.disabled = True
+                # self.channel_select.disabled = True
                 self.remove_item(self.guild_select)
                 self.remove_item(self.channel_select)
                 (
@@ -778,6 +782,7 @@ class ClearView(discord.ui.View):
 
     @discord.ui.select(placeholder="Select a model", options=[])
     async def model_select(self, interaction, select):
+        await interaction.response.defer()
         raw = select.values[0]
         self.selected_model = (
             ALL if raw == "all" else self._get_model_by_identifier(raw)
@@ -789,10 +794,11 @@ class ClearView(discord.ui.View):
         self.channel_select.disabled = True
         self.scope_select.disabled = True
         self._refresh_options()
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(placeholder="Select a server", options=[], disabled=True)
     async def guild_select(self, interaction, select):
+        await interaction.response.defer()
         raw = select.values[0]
         self.selected_guild = ALL if raw == "all" else int(raw)
         self.selected_channel = None
@@ -800,25 +806,27 @@ class ClearView(discord.ui.View):
         self.channel_select.disabled = self.selected_model is AutoAssignRole
         self.scope_select.disabled = True
         self._refresh_options()
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(placeholder="Select a channel", options=[], disabled=True)
     async def channel_select(self, interaction, select):
+        await interaction.response.defer()
         raw = select.values[0]
         self.selected_channel = ALL if raw == "all" else int(raw)
         self.selected_scope = None
         self.scope_select.disabled = (
-            self.selected_model is not VoiceMute or self.selected_model is not ALL
+            self.selected_model is not VoiceMute and self.selected_model is not ALL
         )
         self._refresh_options()
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.select(placeholder="Select a scope", options=[], disabled=True)
     async def scope_select(self, interaction, select):
+        await interaction.response.defer()
         raw = select.values[0]
         self.selected_scope = ALL if raw == "all" else raw
         self._refresh_options()
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
@@ -838,14 +846,15 @@ class ClearView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select a scope.", ephemeral=True
             )
+        self.stop()
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         deleted_count = await self.clear(
             interaction=interaction,
         )
         await self.__tick.end(
             success=f"Successfully deleted {deleted_count} record(s)."
         )
-        self.stop()
 
     async def clear(self, interaction: discord.Interaction) -> int:
         bot: DiscordBot = DiscordBot.get_instance()

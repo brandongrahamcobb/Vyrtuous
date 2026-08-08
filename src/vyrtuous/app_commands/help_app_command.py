@@ -160,6 +160,7 @@ class HelpAppCommand(commands.Cog):
         self, interaction: discord.Interaction, *, command_name: str | None = None
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         guild = interaction.guild
@@ -232,9 +233,7 @@ class HelpAppCommand(commands.Cog):
             group_order=group_order,
         )
         if not visible_order:
-            return await tick.end(
-                warning="\U000026a0\U0000fe0f No commands available to you."
-            )
+            return await tick.end(warning="No commands available to you.")
         default_group = next(
             group for group in permission_state.groups.values() if group.default
         )

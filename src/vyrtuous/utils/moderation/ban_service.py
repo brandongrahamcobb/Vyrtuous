@@ -116,7 +116,7 @@ async def toggle_blacklist(
     bot.logger.debug(
         f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
     )
-    return f"{display_name} ({member_snowflake}) has been ban {action} in {channel.mention}."
+    return f"{display_name} `{member_snowflake}` has been ban {action} in {channel.mention}."
 
 
 async def is_banned(channel: discord.abc.GuildChannel, member: discord.Member) -> bool:

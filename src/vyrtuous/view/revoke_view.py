@@ -383,7 +383,9 @@ class RevokeView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
+        self.stop()
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         record = None
         database_factory: DatabaseFactory = DatabaseFactory(MODEL)
         if self.__selected_group and self.__selected_channel and self.__selected_guild:
@@ -422,7 +424,6 @@ class RevokeView(discord.ui.View):
                 member_snowflake=self.__ctx.member_snowflake,
             )
         await self.__tick.end(success=embed)
-        self.stop()
 
     def build_revoke_embed(
         self,

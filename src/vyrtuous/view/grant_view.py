@@ -322,7 +322,9 @@ class GrantView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
+        self.stop()
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         record = None
         bot: DiscordBot = DiscordBot.get_instance()
         database_factory: DatabaseFactory = DatabaseFactory(MODEL)
@@ -430,7 +432,6 @@ class GrantView(discord.ui.View):
             )
         await database_factory.create(entry)
         await self.__tick.end(success=embed)
-        self.stop()
 
     def build_grant_embed(
         self,

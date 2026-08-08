@@ -51,6 +51,7 @@ class ReasonModal(discord.ui.Modal):
 
     async def on_submit(self, interaction) -> None:
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_equal_or_lower_role(

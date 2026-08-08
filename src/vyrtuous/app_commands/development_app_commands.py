@@ -50,12 +50,12 @@ class DevelopmentAppCommands(commands.Cog):
         self, interaction: discord.Interaction
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
             return await tick.end(
                 warning="This command must be used in a server channel.",
-                source=interaction,
             )
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
@@ -83,6 +83,7 @@ class DevelopmentAppCommands(commands.Cog):
         module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
@@ -115,6 +116,7 @@ class DevelopmentAppCommands(commands.Cog):
         module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
@@ -151,6 +153,7 @@ class DevelopmentAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
@@ -217,6 +220,7 @@ class DevelopmentAppCommands(commands.Cog):
         module: app_commands.Transform[ModuleObject, AppModule],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:

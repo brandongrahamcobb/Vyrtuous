@@ -148,6 +148,7 @@ class ModerationAppCommands(commands.Cog):
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if channel is None:
@@ -578,6 +579,7 @@ class ModerationAppCommands(commands.Cog):
         reason: str | None = "No reason provided.",
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if channel is None:
@@ -639,6 +641,7 @@ class ModerationAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -770,6 +773,7 @@ class ModerationAppCommands(commands.Cog):
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if channel is None:

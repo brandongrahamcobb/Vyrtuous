@@ -121,7 +121,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
             member = guild.get_member(member_snowflake)
             if member:
                 if not isinstance(obj, discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True

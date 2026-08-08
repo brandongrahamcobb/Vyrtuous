@@ -464,6 +464,7 @@ class ModifyView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select a scope.", ephemeral=True
             )
+        self.stop()
         modify_records = self._visible_records(exclude=None)
         modify_record = modify_records[0]
         database_factory: DatabaseFactory = DatabaseFactory(modify_record.model)
@@ -493,7 +494,6 @@ class ModifyView(discord.ui.View):
             )
             await modal.setup()
             await interaction.response.send_modal(modal)
-        self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

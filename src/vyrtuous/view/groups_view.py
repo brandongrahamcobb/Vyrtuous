@@ -372,7 +372,9 @@ class GroupsView(discord.ui.View):
             return await interaction.response.send_message(
                 content="Please select all fields.", ephemeral=True
             )
+        self.stop()
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         if self.__selected_group and self.__selected_channel and self.__selected_guild:
             pages = await list_groups.build_pages(
                 group=self.__selected_group,
@@ -394,8 +396,7 @@ class GroupsView(discord.ui.View):
                 guild_snowflake=None,
                 channel_snowflake=None,
             )
-        await self.__tick.end(success=pages)
-        self.stop()
+        return await self.__tick.end(success=pages)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):

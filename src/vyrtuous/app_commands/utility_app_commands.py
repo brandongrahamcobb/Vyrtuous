@@ -52,6 +52,7 @@ class UtilityAppCommands(commands.Cog):
         msg: app_commands.Transform[MessageObject, AppMessage],
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if msg.message.channel.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         else:
@@ -87,6 +88,7 @@ class UtilityAppCommands(commands.Cog):
         self, interaction: discord.Interaction
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         if interaction.guild is None:
             return await tick.end(warning="This command must be used in a server.")
         if interaction.channel is None:
@@ -119,6 +121,7 @@ class UtilityAppCommands(commands.Cog):
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if channel is None:
@@ -168,6 +171,9 @@ class UtilityAppCommands(commands.Cog):
         count = 0
         skipped = 0
         async for msg in channel_obj.history():
+            if count == 0:
+                count += 1
+                continue
             if amount == count:
                 break
             try:
@@ -210,7 +216,7 @@ class UtilityAppCommands(commands.Cog):
         return await tick.end(success=message)
 
     @metadata(permission="command.utility.move")
-    @app_commands.command(name="rmv", description="VC move.")
+    @app_commands.command(name="rmove", description="VC move.")
     @app_commands.describe(
         target_channel="Specify a `to` channel ID/mention.",
         source_channel="Specify a `from` channel ID/mention.",
@@ -222,6 +228,7 @@ class UtilityAppCommands(commands.Cog):
         source_channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if isinstance(

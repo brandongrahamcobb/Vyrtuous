@@ -71,6 +71,7 @@ class InfractionModal(discord.ui.Modal):
 
     async def on_submit(self, interaction) -> None:
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         database_factory: DatabaseFactory = DatabaseFactory(self.__model)
         duration_builder: DurationBuilder = DurationBuilder()
@@ -136,6 +137,7 @@ class InfractionModal(discord.ui.Modal):
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__member_snowflake,
+                    reason=reason,
                 )
                 embed = flag_alias_service.build_flag_embed(
                     channel_snowflake=self.__channel_snowflake,

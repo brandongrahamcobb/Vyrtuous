@@ -107,7 +107,7 @@ class ChannelEventListeners(commands.Cog):
                             reason="Channel event listeners remute. Target: command or server.",
                         )
                         break
-            if await automute_channel_service.is_active_automute_channel(
+            elif await automute_channel_service.is_active_automute_channel(
                 channel_snowflake=after.channel.id,
                 guild_snowflake=after.channel.guild.id,
             ):

@@ -22,7 +22,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.permissions import PermissionGroup
+from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
 from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.models.group import AppGroup, GroupObject
 from vyrtuous.models.metadata import metadata
@@ -96,6 +96,10 @@ class UserManagementAppCommands(commands.Cog):
             return await tick.end(warning="This command must target a valid group.")
         else:
             group_obj = group.group
+            if channel_snowflake is None and group_obj.scope == PermissionScope.CHANNEL:
+                return await tick.end(
+                    warning="A channel ID/mention must be included for this type of group."
+                )
             effective_group = await permission_service.resolve_effective_group(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
@@ -198,6 +202,7 @@ class UserManagementAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         singular = True
@@ -413,6 +418,7 @@ class UserManagementAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:

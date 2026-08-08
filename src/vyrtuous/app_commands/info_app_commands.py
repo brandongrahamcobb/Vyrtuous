@@ -64,6 +64,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -112,6 +113,7 @@ class InfoAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -187,6 +189,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -298,6 +301,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -408,6 +412,7 @@ class InfoAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -423,9 +428,9 @@ class InfoAppCommands(commands.Cog):
         else:
             channel_snowflake = interaction.channel.id
         if target is None:
-           obj = interaction.guild
+           obj = interaction.channel
         else:
-            obj = target.target
+            obj = target.target if target.target != "all" else interaction.guild
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -481,6 +486,7 @@ class InfoAppCommands(commands.Cog):
         self, interaction: discord.Interaction
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -531,6 +537,7 @@ class InfoAppCommands(commands.Cog):
         self, interaction: discord.Interaction, lines: int | None = None
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -577,6 +584,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -737,6 +745,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -848,6 +857,7 @@ class InfoAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -940,6 +950,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1028,6 +1039,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -1056,10 +1068,11 @@ class InfoAppCommands(commands.Cog):
         else:
             obj = target.target
         if scope is None:
-            mute_type = "all"
+            mute_type = "command"
         else:
             mute_type = scope.scope
-
+            if mute_type == "server":
+                obj = interaction.guild
         async def has_mute_permissions(permission_state: PermissionState, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, mute_type: str):
             match mute_type:
                 case "all":
@@ -1187,6 +1200,7 @@ class InfoAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1273,6 +1287,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1323,6 +1338,7 @@ class InfoAppCommands(commands.Cog):
         self, interaction: discord.Interaction
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1374,6 +1390,7 @@ class InfoAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1460,6 +1477,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1472,11 +1490,6 @@ class InfoAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
-        await permission_service.has_permissions(
-            permission_state=permission_state,
-            member_snowflake=interaction.user.id,
-            requested=["command.info.scope.member"],
-        )
         if guild is None:
             if interaction.guild is None:
                 return await tick.end(warning="This command must be used in a server.")
@@ -1630,6 +1643,7 @@ class InfoAppCommands(commands.Cog):
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:
@@ -1688,6 +1702,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if guild is None:
@@ -1802,6 +1817,7 @@ class InfoAppCommands(commands.Cog):
         guild: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
  
@@ -1827,7 +1843,7 @@ class InfoAppCommands(commands.Cog):
         if target is None:
            obj = interaction.guild
         else:
-            obj = target.target
+            obj = target.target if target.target != "all" else interaction.guild
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -1889,6 +1905,7 @@ class InfoAppCommands(commands.Cog):
         target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
         if interaction.guild is None:

@@ -58,6 +58,7 @@ class ChannelManagementAppCommands(commands.Cog):
         duration: app_commands.Transform[DurationWrapper | None, AppDuration] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if channel is None:
@@ -113,6 +114,7 @@ class ChannelManagementAppCommands(commands.Cog):
         limit: app_commands.Transform[DurationWrapper | None, AppDuration] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if channel is None:
@@ -166,6 +168,7 @@ class ChannelManagementAppCommands(commands.Cog):
         source: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if source is None:
@@ -224,6 +227,7 @@ class ChannelManagementAppCommands(commands.Cog):
         duration: app_commands.Transform[DurationWrapper | None, AppDuration] = None,
     ) -> discord.Message:
         tick = Tick(bot=self.__bot, interaction=interaction)
+        await tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if channel is None:

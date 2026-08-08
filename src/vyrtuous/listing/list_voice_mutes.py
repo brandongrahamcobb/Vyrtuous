@@ -138,7 +138,20 @@ async def build_pages(
             obj_name = simplified_member[0]
         else:
             return "This command must target a valid member."
-    title = f"{emojis.get_random_emoji()} Voice Mutes for {obj_name}"
+    match mute_type:
+        case "all":
+            mute = "All Voice Mutes"
+        case "auto":
+            mute = "Automutes"
+        case "command":
+            mute = "Command Mutes"
+        case "click":
+            mute = "Right-click Mutes"
+        case "server":
+            mute = "Server Mutes"
+        case _:
+            mute = "Voice Mutes"
+    title = f"{emojis.get_random_emoji()} {mute} for {obj_name}"
 
     dictionary = await build_dictionary(
         guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
@@ -166,11 +179,12 @@ async def build_pages(
             member = guild.get_member(member_snowflake)
             if member:
                 if not isinstance(obj, discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
+                    vmute_n += 1
             else:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None

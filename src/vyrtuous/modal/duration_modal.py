@@ -59,6 +59,7 @@ class DurationModal(discord.ui.Modal):
 
     async def on_submit(self, interaction) -> None:
         self.__tick.update_source(interaction=interaction)
+        await self.__tick.defer()
         bot: DiscordBot = DiscordBot.get_instance()
         duration_builder: DurationBuilder = DurationBuilder()
         permission_state: PermissionState = bot.registry.get(PermissionState)

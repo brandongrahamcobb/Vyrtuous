@@ -197,7 +197,7 @@ async def channel_mute(
         f"**Failed:** {len(failed_members)} users",
         f"**Skipped:** {
             len(channel.members) - len(muted_members) - len(failed_members)
-        }",
+        } users",
     ]
     embed = discord.Embed(
         description="\n".join(description_lines),
@@ -292,7 +292,7 @@ async def channel_unmute(
         f"**Failed:** {len(failed_members)} users",
         f"**Skipped:** {
             len(channel.members) - len(unmuted_members) - len(failed_members)
-        }",
+        } users",
     ]
     embed = discord.Embed(
         description="\n".join(description_lines),

@@ -208,11 +208,11 @@ async def resolve_effective_group(
         if entry.channel_snowflake is not None:
             if entry.channel_snowflake == channel_snowflake:
                 channel_group = group
-                continue
+            continue
         if entry.guild_snowflake is not None:
             if entry.guild_snowflake == guild_snowflake:
                 guild_group = group
-                continue
+            continue
         if entry.channel_snowflake is None and entry.guild_snowflake is None:
             global_group = group
     return global_group or guild_group or channel_group

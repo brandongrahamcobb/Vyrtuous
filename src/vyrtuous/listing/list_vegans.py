@@ -17,6 +17,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from datetime import datetime
+
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -24,6 +26,7 @@ from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
 from vyrtuous.listing import list_service
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.messaging import emojis
 
 MODEL = Vegan
@@ -53,14 +56,19 @@ async def build_dictionary(
             dictionary[guild_snowflake]["members"].setdefault(
                 vegan.member_snowflake, {"vegans": {}}
             )
-            dictionary[guild_snowflake]["members"][vegan.member_snowflake][
-                "vegans"
-            ].setdefault("notes", vegan.notes)
+            dictionary[guild_snowflake]["members"][vegan.member_snowflake]["vegans"][
+                "notes"
+            ] = vegan.notes
+            dictionary[guild_snowflake]["members"][vegan.member_snowflake]["vegans"][
+                "created_at"
+            ] = vegan.created_at
+
     return dictionary
 
 
 async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
     bot: DiscordBot = DiscordBot.get_instance()
+    duration_builder: DurationBuilder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
         return "No vegans found"
@@ -102,8 +110,21 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                 if not thumbnail and isinstance(obj, discord.Member):
                     embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
+                    lines.append(
+                        f"**Notes:** {vegan_dictionary.get("vegans", {}).get("notes")}"
+                    )
+                    created_at = vegan_dictionary.get("vegans", {}).get(
+                        "created_at", None
+                    )
+                    if isinstance(created_at, datetime):
+                        lines.append(
+                            f"**Timestamp:** {duration_builder.from_timestamp(created_at).to_unix_ts()}"
+                        )
                 else:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
+                    lines.append(
+                        f"**Notes:** {vegan_dictionary.get("vegans", {}).get("notes")}"
+                    )
             else:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None
@@ -111,7 +132,9 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                 if simplified_member:
                     display_name = simplified_member[0]
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
-            lines.append(f"**Notes:** {vegan_dictionary.get("notes")}")
+                    lines.append(
+                        f"**Notes:** {vegan_dictionary.get("vegans", {}).get("notes")}"
+                    )
             vegan_n += 1
             field_count += 1
             if field_count >= list_service.CHUNK_SIZE:

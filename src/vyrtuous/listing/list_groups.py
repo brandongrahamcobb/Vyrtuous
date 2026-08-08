@@ -146,7 +146,7 @@ async def build_pages(
                 else bot.get_user(member_snowflake_)
             )
             if member:
-                display = f"{member.display_name} {member.mention}"
+                display = f"{member.mention}"
             else:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake_, None
@@ -164,9 +164,7 @@ async def build_pages(
                     channel = guild.get_channel(channel_snowflake_) if guild else None
                     if channel is None:
                         continue
-                    lines.append(
-                        f"**User:** {display} — **Channel:** {channel.mention}"
-                    )
+                    lines.append(f"**User:** {display}\n**Channel:** {channel.mention}")
                     field_count += 1
             if field_count >= list_service.CHUNK_SIZE:
                 embed.add_field(

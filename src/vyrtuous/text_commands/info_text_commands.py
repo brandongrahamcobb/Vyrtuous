@@ -433,9 +433,9 @@ class InfoTextCommands(commands.Cog):
         else:
             channel_snowflake = ctx.channel.id
         if target is None:
-            obj = ctx.guild
+            obj = ctx.channel
         else:
-            obj = target.target
+            obj = target.target if target.target != "all" else ctx.guild
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
@@ -988,7 +988,6 @@ class InfoTextCommands(commands.Cog):
             mute_type = "all"
         else:
             mute_type = scope.scope
-
         async def has_mute_permissions(permission_state: PermissionState, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, mute_type: str):
             match mute_type:
                 case "all":
@@ -1486,11 +1485,6 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             channel_snowflake = ctx.channel.id
-        await permission_service.has_permissions(
-            permission_state=permission_state,
-            member_snowflake=ctx.author.id,
-            requested=["command.info.scope.member"],
-        )
         if guild is None:
             if ctx.guild is None:
                 return await tick.end(warning="This command must be used in a server.")
@@ -1853,7 +1847,7 @@ class InfoTextCommands(commands.Cog):
         if target is None:
            obj = ctx.guild
         else:
-            obj = target.target
+            obj = target.target if target.target != "all" else ctx.guild
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
                 permission_state=permission_state,
