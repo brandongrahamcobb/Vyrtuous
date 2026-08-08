@@ -41,6 +41,7 @@ async def enforce_or_undo(
     if role in member.roles:
         unrole_ctx = unrole_alias_service.UnroleMessageContext(
             author_snowflake=message.author.id,
+            channel_snowflake=alias_ctx.channel_snowflake,
             guild_snowflake=alias_ctx.guild_snowflake,
             member_snowflake=alias_ctx.member_snowflake,
             message_snowflake=message.id,
@@ -54,6 +55,7 @@ async def enforce_or_undo(
     else:
         enrole_ctx = role_alias_service.EnroleMessageContext(
             author_snowflake=message.author.id,
+            channel_snowflake=alias_ctx.channel_snowflake,
             guild_snowflake=alias_ctx.guild_snowflake,
             member_snowflake=alias_ctx.member_snowflake,
             message_snowflake=message.id,

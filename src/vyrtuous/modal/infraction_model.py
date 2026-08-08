@@ -17,8 +17,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from enum import Flag
-
 import discord
 
 from vyrtuous.aliases import (
@@ -32,6 +30,7 @@ from vyrtuous.cache.registry import PermissionState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.db.flag import Flag
 from vyrtuous.db.text_mute import TextMute
 from vyrtuous.db.voice_mute import VoiceMute
 from vyrtuous.models.duration import DurationBuilder, DurationObject

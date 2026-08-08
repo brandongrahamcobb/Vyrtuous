@@ -75,17 +75,17 @@ async def unvoice_mute_by_message(
             member_snowflake=ctx.author_snowflake,
             requested=["command.moderation.uncapped"],
         )
-    is_channel_scope = await disable(
-        channel_snowflake=ctx.channel_snowflake,
-        guild_snowflake=ctx.guild_snowflake,
-        member_snowflake=ctx.member_snowflake,
-        reason=ctx.reason,
-    )
     await database_factory.delete(
         channel_snowflake=ctx.channel_snowflake,
         guild_snowflake=ctx.guild_snowflake,
         member_snowflake=ctx.member_snowflake,
         target=ctx.target,
+    )
+    is_channel_scope = await disable(
+        channel_snowflake=ctx.channel_snowflake,
+        guild_snowflake=ctx.guild_snowflake,
+        member_snowflake=ctx.member_snowflake,
+        reason=ctx.reason,
     )
     await stream_service.log(
         author_snowflake=ctx.author_snowflake,

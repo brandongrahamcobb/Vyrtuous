@@ -105,8 +105,8 @@ class AliasManagementTextCommands(commands.Cog):
             )
             await database_factory.create(alias)
         else:
-            if isinstance(role, discord.Role):
-                role_snowflake = role.id
+            if isinstance(role.target, discord.Role):
+                role_snowflake = role.target.id
             else:
                 return await tick.end(warning="This command must target a valid role.")
             msg = await alias_service.enable(

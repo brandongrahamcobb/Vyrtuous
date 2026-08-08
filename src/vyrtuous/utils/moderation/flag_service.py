@@ -84,7 +84,11 @@ async def warn(
         return
     flags = bot.registry.get(MemberState).flagged
     for flag_member_snowflake, flag_data in flags[guild_snowflake].items():
-        if flag_data[0] == channel.id and flag_member_snowflake == member.id:
+        if (
+            flag_data[0] == channel.id
+            and flag_member_snowflake == member.id
+            and (channel.id == 1347284829305311273 or channel.id == 1222056499959042108)
+        ):
             if isinstance(channel, discord.channel.VocalGuildChannel):
                 if bot.registry.get(ChannelState).should_notify(
                     channel_snowflake=channel_snowflake,
