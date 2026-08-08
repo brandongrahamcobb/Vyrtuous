@@ -206,11 +206,16 @@ async def resolve_effective_group(
         if group is None:
             continue
         if entry.channel_snowflake is not None:
-            if entry.channel_snowflake == channel_snowflake:
+            if entry.channel_snowflake == channel_snowflake and (
+                channel_group is None
+                or len(group.ancestors) > len(channel_group.ancestors)
+            ):
                 channel_group = group
             continue
         if entry.guild_snowflake is not None:
-            if entry.guild_snowflake == guild_snowflake:
+            if entry.guild_snowflake == guild_snowflake and (
+                guild_group is None or len(group.ancestors) > len(guild_group.ancestors)
+            ):
                 guild_group = group
             continue
         if entry.channel_snowflake is None and entry.guild_snowflake is None:
