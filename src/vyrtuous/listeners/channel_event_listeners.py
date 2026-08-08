@@ -107,7 +107,12 @@ class ChannelEventListeners(commands.Cog):
                             reason="Channel event listeners remute. Target: command or server.",
                         )
                         break
-            elif await automute_channel_service.is_active_automute_channel(
+            elif after.mute:
+                await member.edit(
+                    mute=False,
+                    reason="Channel event listeners unmute. Target: unknown.",
+                )
+            if await automute_channel_service.is_active_automute_channel(
                 channel_snowflake=after.channel.id,
                 guild_snowflake=after.channel.guild.id,
             ):
@@ -131,11 +136,6 @@ class ChannelEventListeners(commands.Cog):
                     guild_snowflake=after.channel.guild.id,
                     member_snowflake=member.id,
                     reason=f"Automuted.",
-                )
-            elif after.mute:
-                await member.edit(
-                    mute=False,
-                    reason="Channel event listeners unmute. Target: unknown.",
                 )
             await flag_service.warn(
                 channel_snowflake=after.channel.id,

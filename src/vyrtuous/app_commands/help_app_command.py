@@ -87,19 +87,27 @@ class HelpAppCommand(commands.Cog):
         self,
         permission_state: PermissionState,
         member_snowflake: int,
-        channel_snowflake: int | None,
         guild_snowflake: int | None,
         group_order: list[str],
     ) -> list[str]:
-        effective_group = await permission_service.resolve_effective_group(
+        assigned_groups = await permission_service.resolve_all_assigned_groups(
             permission_state=permission_state,
             member_snowflake=member_snowflake,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
         )
-        if effective_group is None:
+        visible_groups = [
+            group
+            for group, assigned_guild_snowflake, _ in assigned_groups
+            if assigned_guild_snowflake is None
+            or assigned_guild_snowflake == guild_snowflake
+        ]
+        highest_group = max(
+            visible_groups,
+            key=lambda group: len(group.ancestors),
+            default=None,
+        )
+        if highest_group is None:
             return []
-        member_chain = {effective_group.alias, *effective_group.ancestors}
+        member_chain = {highest_group.alias, *highest_group.ancestors}
         return [alias for alias in group_order if alias in member_chain]
 
     def build_command_pages(
@@ -228,7 +236,6 @@ class HelpAppCommand(commands.Cog):
         visible_order = await self.compute_visible_page_order(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
-            channel_snowflake=channel.id,
             guild_snowflake=guild.id,
             group_order=group_order,
         )
