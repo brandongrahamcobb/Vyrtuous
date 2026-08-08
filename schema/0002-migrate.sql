@@ -144,7 +144,8 @@ INSERT INTO permission_entries (
     guild_snowflake,
     group_alias,
     member_snowflake,
-    updated_at
+    updated_at,
+    role_snowflakes
 )
 SELECT
     NULL,
@@ -152,7 +153,8 @@ SELECT
     NULL,
     'developer',
     member_snowflake,
-    updated_at
+    updated_at,
+    ARRAY[]::BIGINT[]
 FROM developers;
 
 INSERT INTO permission_entries (
@@ -161,7 +163,8 @@ INSERT INTO permission_entries (
     guild_snowflake,
     group_alias,
     member_snowflake,
-    updated_at
+    updated_at,
+    role_snowflakes
 )
 SELECT
     NULL,
@@ -169,7 +172,8 @@ SELECT
     guild_snowflake,
     'administrator',
     member_snowflake,
-    updated_at
+    updated_at,
+    role_snowflakes
 FROM administrators;
 
 INSERT INTO permission_entries (
@@ -178,7 +182,8 @@ INSERT INTO permission_entries (
     guild_snowflake,
     group_alias,
     member_snowflake,
-    updated_at
+    updated_at,
+    role_snowflakes
 )
 SELECT
     channel_snowflake,
@@ -186,7 +191,8 @@ SELECT
     guild_snowflake,
     'coordinator',
     member_snowflake,
-    updated_at
+    updated_at,
+    ARRAY[]::BIGINT[]
 FROM coordinators;
 
 INSERT INTO permission_entries (
@@ -195,7 +201,8 @@ INSERT INTO permission_entries (
     guild_snowflake,
     group_alias,
     member_snowflake,
-    updated_at
+    updated_at,
+    role_snowflakes
 )
 SELECT
     channel_snowflake,
@@ -203,7 +210,8 @@ SELECT
     guild_snowflake,
     'moderator',
     member_snowflake,
-    updated_at
+    updated_at,
+    ARRAY[]::BIGINT[]
 FROM moderators;
 COMMIT;
 DROP TABLE moderators;
@@ -253,7 +261,6 @@ ALTER TABLE administrator_roles RENAME TO autoassign_roles;
 ALTER TABLE autoassign_roles ADD COLUMN channel_snowflake BIGINT;
 ALTER TABLE autoassign_roles RENAME CONSTRAINT administrator_roles_pkey TO autoassign_roles_pkey;
 ALTER TABLE roles DROP COLUMN member_snowflake;
-ALTER TABLE roles DROP COLUMN display_name;
 INSERT INTO roles (guild_snowflake, channel_snowflake, role_snowflake)
 SELECT guild_snowflake, channel_snowflake, role_snowflake
 FROM command_aliases
@@ -261,5 +268,5 @@ WHERE role_snowflake IS NOT NULL;
 ALTER TABLE active_automute_channels RENAME CONSTRAINT active_stages_pkey TO active_automute_channels_pkey;
 DROP TABLE active_server_voice_mutes;
 ALTER TABLE active_video_only_channels RENAME CONSTRAINT video_rooms_pkey TO active_video_only_channels_pkey;
-RENAME SEQUENCE history_id_seq TO streaming_id_seq;
+ALTER SEQUENCE history_id_seq RENAME TO streaming_id_seq;
 DELETE FROM moderation_logs WHERE reason='Right-click voice unmute';

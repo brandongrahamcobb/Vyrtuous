@@ -23,6 +23,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
+from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound
 from vyrtuous.utils.messaging import emojis
 
@@ -49,6 +50,7 @@ async def toggle_vegan(
 ) -> discord.Embed:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
+    duration_builder: DurationBuilder = DurationBuilder()
     vegan = await database_factory.select(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
@@ -73,13 +75,20 @@ async def toggle_vegan(
             notes=notes,
         )
         await database_factory.create(vegan)
+        vegan = await database_factory.select(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+            singular=True,
+        )
         embed = await build_vegan_embed(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
             notes=notes,
         )
         original_set = bot.registry.get(MemberState).vegan
-        original_set[guild_snowflake].setdefault(member_snowflake, notes)
+        original_set[guild_snowflake].setdefault(
+            member_snowflake, (vegan.created_at, notes)
+        )
         return embed
 
 
@@ -147,6 +156,7 @@ async def notify(
     channel: discord.channel.VocalGuildChannel, member: discord.Member
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
+    duration_builder: DurationBuilder = DurationBuilder()
     vegans = bot.registry.get(MemberState).vegan
     for vegan_member_snowflake, vegan_data in vegans[channel.guild.id].items():
         if "Vegan" in channel.name and vegan_member_snowflake == member.id:
@@ -157,8 +167,8 @@ async def notify(
                 timeout=900.0,
             ):
                 embed = discord.Embed(
-                    title=f"{emojis.get_random_emoji()} {member.display_name} is a recent Vegan!",
-                    description=f"**Notes:** {vegan_data[0]}",
+                    title=f"\U0001f331\U0001f331 {member.display_name} is a recent Vegan\U0001f331\U0001f331",
+                    description=f"**Notes:** {vegan_data[1]}\n**Timestamp:** {duration_builder.from_timestamp(vegan_data[0]).to_unix_ts()}",
                     color=discord.Color.green(),
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)
@@ -177,5 +187,6 @@ async def populate() -> None:
     vegans = await database_factory.select(singular=False)
     for vegan in vegans:
         original_set[vegan.guild_snowflake].setdefault(
-            vegan.member_snowflake, vegan.notes
+            vegan.member_snowflake,
+            (vegan.created_at, vegan.notes),
         )

@@ -193,11 +193,23 @@ class DurationBuilder:
         if expires_in is None:
             return self.parse(0)
         now = datetime.now(timezone.utc)
-        remaining = expires_in - now
-        total_seconds = max(0, int(remaining.total_seconds()))
-        number, unit = _largest_unit(total_seconds)
-        self.parse(f"+{number}{unit}")
+        total_seconds = int((expires_in - now).total_seconds())
+        if total_seconds == 0:
+            return self.parse("0")
+        number, unit = _largest_unit(abs(total_seconds))
+        sign = "+" if total_seconds > 0 else "-"
+        self.parse(f"{sign}{number}{unit}")
         return self
+
+    # def from_timestamp(self, expires_in: datetime | None) -> Self:
+    #     if expires_in is None:
+    #         return self.parse(0)
+    #     now = datetime.now(timezone.utc)
+    #     remaining = expires_in - now
+    #     total_seconds = max(0, int(remaining.total_seconds()))
+    #     number, unit = _largest_unit(total_seconds)
+    #     self.parse(f"+{number}{unit}")
+    #     return self
 
     def as_str(self) -> str:
         return f"{self.__duration.prefix}{self.__duration.number}{self.__duration.unit}"

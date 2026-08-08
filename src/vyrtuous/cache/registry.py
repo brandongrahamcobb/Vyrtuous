@@ -55,7 +55,7 @@ class MemberState:
     flagged: defaultdict[int, dict[int, tuple[int, str]]] = field(
         default_factory=lambda: defaultdict(dict)
     )
-    vegan: defaultdict[int, dict[int, str]] = field(
+    vegan: defaultdict[int, dict[int, tuple[datetime, str]]] = field(
         default_factory=lambda: defaultdict(dict)
     )
     invincible: defaultdict[int, set[int]] = field(
