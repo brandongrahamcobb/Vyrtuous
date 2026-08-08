@@ -57,7 +57,7 @@ class ModerationAppCommands(commands.Cog):
     async def cog_app_command_error(self, interaction, error):
         self.__bot.logger.info(str(error))
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
+        await tick.end(error=str(error), ephemeral=True)
 
     @metadata(permission="command.moderation.ban")
     @app_commands.command(name="ban", description="Create a ban.")

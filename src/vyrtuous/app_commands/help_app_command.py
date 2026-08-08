@@ -45,7 +45,7 @@ class HelpAppCommand(commands.Cog):
     async def cog_app_command_error(self, interaction, error):
         self.__bot.logger.info(str(error))
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
+        await tick.end(error=str(error), ephemeral=True)
 
     async def get_available_commands(self, interaction):
         available = []

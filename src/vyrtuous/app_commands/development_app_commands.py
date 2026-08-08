@@ -42,7 +42,7 @@ class DevelopmentAppCommands(commands.Cog):
     async def cog_app_command_error(self, interaction, error):
         self.__bot.logger.info(str(error))
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
+        await tick.end(error=str(error), ephemeral=True)
 
     @metadata(permission="command.dev.backup")
     @app_commands.command(name="backup", description="Request a backup file.")

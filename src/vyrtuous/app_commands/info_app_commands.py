@@ -27,16 +27,15 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import PermissionState
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES, PATH_LOG
 from vyrtuous.listing import (list_autoassign_roles, list_automute_channels,
-                              list_bans, list_caps, list_flags, list_groups,
-                              list_heroes, list_intents, list_overwrites,
-                              list_streams, list_text_mutes, list_vegans,
+                              list_bans, list_caps, list_flags, list_heroes,
+                              list_intents, list_overwrites, list_streams,
+                              list_text_mutes, list_vegans,
                               list_video_channels, list_voice_mutes)
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging import emojis
-from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.statistics import system_monitoring_service
 from vyrtuous.view.groups_view import GroupsView
@@ -53,7 +52,7 @@ class InfoAppCommands(commands.Cog):
     async def cog_app_command_error(self, interaction, error):
         self.__bot.logger.info(str(error))
         tick = Tick(bot=self.__bot, interaction=interaction)
-        await tick.end(error=str(error))
+        await tick.end(error=str(error), ephemeral=True)
 
     @metadata(permission="command.info.autoassigns")
     @app_commands.command(name="autoassigns", description="List group autoassignment roles.")
