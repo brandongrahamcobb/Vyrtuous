@@ -232,6 +232,18 @@ class RevokeView(discord.ui.View):
             available=set(available_channels)
         )
         channel_options = []
+        bot: DiscordBot = DiscordBot.get_instance()
+        channel = bot.get_channel(self.__ctx.channel_snowflake)
+        if channel and isinstance(
+            channel, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
+        ):
+            channel_options.append(
+                discord.SelectOption(
+                    label=channel.name,
+                    value=str(self.__ctx.channel_snowflake),
+                    default=default,
+                )
+            )
         channel_options.extend(
             [
                 discord.SelectOption(label=c.name, value=str(c.id))
@@ -239,6 +251,7 @@ class RevokeView(discord.ui.View):
                 if isinstance(
                     c, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel)
                 )
+                and c.id != self.__ctx.channel_snowflake
             ]
         )
         for option in channel_options:
