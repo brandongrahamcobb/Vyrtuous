@@ -25,7 +25,6 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
 from vyrtuous.models.duration import DurationBuilder
 from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound
-from vyrtuous.utils.messaging import emojis
 
 MODEL = Vegan
 
@@ -50,7 +49,6 @@ async def toggle_vegan(
 ) -> discord.Embed:
     bot: DiscordBot = DiscordBot.get_instance()
     database_factory: DatabaseFactory = DatabaseFactory(MODEL)
-    duration_builder: DurationBuilder = DurationBuilder()
     vegan = await database_factory.select(
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
@@ -61,7 +59,7 @@ async def toggle_vegan(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
-        embed = await build_carnist_embed(
+        embed = await build_not_recent_vegan_embed(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
         )
@@ -123,7 +121,7 @@ async def build_vegan_embed(
     return embed
 
 
-async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
+async def build_not_recent_vegan_embed(guild_snowflake: int, member_snowflake: int):
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
@@ -142,8 +140,7 @@ async def build_carnist_embed(guild_snowflake: int, member_snowflake: int):
         else:
             raise MemberNotFound(str(member_snowflake))
     embed = discord.Embed(
-        title=f"\U0001f44e\U0001f44e "
-        f"{display_name} is a Carnist \U0001f44e\U0001f44e",
+        title=f"{display_name} is no longer a recent Vegan",
         description=(f"**User:** {member_str}\n"),
         color=discord.Color.yellow(),
     )

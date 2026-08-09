@@ -31,6 +31,7 @@ from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
 from vyrtuous.tests.integration.mock_discord_role import MockRole
 from vyrtuous.tests.integration.mock_discord_state import MockState
+from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging.tick import Tick
 
 GUILD_SNOWFLAKE = 10000000000000500
@@ -248,6 +249,9 @@ async def capture_command():
 def check_permissions(permissions: list[str]):
     def check(*args, requested=None, **kwargs):
         requested = requested or []
-        return set(requested).issubset(set(permissions))
+        print(requested)
+        print(permissions)
+        if not set(requested).issubset(set(permissions)):
+            raise CheckFailure("Failed permission check.")
 
     return check

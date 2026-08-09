@@ -43,10 +43,13 @@ DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 
 COMMAND = "summary"
 BASE_PERMISSIONS = [
+    "command.info.scope.member",
     "command.info.bans",
     "command.info.flags",
     "command.info.text-mutes",
     "command.info.voice-mutes",
+    "command.info.voice-mutes.command",
+    "other_channels",
 ]
 
 
@@ -62,13 +65,12 @@ BASE_PERMISSIONS = [
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
         ("{member_snowflake}", "auto", None, ["command.info.voice-mutes.auto"]),
         ("{member_snowflake}", "click", None, ["command.info.voice-mutes.click"]),
-        ("{member_snowflake}", "command", None, ["command.info.voice-mutesi.command"]),
+        ("{member_snowflake}", "command", None, []),
         ("{member_snowflake}", "server", None, ["command.info.voice-mutes.server"]),
         (
             "<@{member_snowflake}>",
@@ -77,7 +79,6 @@ BASE_PERMISSIONS = [
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -87,7 +88,7 @@ BASE_PERMISSIONS = [
             "<@{member_snowflake}>",
             "command",
             None,
-            ["command.info.voice-mutes.command"],
+            [],
         ),
         ("<@{member_snowflake}>", "server", None, ["command.info.voice-mutes.server"]),
         (
@@ -97,7 +98,6 @@ BASE_PERMISSIONS = [
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -118,7 +118,7 @@ BASE_PERMISSIONS = [
             "{member_snowflake}",
             "command",
             "{other_guild_snowflake}",
-            ["command.info.voice-mutes.command", "other_guilds"],
+            ["other_guilds"],
         ),
         (
             "{member_snowflake}",
@@ -133,7 +133,6 @@ BASE_PERMISSIONS = [
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -154,7 +153,7 @@ BASE_PERMISSIONS = [
             "<@{member_snowflake}>",
             "command",
             "{other_guild_snowflake}",
-            ["command.info.voice-mutes.command", "other_guilds"],
+            ["other_guilds"],
         ),
         (
             "<@{member_snowflake}>",
@@ -170,7 +169,6 @@ BASE_PERMISSIONS = [
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -191,7 +189,7 @@ BASE_PERMISSIONS = [
             "{simplified_member_snowflake}",
             "command",
             None,
-            ["command.info.voice-mutes.command"],
+            [],
         ),
         (
             "{simplified_member_snowflake}",
@@ -206,7 +204,6 @@ BASE_PERMISSIONS = [
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -227,7 +224,7 @@ BASE_PERMISSIONS = [
             "{simplified_member_snowflake}",
             "command",
             "{other_guild_snowflake}",
-            ["command.info.voice-mutes.command", "other_guilds"],
+            ["other_guilds"],
         ),
         (
             "{simplified_member_snowflake}",
@@ -316,13 +313,12 @@ async def test_summary_text_command(
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
         ("{member_snowflake}", "auto", None, ["command.info.voice-mutes.auto"]),
         ("{member_snowflake}", "click", None, ["command.info.voice-mutes.click"]),
-        ("{member_snowflake}", "command", None, ["command.info.voice-mutesi.command"]),
+        ("{member_snowflake}", "command", None, []),
         ("{member_snowflake}", "server", None, ["command.info.voice-mutes.server"]),
         (
             "<@{member_snowflake}>",
@@ -331,7 +327,6 @@ async def test_summary_text_command(
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -341,7 +336,7 @@ async def test_summary_text_command(
             "<@{member_snowflake}>",
             "command",
             None,
-            ["command.info.voice-mutes.command"],
+            [],
         ),
         ("<@{member_snowflake}>", "server", None, ["command.info.voice-mutes.server"]),
         (
@@ -351,7 +346,6 @@ async def test_summary_text_command(
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -372,7 +366,7 @@ async def test_summary_text_command(
             "{member_snowflake}",
             "command",
             "{other_guild_snowflake}",
-            ["command.info.voice-mutes.command", "other_guilds"],
+            ["other_guilds"],
         ),
         (
             "{member_snowflake}",
@@ -387,7 +381,6 @@ async def test_summary_text_command(
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -408,7 +401,7 @@ async def test_summary_text_command(
             "<@{member_snowflake}>",
             "command",
             "{other_guild_snowflake}",
-            ["command.info.voice-mutes.command", "other_guilds"],
+            ["other_guilds"],
         ),
         (
             "<@{member_snowflake}>",
@@ -424,7 +417,6 @@ async def test_summary_text_command(
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -445,7 +437,7 @@ async def test_summary_text_command(
             "{simplified_member_snowflake}",
             "command",
             None,
-            ["command.info.voice-mutes.command"],
+            [],
         ),
         (
             "{simplified_member_snowflake}",
@@ -460,7 +452,6 @@ async def test_summary_text_command(
             [
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
-                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -481,7 +472,7 @@ async def test_summary_text_command(
             "{simplified_member_snowflake}",
             "command",
             "{other_guild_snowflake}",
-            ["command.info.voice-mutes.command", "other_guilds"],
+            ["other_guilds"],
         ),
         (
             "{simplified_member_snowflake}",

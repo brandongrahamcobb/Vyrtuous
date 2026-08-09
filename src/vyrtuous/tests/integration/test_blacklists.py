@@ -42,7 +42,7 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
-BASE_PERMISSIONS = ["command.info.bans"]
+BASE_PERMISSIONS = ["command.info.blacklists"]
 COMMAND = "blacklists"
 TABLE_NAME = Ban.__tablename__
 
@@ -63,24 +63,32 @@ TABLE_NAME = Ban.__tablename__
             "{other_guild_snowflake}",
             ["command.info.scope.channel", "other_guilds"],
         ),
-        ("{guild_snowflake}", None, ["command.info.scope.guild"]),
-        ("{member_snowflake}", None, ["command.info.scope.member"]),
-        ("<@{member_snowflake}>", None, ["command.info.scope.member"]),
+        ("{guild_snowflake}", None, ["command.info.scope.guild", "other_channels"]),
+        ("{member_snowflake}", None, ["command.info.scope.member", "other_channels"]),
+        (
+            "<@{member_snowflake}>",
+            None,
+            ["command.info.scope.member", "other_channels"],
+        ),
         (
             "{member_snowflake}",
             "{other_guild_snowflake}",
-            ["command.info.scope.member", "other_guilds"],
+            ["command.info.scope.member", "other_guilds", "other_channels"],
         ),
         (
             "<@{member_snowflake}>",
             "{other_guild_snowflake}",
-            ["command.info.scope.member", "other_guilds"],
+            ["command.info.scope.member", "other_guilds", "other_channels"],
         ),
-        ("{simplified_member_snowflake}", None, ["command.info.scope.member"]),
+        (
+            "{simplified_member_snowflake}",
+            None,
+            ["command.info.scope.member", "other_channels"],
+        ),
         (
             "{simplified_member_snowflake}>",
             "{other_guild_snowflake}",
-            ["command.info.scope.member", "other_guilds"],
+            ["command.info.scope.member", "other_guilds", "other_channels"],
         ),
     ],
 )
@@ -167,28 +175,36 @@ async def test_blacklists_text_command(
             ["command.info.scope.channel", "other_guilds"],
         ),
         (
-            "<#{channel_snowflake}",
+            "<#{channel_snowflake}>",
             "{other_guild_snowflake}",
             ["command.info.scope.channel", "other_guilds"],
         ),
-        ("{guild_snowflake}", None, ["command.info.scope.guild"]),
-        ("{member_snowflake}", None, ["command.info.scope.member"]),
-        ("<@{member_snowflake}>", None, ["command.info.scope.member"]),
+        ("{guild_snowflake}", None, ["command.info.scope.guild", "other_channels"]),
+        ("{member_snowflake}", None, ["command.info.scope.member", "other_channels"]),
+        (
+            "<@{member_snowflake}>",
+            None,
+            ["command.info.scope.member", "other_channels"],
+        ),
         (
             "{member_snowflake}",
             "{other_guild_snowflake}",
-            ["command.info.scope.member", "other_guilds"],
+            ["command.info.scope.member", "other_guilds", "other_channels"],
         ),
         (
-            "<@{member_snowflake}",
+            "<@{member_snowflake}>",
             "{other_guild_snowflake}",
-            ["command.info.scope.member", "other_guilds"],
+            ["command.info.scope.member", "other_guilds", "other_channels"],
         ),
-        ("{simplified_member_snowflake}", None, ["command.info.scope.member"]),
+        (
+            "{simplified_member_snowflake}",
+            None,
+            ["command.info.scope.member", "other_channels"],
+        ),
         (
             "{simplified_member_snowflake}>",
             "{other_guild_snowflake}",
-            ["command.info.scope.member", "other_guilds"],
+            ["command.info.scope.member", "other_guilds", "other_channels"],
         ),
     ],
 )

@@ -79,6 +79,13 @@ async def test_survey_text_command(
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
+
             full = f"{prefix}{COMMAND}"
             if channel is None:
                 c = channel
@@ -130,6 +137,13 @@ async def test_survey_app_command(
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(BASE_PERMISSIONS),
+                )
+            )
+
             cog = bot.get_cog("InfoAppCommands")
             command = cog.survey_app_command
             if channel is None:

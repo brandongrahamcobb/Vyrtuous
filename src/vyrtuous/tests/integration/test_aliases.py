@@ -41,7 +41,7 @@ TABLE_NAME = Alias.__tablename__
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_aliases_text_command(

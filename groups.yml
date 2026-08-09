@@ -115,6 +115,7 @@ groups:
     - command.info.voice-mutes.command
     - command.utility.delete
     - command.users.vegan
+    - other_channels
     inheritance:
     - everyone
     scope: channel

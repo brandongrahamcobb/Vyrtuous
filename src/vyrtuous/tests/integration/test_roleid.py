@@ -38,7 +38,11 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 
 
 COMMAND = "roleid"
-BASE_PERMISSIONS = ["command.info.roleid", "command.info.scope.role"]
+BASE_PERMISSIONS = [
+    "command.info.roleid",
+    "command.info.scope.role",
+    "command.info.scope.guild",
+]
 
 
 @pytest.mark.asyncio
@@ -78,9 +82,16 @@ async def test_roleid_text_command(
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+
             full = f"{prefix}{COMMAND} {ROLE_NAME}"
             if other_guild is None:
                 g = other_guild
@@ -124,9 +135,16 @@ async def test_roleid_app_command(
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+
             cog = bot.get_cog("InfoAppCommands")
             command = cog.get_role_snowflake_app_command
             if other_guild is None:

@@ -50,7 +50,7 @@ TABLE_NAME = Cap.__tablename__
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_caps_text_command(
@@ -110,7 +110,7 @@ async def test_caps_text_command(
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_caps_app_command(bot, target: str | None, extra_permissions):

@@ -63,7 +63,7 @@ async def test_cogs_text_command(bot, prefix: str):
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.permissions.permission_service.has_permissions",
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )
@@ -94,7 +94,7 @@ async def test_cogs_app_command(bot):
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.permissions.permission_service.has_permissions",
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
                     side_effect=check_permissions(BASE_PERMISSIONS),
                 )
             )

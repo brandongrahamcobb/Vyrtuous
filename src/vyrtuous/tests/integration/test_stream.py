@@ -97,6 +97,7 @@ async def test_stream_text_command(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
@@ -171,6 +172,7 @@ async def test_stream_app_command(
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(

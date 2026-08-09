@@ -38,7 +38,11 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 
 
 COMMAND = "members"
-BASE_PERMISSIONS = ["command.info.members", "command.info.scope.role"]
+BASE_PERMISSIONS = [
+    "command.info.members",
+    "command.info.scope.role",
+    "command.info.scope.guild",
+]
 
 
 @pytest.mark.asyncio
@@ -80,8 +84,8 @@ async def test_members_text_command(
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             r = role.format(role_snowflake=ROLE_ID)
@@ -129,8 +133,8 @@ async def test_members_app_command(
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
-                    "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             cog = bot.get_cog("InfoAppCommands")

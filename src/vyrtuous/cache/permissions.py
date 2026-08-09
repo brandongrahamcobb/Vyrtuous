@@ -22,6 +22,7 @@ from enum import Enum
 
 PERMISSION_TREE = {
     "other_guilds": [],
+    "other_channels": [],
     "command": {
         "alias": {
             "create": [],

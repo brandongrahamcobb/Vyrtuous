@@ -48,13 +48,13 @@ TABLE_NAME = Stream.__tablename__
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_streams_text_command(
     bot, prefix: str, target: str | None, extra_permissions
 ):
-    """
+    docstring = """
     List streams which are registered in the PostgreSQL database
     'vyrtuous' in the table 'streaming'.
 
@@ -66,9 +66,10 @@ async def test_streams_text_command(
 
     Example
     --------
-    >>> /vs
+    >>> /streams
     Embed
     """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -106,11 +107,11 @@ async def test_streams_text_command(
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_streams_app_command(bot, target: str | None, extra_permissions):
-    """
+    docstring = """
     List streams which are registered in the PostgreSQL database
     'vyrtuous' in the table 'streaming'.
 
@@ -122,9 +123,10 @@ async def test_streams_app_command(bot, target: str | None, extra_permissions):
 
     Example
     --------
-    >>> /vs
+    >>> /streams
     Embed
     """
+    assert COMMAND in docstring
     if (
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
@@ -144,7 +146,7 @@ async def test_streams_app_command(bot, target: str | None, extra_permissions):
                 )
             )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.list_automute_channels_app_command
+            command = cog.list_streaming_app_command
             if target is None:
                 t = target
             else:

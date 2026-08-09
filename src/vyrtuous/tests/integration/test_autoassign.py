@@ -49,15 +49,16 @@ TABLE_NAME = AutoAssignRole.__tablename__
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "elevated_group, group, role, channel, guild",
+    "elevated_group, group, role, channel, guild, extra_permissions",
     [
-        ("guild_owner", "administrator", "{role_snowflake}", None, None),
+        ("guild_owner", "administrator", "{role_snowflake}", None, None, []),
         (
             "guild_owner",
             "administrator",
             "{role_snowflake}",
             "{channel_snowflake}",
             None,
+            [],
         ),
         (
             "guild_owner",
@@ -65,6 +66,7 @@ TABLE_NAME = AutoAssignRole.__tablename__
             "{role_snowflake}",
             "{channel_snowflake}",
             "{guild_snowflake}",
+            [],
         ),
         (
             "guild_owner",
@@ -72,6 +74,7 @@ TABLE_NAME = AutoAssignRole.__tablename__
             "{role_snowflake}",
             "{channel_snowflake}",
             "{other_guild_snowflake}",
+            [],
         ),
     ],
 )
@@ -83,6 +86,7 @@ async def test_autoassign_text_command(
     role: str,
     guild: str | None,
     channel: str | None,
+    extra_permissions: list[str],
 ):
     docstring = """
     Toggle autoassignment roles which are registered in the PostgreSQL database
@@ -117,13 +121,14 @@ async def test_autoassign_text_command(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         permission_state = bot.registry.get(PermissionState)
         elevated_group = permission_state.groups.get(elevated_group)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             stack.enter_context(
@@ -155,15 +160,16 @@ async def test_autoassign_text_command(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "elevated_group, group, role, channel, guild",
+    "elevated_group, group, role, channel, guild, extra_permissions",
     [
-        ("guild_owner", "administrator", "{role_snowflake}", None, None),
+        ("guild_owner", "administrator", "{role_snowflake}", None, None, []),
         (
             "guild_owner",
             "administrator",
             "{role_snowflake}",
             "{channel_snowflake}",
             None,
+            [],
         ),
         (
             "guild_owner",
@@ -171,6 +177,7 @@ async def test_autoassign_text_command(
             "{role_snowflake}",
             "{channel_snowflake}",
             "{guild_snowflake}",
+            [],
         ),
         (
             "guild_owner",
@@ -178,6 +185,7 @@ async def test_autoassign_text_command(
             "{role_snowflake}",
             None,
             "{other_guild_snowflake}",
+            ["other_guilds"],
         ),
     ],
 )
@@ -188,6 +196,7 @@ async def test_autoassign_app_command(
     role: str,
     channel: str | None,
     guild: str | None,
+    extra_permissions: list[str],
 ):
     docstring = """
     Toggle autoassignment roles which are registered in the PostgreSQL database
@@ -218,13 +227,14 @@ async def test_autoassign_app_command(
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         permission_state = bot.registry.get(PermissionState)
         elevated_group = permission_state.groups.get(elevated_group)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             stack.enter_context(

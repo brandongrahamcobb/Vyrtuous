@@ -39,20 +39,27 @@ OTHER_GUILD_SNOWFLAKE = 10000000000000501
 
 
 COMMAND = "autoassigns"
-BASE_PERMISSIONS = ["command.info.autoassigns", "command.info.scope.guild"]
+BASE_PERMISSIONS = [
+    "command.info.autoassigns",
+    "command.info.scope.guild",
+    "other_channels",
+]
 TABLE_NAME = AutoAssignRole.__tablename__
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "guild",
+    "guild, extra_permissions",
     [
-        (None),
-        ("{guild_snowflake}"),
-        ("{other_guild_snowflake}"),
+        (None, []),
+        (None, []),
+        ("{guild_snowflake}", []),
+        ("{other_guild_snowflake}", ["other_guilds"]),
     ],
 )
-async def test_autoassigns_text_command(bot, prefix: str, guild: str | None):
+async def test_autoassigns_text_command(
+    bot, prefix: str, guild: str | None, extra_permissions: list[str]
+):
     docstring = """
     List autoassigns which are registered in the PostgreSQL database
     'vyrtuous' in the table 'autoassign_roles'.
@@ -74,13 +81,21 @@ async def test_autoassigns_text_command(bot, prefix: str, guild: str | None):
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permisisons.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permisisons),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permisisons),
+                )
+            )
+
             full = f"{prefix}{COMMAND}"
             if guild is None:
                 g = guild
@@ -96,16 +111,16 @@ async def test_autoassigns_text_command(bot, prefix: str, guild: str | None):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "channel, guild",
+    "guild, extra_permissions",
     [
-        (None, None),
-        ("{channel_snowflake}", None),
-        ("{channel_snowflake}", "{guild_snowflake}"),
-        ("{other_channel_snowflake}", "{other_guild_snowflake}"),
+        (None, []),
+        (None, []),
+        ("{guild_snowflake}", []),
+        ("{other_guild_snowflake}", ["other_guilds"]),
     ],
 )
 async def test_autoassigns_app_command(
-    bot, prefix: str, channel: str | None, guild: str | None
+    bot, prefix: str, guild: str | None, extra_permissions: list[str]
 ):
     docstring = """
     List autoassigns which are registered in the PostgreSQL database
@@ -128,13 +143,21 @@ async def test_autoassigns_app_command(
         os.environ["TEST_MODE"].lower() == "app"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(BASE_PERMISSIONS),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+
             cog = bot.get_cog("InfoAppCommands")
             command = cog.list_autoassignment_roles_app_command
             if guild is None:
@@ -144,6 +167,7 @@ async def test_autoassigns_app_command(
                     guild_snowflake=GUILD_SNOWFLAKE,
                     other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
                 )
+
             objects = setup(bot)
             msg = build_message(
                 author=objects.get("author", None),

@@ -38,6 +38,7 @@ from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.statistics import system_monitoring_service
+from vyrtuous.utils.users import vegan_service
 
 
 class InfoTextCommands(commands.Cog):
@@ -62,10 +63,10 @@ class InfoTextCommands(commands.Cog):
         permission_state = bot.registry.get(PermissionState)
         if ctx.guild is None:
             return await tick.end(warning="This command must target a valid server.")
-        if ctx.channel is None:
-            return await tick.end(warning="This command must target a valid server channel.")
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(warning="This command must target a valid server channel.")
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if guild is None:
             guild_snowflake = ctx.guild.id
         else:
@@ -75,19 +76,20 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            requested=["command.info.scope.guild", "command.info.autoassigns"],
+            requested=["command.info.autoassigns"],
+        )
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.scope.guild", "other_channels"],
         )
         if ctx.guild.id != guild_snowflake:
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
                 requested=["other_guilds"],
             )
         pages = await list_autoassign_roles.build_pages(
@@ -113,45 +115,37 @@ class InfoTextCommands(commands.Cog):
             return await tick.end(warning="This command must target a valid server.")
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must target a valid server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must target a valid server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             obj = ctx.guild
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.automutes"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.automutes"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -162,11 +156,9 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.automutes"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=obj.id,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_automute_channels.build_pages(obj=obj)
@@ -208,45 +200,37 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning=f"This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning=f"This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             obj = ctx.channel
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.bans"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.bans"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -257,34 +241,25 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.bans"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=obj.id,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                requested=["command.info.bans"],
+                requested=["command.info.scope.member", "other_channels"],
             )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_bans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
@@ -322,45 +297,37 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             obj = ctx.channel
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.blacklists"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.blacklists"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -371,34 +338,25 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.blacklists"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=obj.id,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                requested=["command.info.blacklists"],
+                requested=["command.info.scope.member", "other_channels"],
             )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_bans.build_blacklist_pages(
@@ -426,45 +384,37 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             obj = ctx.channel
         else:
             obj = target.target if target.target != "all" else ctx.guild
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.caps"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.caps"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -475,11 +425,9 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.caps"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_caps.build_pages(obj=obj)
@@ -503,23 +451,46 @@ class InfoTextCommands(commands.Cog):
             return await tick.end(warning="This command must be used in a server.")
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
-        await permission_service.has_permissions(
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.info.aliases"],
         )
         if target is None:
             obj = ctx.channel
         else:
             obj = target.target if target.target != "all" else ctx.guild
+        if isinstance(obj, discord.Guild):
+            await permission_service.has_permissions_at_all(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                requested=["command.info.scope.guild", "other_channels"],
+            )
+            if obj.id != guild_snowflake:
+                await permission_service.has_permissions_at_all(
+                    permission_state=permission_state,
+                    member_snowflake=ctx.author.id,
+                    requested=["other_guild"],
+                )
+        elif isinstance(obj, discord.abc.GuildChannel):
+            await permission_service.has_permissions_at_all(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                requested=["command.info.scope.channel"],
+            )
+            await permission_service.has_permissions(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                channel_snowflake=obj.id,
+                guild_snowflake=obj.guild.id,
+                requested=["command.info.aliases"],
+            )
         pages = await list_aliases.build_pages(obj=obj)
         return await tick.end(success=pages)
 
@@ -531,19 +502,17 @@ class InfoTextCommands(commands.Cog):
         permission_state: PermissionState = bot.registry.get(PermissionState)
         if ctx.guild is None:
             return await tick.end(warning="This command must be used in a server.")
-        else:
-            guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
-        await permission_service.has_permissions(
+        # else:
+        #     guild_snowflake = ctx.guild.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.info.cogs"],
         )
         loaded, not_loaded = [], []
@@ -580,20 +549,18 @@ class InfoTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
-        else:
-            guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
-        await permission_service.has_permissions(
+        # if ctx.guild is None:
+        #     return await tick.end(warning="This command must be used in a server.")
+        # else:
+        #     guild_snowflake = ctx.guild.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             member_snowflake=ctx.author.id,
             requested=["command.info.debug"],
         )
@@ -644,45 +611,37 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning=f"This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning=f"This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
            obj = ctx.channel
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.flags"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.flags"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -693,34 +652,25 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.flags"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                requested=["command.info.flags"],
+                requested=["command.info.scope.member", "other_channels"],
             )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_flags.build_pages(guild_snowflake=guild_snowflake, obj=obj)
@@ -758,45 +708,37 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
            obj = ctx.guild
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.heroes"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.heroes"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -807,34 +749,25 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.heroes"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                requested=["command.info.heroes"],
+                requested=["command.info.scope.member", "other_channels"],
             )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_heroes.build_pages(
@@ -863,12 +796,12 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             if ctx.guild is None:
                 return await tick.end(
@@ -877,42 +810,27 @@ class InfoTextCommands(commands.Cog):
             obj = ctx.channel
         else:
             obj = target.target
-        await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.info.intents"],
         )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                requested=["command.info.intents"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -923,11 +841,9 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.intents"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_intents.build_pages(
@@ -974,18 +890,18 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning=f"This command must used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning=f"This command must used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
            obj = ctx.channel
         else:
             obj = target.target
         if scope is None:
-            mute_type = "all"
+            mute_type = "command"
         else:
             mute_type = scope.scope
         async def has_mute_permissions(permission_state: PermissionState, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, mute_type: str):
@@ -1026,70 +942,78 @@ class InfoTextCommands(commands.Cog):
                         guild_snowflake=guild_snowflake,
                         requested=["command.info.voice-mutes.command"],
                     )
+        async def has_mute_permissions_at_all(permission_state: PermissionState, member_snowflake: int, mute_type: str):
+            match mute_type:
+                case "all":
+                    await permission_service.has_permissions_at_all(
+                        permission_state=permission_state,
+                        member_snowflake=member_snowflake,
+                        requested=[
+                            "command.info.voice-mutes.auto",
+                            "command.info.voice-mutes.click",
+                            "command.info.voice-mutes.command",
+                        ],
+                    )
+                case "auto":
+                    await permission_service.has_permissions_at_all(
+                        permission_state=permission_state,
+                        member_snowflake=member_snowflake,
+                        requested=["command.info.voice-mutes.auto"],
+                    )
+                case "click":
+                    await permission_service.has_permissions_at_all(
+                        permission_state=permission_state,
+                        member_snowflake=member_snowflake,
+                        requested=["command.info.voice-mutes.click"],
+                    )
+                case "command":
+                    await permission_service.has_permissions_at_all(
+                        permission_state=permission_state,
+                        member_snowflake=member_snowflake,
+                        requested=["command.info.voice-mutes.command"],
+                    )
+        await has_mute_permissions_at_all(permission_state=permission_state, member_snowflake=ctx.author.id, mute_type=mute_type)
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
-            await has_mute_permissions(permission_state=permission_state, channel_snowflake=channel_snowflake, guild_snowflake=obj.id, member_snowflake=ctx.author.id, mute_type=mute_type)
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
+            await has_mute_permissions(permission_state=permission_state, channel_snowflake=obj.id, guild_snowflake=obj.guild.id, member_snowflake=ctx.author.id, mute_type=mute_type)
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
-            await has_mute_permissions(permission_state=permission_state, channel_snowflake=obj.id, guild_snowflake=obj.guild.id, member_snowflake=ctx.author.id, mute_type=mute_type)
         elif isinstance(obj, discord.Member):
+            await permission_service.has_permissions_at_all(
+                permission_state=permission_state,
+                member_snowflake=ctx.author.id,
+                requested=["command.info.scope.member", "other_channels"],
+            )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
-                    requested=["command.info.scope.member"],
-                )
-                await permission_service.has_permissions(
-                    permission_state=permission_state,
-                    member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
-                await has_mute_permissions(permission_state=permission_state, channel_snowflake=channel_snowflake, guild_snowflake=guild.id, member_snowflake=ctx.author.id, mute_type=mute_type)
-            else:
-                await permission_service.has_permissions(
-                    permission_state=permission_state,
-                    member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    requested=["command.info.scope.member"],
-                )
-                await has_mute_permissions(permission_state=permission_state, channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id, mute_type=mute_type)
         pages = await list_voice_mutes.build_pages(
             guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
         )
@@ -1115,52 +1039,37 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
            obj = ctx.channel
         else:
             obj = target.target
-        await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.info.overwrites"],
         )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.overwrites"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -1171,11 +1080,9 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.overwrites"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         embed = list_overwrites.build_embed(obj=obj)
@@ -1209,25 +1116,21 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
-        await permission_service.has_permissions(
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_obj.id,
-            requested=["command.info.roleid", "command.info.scope.role"],
+            requested=["command.info.roleid", "command.info.scope.role", "command.info.scope.guild"],
         )
         if ctx.guild.id != guild_obj.id:
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_obj.id,
                 requested=["other_guilds"],
             )
         role = discord.utils.get(guild_obj.roles, name=role_name)
@@ -1271,12 +1174,12 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if isinstance(role.target, discord.Role):
             role_name = role.target.name
             color = (
@@ -1286,19 +1189,15 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             return await tick.end(warning="This command must target a valid role.")
-        await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            requested=["command.info.members", "command.info.scope.role"],
+            requested=["command.info.members", "command.info.scope.role", "command.info.scope.guild"],
         )
         if ctx.guild.id != guild_snowflake:
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
                 requested=["other_guilds"],
             )
         embeds = []
@@ -1331,21 +1230,19 @@ class InfoTextCommands(commands.Cog):
         tick = Tick(bot=self.__bot, ctx=ctx)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
-        if ctx.guild is None:
-            return await tick.end(warning="This command must be used in a server.")
-        else:
-            guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
-        await permission_service.has_permissions(
+        # if ctx.guild is None:
+        #     return await tick.end(warning="This command must be used in a server.")
+        # else:
+        #     guild_snowflake = ctx.guild.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.info.stats"],
         )
         embed = discord.Embed(title="Statistics")
@@ -1389,12 +1286,12 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             if ctx.guild is None:
                 return await tick.end(
@@ -1403,35 +1300,32 @@ class InfoTextCommands(commands.Cog):
             obj = ctx.guild
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.streams"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
                 requested=["command.info.streams"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -1442,11 +1336,9 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.streams"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_streams.build_pages(obj=obj)
@@ -1464,7 +1356,7 @@ class InfoTextCommands(commands.Cog):
         scope: ScopeObject | None = commands.parameter(
             converter=Scope,
             default=None,
-            description="Specify one of `all`, `click` or `command`.",
+            description="Specify one of `all`, `click`, `command` or `server`.",
         ),
         guild: TargetObject | None = commands.parameter(
             converter=Target,
@@ -1479,12 +1371,12 @@ class InfoTextCommands(commands.Cog):
             return await tick.end(warning="This command must be used in a server.")
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if guild is None:
             if ctx.guild is None:
                 return await tick.end(warning="This command must be used in a server.")
@@ -1496,16 +1388,11 @@ class InfoTextCommands(commands.Cog):
                         warning="This command must be used in a server."
                     )
                 if guild.target.id != ctx.guild.id:
-                    await permission_service.has_permissions(
+                    await permission_service.has_permissions_at_all(
                         permission_state=permission_state,
                         member_snowflake=ctx.author.id,
                         requested=["other_guilds"],
                     )
-                await permission_service.has_permissions(
-                    permission_state=permission_state,
-                    member_snowflake=ctx.author.id,
-                    requested=["command.info.scope.guild"],
-                )
                 guild_snowflake = guild.target.id
             else:
                 return await tick.end(
@@ -1518,90 +1405,62 @@ class InfoTextCommands(commands.Cog):
         else:
             return await tick.end(warning=f"This command must target a valid member.")
         if scope is None:
-            mute_type = "all"
+            mute_type = "command"
         else:
             mute_type = scope.scope
-        async def has_mute_permissions(permission_state: PermissionState, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, mute_type: str):
+        async def has_mute_permissions_at_all(permission_state: PermissionState, member_snowflake: int, mute_type: str):
             match mute_type:
                 case "all":
-                    await permission_service.has_permissions(
+                    await permission_service.has_permissions_at_all(
                         permission_state=permission_state,
                         member_snowflake=member_snowflake,
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
                         requested=[
                             "command.info.voice-mutes.auto",
                             "command.info.voice-mutes.click",
                             "command.info.voice-mutes.command",
+                            "command.info.voice-mutes.server"
                         ],
                     )
                 case "auto":
-                    await permission_service.has_permissions(
+                    await permission_service.has_permissions_at_all(
                         permission_state=permission_state,
                         member_snowflake=member_snowflake,
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
                         requested=["command.info.voice-mutes.auto"],
                     )
                 case "click":
-                    await permission_service.has_permissions(
+                    await permission_service.has_permissions_at_all(
                         permission_state=permission_state,
                         member_snowflake=member_snowflake,
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
                         requested=["command.info.voice-mutes.click"],
                     )
                 case "command":
-                    await permission_service.has_permissions(
+                    await permission_service.has_permissions_at_all(
                         permission_state=permission_state,
                         member_snowflake=member_snowflake,
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
                         requested=["command.info.voice-mutes.command"],
                     )
+                case "server":
+                    await permission_service.has_permissions_at_all(
+                        permission_state=permission_state,
+                        member_snowflake=member_snowflake,
+                        requested=["command.info.voice-mutes.server"],
+                    )
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.scope.member", "other_channels", "command.info.bans", "command.info.flags", "command.info.text-mutes"],
+        )
+        await has_mute_permissions_at_all(permission_state=permission_state, member_snowflake=ctx.author.id, mute_type=mute_type)
         if (
             guild
             and isinstance(guild, discord.Guild)
             and guild.id != guild_snowflake
         ):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild.id,
-                requested=["command.info.bans", "command.info.flags", "command.info.text-mutes"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild.id,
                 requested=["other_guilds"],
             )
-            await has_mute_permissions(permission_state=permission_state, channel_snowflake=channel_snowflake, guild_snowflake=guild.id, member_snowflake=ctx.author.id, mute_type=mute_type)
-        else:
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                requested=["command.info.bans", "command.info.flags", "command.info.text-mutes"],
-            )
-            await has_mute_permissions(permission_state=permission_state, channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id, mute_type=mute_type)
         pages: list[discord.Embed] = []
         services = []
         services.append(list_bans)
@@ -1615,10 +1474,6 @@ class InfoTextCommands(commands.Cog):
                 for page in summary_pages:
                     if isinstance(page, discord.Embed):
                         pages.append(page)
-        if scope is None:
-            mute_type = "all"
-        else:
-            mute_type = scope.scope
         summary_pages = await list_voice_mutes.build_pages(
             guild_snowflake=guild_snowflake, obj=member_snowflake, mute_type=mute_type
         )
@@ -1666,19 +1521,22 @@ class InfoTextCommands(commands.Cog):
             return await tick.end(
                 warning="This command must target a valid channel."
             )
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.scope.channel"],
+        )
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
-            requested=["command.info.survey", "command.info.scope.channel"],
+            requested=["command.info.survey"],
         )
         if ctx.guild.id != guild_snowflake:
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
                 requested=["other_guilds"],
             )
         pages = await permission_service.survey(
@@ -1722,45 +1580,42 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning=f"This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning=f"This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
            obj = ctx.channel
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.text-mutes"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
                 requested=["command.info.text-mutes"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -1771,34 +1626,25 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.text-mutes"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                requested=["command.info.text-mutes"],
+                requested=["command.info.scope.member", "other_channels"],
             )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_text_mutes.build_pages(
@@ -1838,60 +1684,53 @@ class InfoTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
            obj = ctx.guild
         else:
             obj = target.target if target.target != "all" else ctx.guild
-        if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
+        if not vegan_service.is_vegan(
+            guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id
+        ):
+            return await tick.end(
+                warning="You have insufficient privileges to do that (`command.info.vegans`).", ephemeral=True
             )
-            await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.vegans"],
+        )
+        if isinstance(obj, discord.Guild):
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.vegans"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                requested=["command.info.scope.member"],
-            )
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                requested=["command.info.vegans"],
+                requested=["command.info.scope.member", "other_channels"],
             )
             if (
                 guild
                 and isinstance(guild, discord.Guild)
                 and guild.id != guild_snowflake
             ):
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_vegans.build_pages(guild_snowflake=guild_snowflake, obj=obj)
@@ -1920,12 +1759,12 @@ class InfoTextCommands(commands.Cog):
             )
         else:
             guild_snowflake = ctx.guild.id
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if target is None:
             if ctx.guild is None:
                 return await tick.end(
@@ -1934,35 +1773,27 @@ class InfoTextCommands(commands.Cog):
             obj = ctx.guild
         else:
             obj = target.target
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=ctx.author.id,
+            requested=["command.info.video-channels"],
+        )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.scope.guild"],
-            )
-            await permission_service.has_permissions(
-                permission_state=permission_state,
-                member_snowflake=ctx.author.id,
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=obj.id,
-                requested=["command.info.video-channels"],
+                requested=["command.info.scope.guild", "other_channels"],
             )
             if obj.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.id,
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.abc.GuildChannel):
-            await permission_service.has_permissions(
+            await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=ctx.author.id,
-                channel_snowflake=obj.id,
-                guild_snowflake=obj.guild.id,
                 requested=["command.info.scope.channel"],
             )
             await permission_service.has_permissions(
@@ -1973,11 +1804,9 @@ class InfoTextCommands(commands.Cog):
                 requested=["command.info.video-channels"],
             )
             if obj.guild.id != guild_snowflake:
-                await permission_service.has_permissions(
+                await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
                     member_snowflake=ctx.author.id,
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=obj.guild.id,
                     requested=["other_guilds"],
                 )
         pages = await list_video_channels.build_pages(obj=obj)

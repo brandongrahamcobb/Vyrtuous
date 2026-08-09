@@ -45,7 +45,7 @@ BASE_PERMISSIONS = ["command.info.intents"]
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_intents_text_command(
@@ -78,6 +78,12 @@ async def test_intents_text_command(
                     side_effect=check_permissions(extra_permissions),
                 )
             )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
             full = f"{prefix}{COMMAND}"
             if target is None:
                 t = target
@@ -97,7 +103,7 @@ async def test_intents_text_command(
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_intents_app_command(bot, target: str | None, extra_permissions):
@@ -125,6 +131,12 @@ async def test_intents_app_command(bot, target: str | None, extra_permissions):
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
+                    side_effect=check_permissions(extra_permissions),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "vyrtuous.permissions.permission_service.has_permissions_at_all",
                     side_effect=check_permissions(extra_permissions),
                 )
             )

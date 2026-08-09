@@ -47,7 +47,7 @@ TABLE_NAME = VideoChannel.__tablename__
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permissions):
@@ -105,7 +105,7 @@ async def test_vs_text_command(bot, prefix: str, target: str | None, extra_permi
     [
         ("{channel_snowflake}", ["command.info.scope.channel"]),
         ("<#{channel_snowflake}>", ["command.info.scope.channel"]),
-        ("{guild_snowflake}", ["command.info.scope.guild"]),
+        ("{guild_snowflake}", ["command.info.scope.guild", "other_channels"]),
     ],
 )
 async def test_vs_app_command(bot, target: str | None, extra_permissions):
@@ -145,7 +145,7 @@ async def test_vs_app_command(bot, target: str | None, extra_permissions):
                 )
             )
             cog = bot.get_cog("InfoAppCommands")
-            command = cog.list_automute_channels_app_command
+            command = cog.list_video_channels_app_command
             if target is None:
                 t = target
             else:
