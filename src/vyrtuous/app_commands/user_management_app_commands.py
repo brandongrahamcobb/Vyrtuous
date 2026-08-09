@@ -495,7 +495,8 @@ class UserManagementAppCommands(commands.Cog):
             guild_snowflake=guild_snowflake, member_snowflake=interaction.user.id
         ):
             return await tick.end(
-                warning="You do not have access to vegan commands.", ephemeral=True
+                warning="You have insufficient privileges to do that (`command.info.vegans`).",
+                ephemeral=True,
             )
         if isinstance(member.target, int):
             member_snowflake = member.target

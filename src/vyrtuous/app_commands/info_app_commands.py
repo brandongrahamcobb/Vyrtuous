@@ -38,6 +38,7 @@ from vyrtuous.permissions import permission_service
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.statistics import system_monitoring_service
+from vyrtuous.utils.users import vegan_service
 from vyrtuous.view.groups_view import GroupsView
 
 
@@ -1841,6 +1842,12 @@ class InfoAppCommands(commands.Cog):
            obj = interaction.guild
         else:
             obj = target.target if target.target != "all" else interaction.guild
+        if not vegan_service.is_vegan(
+            guild_snowflake=guild_snowflake, member_snowflake=interaction.user.id
+        ):
+            return await tick.end(
+                warning="You have insufficient privileges to do that (`command.info.vegans`).", ephemeral=True
+            )
         await tick.defer()
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions(
