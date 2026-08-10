@@ -135,7 +135,11 @@ class RevokeView(discord.ui.View):
             author_scope = author_scopes.get(group.alias)
             if author_scope is None:
                 continue
-            if author_scope.guilds and role.guild_snowflake not in author_scope.guilds:
+            if (
+                role.guild_snowflake is not None
+                and author_scope.guilds
+                and role.guild_snowflake not in author_scope.guilds
+            ):
                 continue
             if (
                 role.channel_snowflake is not None

@@ -173,6 +173,8 @@ class GroupsView(discord.ui.View):
         ):
             if channel not in limited_channels and channel in available_channels:
                 limited_channels.append(channel)
+                if default:
+                    self.__selected_channel = channel
         channel_options = []
         channel_options.extend(
             [
