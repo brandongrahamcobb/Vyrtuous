@@ -901,7 +901,7 @@ class InfoAppCommands(commands.Cog):
                 requested=["other_guilds"],
             )
         embeds = []
-        members = [member for member in members if role in member.roles]
+        members = [member for member in members if role.target in member.roles]
         chunk_size = 12
         for index in range(0, len(members), chunk_size):
             chunk = members[index : index + chunk_size]
