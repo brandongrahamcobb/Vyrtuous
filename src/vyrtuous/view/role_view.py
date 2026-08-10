@@ -36,6 +36,7 @@ from vyrtuous.utils.errors.error import (
 from vyrtuous.utils.messaging.snowflake_context import SnowflakeContext
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.tracking import stream_service
+from vyrtuous.utils.users import vegan_service
 
 
 class RoleView(discord.ui.View):

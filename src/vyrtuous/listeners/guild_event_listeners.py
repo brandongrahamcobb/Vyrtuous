@@ -22,7 +22,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.utils.users import autoassign_role_service
+from vyrtuous.utils.users import autoassign_role_service, vegan_service
 
 
 class GuildEventListeners(commands.Cog):
@@ -40,6 +40,9 @@ class GuildEventListeners(commands.Cog):
         autoassign_role_snowflakes = await autoassign_role_service.get_autoassign_roles(
             guild_snowflake
         )
+        vegan_role_snowflakes = await vegan_service.get_vegan_roles(
+            guild_snowflake=guild_snowflake
+        )
         before_role_snowflakes = {str(r.id) for r in before.roles}
         after_role_snowflakes = {str(r.id) for r in after.roles}
         added_roles = after_role_snowflakes - before_role_snowflakes
@@ -49,6 +52,11 @@ class GuildEventListeners(commands.Cog):
         )
         if added_roles:
             for added_role in added_roles:
+                if int(added_role) in vegan_role_snowflakes:
+                    await vegan_service.disable_recent_vegan(
+                        guild_snowflake=guild_snowflake,
+                        member_snowflake=after.id,
+                    )
                 if int(added_role) in autoassign_role_snowflakes:
                     await autoassign_role_service.added_role(
                         guild_snowflake=guild_snowflake,

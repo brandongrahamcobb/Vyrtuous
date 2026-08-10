@@ -24,7 +24,7 @@ from vyrtuous.cache.registry import ChannelState, MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.vegan import Vegan
 from vyrtuous.models.duration import DurationBuilder
-from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound
+from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
 
 MODEL = Vegan
 
@@ -186,4 +186,36 @@ async def populate() -> None:
         original_set[vegan.guild_snowflake].setdefault(
             vegan.member_snowflake,
             (vegan.created_at, vegan.notes),
+        )
+
+
+async def get_vegan_roles(
+    guild_snowflake: int,
+) -> set[int]:
+    role_snowflakes = set()
+    bot: DiscordBot = DiscordBot.get_instance()
+    guild = bot.get_guild(guild_snowflake)
+    if guild is None:
+        raise GuildNotFound(str(guild_snowflake))
+    for role in guild.roles:
+        if role.name == "Vegan":
+            role_snowflakes.add(role.id)
+    return role_snowflakes
+
+
+async def disable_recent_vegan(
+    guild_snowflake: int,
+    member_snowflake: int,
+):
+    bot: DiscordBot = DiscordBot.get_instance()
+    database_factory: DatabaseFactory = DatabaseFactory(Vegan)
+    vegan = await database_factory.select(
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+        singular=True,
+    )
+    if vegan:
+        await database_factory.delete_by_cls(vegan)
+        bot.logger.debug(
+            "Removed a member from the recent vegan table due to Vegan role enrolement."
         )

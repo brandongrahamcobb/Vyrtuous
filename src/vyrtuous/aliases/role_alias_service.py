@@ -24,10 +24,13 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
+from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.db.vegan import Vegan
 from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import stream_service
+from vyrtuous.utils.users import vegan_service
 
 
 @dataclass(frozen=True)
@@ -88,7 +91,7 @@ async def enable(
     bot: DiscordBot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
     if guild is None:
-        raise commands.GuildNotFound(str(guild_snowflake))
+        raise GuildNotFound(str(guild_snowflake))
     if guild.me.id == member_snowflake:
         raise TargetIsBot
     role = guild.get_role(role_snowflake)
