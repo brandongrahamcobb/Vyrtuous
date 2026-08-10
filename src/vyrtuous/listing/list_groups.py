@@ -164,7 +164,7 @@ async def build_pages(
                     channel = guild.get_channel(channel_snowflake_) if guild else None
                     if channel is None:
                         continue
-                    lines.append(f"**User:** {display}\n**Channel:** {channel.mention}")
+                    lines.append(f"**User:** {display}")
                     field_count += 1
             if field_count >= list_service.CHUNK_SIZE:
                 embed.add_field(

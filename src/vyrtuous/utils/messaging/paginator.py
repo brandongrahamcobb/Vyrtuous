@@ -49,11 +49,13 @@ class Paginator:
         if isinstance(source, discord.Interaction):
             if not source.response.is_done():
                 await source.response.send_message(embed=embed, ephemeral=ephemeral)
+                message: discord.Message | discord.interactions.InteractionMessage = (
+                    await source.original_response()
+                )
             else:
-                await source.followup.send(embed=embed, ephemeral=ephemeral)
-            message: discord.Message | discord.interactions.InteractionMessage = (
-                await source.original_response()
-            )
+                message = await source.followup.send(
+                    embed=embed, ephemeral=ephemeral, wait=True
+                )
         else:
             message = await source.reply(embed=embed)
         for emoji in self.NAV_EMOJIS:

@@ -406,7 +406,7 @@ class GroupsView(discord.ui.View):
                 guild_snowflake=None,
                 channel_snowflake=None,
             )
-        return await self.__tick.end(success=pages)
+        await self.__tick.end(success=pages)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction, button):
