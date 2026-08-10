@@ -166,6 +166,13 @@ class GroupsView(discord.ui.View):
         limited_channels = self.limit_channels_to_top_24(
             available=set(available_channels)
         )
+        bot: DiscordBot = DiscordBot.get_instance()
+        channel = bot.get_channel(self.__channel_snowflake)
+        if isinstance(
+            channel, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
+        ):
+            if channel not in limited_channels and channel in available_channels:
+                limited_channels.append(channel)
         channel_options = []
         channel_options.extend(
             [
@@ -343,6 +350,7 @@ class GroupsView(discord.ui.View):
                 self.__selected_channel = None
                 self.channel_select.disabled = False
             self._build_channel_options(channels, default=False)
+            self.channel_select.placeholder = "Select a channel"
             for option in self.guild_select.options:
                 option.default = False
         await interaction.edit_original_response(view=self)

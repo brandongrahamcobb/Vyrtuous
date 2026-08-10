@@ -20,17 +20,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from dataclasses import dataclass
 
 import discord
-from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot, TargetIsBot
 from vyrtuous.cache.registry import MemberState
-from vyrtuous.db.database_factory import DatabaseFactory
-from vyrtuous.db.vegan import Vegan
 from vyrtuous.models.duration import DurationObject
 from vyrtuous.utils.errors.error import GuildNotFound, MemberNotFound, RoleNotFound
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.tracking import stream_service
-from vyrtuous.utils.users import vegan_service
 
 
 @dataclass(frozen=True)

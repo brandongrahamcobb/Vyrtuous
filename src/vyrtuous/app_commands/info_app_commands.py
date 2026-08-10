@@ -613,11 +613,11 @@ class InfoAppCommands(commands.Cog):
 
     @metadata(permission="command.info.groups")
     @app_commands.command(name="groups", description="List groups.")
-    @app_commands.describe(member="Specify a member ID/mention.")
+    @app_commands.describe(target="Specify a channel ID/mention or member ID/mention.")
     async def grant_group_app_command(
         self,
         interaction: discord.Interaction,
-        member: app_commands.Transform[TargetObject | None, AppTarget] = None,
+        target: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
@@ -632,19 +632,29 @@ class InfoAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
-        if member is None:
+        if target is None:
+            channel_snowflake = interaction.channel.id
             member_snowflake = None
-        elif isinstance(member.target, int):
-            member_snowflake = member.target
-        elif isinstance(member.target, discord.Member):
-            member_snowflake = member.target.id
+        elif isinstance(target.target, int):
+            channel_snowflake = interaction.channel.id
+            member_snowflake = target.target
+        elif isinstance(target.target, discord.Member):
+            member_snowflake = target.target.id
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member", "other_channels"],
             )
+        elif isinstance(target.target, discord.abc.GuildChannel):
+            channel_snowflake = target.target.id
+            member_snowflake = None 
+            await permission_service.has_permissions_at_all(
+                permission_state=permission_state,
+                member_snowflake=interaction.user.id,
+                requested=["command.info.scope.channel"],
+            )
         else:
-            return await tick.end(warning=f"This command must target a valid member.", ephemeral=True)
+            return await tick.end(warning=f"This command must target a valid channel or member.", ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
