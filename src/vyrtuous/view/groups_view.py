@@ -134,15 +134,15 @@ class GroupsView(discord.ui.View):
             group_alias=group.alias,
             groups=permission_state.groups,
         )
-        for ancestor_alias in ancestors:
-            ancestor = permission_state.groups[ancestor_alias]
-            if ancestor.is_sysadmin or ancestor.is_guild_owner or ancestor.default:
+        for alias in (group.alias, *ancestors):
+            candidate = permission_state.groups[alias]
+            if candidate.is_sysadmin or candidate.is_guild_owner or candidate.default:
                 continue
-            self.__groups.setdefault(ancestor.alias, ancestor)
-            ancestor_scope = GroupScope(group=ancestor)
-            ancestor_scope.guilds.update(scope.guilds)
-            ancestor_scope.channels.update(scope.channels)
-            self.add_group_scope(ancestor_scope)
+            self.__groups.setdefault(candidate.alias, candidate)
+            candidate_scope = GroupScope(group=candidate)
+            candidate_scope.guilds.update(scope.guilds)
+            candidate_scope.channels.update(scope.channels)
+            self.add_group_scope(candidate_scope)
 
     def _build_group_options(self, available_groups: list[str]):
         group_options = []
@@ -171,8 +171,9 @@ class GroupsView(discord.ui.View):
         if isinstance(
             channel, (discord.VoiceChannel, discord.TextChannel, discord.StageChannel)
         ):
-            if channel not in limited_channels and channel in available_channels:
-                limited_channels.append(channel)
+            if channel in available_channels:
+                if channel not in limited_channels:
+                    limited_channels.append(channel)
                 if default:
                     self.__selected_channel = channel
         channel_options = []

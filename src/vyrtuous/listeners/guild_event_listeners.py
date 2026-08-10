@@ -57,6 +57,11 @@ class GuildEventListeners(commands.Cog):
                         guild_snowflake=guild_snowflake,
                         member_snowflake=after.id,
                     )
+                    vegans_dict = bot.registry.get(MemberState).vegan.get(
+                        guild_snowflake, None
+                    )
+                    if vegans_dict:
+                        vegans_dict.pop(after.id)
                 if int(added_role) in autoassign_role_snowflakes:
                     await autoassign_role_service.added_role(
                         guild_snowflake=guild_snowflake,
