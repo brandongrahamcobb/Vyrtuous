@@ -61,7 +61,12 @@ class Paginator:
         for emoji in self.NAV_EMOJIS:
             await message.add_reaction(emoji)
         bot.loop.create_task(
-            self.wait_for_reactions(message=message, pages=pages, timeout=timeout)
+            self.wait_for_reactions(
+                guild_snowflake=source.guild.id,
+                message=message,
+                pages=pages,
+                timeout=timeout,
+            )
         )
         return message
 
@@ -90,7 +95,12 @@ class Paginator:
         for emoji in self.NAV_EMOJIS:
             await message.add_reaction(emoji)
         bot.loop.create_task(
-            self.wait_for_reactions(message=message, pages=pages, timeout=timeout)
+            self.wait_for_reactions(
+                guild_snowflake=guild_snowflake,
+                message=message,
+                pages=pages,
+                timeout=timeout,
+            )
         )
         return message
 
@@ -111,6 +121,7 @@ class Paginator:
 
     async def wait_for_reactions(
         self,
+        guild_snowflake: int,
         message: discord.Message,
         pages: list[discord.Embed],
         timeout: int,
@@ -136,6 +147,7 @@ class Paginator:
                     bot.logger.warning(str(e).capitalize())
                 break
             await self.handle_reaction(
+                guild_snowflake=guild_snowflake,
                 message=message,
                 pages=pages,
                 reaction=reaction,
@@ -145,7 +157,9 @@ class Paginator:
             except Exception as e:
                 bot.logger.warning(str(e).capitalize())
 
-    async def handle_reaction(self, message, pages, reaction) -> None:
+    async def handle_reaction(
+        self, guild_snowflake: int, message, pages, reaction
+    ) -> None:
         async with self._reaction_lock:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):
@@ -154,7 +168,7 @@ class Paginator:
                 )
                 await message.edit(
                     embed=self.get_current_embed(
-                        guild_snowflake=message.channel.guild.id,
+                        guild_snowflake=guild_snowflake,
                         pages=pages,
                     )
                 )
