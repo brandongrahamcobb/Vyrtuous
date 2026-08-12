@@ -906,7 +906,7 @@ class InfoAppCommands(commands.Cog):
         for index in range(0, len(members), chunk_size):
             chunk = members[index : index + chunk_size]
             description = "\n".join(
-                f"{position + 1}. {member.mention} ({member.id})"
+                f"{position + 1}. {member.mention}"
                 for position, member in enumerate(chunk, start=index)
             )
             embed = discord.Embed(

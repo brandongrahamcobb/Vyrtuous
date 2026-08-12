@@ -367,8 +367,8 @@ class GrantView(discord.ui.View):
             )
             if group:
                 if self.__selected_group.alias in group.ancestors:
-                    return await interaction.response.send_message(
-                        content=f"You cannot grant {member_str} a group they inherit from.",
+                    return await self.__tick.end(
+                        warning=f"You cannot grant {member_str} a group they inherit from.",
                         ephemeral=True,
                     )
             record = await database_factory.select(
@@ -398,8 +398,8 @@ class GrantView(discord.ui.View):
             )
             if group:
                 if self.__selected_group.alias in group.ancestors:
-                    return await interaction.response.send_message(
-                        content=f"You cannot grant {member_str} a group they inherit from.",
+                    return await self.__tick.end(
+                        warning=f"You cannot grant {member_str} a group they inherit from.",
                         ephemeral=True,
                     )
             record = await database_factory.select(
@@ -425,8 +425,8 @@ class GrantView(discord.ui.View):
             )
             if group:
                 if self.__selected_group.alias in group.ancestors:
-                    return await interaction.response.send_message(
-                        content=f"You cannot grant {member_str} a group they inherit from.",
+                    return await self.__tick.end(
+                        warning=f"You cannot grant {member_str} a group they inherit from.",
                         ephemeral=True,
                     )
             record = await database_factory.select(
