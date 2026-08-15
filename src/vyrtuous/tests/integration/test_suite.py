@@ -249,8 +249,6 @@ async def capture_command():
 def check_permissions(permissions: list[str]):
     def check(*args, requested=None, **kwargs):
         requested = requested or []
-        print(requested)
-        print(permissions)
         if not set(requested).issubset(set(permissions)):
             raise CheckFailure("Failed permission check.")
 

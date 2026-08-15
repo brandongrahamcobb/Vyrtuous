@@ -304,8 +304,6 @@ async def added_role(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
-        role_snowflakes=role_snowflake,
-        inside_fields=["role_snowflakes"],
         singular=True,
     )
     guild = bot.get_guild(guild_snowflake)

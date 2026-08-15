@@ -67,6 +67,7 @@ class DiscordBot(commands.Bot):
         DiscordBot._instance = self
         intents = discord.Intents.all()
         # intents.message_content = False
+        # intents.presences = False
         super().__init__(
             command_prefix=config["discord_command_prefix"],
             help_command=None,

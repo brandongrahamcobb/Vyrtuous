@@ -164,21 +164,38 @@ class InfractionView(discord.ui.View):
         limited_channels = self.limit_channels_to_top_24(
             available=set(self.available_channels)
         )
+        database_factory: DatabaseFactory = DatabaseFactory(self.__model)
         if self.__model == VoiceMute:
             types = (discord.VoiceChannel, discord.StageChannel)
+            records = []
+            auto_records = await database_factory.select(
+                channel_snowflake=self.__channel_snowflake,
+                guild_snowflake=self.__guild_snowflake,
+                member_snowflake=self.__ctx.member_snowflake,
+                target="auto",
+                singular=True,
+            )
+            command_records = await database_factory.select(
+                channel_snowflake=self.__channel_snowflake,
+                guild_snowflake=self.__guild_snowflake,
+                member_snowflake=self.__ctx.member_snowflake,
+                target="command",
+                singular=True,
+            )
+            records.extend(auto_records)
+            records.extend(command_records)
         else:
             types = (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
+            records = await database_factory.select(
+                channel_snowflake=self.__channel_snowflake,
+                guild_snowflake=self.__guild_snowflake,
+                member_snowflake=self.__ctx.member_snowflake,
+                singular=True,
+            )
         self._build_channel_options(
             limited_channels=limited_channels, default=True, types=types
         )
         await self.build_duration_options()
-        database_factory: DatabaseFactory = DatabaseFactory(self.__model)
-        records = await database_factory.select(
-            channel_snowflake=self.__channel_snowflake,
-            guild_snowflake=self.__guild_snowflake,
-            member_snowflake=self.__ctx.member_snowflake,
-            singular=False,
-        )
         if records:
             self.remove_item(self.duration_select)
         if (
@@ -545,7 +562,7 @@ class InfractionView(discord.ui.View):
                             member_snowflake=self.__ctx.member_snowflake,
                         )
                     case VoiceMute() as vmute:
-                        if vmute.target in ["auto", "click", "command"]:
+                        if vmute.target in ["auto", "command"]:
                             await database_factory.delete_by_cls(vmute)
                             target = record.target
                             is_channel_scope = await unvoice_mute_alias_service.disable(
