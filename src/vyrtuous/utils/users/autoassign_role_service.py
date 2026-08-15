@@ -360,11 +360,9 @@ async def removed_role(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         member_snowflake=member_snowflake,
-        role_snowflakes=role_snowflake,
-        inside_fields=["role_snowflakes"],
         singular=True,
     )
-    if not group_member:
+    if not group_member or role_snowflake not in group_member.role_snowflakes:
         return
     permission_state = bot.registry.get(PermissionState)
     group = permission_state.groups.get(autoassign_role.group_alias, None)
