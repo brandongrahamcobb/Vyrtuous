@@ -215,7 +215,10 @@ async def disable_recent_vegan(
         singular=True,
     )
     if vegan:
-        await database_factory.delete_by_cls(vegan)
+        await database_factory.delete(
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
         bot.logger.debug(
             "Removed a member from the recent vegan table due to Vegan role enrolement."
         )

@@ -103,6 +103,10 @@ class DatabaseFactory(Generic[T]):
         fields = list(cls.__annotations__.keys())
         table_name = getattr(cls, "__tablename__")
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
+        if not filtered_kwargs:
+            raise ValueError(
+                f"delete_by_cls called with no matching fields for {table_name}; refusing unbounded DELETE"
+            )
         conditions = []
         values = []
         if filtered_kwargs:

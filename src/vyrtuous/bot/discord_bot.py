@@ -66,15 +66,16 @@ class DiscordBot(commands.Bot):
     ):
         DiscordBot._instance = self
         intents = discord.Intents.all()
-        # intents.message_content = False
-        # intents.presences = False
+        self.config = config
+        if self.config["release_mode"] is False:
+            intents.message_content = False
+            intents.presences = False
         super().__init__(
             command_prefix=config["discord_command_prefix"],
             help_command=None,
             intents=intents,
             **kwargs,
         )
-        self.config = config
         self.db_pool = db_pool
         self.__initial_extensions = initial_extensions
         self.logger = logger

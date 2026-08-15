@@ -873,7 +873,7 @@ class ClearView(discord.ui.View):
             objects = await database_factory.select(singular=False, **select_kwargs)
             for obj in objects:
                 deleted_count += 1
-                await database_factory.delete_by_cls(obj)
+                # delete by class was too extreme
                 match obj.identifier:
                     case "alias":
                         await alias_service.disable(

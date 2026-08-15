@@ -182,8 +182,8 @@ class InfractionView(discord.ui.View):
                 target="command",
                 singular=True,
             )
-            records.extend(auto_records)
-            records.extend(command_records)
+            records.append(auto_records)
+            records.append(command_records)
         else:
             types = (discord.VoiceChannel, discord.StageChannel, discord.TextChannel)
             records = await database_factory.select(
@@ -524,7 +524,12 @@ class InfractionView(discord.ui.View):
                                     member_snowflake=self.__ctx.member_snowflake,
                                 )
                             )
-                        await database_factory.delete_by_cls(ban)
+                        await database_factory.delete_by_cls(
+                            ban,
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                        )
                         is_channel_scope = await unban_alias_service.disable(
                             channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=self.__guild_snowflake,
@@ -537,7 +542,12 @@ class InfractionView(discord.ui.View):
                             member_snowflake=self.__ctx.member_snowflake,
                         )
                     case Flag() as flag:
-                        await database_factory.delete_by_cls(flag)
+                        await database_factory.delete_by_cls(
+                            flag,
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                        )
                         is_channel_scope = await unflag_alias_service.disable(
                             channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=self.__guild_snowflake,
@@ -549,7 +559,12 @@ class InfractionView(discord.ui.View):
                             member_snowflake=self.__ctx.member_snowflake,
                         )
                     case TextMute() as tmute:
-                        await database_factory.delete_by_cls(tmute)
+                        await database_factory.delete_by_cls(
+                            tmute,
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
+                            member_snowflake=self.__ctx.member_snowflake,
+                        )
                         is_channel_scope = await untext_mute_alias_service.disable(
                             channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=self.__guild_snowflake,
@@ -563,7 +578,13 @@ class InfractionView(discord.ui.View):
                         )
                     case VoiceMute() as vmute:
                         if vmute.target in ["auto", "command"]:
-                            await database_factory.delete_by_cls(vmute)
+                            await database_factory.delete_by_cls(
+                                vmute,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
+                                member_snowflake=self.__ctx.member_snowflake,
+                                target=record.target,
+                            )
                             target = record.target
                             is_channel_scope = await unvoice_mute_alias_service.disable(
                                 channel_snowflake=self.__channel_snowflake,
