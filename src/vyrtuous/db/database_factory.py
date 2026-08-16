@@ -18,7 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Generic, Literal, TypeVar, overload
+from typing import Any, Generic, Literal, TypeVar, overload
 
 from vyrtuous.bot.discord_bot import DiscordBot
 
@@ -87,12 +87,15 @@ class DatabaseFactory(Generic[T]):
         fields = list(self.model.__annotations__.keys())
         table_name = getattr(self.model, "__tablename__")
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
-        conditions = []
-        values = []
-        if filtered_kwargs:
-            for index, field in enumerate(sorted(filtered_kwargs)):
-                conditions.append(f"{field}=${index + 1}")
-                values.append(filtered_kwargs[field])
+        conditions: list[str] = []
+        values: list[object] = []
+        for field in sorted(filtered_kwargs):
+            value = filtered_kwargs[field]
+            if value is None:
+                conditions.append(f"{field} IS NULL")
+            else:
+                values.append(value)
+                conditions.append(f"{field}=${len(values)}")
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
@@ -138,16 +141,19 @@ class DatabaseFactory(Generic[T]):
         real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
         conditions: list[str] = []
-        values: list[str] = []
+        values: list[Any] = []
         if virtual_kwargs.get("expired") is True:
             conditions.append("expires_in IS NOT NULL AND expires_in < NOW()")
             real_kwargs.pop("expired", None)
         for field, value in real_kwargs.items():
-            if field in inside_fields:
-                conditions.append(f"${len(values) + 1} = ANY({field})")
+            if value is None:
+                conditions.append(f"{field} IS NULL")
+            elif field in inside_fields:
+                values.append(value)
+                conditions.append(f"${len(values)} = ANY({field})")
             else:
-                conditions.append(f"{field}=${len(values) + 1}")
-            values.append(value)
+                values.append(value)
+                conditions.append(f"{field}=${len(values)}")
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(

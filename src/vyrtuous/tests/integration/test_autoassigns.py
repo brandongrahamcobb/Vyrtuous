@@ -81,18 +81,18 @@ async def test_autoassigns_text_command(
         os.environ["TEST_MODE"].lower() == "text"
         or os.environ["TEST_MODE"].lower() == "all"
     ):
-        extra_permisisons.extend(BASE_PERMISSIONS)
+        extra_permissions.extend(BASE_PERMISSIONS)
         with ExitStack() as stack:
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions",
-                    side_effect=check_permissions(extra_permisisons),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
             stack.enter_context(
                 patch(
                     "vyrtuous.permissions.permission_service.has_permissions_at_all",
-                    side_effect=check_permissions(extra_permisisons),
+                    side_effect=check_permissions(extra_permissions),
                 )
             )
 

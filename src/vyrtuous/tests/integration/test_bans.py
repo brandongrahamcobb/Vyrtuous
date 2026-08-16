@@ -151,6 +151,7 @@ async def test_bans_text_command(
                     guild_snowflake=GUILD_SNOWFLAKE,
                     member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
                     simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+                    other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
                 )
                 full += f" {t}"
             if other_guild is None:
@@ -268,6 +269,7 @@ async def test_bans_app_command(
                     guild_snowflake=GUILD_SNOWFLAKE,
                     member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
                     simplified_member_snowflake=DUMMY_MEMBER_SNOWFLAKE_TWO,
+                    other_guild_snowflake=OTHER_GUILD_SNOWFLAKE,
                 )
             if other_guild is None:
                 g = None

@@ -74,7 +74,7 @@ TABLE_NAME = AutoAssignRole.__tablename__
             "{role_snowflake}",
             "{channel_snowflake}",
             "{other_guild_snowflake}",
-            [],
+            ["other_guilds"],
         ),
     ],
 )
