@@ -969,9 +969,9 @@ class InfoAppCommands(commands.Cog):
         else:
             obj = target.target
         if scope is None:
-            mute_type = "command"
+            mute_types = ["auto", "click", "command"]
         else:
-            mute_type = scope.scope
+            mute_types = [scope.scope]
         async def has_mute_permissions(permission_state: PermissionState, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, mute_type: str):
             match mute_type:
                 case "all":
@@ -1057,7 +1057,8 @@ class InfoAppCommands(commands.Cog):
                         requested=["command.info.voice-mutes.server"],
                     )
         await tick.defer()
-        await has_mute_permissions_at_all(permission_state=permission_state, member_snowflake=interaction.user.id, mute_type=mute_type)
+        for mute_type in mute_types:
+            await has_mute_permissions_at_all(permission_state=permission_state, member_snowflake=interaction.user.id, mute_type=mute_type)
         if isinstance(obj, discord.Guild):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
@@ -1076,7 +1077,8 @@ class InfoAppCommands(commands.Cog):
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.channel"],
             )
-            await has_mute_permissions(permission_state=permission_state, channel_snowflake=obj.id, guild_snowflake=obj.guild.id, member_snowflake=interaction.user.id, mute_type=mute_type)
+            for mute_type in mute_types:
+                await has_mute_permissions(permission_state=permission_state, channel_snowflake=obj.id, guild_snowflake=obj.guild.id, member_snowflake=interaction.user.id, mute_type=mute_type)
             if obj.guild.id != guild_snowflake:
                 await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
@@ -1099,9 +1101,18 @@ class InfoAppCommands(commands.Cog):
                     member_snowflake=interaction.user.id,
                     requested=["other_guilds"],
                 )
-        pages = await list_voice_mutes.build_pages(
-            guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
-        )
+        no_mutes = True
+        pages = []
+        for mute_type in mute_types:
+            results = await list_voice_mutes.build_pages(
+                guild_snowflake=guild_snowflake, obj=obj, mute_type=mute_type
+            )
+            for result in results:
+                if isinstance(result, discord.Embed):
+                    no_mutes = False
+                    pages.append(result)
+        if no_mutes:
+            return await tick.end(success="No mutes found.")
         return await tick.end(success=pages)
 
     @metadata(permission="command.info.overwrites")
