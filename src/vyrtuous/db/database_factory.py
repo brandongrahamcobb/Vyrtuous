@@ -142,7 +142,6 @@ class DatabaseFactory(Generic[T]):
                 f"delete_by_obj called with a dataclass with no fields for {table_name}; refusing unbounded DELETE"
             )
         where_clause = "WHERE " + " AND ".join(conditions)
-        bot.logger.info(conditions)
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
         bot.logger.debug(f"Deleted entry from {table_name}.")

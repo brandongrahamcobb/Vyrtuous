@@ -12,13 +12,6 @@ groups:
     alias: developer
     default: false
     permissions:
-    - command.clear
-    - command.clear.scope.guild
-    - command.clear.category.*
-    - command.clear.target.*
-    - command.clear.scope.channel
-    - command.clear.scope.member
-    - command.clear.scope.role
     - command.dev.*
     - command.info.cogs
     - command.info.debug
