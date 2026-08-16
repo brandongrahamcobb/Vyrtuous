@@ -115,6 +115,7 @@ class ClearRecord:
     model: type
     guild_snowflake: int
     channel_snowflake: int | None
+    member_snowflake: int | None
     scope: str | None
 
 
@@ -130,14 +131,26 @@ class ClearView(discord.ui.View):
     def __init__(
         self,
         author_snowflake: int,
-        ctx: SnowflakeContext,
+        channel_snowflake: int,
+        guild_snowflake: int,
         interaction: discord.Interaction,
+        member_snowflake: int | None,
         obj: Union[str, int, discord.Guild, discord.Member, discord.abc.GuildChannel],
         tick: Tick,
     ):
         super().__init__(timeout=120)
         self.__author_snowflake = author_snowflake
-        self.__ctx = ctx
+        self.__channel_snowflake = channel_snowflake
+        self.__member_snowflake = member_snowflake
+        self.__guild_snowflake = guild_snowflake
+        self._locked = {
+            "guild": guild_snowflake is not None,
+            "channel": channel_snowflake is not None,
+        }
+        if self._locked["guild"]:
+            self.remove_item(self.guild_select)
+        if self._locked["channel"]:
+            self.remove_item(self.channel_select)
         self.__interaction = interaction
         self.__obj = obj
         self.__tick = tick
@@ -164,8 +177,8 @@ class ClearView(discord.ui.View):
                 permissions.update(MEMBER_PERMISSIONS)
                 await permission_service.has_permissions(
                     permission_state=permission_state,
-                    channel_snowflake=self.__ctx.channel_snowflake,
-                    guild_snowflake=self.__ctx.guild_snowflake,
+                    channel_snowflake=self.__channel_snowflake,
+                    guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__author_snowflake,
                     requested=[
                         "command.clear.scope.all",
@@ -178,7 +191,7 @@ class ClearView(discord.ui.View):
                         try:
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
+                                channel_snowflake=self.__channel_snowflake,
                                 guild_snowflake=guild.id,
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
@@ -199,6 +212,9 @@ class ClearView(discord.ui.View):
                                     if channel_snowflake
                                     else None
                                 )
+                                member_snowflake = getattr(
+                                    item, "member_snowflake", None
+                                )
                                 if channel:
                                     self.available_channels.add(channel)
                                 self.records.append(
@@ -208,6 +224,7 @@ class ClearView(discord.ui.View):
                                         channel_snowflake=(
                                             channel.id if channel else None
                                         ),
+                                        member_snowflake=member_snowflake,
                                         scope=None,
                                     )
                                 )
@@ -216,8 +233,8 @@ class ClearView(discord.ui.View):
                         try:
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
@@ -235,11 +252,13 @@ class ClearView(discord.ui.View):
                                 if channel_snowflake
                                 else None
                             )
+                            member_snowflake = getattr(item, "member_snowflake", None)
                             self.records.append(
                                 ClearRecord(
                                     model=VoiceMute,
                                     guild_snowflake=guild.id,
                                     channel_snowflake=(channel.id if channel else None),
+                                    member_snowflake=member_snowflake,
                                     scope=scope,
                                 )
                             )
@@ -250,7 +269,7 @@ class ClearView(discord.ui.View):
                 self.available_channels = {channel for channel in guild.channels}
                 await permission_service.has_permissions(
                     permission_state=permission_state,
-                    channel_snowflake=self.__ctx.channel_snowflake,
+                    channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=guild.id,
                     member_snowflake=self.__author_snowflake,
                     requested=[
@@ -262,7 +281,7 @@ class ClearView(discord.ui.View):
                     try:
                         await permission_service.has_permissions(
                             permission_state=permission_state,
-                            channel_snowflake=self.__ctx.channel_snowflake,
+                            channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=guild.id,
                             member_snowflake=self.__author_snowflake,
                             requested=[permission],
@@ -280,6 +299,7 @@ class ClearView(discord.ui.View):
                                 if channel_snowflake
                                 else None
                             )
+                            member_snowflake = getattr(item, "member_snowflake", None)
                             if channel:
                                 self.available_channels.add(channel)
                             self.records.append(
@@ -287,6 +307,7 @@ class ClearView(discord.ui.View):
                                     model=model,
                                     guild_snowflake=guild.id,
                                     channel_snowflake=(channel.id if channel else None),
+                                    member_snowflake=member_snowflake,
                                     scope=None,
                                 )
                             )
@@ -295,7 +316,7 @@ class ClearView(discord.ui.View):
                     try:
                         await permission_service.has_permissions(
                             permission_state=permission_state,
-                            channel_snowflake=self.__ctx.channel_snowflake,
+                            channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=guild.id,
                             member_snowflake=self.__author_snowflake,
                             requested=[permission],
@@ -314,11 +335,13 @@ class ClearView(discord.ui.View):
                             if channel_snowflake
                             else None
                         )
+                        member_snowflake = getattr(item, "member_snowflake", None)
                         self.records.append(
                             ClearRecord(
                                 model=VoiceMute,
                                 guild_snowflake=guild.id,
                                 channel_snowflake=channel.id if channel else None,
+                                member_snowflake=member_snowflake,
                                 scope=scope,
                             )
                         )
@@ -328,8 +351,8 @@ class ClearView(discord.ui.View):
             case discord.Member() as member:
                 await permission_service.has_permissions(
                     permission_state=permission_state,
-                    channel_snowflake=self.__ctx.channel_snowflake,
-                    guild_snowflake=self.__ctx.guild_snowflake,
+                    channel_snowflake=self.__channel_snowflake,
+                    guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__author_snowflake,
                     requested=[
                         "command.clear.scope.member",
@@ -341,8 +364,8 @@ class ClearView(discord.ui.View):
                         try:
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
@@ -373,6 +396,7 @@ class ClearView(discord.ui.View):
                                         channel_snowflake=(
                                             channel.id if channel else None
                                         ),
+                                        member_snowflake=member.id,
                                         scope=None,
                                     )
                                 )
@@ -381,14 +405,15 @@ class ClearView(discord.ui.View):
                         try:
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
                         except CheckFailure:
                             continue
                         items = await database_factory.select(
+                            guild_snowflake=guild.id,
                             member_snowflake=member.id,
                             target=scope.lower(),
                             singular=False,
@@ -405,6 +430,7 @@ class ClearView(discord.ui.View):
                                     model=VoiceMute,
                                     guild_snowflake=guild.id,
                                     channel_snowflake=(channel.id if channel else None),
+                                    member_snowflake=member.id,
                                     scope=scope,
                                 )
                             )
@@ -416,8 +442,8 @@ class ClearView(discord.ui.View):
                     raise MemberNotFound(str(member_snowflake))
                 await permission_service.has_permissions(
                     permission_state=permission_state,
-                    channel_snowflake=self.__ctx.channel_snowflake,
-                    guild_snowflake=self.__ctx.guild_snowflake,
+                    channel_snowflake=self.__channel_snowflake,
+                    guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__author_snowflake,
                     requested=[
                         "command.clear.scope.member",
@@ -429,8 +455,8 @@ class ClearView(discord.ui.View):
                         try:
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
@@ -461,6 +487,7 @@ class ClearView(discord.ui.View):
                                         channel_snowflake=(
                                             channel.id if channel else None
                                         ),
+                                        member_snowflake=member_snowflake,
                                         scope=None,
                                     )
                                 )
@@ -469,14 +496,15 @@ class ClearView(discord.ui.View):
                         try:
                             await permission_service.has_permissions(
                                 permission_state=permission_state,
-                                channel_snowflake=self.__ctx.channel_snowflake,
-                                guild_snowflake=self.__ctx.guild_snowflake,
+                                channel_snowflake=self.__channel_snowflake,
+                                guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
                                 requested=[permission],
                             )
                         except:
                             continue
                         items = await database_factory.select(
+                            guild_snowflake=guild.id,
                             member_snowflake=member_snowflake,
                             target=scope.lower(),
                             singular=False,
@@ -493,14 +521,15 @@ class ClearView(discord.ui.View):
                                     model=VoiceMute,
                                     guild_snowflake=guild.id,
                                     channel_snowflake=(channel.id if channel else None),
+                                    member_snowflake=member_snowflake,
                                     scope=scope,
                                 )
                             )
             case discord.abc.GuildChannel() as channel:
-                # self.selected_guild = channel.guild.id
-                # self.selected_channel = channel.id
-                # self.guild_select.disabled = True
-                # self.channel_select.disabled = True
+                self.selected_guild = channel.guild.id
+                self.selected_channel = channel.id
+                self.guild_select.disabled = True
+                self.channel_select.disabled = True
                 self.remove_item(self.guild_select)
                 self.remove_item(self.channel_select)
                 (
@@ -530,8 +559,8 @@ class ClearView(discord.ui.View):
                     try:
                         await permission_service.has_permissions(
                             permission_state=permission_state,
-                            channel_snowflake=self.__ctx.channel_snowflake,
-                            guild_snowflake=self.__ctx.guild_snowflake,
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
                             member_snowflake=self.__author_snowflake,
                             requested=[permission],
                         )
@@ -543,21 +572,24 @@ class ClearView(discord.ui.View):
                         singular=False,
                     )
                     if items:
-                        self.records.append(
-                            ClearRecord(
-                                model=model,
-                                guild_snowflake=channel.guild.id,
-                                channel_snowflake=channel.id,
-                                scope=None,
+                        for item in items:
+                            member_snowflake = getattr(item, "member_snowflake", None)
+                            self.records.append(
+                                ClearRecord(
+                                    model=model,
+                                    guild_snowflake=channel.guild.id,
+                                    channel_snowflake=channel.id,
+                                    member_snowflake=member_snowflake,
+                                    scope=None,
+                                )
                             )
-                        )
                 for permission, scope in SCOPES.items():
                     database_factory: DatabaseFactory = DatabaseFactory(VoiceMute)
                     try:
                         await permission_service.has_permissions(
                             permission_state=permission_state,
-                            channel_snowflake=self.__ctx.channel_snowflake,
-                            guild_snowflake=self.__ctx.guild_snowflake,
+                            channel_snowflake=self.__channel_snowflake,
+                            guild_snowflake=self.__guild_snowflake,
                             member_snowflake=self.__author_snowflake,
                             requested=[permission],
                         )
@@ -570,14 +602,17 @@ class ClearView(discord.ui.View):
                         singular=False,
                     )
                     if items:
-                        self.records.append(
-                            ClearRecord(
-                                model=VoiceMute,
-                                guild_snowflake=channel.guild.id,
-                                channel_snowflake=channel.id,
-                                scope=scope,
+                        for item in items:
+                            member_snowflake = getattr(item, "member_snowflake", None)
+                            self.records.append(
+                                ClearRecord(
+                                    model=VoiceMute,
+                                    guild_snowflake=channel.guild.id,
+                                    channel_snowflake=channel.id,
+                                    member_snowflake=member_snowflake,
+                                    scope=scope,
+                                )
                             )
-                        )
         if not self.records:
             raise CheckFailure("No records to clear found.")
         guild_objs = [
@@ -613,7 +648,21 @@ class ClearView(discord.ui.View):
             if r.guild_snowflake in allowed_guilds
             and (r.channel_snowflake is None or r.channel_snowflake in allowed_channels)
         ]
+        self._update_disabled_state()
         self._refresh_options()
+
+    def _update_disabled_state(self) -> None:
+        if not self._locked["guild"]:
+            self.guild_select.disabled = self.selected_model is None
+        guild_ready = self._locked["guild"] or self.selected_guild is not None
+        if not self._locked["channel"]:
+            self.channel_select.disabled = (
+                not guild_ready or self.selected_model is AutoAssignRole
+            )
+        channel_ready = self._locked["channel"] or self.selected_channel is not None
+        self.scope_select.disabled = not channel_ready or (
+            self.selected_model is not VoiceMute and self.selected_model is not ALL
+        )
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -653,30 +702,36 @@ class ClearView(discord.ui.View):
             ]
         if exclude != "scope" and self.selected_scope not in (None, ALL):
             records = [r for r in records if r.scope in (None, self.selected_scope)]
+        if self.__member_snowflake:
+            records = [
+                r for r in records if r.member_snowflake == self.__member_snowflake
+            ]
         return records
 
     def _refresh_options(self) -> None:
         self._build_model_options(
             models={r.model for r in self._visible_records(exclude="model") if r.model}
         )
-        self._build_guild_options(
-            guild_snowflakes={
-                r.guild_snowflake for r in self._visible_records(exclude="guild")
-            }
-        )
-        self._build_channel_options(
-            channel_snowflakes={
-                r.channel_snowflake
-                for r in self._visible_records(exclude="channel")
-                if r.channel_snowflake
-            }
-        )
+        self.model_select.placeholder = self._label_for("model")
+        if not self._locked["guild"]:
+            self._build_guild_options(
+                guild_snowflakes={
+                    r.guild_snowflake for r in self._visible_records(exclude="guild")
+                }
+            )
+            self.guild_select.placeholder = self._label_for("guild")
+        if not self._locked["channel"]:
+            self._build_channel_options(
+                channel_snowflakes={
+                    r.channel_snowflake
+                    for r in self._visible_records(exclude="channel")
+                    if r.channel_snowflake
+                }
+            )
+            self.channel_select.placeholder = self._label_for("channel")
         self._build_scope_options(
             scopes={r.scope for r in self._visible_records(exclude="scope") if r.scope}
         )
-        self.model_select.placeholder = self._label_for("model")
-        self.guild_select.placeholder = self._label_for("guild")
-        self.channel_select.placeholder = self._label_for("channel")
         self.scope_select.placeholder = self._label_for("scope")
 
     def _build_model_options(self, models, default: bool = False):
@@ -787,12 +842,12 @@ class ClearView(discord.ui.View):
         self.selected_model = (
             ALL if raw == "all" else self._get_model_by_identifier(raw)
         )
-        self.selected_guild = None
-        self.selected_channel = None
+        if not self._locked["guild"]:
+            self.selected_guild = None
+        if not self._locked["channel"]:
+            self.selected_channel = None
         self.selected_scope = None
-        self.guild_select.disabled = False
-        self.channel_select.disabled = True
-        self.scope_select.disabled = True
+        self._update_disabled_state()
         self._refresh_options()
         await interaction.edit_original_response(view=self)
 
@@ -801,7 +856,8 @@ class ClearView(discord.ui.View):
         await interaction.response.defer()
         raw = select.values[0]
         self.selected_guild = ALL if raw == "all" else int(raw)
-        self.selected_channel = None
+        if not self._locked["channel"]:
+            self.selected_channel = None
         self.selected_scope = None
         self.channel_select.disabled = self.selected_model is AutoAssignRole
         self.scope_select.disabled = True
@@ -870,10 +926,12 @@ class ClearView(discord.ui.View):
                 select_kwargs["channel_snowflake"] = record.channel_snowflake
             if record.scope is not None:
                 select_kwargs["target"] = record.scope.lower()
+            if record.member_snowflake is not None:
+                select_kwargs["member_snowflake"] = record.member_snowflake
             objects = await database_factory.select(singular=False, **select_kwargs)
             for obj in objects:
                 deleted_count += 1
-                # delete by class was too extreme
+                await database_factory.delete_by_obj(obj)
                 match obj.identifier:
                     case "alias":
                         await alias_service.disable(
@@ -937,13 +995,13 @@ class ClearView(discord.ui.View):
                         )
                 await stream_service.log(
                     author_snowflake=self.__author_snowflake,
-                    channel_snowflake=obj.channel_snowflake,
+                    channel_snowflake=record.channel_snowflake,
                     display=display,
                     duration=DurationObject(number=0, prefix="", sign=1, unit=""),
                     guild_snowflake=obj.guild_snowflake,
                     identifier=obj.identifier,
                     is_channel_scope=is_channel_scope,
-                    member_snowflake=obj.member_snowflake,
+                    member_snowflake=record.member_snowflake,
                     message_snowflake=None,
                     message_channel_snowflake=None,
                     reason=reason,

@@ -43,7 +43,7 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 DUMMY_MEMBER_SNOWFLAKE_TWO = 10000000000000005
 COMMAND = "mutes"
-BASE_PERMISSIONS = ["command.info.voice-mutes", "command.info.voice-mutes.command"]
+BASE_PERMISSIONS = ["command.info.voice-mutes"]
 TABLE_NAME = VoiceMute.__tablename__
 
 
@@ -51,8 +51,28 @@ TABLE_NAME = VoiceMute.__tablename__
 @pytest.mark.parametrize(
     "target, scope, other_guild, extra_permissions",
     [
-        ("{channel_snowflake}", None, None, ["command.info.scope.channel"]),
-        ("<#{channel_snowflake}>", None, None, ["command.info.scope.channel"]),
+        (
+            "{channel_snowflake}",
+            None,
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            None,
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
         (
             "{channel_snowflake}",
             "all",
@@ -61,6 +81,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -72,6 +93,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -82,7 +104,6 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
             ],
         ),
         (
@@ -92,7 +113,6 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
             ],
         ),
         (
@@ -111,13 +131,19 @@ TABLE_NAME = VoiceMute.__tablename__
             "{channel_snowflake}",
             "command",
             None,
-            ["command.info.scope.channel"],
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "<#{channel_snowflake}>",
             "command",
             None,
-            ["command.info.scope.channel"],
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{channel_snowflake}",
@@ -127,6 +153,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -139,17 +166,18 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
         (
             "{channel_snowflake}",
-            "click",
+            "auto",
             "{other_guild_snowflake}",
             [
                 "command.info.scope.channel",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.auto",
                 "other_guilds",
             ],
         ),
@@ -169,7 +197,7 @@ TABLE_NAME = VoiceMute.__tablename__
             "{other_guild_snowflake}",
             [
                 "command.info.scope.channel",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "other_guilds",
             ],
         ),
@@ -179,7 +207,7 @@ TABLE_NAME = VoiceMute.__tablename__
             "{other_guild_snowflake}",
             [
                 "command.info.scope.channel",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "other_guilds",
             ],
         ),
@@ -187,13 +215,25 @@ TABLE_NAME = VoiceMute.__tablename__
             "{member_snowflake}",
             None,
             None,
-            ["command.info.scope.member", "other_channels"],
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "<@{member_snowflake}>",
             None,
             None,
-            ["command.info.scope.member", "other_channels"],
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{member_snowflake}",
@@ -204,6 +244,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -216,6 +257,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -227,7 +269,6 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.member",
                 "other_channels",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
             ],
         ),
         (
@@ -238,7 +279,6 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.member",
                 "other_channels",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
             ],
         ),
         (
@@ -268,6 +308,7 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -277,6 +318,7 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -308,6 +350,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -321,6 +364,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -354,8 +398,8 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.member",
                 "other_channels",
-                "command.info.voice-mutes.click",
                 "other_guilds",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -365,15 +409,21 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.member",
                 "other_channels",
-                "command.info.voice-mutes.click",
                 "other_guilds",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
             "{guild_snowflake}",
             None,
             None,
-            ["command.info.scope.guild", "other_channels"],
+            [
+                "command.info.scope.guild",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{guild_snowflake}",
@@ -384,6 +434,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -395,7 +446,6 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.guild",
                 "other_channels",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
             ],
         ),
         (
@@ -415,13 +465,20 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.guild",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
             "{simplified_member_snowflake}",
             None,
             None,
-            ["command.info.scope.member", "other_channels"],
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{simplified_member_snowflake}",
@@ -432,6 +489,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -443,7 +501,6 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.member",
                 "other_channels",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
             ],
         ),
         (
@@ -463,6 +520,7 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -472,6 +530,7 @@ TABLE_NAME = VoiceMute.__tablename__
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -483,6 +542,19 @@ TABLE_NAME = VoiceMute.__tablename__
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+                "command.info.voice-mutes.server",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "auto",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
                 "other_guilds",
             ],
         ),
@@ -505,6 +577,7 @@ TABLE_NAME = VoiceMute.__tablename__
                 "command.info.scope.member",
                 "other_channels",
                 "other_guilds",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -605,8 +678,28 @@ async def test_mutes_text_command(
 @pytest.mark.parametrize(
     "target, scope, other_guild, extra_permissions",
     [
-        ("{channel_snowflake}", None, None, ["command.info.scope.channel"]),
-        ("<#{channel_snowflake}>", None, None, ["command.info.scope.channel"]),
+        (
+            "{channel_snowflake}",
+            None,
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "<#{channel_snowflake}>",
+            None,
+            None,
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
+        ),
         (
             "{channel_snowflake}",
             "all",
@@ -615,6 +708,7 @@ async def test_mutes_text_command(
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -626,6 +720,7 @@ async def test_mutes_text_command(
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -663,13 +758,19 @@ async def test_mutes_text_command(
             "{channel_snowflake}",
             "command",
             None,
-            ["command.info.scope.channel"],
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "<#{channel_snowflake}>",
             "command",
             None,
-            ["command.info.scope.channel"],
+            [
+                "command.info.scope.channel",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{channel_snowflake}",
@@ -679,6 +780,7 @@ async def test_mutes_text_command(
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -691,17 +793,18 @@ async def test_mutes_text_command(
                 "command.info.scope.channel",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
         ),
         (
             "{channel_snowflake}",
-            "click",
+            "auto",
             "{other_guild_snowflake}",
             [
                 "command.info.scope.channel",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.auto",
                 "other_guilds",
             ],
         ),
@@ -721,7 +824,7 @@ async def test_mutes_text_command(
             "{other_guild_snowflake}",
             [
                 "command.info.scope.channel",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "other_guilds",
             ],
         ),
@@ -731,7 +834,7 @@ async def test_mutes_text_command(
             "{other_guild_snowflake}",
             [
                 "command.info.scope.channel",
-                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "other_guilds",
             ],
         ),
@@ -739,13 +842,25 @@ async def test_mutes_text_command(
             "{member_snowflake}",
             None,
             None,
-            ["command.info.scope.member", "other_channels"],
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "<@{member_snowflake}>",
             None,
             None,
-            ["command.info.scope.member", "other_channels"],
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{member_snowflake}",
@@ -756,6 +871,7 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -768,6 +884,7 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -818,6 +935,7 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -827,6 +945,7 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -858,6 +977,7 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -871,6 +991,7 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
                 "other_guilds",
             ],
@@ -904,8 +1025,8 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "other_channels",
-                "command.info.voice-mutes.command",
                 "other_guilds",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -915,15 +1036,21 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "other_channels",
+                "other_guilds",
                 "command.info.voice-mutes.command",
-                "other_guilds",
             ],
         ),
         (
             "{guild_snowflake}",
             None,
             None,
-            ["command.info.scope.guild", "other_channels"],
+            [
+                "command.info.scope.guild",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{guild_snowflake}",
@@ -934,6 +1061,7 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -945,8 +1073,6 @@ async def test_mutes_text_command(
                 "command.info.scope.guild",
                 "other_channels",
                 "command.info.voice-mutes.auto",
-                "command.info.voice-mutes.click",
-                "command.info.voice-mutes.server",
             ],
         ),
         (
@@ -966,13 +1092,20 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.guild",
                 "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
             "{simplified_member_snowflake}",
             None,
             None,
-            ["command.info.scope.member", "other_channels"],
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
+                "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
+            ],
         ),
         (
             "{simplified_member_snowflake}",
@@ -983,6 +1116,7 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
             ],
         ),
@@ -1013,6 +1147,17 @@ async def test_mutes_text_command(
             [
                 "command.info.scope.member",
                 "other_channels",
+                "command.info.voice-mutes.command",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "command",
+            None,
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.command",
             ],
         ),
         (
@@ -1024,7 +1169,19 @@ async def test_mutes_text_command(
                 "other_channels",
                 "command.info.voice-mutes.auto",
                 "command.info.voice-mutes.click",
+                "command.info.voice-mutes.command",
                 "command.info.voice-mutes.server",
+                "other_guilds",
+            ],
+        ),
+        (
+            "{simplified_member_snowflake}",
+            "auto",
+            "{other_guild_snowflake}",
+            [
+                "command.info.scope.member",
+                "other_channels",
+                "command.info.voice-mutes.auto",
                 "other_guilds",
             ],
         ),
@@ -1047,6 +1204,7 @@ async def test_mutes_text_command(
                 "command.info.scope.member",
                 "other_channels",
                 "other_guilds",
+                "command.info.voice-mutes.command",
             ],
         ),
         (

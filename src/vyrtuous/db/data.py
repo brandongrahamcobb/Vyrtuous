@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 @dataclass(frozen=True)
 class Data:
     __tablename__ = "moderation_logs"
-    target_snowflake: int
+    target_snowflake: int | None = None
     guild_snowflake: int | None = None
     current_channel_members: int = 0
     total_guild_members: int = 0

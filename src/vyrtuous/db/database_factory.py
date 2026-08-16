@@ -18,6 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from dataclasses import fields, is_dataclass
 from typing import Any, Generic, Literal, TypeVar, overload
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -29,38 +30,45 @@ class DatabaseFactory(Generic[T]):
     def __init__(self, model):
         self.model = model
 
-    async def create(self, obj) -> None:
+    async def create(self, obj) -> None | type:
         bot: DiscordBot = DiscordBot.get_instance()
         table_name = getattr(obj.__class__, "__tablename__")
-        fields = list(obj.__class__.__annotations__.keys())
+        field_names = [f.name for f in fields(obj)]
         insert_fields = [
-            f for f in fields if hasattr(obj, f) and getattr(obj, f) is not None
+            f for f in field_names if hasattr(obj, f) and getattr(obj, f) is not None
         ]
         if not insert_fields:
             raise ValueError("No fields available to insert")
         placeholders = ", ".join(f"${i + 1}" for i in range(len(insert_fields)))
         values = [getattr(obj, f) for f in insert_fields]
         async with bot.db_pool.acquire() as conn:
-            await conn.execute(
+            row = await conn.fetchrow(
                 f"""
                 INSERT INTO {table_name} ({", ".join(insert_fields)})
                 VALUES ({placeholders})
                 ON CONFLICT DO NOTHING
+                RETURNING *
             """,
                 *values,
             )
+        if row is None:
+            bot.logger.debug(f"Insert into {table_name} skipped (conflict).")
+            return None
+        valid_field_names = {f.name for f in fields(obj.__class__)}
+        row_dict = {k: v for k, v in dict(row).items() if k in valid_field_names}
+        created = obj.__class__(**row_dict)
         bot.logger.debug(f"Created entry in {table_name}.")
+        return created
 
-    async def upsert(self, obj) -> None:
+    async def upsert(self, obj) -> None | type:
         bot: DiscordBot = DiscordBot.get_instance()
         table_name = getattr(obj.__class__, "__tablename__")
-        fields = list(obj.__class__.__annotations__.keys())
+        field_names = [f.name for f in fields(obj)]
         insert_fields = [
-            f for f in fields if hasattr(obj, f) and getattr(obj, f) is not None
+            f for f in field_names if hasattr(obj, f) and getattr(obj, f) is not None
         ]
         if not insert_fields:
             raise ValueError("No fields available to insert")
-        self.model = obj.__class__
         primary_keys = await self.primary_keys()
         if not primary_keys:
             raise ValueError("No primary key defined on table")
@@ -71,22 +79,31 @@ class DatabaseFactory(Generic[T]):
         update_clause = ", ".join(f"{f}=EXCLUDED.{f}" for f in update_fields)
         values = [getattr(obj, f) for f in insert_fields]
         async with bot.db_pool.acquire() as conn:
-            await conn.execute(
+            row = await conn.fetchrow(
                 f"""
                 INSERT INTO {table_name} ({", ".join(insert_fields)})
                 VALUES ({placeholders})
                 ON CONFLICT ({", ".join(primary_keys)})
                 DO UPDATE SET {update_clause}
+                RETURNING *
                 """,
                 *values,
             )
+        if row is None:
+            bot.logger.debug(f"Upsert of {table_name} was not successful.")
+            return None
+        valid_field_names = {f.name for f in fields(obj.__class__)}
+        row_dict = {k: v for k, v in dict(row).items() if k in valid_field_names}
+        updated = obj.__class__(**row_dict)
         bot.logger.debug(f"Upserted entry in {table_name}.")
+        return updated
 
-    async def delete(self, **kwargs) -> None:
+    async def delete(self, *, model: type | None = None, **kwargs) -> None:
         bot: DiscordBot = DiscordBot.get_instance()
-        fields = list(self.model.__annotations__.keys())
-        table_name = getattr(self.model, "__tablename__")
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
+        model = model or self.model
+        field_names = [f.name for f in fields(model)]
+        table_name = getattr(model, "__tablename__")
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in field_names}
         conditions: list[str] = []
         values: list[object] = []
         for field in sorted(filtered_kwargs):
@@ -96,27 +113,36 @@ class DatabaseFactory(Generic[T]):
             else:
                 values.append(value)
                 conditions.append(f"{field}=${len(values)}")
+        if not conditions:
+            raise ValueError(
+                f"delete called with no fields for {table_name}; refusing unbounded DELETE"
+            )
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
         bot.logger.debug(f"Deleted entry from {table_name}.")
 
-    async def delete_by_cls(self, cls, **kwargs) -> None:
+    async def delete_by_obj(self, obj) -> None:
+        if not is_dataclass(obj) or isinstance(obj, type):
+            raise TypeError("delete_by_obj requires a dataclass instance, not a class")
         bot: DiscordBot = DiscordBot.get_instance()
-        fields = list(cls.__annotations__.keys())
-        table_name = getattr(cls, "__tablename__")
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k in fields}
-        if not filtered_kwargs:
-            raise ValueError(
-                f"delete_by_cls called with no matching fields for {table_name}; refusing unbounded DELETE"
-            )
+        table_name = getattr(type(obj), "__tablename__")
         conditions = []
         values = []
-        if filtered_kwargs:
-            for index, field in enumerate(sorted(filtered_kwargs)):
-                conditions.append(f"{field}=${index + 1}")
-                values.append(filtered_kwargs[field])
-        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+        for field in sorted(fields(obj), key=lambda f: f.name):
+            value = getattr(obj, field.name)
+            match value:
+                case None:
+                    conditions.append(f"{field.name} IS NULL")
+                case _:
+                    values.append(value)
+                    conditions.append(f"{field.name}=${len(values)}")
+        if not conditions:
+            raise ValueError(
+                f"delete_by_obj called with a dataclass with no fields for {table_name}; refusing unbounded DELETE"
+            )
+        where_clause = "WHERE " + " AND ".join(conditions)
+        bot.logger.info(conditions)
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
         bot.logger.debug(f"Deleted entry from {table_name}.")
@@ -136,9 +162,9 @@ class DatabaseFactory(Generic[T]):
     ) -> T | list[T]:
         bot: DiscordBot = DiscordBot.get_instance()
         table_name = getattr(self.model, "__tablename__")
-        fields = list(self.model.__annotations__.keys())
+        field_names = [f.name for f in fields(self.model)]
         virtual_filters = {"expired"}
-        real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
+        real_kwargs = {k: v for k, v in kwargs.items() if k in field_names}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
         conditions: list[str] = []
         values: list[Any] = []
@@ -163,23 +189,31 @@ class DatabaseFactory(Generic[T]):
             if not rows:
                 return []
             row = rows[0]
-            row_data = {k: row[k] for k in fields if k in row}
+            row_data = {k: row[k] for k in field_names if k in row}
             return self.model(**row_data)
         children = []
         for row in rows:
-            row_data = {k: row[k] for k in fields if k in row}
+            row_data = {k: row[k] for k in field_names if k in row}
             children.append(self.model(**row_data))
         bot.logger.debug(f"Selected entry from {table_name}.")
         return children
 
-    async def update(self, *, set_kwargs: dict, where_kwargs: dict) -> None:
+    async def update(self, *, set_kwargs: dict, where_kwargs: dict) -> None | type:
         bot: DiscordBot = DiscordBot.get_instance()
         table_name = getattr(self.model, "__tablename__")
-        fields = list(self.model.__annotations__.keys())
-        set_filtered_kwargs = {k: v for k, v in set_kwargs.items() if k in fields}
-        where_filtered_kwargs = {k: v for k, v in where_kwargs.items() if k in fields}
+        field_names = [f.name for f in fields(self.model)]
+        set_filtered_kwargs = {k: v for k, v in set_kwargs.items() if k in field_names}
+        where_filtered_kwargs = {
+            k: v for k, v in where_kwargs.items() if k in field_names
+        }
         set_fields = sorted(set_filtered_kwargs.keys())
         where_fields = sorted(where_filtered_kwargs.keys())
+        if not set_fields:
+            raise ValueError("No valid fields to update")
+        if not where_fields:
+            raise ValueError(
+                "update() requires at least one WHERE condition; refusing unbounded UPDATE"
+            )
         assignments = [
             f"{field} = ${index + 1}" for index, field in enumerate(set_fields)
         ]
@@ -191,15 +225,23 @@ class DatabaseFactory(Generic[T]):
             where_kwargs[field] for field in where_fields
         ]
         async with bot.db_pool.acquire() as conn:
-            await conn.execute(
+            row = await conn.fetchrow(
                 f"""
                 UPDATE {table_name}
                 SET {", ".join(assignments)}
                 WHERE {" AND ".join(conditions)}
+                RETURNING *
             """,
                 *values,
             )
+        if row is None:
+            bot.logger.debug(f"Update of {table_name} was not successful.")
+            return None
+        valid_field_names = {f.name for f in fields(self.model)}
+        row_dict = {k: v for k, v in dict(row).items() if k in valid_field_names}
+        updated = self.model(**row_dict)
         bot.logger.debug(f"Updated entry from {table_name}.")
+        return updated
 
     async def primary_keys(self) -> list[str]:
         bot: DiscordBot = DiscordBot.get_instance()

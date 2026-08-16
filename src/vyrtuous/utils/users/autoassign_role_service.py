@@ -318,18 +318,19 @@ async def added_role(
     else:
         name = group.name
     autoassign_role_snowflakes = group_member.role_snowflakes
-    autoassign_role_snowflakes.append(role_snowflake)
-    where_kwargs = {
-        "group_alias": autoassign_role.group_alias,
-        "guild_snowflake": int(guild_snowflake),
-        "member_snowflake": member_snowflake,
-    }
-    if channel_snowflake:
-        where_kwargs["channel_snowflake"] = int(channel_snowflake)
-    set_kwargs = {"role_snowflakes": autoassign_role_snowflakes}
-    await group_database_factory.update(
-        set_kwargs=set_kwargs, where_kwargs=where_kwargs
-    )
+    if role_snowflake not in autoassign_role_snowflakes:
+        autoassign_role_snowflakes.append(role_snowflake)
+        where_kwargs = {
+            "group_alias": autoassign_role.group_alias,
+            "guild_snowflake": int(guild_snowflake),
+            "member_snowflake": member_snowflake,
+        }
+        if channel_snowflake:
+            where_kwargs["channel_snowflake"] = int(channel_snowflake)
+        set_kwargs = {"role_snowflakes": autoassign_role_snowflakes}
+        await group_database_factory.update(
+            set_kwargs=set_kwargs, where_kwargs=where_kwargs
+        )
     bot.logger.debug(
         f"Granted permission group ({name}) to member ({member_snowflake}) in guild ({guild_snowflake})."
     )
@@ -369,16 +370,10 @@ async def removed_role(
         name = "Unknown"
     else:
         name = group.name
-    autoassign_role_snowflakes = group_member.role_snowflakes
+    autoassign_role_snowflakes = group_member.role_snowflakes.copy()
     autoassign_role_snowflakes.remove(role_snowflake)
     if not autoassign_role_snowflakes:
-        await group_database_factory.delete_by_cls(
-            group_member,
-            channel_snowflake=channel_snowflake if channel_snowflake else None,
-            group_alias=autoassign_role.group_alias,
-            guild_snowflake=guild_snowflake,
-            role_snowflake=role_snowflake,
-        )
+        await group_database_factory.delete_by_obj(group_member)
     else:
         where_kwargs = {
             "group_alias": autoassign_role.group_alias,

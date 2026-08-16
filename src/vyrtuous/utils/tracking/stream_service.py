@@ -41,7 +41,7 @@ async def send_log(
     guild_snowflake: int | None,
     identifier: str,
     is_channel_scope: bool | None,
-    member_snowflake: int,
+    member_snowflake: int | None,
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
     role_snowflake: int | None,
@@ -80,44 +80,45 @@ async def send_log(
                         embed.set_tn(url=author.display_avatar.url)
             else:
                 executor_role = "Unknown"
-            target_group = await permission_service.resolve_effective_group(
-                permission_state=permission_state,
-                channel_snowflake=int(channel_snowflake),
-                guild_snowflake=int(guild_snowflake),
-                member_snowflake=int(member_snowflake),
-            )
-            if target_group:
-                target_role = target_group.name
-                embed.set_target(
-                    guild_snowflake=guild_snowflake,
-                    target=target,
-                    target_snowflake=member_snowflake,
-                    highest_role=target_role,
+            if member_snowflake:
+                target_group = await permission_service.resolve_effective_group(
+                    permission_state=permission_state,
+                    channel_snowflake=int(channel_snowflake),
+                    guild_snowflake=int(guild_snowflake),
+                    member_snowflake=int(member_snowflake),
                 )
-            embed.set_description(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                target_snowflake=member_snowflake,
-            )
-            if is_channel_scope is not None:
-                embed.set_channel_ctx(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    is_channel_scope=is_channel_scope,
-                )
-            if message_snowflake and message_channel_snowflake:
-                await embed.set_message_ctx(
-                    guild_snowflake=guild_snowflake,
-                    identifier=identifier,
-                    message_snowflake=message_snowflake,
-                    message_channel_snowflake=message_channel_snowflake,
-                )
-                embed.set_reference(
+                if target_group:
+                    target_role = target_group.name
+                    embed.set_target(
+                        guild_snowflake=guild_snowflake,
+                        target=target,
+                        target_snowflake=member_snowflake,
+                        highest_role=target_role,
+                    )
+                embed.set_description(
                     channel_snowflake=channel_snowflake,
                     guild_snowflake=guild_snowflake,
                     target_snowflake=member_snowflake,
-                    message_snowflake=message_snowflake,
                 )
+                if is_channel_scope is not None:
+                    embed.set_channel_ctx(
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
+                        is_channel_scope=is_channel_scope,
+                    )
+                if message_snowflake and message_channel_snowflake:
+                    await embed.set_message_ctx(
+                        guild_snowflake=guild_snowflake,
+                        identifier=identifier,
+                        message_snowflake=message_snowflake,
+                        message_channel_snowflake=message_channel_snowflake,
+                    )
+                    embed.set_reference(
+                        channel_snowflake=channel_snowflake,
+                        guild_snowflake=guild_snowflake,
+                        target_snowflake=member_snowflake,
+                        message_snowflake=message_snowflake,
+                    )
         if role_snowflake:
             embed.set_role(
                 guild_snowflake=guild_snowflake, role_snowflake=role_snowflake
@@ -314,7 +315,7 @@ async def log(
     guild_snowflake: int,
     identifier: str,
     is_channel_scope: bool,
-    member_snowflake: int,
+    member_snowflake: int | None,
     message_snowflake: int | None,
     message_channel_snowflake: int | None,
     reason: str,

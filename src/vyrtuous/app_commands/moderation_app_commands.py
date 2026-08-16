@@ -249,6 +249,7 @@ class ModerationAppCommands(commands.Cog):
                 author_snowflake=interaction.user.id,
                 member_snowflake=target.target,
             )
+            member_snowflake = target.target
         elif isinstance(target.target, discord.Member):
             await permission_service.has_equal_or_lower_role(
                 permission_state=permission_state,
@@ -257,15 +258,15 @@ class ModerationAppCommands(commands.Cog):
                 author_snowflake=interaction.user.id,
                 member_snowflake=target.target.id,
             )
-        ctx = SnowflakeContext(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=None,
-        )
+            member_snowflake = target.target.id
+        else:
+            member_snowflake = None
         view = ClearView(
             author_snowflake=interaction.user.id,
-            ctx=ctx,
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
             interaction=interaction,
+            member_snowflake=member_snowflake,
             obj=target.target,
             tick=tick,
         )

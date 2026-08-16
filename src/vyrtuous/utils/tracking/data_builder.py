@@ -35,8 +35,11 @@ MODEL = Data
 
 
 class DataBuilder:
-    def __init__(self, target_snowflake: int):
-        self.__data = Data(target_snowflake=target_snowflake)
+    def __init__(self):
+        self.__data = Data()
+
+    def set_member(self, target_snowflake: int):
+        self.__data = replace(self.__data, target_snowflake=target_snowflake)
 
     def set_counts(
         self,
@@ -143,13 +146,15 @@ async def save_data(
     duration: DurationObject | None,
     guild_snowflake: int | None,
     identifier: str,
-    member_snowflake: int,
+    member_snowflake: int | None,
     reason: str,
     role_snowflake: int | None,
     target: str | None,
 ) -> None:
     bot: DiscordBot = DiscordBot.get_instance()
-    data = DataBuilder(target_snowflake=member_snowflake)
+    data = DataBuilder()
+    if member_snowflake:
+        data.set_member(target_snowflake=member_snowflake)
     data.set_snowflakes(
         author_snowflake=author_snowflake,
         channel_snowflake=channel_snowflake,

@@ -176,15 +176,15 @@ async def build_pages(
         for member_snowflake, voice_mute_dictionary in guild_data.get(
             "members", {}
         ).items():
+            vmute_n += 1
+            field_count += 1
             member = guild.get_member(member_snowflake)
             if member:
                 if not isinstance(obj, discord.Member):
                     lines.append(f"**User:** {member.mention}")
-                    field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(url=obj.display_avatar.url)
                     thumbnail = True
-                    vmute_n += 1
             else:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None
@@ -205,8 +205,6 @@ async def build_pages(
                         f"**Expires:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
                     )
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                vmute_n += 1
-                field_count += 1
                 if field_count >= list_service.CHUNK_SIZE:
                     embed.add_field(
                         name="Information",

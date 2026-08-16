@@ -1027,7 +1027,7 @@ class InfoTextCommands(commands.Cog):
                     no_mutes = False
                     pages.append(result)
         if no_mutes:
-            return await tick.end(success="No mutes found.")
+            return await tick.end(success="No voice mutes found.")
         return await tick.end(success=pages)
 
     @commands.command(name="overwrites", help="Overwrite stats.")
