@@ -288,12 +288,17 @@ class GrantView(discord.ui.View):
                     channels = list(self.__selected_guild.channels)
             elif not channels:
                 channels = [c for g in guilds for c in g.channels]
-            if interaction.channel and interaction.channel.id in {
+            channel = next(
+                (c for c in channels if c.id == self.__ctx.channel_snowflake), None
+            )
+            if channel is not None:
+                self.__selected_channel = channel
+            elif len(channels) == 1:
+                self.__selected_channel = channels[0]
+            elif interaction.channel and interaction.channel.id in {
                 c.id for c in channels
             }:
                 self.__selected_channel = interaction.channel
-            elif len(channels) == 1:
-                self.__selected_channel = channels[0]
             self._build_channel_options(channels, default=True)
             self.add_item(self.channel_select)
         await interaction.edit_original_response(view=self)
