@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.voice_mute import VoiceMute
 
@@ -45,28 +46,34 @@ async def clean_expired_voice_mutes() -> int:
                 "target": target,
             }
             if guild is None:
-                await database_factory.delete(**kwargs)
                 bot.logger.debug(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired voice-mute."
+                    f"Unable to locate guild {guild_snowflake} while cleaning up expired voice-mute."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                await database_factory.delete(**kwargs)
                 bot.logger.debug(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
+                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) while cleaning up expired voice-mute."
                 )
                 continue
             member = guild.get_member(member_snowflake)
             if member is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.debug(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.name}), cleaning up expired voice-mute."
+                simplified_member = bot.registry.get(MemberState).active.get(
+                    member_snowflake, None
                 )
-                continue
-            await database_factory.delete(**kwargs)
-            count += 1
-            if (
+                if not simplified_member:
+                    bot.logger.debug(
+                        f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.name}) while cleaning up expired voice-mute."
+                    )
+                    continue
+                count += 1
+                await database_factory.delete(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=member_snowflake,
+                    target=target,
+                )
+            elif (
                 member.voice
                 and member.voice.channel
                 and member.voice.channel.id == channel_snowflake

@@ -102,22 +102,34 @@ class RevokeView(discord.ui.View):
             ):
                 continue
             scope = GroupScope(group=group)
-            if guild_snowflake is not None:
-                guild = bot.get_guild(guild_snowflake)
-                if guild is not None:
-                    scope.guilds[guild.id] = guild
-            elif guild_snowflake is None and group.scope == PermissionScope.GLOBAL:
+            if group.scope == PermissionScope.GLOBAL:
                 for guild in bot.guilds:
+                    scope.guilds[guild.id] = guild
                     for channel in guild.channels:
                         scope.channels[channel.id] = channel
-                    scope.guilds[guild.id] = guild
-            if channel_snowflake is not None:
-                channel = bot.get_channel(channel_snowflake)
-                if channel is not None and isinstance(
-                    channel,
-                    (discord.VoiceChannel, discord.TextChannel, discord.StageChannel),
-                ):
-                    scope.channels[channel.id] = channel
+            elif group.scope == PermissionScope.GUILD:
+                if guild_snowflake is not None:
+                    guild = bot.get_guild(guild_snowflake)
+                    if guild is not None:
+                        scope.guilds[guild.id] = guild
+                        for channel in guild.channels:
+                            scope.channels[channel.id] = channel
+            elif group.scope == PermissionScope.CHANNEL:
+                if guild_snowflake is not None:
+                    guild = bot.get_guild(guild_snowflake)
+                    if guild is not None:
+                        scope.guilds[guild.id] = guild
+                if channel_snowflake is not None:
+                    channel = bot.get_channel(channel_snowflake)
+                    if channel is not None and isinstance(
+                        channel,
+                        (
+                            discord.VoiceChannel,
+                            discord.TextChannel,
+                            discord.StageChannel,
+                        ),
+                    ):
+                        scope.channels[channel.id] = channel
             self._merge_scope(author_scopes, scope)
             self.add_selectable_group(
                 group, scope, author_groups, author_scopes, ancestor_only
@@ -426,6 +438,7 @@ class RevokeView(discord.ui.View):
             )
         elif self.__selected_group and self.__selected_guild:
             await database_factory.delete(
+                channel_snowflake=None,
                 guild_snowflake=self.__selected_guild.id,
                 member_snowflake=self.__ctx.member_snowflake,
                 group_name=self.__selected_group.alias,
@@ -438,6 +451,8 @@ class RevokeView(discord.ui.View):
             )
         else:
             await database_factory.delete(
+                channel_snowflake=None,
+                guild_snowflake=None,
                 member_snowflake=self.__ctx.member_snowflake,
                 group_name=self.__selected_group.alias,
             )

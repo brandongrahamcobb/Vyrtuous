@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.text_mute import TextMute
 
@@ -38,45 +39,46 @@ async def clean_expired_text_mutes() -> int:
             channel_snowflake = int(expired_text_mute.channel_snowflake)
             guild_snowflake = int(expired_text_mute.guild_snowflake)
             member_snowflake = int(expired_text_mute.member_snowflake)
-            kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
-                "member_snowflake": member_snowflake,
-            }
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
-                await database_factory.delete(**kwargs)
                 bot.logger.debug(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired text-mute."
+                    f"Unable to locate guild {guild_snowflake} while cleaning up expired text-mute."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                await database_factory.delete(**kwargs)
                 bot.logger.debug(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
+                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) while cleaning up expired text-mute."
                 )
                 continue
             member = guild.get_member(member_snowflake)
             if member is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.debug(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
+                simplified_member = bot.registry.get(MemberState).active.get(
+                    member_snowflake, None
                 )
-                continue
-            await database_factory.delete(**kwargs)
-            count += 1
-            try:
-                await channel.set_permissions(
-                    target=member,
-                    send_messages=None,
-                    add_reactions=None,
-                    reason="Cleaning up expired text-mute",
+                if not simplified_member:
+                    bot.logger.debug(
+                        f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) while cleaning up expired text-mute."
+                    )
+                    continue
+                count += 1
+                await database_factory.delete(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=member_snowflake,
                 )
-            except discord.Forbidden as e:
-                bot.logger.error(str(e).capitalize())
-            except discord.HTTPException as e:
-                bot.logger.error(f"HTTP error removing expired text mute: {e}")
+            else:
+                try:
+                    await channel.set_permissions(
+                        target=member,
+                        send_messages=None,
+                        add_reactions=None,
+                        reason="Cleaning up expired text-mute",
+                    )
+                except discord.Forbidden as e:
+                    bot.logger.error(str(e).capitalize())
+                except discord.HTTPException as e:
+                    bot.logger.error(f"HTTP error removing expired text mute: {e}")
     return count
 
 

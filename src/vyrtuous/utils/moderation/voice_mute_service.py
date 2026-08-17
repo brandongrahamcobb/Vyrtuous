@@ -241,12 +241,14 @@ async def channel_unmute(
             continue
         voice_mutes = await database_factory.select(
             channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
             member_snowflake=member.id,
             singular=True,
         )
         await database_factory.delete(
             target=target,
             channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
             member_snowflake=member.id,
         )
         if not voice_mutes:

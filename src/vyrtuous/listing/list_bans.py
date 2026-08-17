@@ -134,6 +134,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
                 else:
                     continue
+            ban_n += 1
             for channel_snowflake, channel_dictionary in ban_dictionary.get(
                 "bans", {}
             ).items():
@@ -150,7 +151,6 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     lines.append(
                         f"**Blacklisted:** {channel_dictionary['blacklisted']}"
                     )
-                ban_n += 1
                 field_count += 1
                 if field_count >= list_service.CHUNK_SIZE:
                     embed.add_field(

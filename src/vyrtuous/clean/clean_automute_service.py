@@ -42,22 +42,14 @@ async def clean_expired_automutes() -> int:
             guild_snowflake = int(expired_automute.guild_snowflake)
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
-                await automute_database_factory.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                )
                 bot.logger.debug(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired automute."
+                    f"Unable to locate guild {guild_snowflake} while cleaning up expired automute."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                await automute_database_factory.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                )
                 bot.logger.debug(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
+                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}) while cleaning up expired voice-mute."
                 )
                 continue
             if not isinstance(channel, discord.VoiceChannel):

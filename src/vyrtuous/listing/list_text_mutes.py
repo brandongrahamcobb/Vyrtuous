@@ -138,6 +138,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
                 else:
                     continue
+            tmute_n += 1
             for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
                 "text_mutes", {}
             ).items():
@@ -151,7 +152,6 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                         f"**Expires:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
                     )
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                tmute_n += 1
                 field_count += 1
                 if field_count >= list_service.CHUNK_SIZE:
                     embed.add_field(

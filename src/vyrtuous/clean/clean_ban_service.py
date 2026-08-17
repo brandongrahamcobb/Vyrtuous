@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.cache.registry import MemberState
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
 
@@ -38,42 +39,43 @@ async def clean_expired_bans() -> int:
             channel_snowflake = int(expired_ban.channel_snowflake)
             guild_snowflake = int(expired_ban.guild_snowflake)
             member_snowflake = int(expired_ban.member_snowflake)
-            kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
-                "member_snowflake": member_snowflake,
-            }
             guild = bot.get_guild(guild_snowflake)
             if guild is None:
-                await database_factory.delete(**kwargs)
                 bot.logger.debug(
-                    f"Unable to locate guild {guild_snowflake}, cleaning up expired ban."
+                    f"Unable to locate guild {guild_snowflake} while cleaning up expired ban."
                 )
                 continue
             channel = guild.get_channel(channel_snowflake)
             if channel is None:
-                await database_factory.delete(**kwargs)
                 bot.logger.debug(
-                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, cleaning up expired ban."
+                    f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake} while cleaning up expired ban."
                 )
                 continue
             member = guild.get_member(member_snowflake)
             if member is None:
-                await database_factory.delete(**kwargs)
-                bot.logger.debug(
-                    f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired ban."
+                simplified_member = bot.registry.get(MemberState).active.get(
+                    member_snowflake, None
                 )
-                continue
-            await database_factory.delete(**kwargs)
-            count += 1
-            try:
-                await channel.set_permissions(
-                    member, view_channel=None, reason="Cleaning up expired ban."
+                if not simplified_member:
+                    bot.logger.debug(
+                        f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}) while cleaning up expired ban."
+                    )
+                    continue
+                count += 1
+                await database_factory.delete(
+                    channel_snowflake=channel_snowflake,
+                    guild_snowflake=guild_snowflake,
+                    member_snowflake=member_snowflake,
                 )
-            except discord.Forbidden as e:
-                bot.logger.error(str(e).capitalize())
-            except discord.HTTPException as e:
-                bot.logger.error(f"HTTP error removing expired ban: {e}")
+            else:
+                try:
+                    await channel.set_permissions(
+                        member, view_channel=None, reason="Cleaning up expired ban."
+                    )
+                except discord.Forbidden as e:
+                    bot.logger.error(str(e).capitalize())
+                except discord.HTTPException as e:
+                    bot.logger.error(f"HTTP error removing expired ban: {e}")
     return count
 
 

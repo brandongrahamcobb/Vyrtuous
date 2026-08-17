@@ -130,6 +130,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     lines.append(f"**User:** {display_name} ({member_snowflake})")
                 else:
                     continue
+            flag_n += 1
             for channel_snowflake, channel_dictionary in flag_dictionary.get(
                 "flags", {}
             ).items():
@@ -140,7 +141,6 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     lines.append(f"**Channel:** {channel.mention}")
                 if isinstance(obj, discord.Member):
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                flag_n += 1
                 field_count += 1
                 if field_count >= list_service.CHUNK_SIZE:
                     embed.add_field(
