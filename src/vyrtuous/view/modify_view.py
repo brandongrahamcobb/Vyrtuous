@@ -66,6 +66,7 @@ class ModifyRecord:
     model: type
     guild_snowflake: int
     channel_snowflake: int | None
+    member_snowflake: int | None
     scope: str | None
 
 
@@ -137,6 +138,7 @@ class ModifyView(discord.ui.View):
                                     model=model,
                                     guild_snowflake=guild.id,
                                     channel_snowflake=(channel.id if channel else None),
+                                    member_snowflake=self.__ctx.member_snowflake,
                                     scope=None,
                                 )
                             )
@@ -153,6 +155,7 @@ class ModifyView(discord.ui.View):
                         requested=[permission],
                     )
                     items = await database_factory.select(
+                        guild_snowflake=guild.id,
                         member_snowflake=self.__ctx.member_snowflake,
                         target=scope.lower(),
                         singular=False,
@@ -169,6 +172,7 @@ class ModifyView(discord.ui.View):
                                 model=VoiceMute,
                                 guild_snowflake=guild.id,
                                 channel_snowflake=(channel.id if channel else None),
+                                member_snowflake=self.__ctx.member_snowflake,
                                 scope=scope,
                             )
                         )
@@ -208,11 +212,21 @@ class ModifyView(discord.ui.View):
             if r.guild_snowflake in allowed_guilds
             and (r.channel_snowflake is None or r.channel_snowflake in allowed_channels)
         ]
+        self._update_disabled_state()
         self._refresh_options()
         if not self.guild_select.options or not self.channel_select.options:
             await self.__tick.end(
                 warning="You have insufficient privileges to do that."
             )
+
+    def _update_disabled_state(self) -> None:
+        self.guild_select.disabled = self.selected_model is None
+        guild_ready = self.selected_guild is not None
+        self.channel_select.disabled = not guild_ready
+        channel_ready = self.selected_channel is not None
+        self.scope_select.disabled = (
+            not channel_ready or self.selected_model is not VoiceMute
+        )
 
     def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
         relevant = [
@@ -231,32 +245,6 @@ class ModifyView(discord.ui.View):
             reverse=True,
         )
         return relevant[:24]
-
-    def _apply_ctx_defaults(self) -> None:
-        if self.selected_model is None:
-            return
-        model_records = [r for r in self.records if r.model == self.selected_model]
-        ctx_guild_records = [
-            r for r in model_records if r.guild_snowflake == self.__ctx.guild_snowflake
-        ]
-        if ctx_guild_records:
-            self.selected_guild = self.__ctx.guild_snowflake
-            self.channel_select.disabled = self.selected_model is AutoAssignRole
-            if not self.channel_select.disabled:
-                ctx_channel_records = [
-                    r
-                    for r in ctx_guild_records
-                    if r.channel_snowflake == self.__ctx.channel_snowflake
-                ]
-                if ctx_channel_records:
-                    self.selected_channel = self.__ctx.channel_snowflake
-                    self.scope_select.disabled = self.selected_model is not VoiceMute
-        if not self.scope_select.disabled:
-            visible_scopes = {
-                r.scope for r in self._visible_records(exclude="scope") if r.scope
-            }
-            if len(visible_scopes) == 1:
-                self.selected_scope = next(iter(visible_scopes))
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -294,6 +282,9 @@ class ModifyView(discord.ui.View):
             ]
         if exclude != "scope" and self.selected_scope is not None:
             records = [r for r in records if r.scope in (None, self.selected_scope)]
+        records = [
+            r for r in records if r.member_snowflake == self.__ctx.member_snowflake
+        ]
         return records
 
     def limit_available_to_top_24_by_member_count(self, available):
@@ -306,11 +297,13 @@ class ModifyView(discord.ui.View):
         self._build_model_options(
             models={r.model for r in self._visible_records(exclude="model") if r.model}
         )
+        self.model_select.placeholder = self._label_for("model")
         self._build_guild_options(
             guild_snowflakes={
                 r.guild_snowflake for r in self._visible_records(exclude="guild")
             }
         )
+        self.guild_select.placeholder = self._label_for("guild")
         self._build_channel_options(
             channel_snowflakes={
                 r.channel_snowflake
@@ -318,12 +311,10 @@ class ModifyView(discord.ui.View):
                 if r.channel_snowflake
             }
         )
+        self.channel_select.placeholder = self._label_for("channel")
         self._build_scope_options(
             scopes={r.scope for r in self._visible_records(exclude="scope") if r.scope}
         )
-        self.model_select.placeholder = self._label_for("model")
-        self.guild_select.placeholder = self._label_for("guild")
-        self.channel_select.placeholder = self._label_for("channel")
         self.scope_select.placeholder = self._label_for("scope")
 
     def _build_model_options(self, models):
@@ -341,22 +332,22 @@ class ModifyView(discord.ui.View):
         else:
             return "Error"
 
-    def _build_guild_options(self, guild_snowflakes: set[int]):
+    def _build_guild_options(self, guild_snowflakes: set[int], default: bool = False):
+        bot = DiscordBot.get_instance()
+        guilds = [
+            g
+            for g in (bot.get_guild(snowflake) for snowflake in guild_snowflakes)
+            if g is not None
+        ]
+        guilds.sort(key=lambda a: getattr(a, "member_count", 0), reverse=True)
+        top_24 = guilds[:24]
         guild_options = []
-        guild_options.append(
-            discord.SelectOption(
-                label=self._guild_label(self.__ctx.guild_snowflake),
-                value=str(self.__ctx.guild_snowflake),
-                default=(self.selected_guild == self.__ctx.guild_snowflake),
-            )
-        )
         guild_options.extend(
             [
                 discord.SelectOption(
-                    label=self._guild_label(guild_snowflake), value=str(guild_snowflake)
+                    label=self._guild_label(guild.id), value=str(guild.id)
                 )
-                for guild_snowflake in guild_snowflakes
-                if guild_snowflake != self.__ctx.guild_snowflake
+                for guild in top_24
             ]
         )
         self.guild_select.options = guild_options
@@ -369,26 +360,29 @@ class ModifyView(discord.ui.View):
         else:
             return "Error"
 
-    def _build_channel_options(self, channel_snowflakes: set[int]):
-        channel_options = []
-        channel_options.append(
-            discord.SelectOption(
-                label=self._channel_label(self.__ctx.channel_snowflake),
-                value=str(self.__ctx.channel_snowflake),
-                default=(self.selected_channel == self.__ctx.channel_snowflake),
+    def _build_channel_options(
+        self, channel_snowflakes: set[int], default: bool = False
+    ):
+        bot = DiscordBot.get_instance()
+        channels = [
+            c
+            for c in (bot.get_channel(snowflake) for snowflake in channel_snowflakes)
+            if isinstance(
+                c,
+                (discord.TextChannel, discord.VoiceChannel, discord.StageChannel),
             )
+        ]
+        channels.sort(
+            key=lambda c: (
+                len(c.members)
+                if isinstance(c, (discord.VoiceChannel, discord.StageChannel))
+                else 0
+            ),
+            reverse=True,
         )
-        channel_options.extend(
-            [
-                discord.SelectOption(
-                    label=self._channel_label(channel_snowflake),
-                    value=str(channel_snowflake),
-                )
-                for channel_snowflake in channel_snowflakes
-                if channel_snowflake != self.__ctx.channel_snowflake
-            ]
-        )
-        self.channel_select.options = channel_options
+        self.channel_select.options = [
+            *[discord.SelectOption(label=c.name, value=str(c.id)) for c in channels],
+        ]
 
     def _build_scope_options(self, scopes: set[str]):
         scope_options = []
@@ -400,7 +394,8 @@ class ModifyView(discord.ui.View):
                 for s in scopes
             ]
         )
-        self.scope_select.options = scope_options
+        if scope_options:
+            self.scope_select.options = scope_options
 
     def _get_model_by_identifier(self, model_identifier: str):
         for model in MODELS:
@@ -416,10 +411,7 @@ class ModifyView(discord.ui.View):
         self.selected_guild = None
         self.selected_channel = None
         self.selected_scope = None
-        self.guild_select.disabled = False
-        self.channel_select.disabled = True
-        self.scope_select.disabled = True
-        self._apply_ctx_defaults()
+        self._update_disabled_state()
         self._refresh_options()
         await interaction.response.edit_message(view=self)
 
@@ -429,8 +421,8 @@ class ModifyView(discord.ui.View):
         self.selected_guild = int(raw)
         self.selected_channel = None
         self.selected_scope = None
-        self.channel_select.disabled = self.selected_model is AutoAssignRole
         self.scope_select.disabled = True
+        self._update_disabled_state()
         self._refresh_options()
         await interaction.response.edit_message(view=self)
 
@@ -440,10 +432,17 @@ class ModifyView(discord.ui.View):
         self.selected_channel = int(raw)
         self.selected_scope = None
         self.scope_select.disabled = self.selected_model is not VoiceMute
+        self._update_disabled_state()
         self._refresh_options()
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.select(placeholder="Select a scope", options=[], disabled=True)
+    @discord.ui.select(
+        placeholder="Select a scope",
+        options=[
+            discord.SelectOption(label="Only valid for voice mute.", value="default")
+        ],
+        disabled=True,
+    )
     async def scope_select(self, interaction, select):
         raw = select.values[0]
         self.selected_scope = raw

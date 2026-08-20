@@ -67,12 +67,6 @@ async def clean_expired_voice_mutes() -> int:
                     )
                     continue
                 count += 1
-                await database_factory.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                    target=target,
-                )
             elif (
                 member.voice
                 and member.voice.channel
@@ -91,4 +85,11 @@ async def clean_expired_voice_mutes() -> int:
                 bot.logger.debug(
                     f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                 )
+            await database_factory.delete(
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member_snowflake,
+                target=target,
+            )
+
     return count

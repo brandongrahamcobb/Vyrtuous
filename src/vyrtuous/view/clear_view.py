@@ -143,14 +143,6 @@ class ClearView(discord.ui.View):
         self.__channel_snowflake = channel_snowflake
         self.__member_snowflake = member_snowflake
         self.__guild_snowflake = guild_snowflake
-        self._locked = {
-            "guild": guild_snowflake is not None,
-            "channel": channel_snowflake is not None,
-        }
-        if self._locked["guild"]:
-            self.remove_item(self.guild_select)
-        if self._locked["channel"]:
-            self.remove_item(self.channel_select)
         self.__interaction = interaction
         self.__obj = obj
         self.__tick = tick
@@ -652,17 +644,15 @@ class ClearView(discord.ui.View):
         self._refresh_options()
 
     def _update_disabled_state(self) -> None:
-        if not self._locked["guild"]:
-            self.guild_select.disabled = self.selected_model is None
-        guild_ready = self._locked["guild"] or self.selected_guild is not None
-        if not self._locked["channel"]:
-            self.channel_select.disabled = (
-                not guild_ready or self.selected_model is AutoAssignRole
-            )
-        channel_ready = self._locked["channel"] or self.selected_channel is not None
-        self.scope_select.disabled = not channel_ready or (
-            self.selected_model is not VoiceMute and self.selected_model is not ALL
+        self.guild_select.disabled = self.selected_model is None
+        guild_ready = self.selected_guild is not None
+        self.channel_select.disabled = (
+            not guild_ready or self.selected_model is AutoAssignRole
         )
+        channel_ready = self.selected_channel is not None
+        self.scope_select.disabled = (
+            not channel_ready or self.selected_model is not VoiceMute
+        ) or self.selected_model is ALL
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -713,22 +703,20 @@ class ClearView(discord.ui.View):
             models={r.model for r in self._visible_records(exclude="model") if r.model}
         )
         self.model_select.placeholder = self._label_for("model")
-        if not self._locked["guild"]:
-            self._build_guild_options(
-                guild_snowflakes={
-                    r.guild_snowflake for r in self._visible_records(exclude="guild")
-                }
-            )
-            self.guild_select.placeholder = self._label_for("guild")
-        if not self._locked["channel"]:
-            self._build_channel_options(
-                channel_snowflakes={
-                    r.channel_snowflake
-                    for r in self._visible_records(exclude="channel")
-                    if r.channel_snowflake
-                }
-            )
-            self.channel_select.placeholder = self._label_for("channel")
+        self._build_guild_options(
+            guild_snowflakes={
+                r.guild_snowflake for r in self._visible_records(exclude="guild")
+            }
+        )
+        self.guild_select.placeholder = self._label_for("guild")
+        self._build_channel_options(
+            channel_snowflakes={
+                r.channel_snowflake
+                for r in self._visible_records(exclude="channel")
+                if r.channel_snowflake
+            }
+        )
+        self.channel_select.placeholder = self._label_for("channel")
         self._build_scope_options(
             scopes={r.scope for r in self._visible_records(exclude="scope") if r.scope}
         )
@@ -842,10 +830,10 @@ class ClearView(discord.ui.View):
         self.selected_model = (
             ALL if raw == "all" else self._get_model_by_identifier(raw)
         )
-        if not self._locked["guild"]:
-            self.selected_guild = None
-        if not self._locked["channel"]:
-            self.selected_channel = None
+        # if not self._locked["guild"]:
+        self.selected_guild = None
+        # if not self._locked["channel"]:
+        self.selected_channel = None
         self.selected_scope = None
         self._update_disabled_state()
         self._refresh_options()
@@ -856,11 +844,11 @@ class ClearView(discord.ui.View):
         await interaction.response.defer()
         raw = select.values[0]
         self.selected_guild = ALL if raw == "all" else int(raw)
-        if not self._locked["channel"]:
-            self.selected_channel = None
+        self.selected_channel = None
         self.selected_scope = None
         self.channel_select.disabled = self.selected_model is AutoAssignRole
         self.scope_select.disabled = True
+        self._update_disabled_state()
         self._refresh_options()
         await interaction.edit_original_response(view=self)
 
@@ -873,6 +861,7 @@ class ClearView(discord.ui.View):
         self.scope_select.disabled = (
             self.selected_model is not VoiceMute and self.selected_model is not ALL
         )
+        self._update_disabled_state()
         self._refresh_options()
         await interaction.edit_original_response(view=self)
 

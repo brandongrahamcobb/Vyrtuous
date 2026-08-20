@@ -313,9 +313,13 @@ class HelpTextCommand(commands.Cog):
                                 f"[{name}]" if is_optional else f"<{name}>"
                             )
                             if param_desc:
-                                param_details.append(f"**{name}**: {param_desc}")
+                                param_details.append(
+                                    f"**{name}**{' (Optional)' if not param.required else ''}: {param_desc}"
+                                )
                             else:
-                                param_details.append(f"**{name}**")
+                                param_details.append(
+                                    f"**{name}**{' (Optional)' if not param.required else ''}"
+                                )
                         embed.add_field(
                             name="Usage",
                             value=f"`{' '.join(usage_parts)}`",

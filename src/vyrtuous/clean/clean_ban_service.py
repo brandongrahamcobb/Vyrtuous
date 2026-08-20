@@ -62,11 +62,6 @@ async def clean_expired_bans() -> int:
                     )
                     continue
                 count += 1
-                await database_factory.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                )
             else:
                 try:
                     await channel.set_permissions(
@@ -76,6 +71,12 @@ async def clean_expired_bans() -> int:
                     bot.logger.error(str(e).capitalize())
                 except discord.HTTPException as e:
                     bot.logger.error(f"HTTP error removing expired ban: {e}")
+            await database_factory.delete(
+                channel_snowflake=channel_snowflake,
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member_snowflake,
+            )
+
     return count
 
 

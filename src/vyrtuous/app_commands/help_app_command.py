@@ -212,10 +212,12 @@ class HelpAppCommand(commands.Cog):
                             )
                             if param.description and param.description != "…":
                                 param_details.append(
-                                    f"**{param.name}**: {param.description}"
+                                    f"**{param.name}**{' (Optional)' if not param.required else ''}: {param.description}"
                                 )
                             else:
-                                param_details.append(f"**{param.name}**")
+                                param_details.append(
+                                    f"**{param.name}**{' (Optional)' if not param.required else ''}"
+                                )
                         embed.add_field(
                             name="Usage",
                             value=f"`{' '.join(usage_parts)}`",
