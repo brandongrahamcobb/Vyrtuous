@@ -77,6 +77,13 @@ class MockBot(commands.Bot):
     def get_guild(self, guild_snowflake: int):
         return self._guilds.get(guild_snowflake, None)
 
+    def get_channel(self, channel_snowflake: int):
+        for guild in self._guilds.values():
+            for channel in guild.channels:
+                if channel.id == channel_snowflake:
+                    return channel
+        return None
+
     def get_user(self, member_snowflake: int):
         for guild_snowflake, guild in self._guilds.items():
             for member in guild.members:

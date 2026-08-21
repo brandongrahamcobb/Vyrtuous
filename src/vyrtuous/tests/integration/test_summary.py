@@ -28,7 +28,6 @@ from vyrtuous.cache.registry import MemberState
 from vyrtuous.models.scope import AppScope
 from vyrtuous.models.target import AppTarget
 from vyrtuous.tests.conftest import interaction
-from vyrtuous.tests.integration.test_rmv import BASE_PERMISSIONS
 from vyrtuous.tests.integration.test_suite import (
     build_message,
     capture_command,
@@ -504,7 +503,7 @@ async def test_summary_app_command(
 
     Examples
     --------
-    >>> !summary 10000000000000003
+    >>> /summary 10000000000000003
     Embed
     """
     assert COMMAND in docstring

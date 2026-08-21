@@ -94,14 +94,6 @@ class InfractionView(discord.ui.View):
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
-                try:
-                    await permission_service.has_permissions(
-                        permission_state=permission_state,
-                        member_snowflake=self.__author_snowflake,
-                        requested=["command.moderation.uncapped"],
-                    )
-                except:
-                    continue
             elif group.scope == PermissionScope.GUILD:
                 for guild in bot.guilds:
                     if guild.id != assigned_guild_snowflake:
@@ -116,15 +108,6 @@ class InfractionView(discord.ui.View):
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
-                    try:
-                        await permission_service.has_permissions(
-                            permission_state=permission_state,
-                            guild_snowflake=guild.id,
-                            member_snowflake=self.__author_snowflake,
-                            requested=["command.moderation.uncapped"],
-                        )
-                    except:
-                        continue
             elif group.scope == PermissionScope.CHANNEL:
                 for guild in bot.guilds:
                     for channel in guild.channels:
@@ -139,16 +122,6 @@ class InfractionView(discord.ui.View):
                         if effective_group == group:
                             available_channels.add(channel)
                             available_guilds.add(guild)
-                        try:
-                            await permission_service.has_permissions(
-                                permission_state=permission_state,
-                                channel_snowflake=channel.id,
-                                guild_snowflake=guild.id,
-                                member_snowflake=self.__author_snowflake,
-                                requested=["command.moderation.uncapped"],
-                            )
-                        except:
-                            continue
             else:
                 raise CheckFailure(
                     "You do not have sufficient privileges in this channel or server to use this command."

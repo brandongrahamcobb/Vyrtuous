@@ -39,12 +39,6 @@ async def clean_expired_voice_mutes() -> int:
             member_snowflake = int(expired_voice_mute.member_snowflake)
             target = expired_voice_mute.target
             guild = bot.get_guild(guild_snowflake)
-            kwargs = {
-                "channel_snowflake": channel_snowflake,
-                "guild_snowflake": guild_snowflake,
-                "member_snowflake": member_snowflake,
-                "target": target,
-            }
             if guild is None:
                 bot.logger.debug(
                     f"Unable to locate guild {guild_snowflake} while cleaning up expired voice-mute."
@@ -66,7 +60,6 @@ async def clean_expired_voice_mutes() -> int:
                         f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.name}) while cleaning up expired voice-mute."
                     )
                     continue
-                count += 1
             elif (
                 member.voice
                 and member.voice.channel
@@ -85,11 +78,11 @@ async def clean_expired_voice_mutes() -> int:
                 bot.logger.debug(
                     f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                 )
+            count += 1
             await database_factory.delete(
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=guild_snowflake,
                 member_snowflake=member_snowflake,
                 target=target,
             )
-
     return count

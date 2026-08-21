@@ -114,6 +114,7 @@ class ModerationAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
+        await tick.defer()
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -132,9 +133,7 @@ class ModerationAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the ban", view=view, ephemeral=True
-        )
+        await tick.end(success="Specify the ban", view=view, ephemeral=True)
 
     @metadata(permission="command.moderation.blacklist")
     @app_commands.command(name="blacklist", description="Blacklist a member.")
@@ -227,6 +226,7 @@ class ModerationAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
+        await tick.defer()
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -274,9 +274,7 @@ class ModerationAppCommands(commands.Cog):
             await view.setup()
         except CheckFailure as e:
             return await tick.end(warning=str(e))
-        await interaction.response.send_message(
-            content="Specify what to clear.", view=view, ephemeral=True
-        )
+        await tick.end(success="Specify what to clear.", view=view, ephemeral=True)
 
     @metadata(permission="command.moderation.duration")
     @app_commands.command(name="duration", description="Modify a duration.")
@@ -287,6 +285,7 @@ class ModerationAppCommands(commands.Cog):
         member: app_commands.Transform[TargetObject, AppTarget],
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
+        await interaction.response.defer()
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
@@ -328,6 +327,7 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
+        await tick.defer()
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -346,8 +346,8 @@ class ModerationAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and a category", view=view, ephemeral=True
+        await tick.end(
+            success="Select a channel and a category", view=view, ephemeral=True
         )
 
     @metadata(permission="command.moderation.flag")
@@ -400,16 +400,17 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
-        await permission_service.has_permissions_at_all(
-            permission_state=permission_state,
-            member_snowflake=interaction.user.id,
-            requested=["command.moderation.flag"],
-        )
         if invincible := bot.registry.get(MemberState).invincible.get(
             guild_snowflake, None
         ):
             if member_snowflake in invincible:
                 return
+        await tick.defer()
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.moderation.flag"],
+        )
         ctx = SnowflakeContext(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
@@ -423,9 +424,7 @@ class ModerationAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the flag", view=view, ephemeral=True
-        )
+        await tick.end(success="Specify the flag", view=view, ephemeral=True)
 
     @metadata(permission="command.moderation.voice-mute")
     @app_commands.command(name="mute", description="Create a voice mute.")
@@ -479,16 +478,17 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
-        await permission_service.has_permissions_at_all(
-            permission_state=permission_state,
-            member_snowflake=interaction.user.id,
-            requested=["command.moderation.voice-mute"],
-        )
         if invincible := bot.registry.get(MemberState).invincible.get(
             guild_snowflake, None
         ):
             if member_snowflake in invincible:
                 return
+        await tick.defer()
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.moderation.voice-mute"],
+        )
         if await voice_mute_service.is_voice_muted(
             guild_snowflake=guild_snowflake,
             member_snowflake=member_snowflake,
@@ -508,9 +508,7 @@ class ModerationAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the voice-mute", view=view, ephemeral=True
-        )
+        await tick.end(success="Specify the voice-mute", view=view, ephemeral=True)
 
     @metadata(permission="command.moderation.reason")
     @app_commands.command(name="reason", description="Modify a reason.")
@@ -562,6 +560,7 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
+        await tick.defer()
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -580,8 +579,8 @@ class ModerationAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Select a channel and a category", view=view, ephemeral=True
+        await tick.end(
+            success="Select a channel and a category", view=view, ephemeral=True
         )
 
     @metadata(permission="command.moderation.voice-mute.channel_mute")
@@ -770,6 +769,7 @@ class ModerationAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
+        await tick.defer()
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -788,9 +788,7 @@ class ModerationAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the text-mute.", view=view, ephemeral=True
-        )
+        await tick.end(success="Specify the text-mute.", view=view, ephemeral=True)
 
     @metadata(permission="command.moderation.unvoice-mute.channel_unmute")
     @app_commands.command(name="xrmute", description="Unmute all.")
