@@ -114,7 +114,7 @@ class ModerationAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -226,7 +226,7 @@ class ModerationAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -285,7 +285,6 @@ class ModerationAppCommands(commands.Cog):
         member: app_commands.Transform[TargetObject, AppTarget],
         channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
     ):
-        await interaction.response.defer()
         tick = Tick(bot=self.__bot, interaction=interaction)
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state = bot.registry.get(PermissionState)
@@ -327,7 +326,7 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -405,7 +404,7 @@ class ModerationAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -483,7 +482,7 @@ class ModerationAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -560,7 +559,7 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -769,7 +768,7 @@ class ModerationAppCommands(commands.Cog):
         ):
             if member_snowflake in invincible:
                 return
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -825,7 +824,7 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning="This command must target a valid channel.", ephemeral=True
             )
-        await tick.defer()
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
