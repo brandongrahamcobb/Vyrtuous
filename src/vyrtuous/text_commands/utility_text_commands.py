@@ -162,6 +162,8 @@ class UtilityTextCommands(commands.Cog):
         count = 0
         skipped = 0
         async for msg in channel_obj.history():
+            if ctx.message and msg.id == ctx.message.id:
+                continue
             if amount == count:
                 break
             try:
@@ -179,8 +181,6 @@ class UtilityTextCommands(commands.Cog):
                     guild_snowflake=guild_snowflake,
                     requested=["command.utility.purge"],
                 )
-                if msg.id == ctx.message.id:
-                    continue
                 if member_snowflake is not None:
                     if msg.author.id == member_snowflake:
                         await msg.delete()
@@ -188,8 +188,9 @@ class UtilityTextCommands(commands.Cog):
                 else:
                     await msg.delete()
                     count += 1
-            except Exception:
+            except Exception as e:
                 skipped += 1
+                bot.logger.debug(str(e))
                 continue
         message = f"Deleted {count} messages. Skipped {skipped} messages"
         if member_snowflake is not None and channel_obj is not None:
