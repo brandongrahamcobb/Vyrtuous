@@ -39,4 +39,5 @@ def setup_logging(config: Dict[str, Any], path_log) -> logging.Logger:
     file_handler.setFormatter(formatter)
     logger.setLevel(logging_level)
     logger.addHandler(file_handler)
+    logging.getLogger("discord").setLevel(logging.WARNING)
     return logger
