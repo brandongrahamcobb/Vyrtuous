@@ -485,12 +485,12 @@ class UserManagementAppCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server.", ephemeral=True
                 )
-        if interaction.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel.", ephemeral=True
-            )
-        else:
-            channel_snowflake = interaction.channel.id
+        # if interaction.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel.", ephemeral=True
+        #     )
+        # else:
+        #     channel_snowflake = interaction.channel.id
         if not vegan_service.is_vegan(
             guild_snowflake=guild_snowflake, member_snowflake=interaction.user.id
         ):
@@ -507,11 +507,9 @@ class UserManagementAppCommands(commands.Cog):
                 warning=f"This command must target a valid member.", ephemeral=True
             )
         await tick.defer()
-        await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.users.vegan"],
         )
         embed = await vegan_service.toggle_vegan(

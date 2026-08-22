@@ -260,12 +260,12 @@ class UserManagementTextCommands(commands.Cog):
                 return await tick.end(
                     warning="This command must target a valid server."
                 )
-        if ctx.channel is None:
-            return await tick.end(
-                warning="This command must be used in a server channel."
-            )
-        else:
-            channel_snowflake = ctx.channel.id
+        # if ctx.channel is None:
+        #     return await tick.end(
+        #         warning="This command must be used in a server channel."
+        #     )
+        # else:
+        #     channel_snowflake = ctx.channel.id
         if not vegan_service.is_vegan(
             guild_snowflake=guild_snowflake, member_snowflake=ctx.author.id
         ):
@@ -276,11 +276,9 @@ class UserManagementTextCommands(commands.Cog):
             member_snowflake = member.target.id
         else:
             return await tick.end(warning=f"This command must target a valid member.")
-        await permission_service.has_permissions(
+        await permission_service.has_permissions_at_all(
             permission_state=permission_state,
             member_snowflake=ctx.author.id,
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
             requested=["command.users.vegan"],
         )
         embed = await vegan_service.toggle_vegan(

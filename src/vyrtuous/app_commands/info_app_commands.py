@@ -1691,11 +1691,6 @@ class InfoAppCommands(commands.Cog):
             requested=["command.info.vegans"],
         )
         if isinstance(obj, discord.Guild):
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=interaction.user.id,
-                requested=["command.info.scope.guild", "other_channels"],
-            )
             if obj.id != guild_snowflake:
                 await permission_service.has_permissions_at_all(
                     permission_state=permission_state,
@@ -1703,11 +1698,6 @@ class InfoAppCommands(commands.Cog):
                     requested=["other_guilds"],
                 )
         elif isinstance(obj, discord.Member):
-            await permission_service.has_permissions_at_all(
-                permission_state=permission_state,
-                member_snowflake=interaction.user.id,
-                requested=["command.info.scope.member", "other_channels"],
-            )
             if (
                 guild
                 and isinstance(guild.target, discord.Guild)

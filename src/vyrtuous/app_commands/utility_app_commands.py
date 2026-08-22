@@ -176,8 +176,7 @@ class UtilityAppCommands(commands.Cog):
         count = 0
         skipped = 0
         async for msg in channel_obj.history():
-            if count == 0:
-                count += 1
+            if interaction.message and msg.id == interaction.message.id:
                 continue
             if amount == count:
                 break
@@ -198,16 +197,14 @@ class UtilityAppCommands(commands.Cog):
                 )
                 if member_snowflake is not None:
                     if msg.author.id == member_snowflake:
-                        if interaction.message:
-                            if msg.id == interaction.message.id:
-                                continue
                         await msg.delete()
                         count += 1
                 else:
                     await msg.delete()
                     count += 1
-            except Exception:
+            except Exception as e:
                 skipped += 1
+                bot.logger.debug(str(e))
                 continue
         message = f"Deleted {count} messages. Skipped {skipped} messages"
         if member_snowflake is not None and channel_obj is not None:
