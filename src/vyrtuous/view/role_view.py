@@ -113,7 +113,6 @@ class RoleView(discord.ui.View):
         await self._build_role_options(
             available_guilds=available_guilds, available_channels=available_channels
         )
-        print(self.role_select.options)
 
     def limit_available_to_top_24_by_member_count(self, available):
         items = list(available)
