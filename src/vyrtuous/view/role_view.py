@@ -76,7 +76,6 @@ class RoleView(discord.ui.View):
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
-                break
             elif group.scope == PermissionScope.GUILD:
                 for guild in bot.guilds:
                     if guild.id != self.__ctx.guild_snowflake:
@@ -91,7 +90,6 @@ class RoleView(discord.ui.View):
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
-                break
             elif group.scope == PermissionScope.CHANNEL:
                 for guild in bot.guilds:
                     for channel in guild.channels:
@@ -105,7 +103,6 @@ class RoleView(discord.ui.View):
                             for channel in guild.channels:
                                 available_channels.add(channel)
                             available_guilds.add(guild)
-                break
             else:
                 raise CheckFailure(
                     "You do not have sufficient privileges in this channel or server to use this command."
@@ -116,6 +113,7 @@ class RoleView(discord.ui.View):
         await self._build_role_options(
             available_guilds=available_guilds, available_channels=available_channels
         )
+        print(self.role_select.options)
 
     def limit_available_to_top_24_by_member_count(self, available):
         items = list(available)
@@ -129,22 +127,27 @@ class RoleView(discord.ui.View):
         available_channels: set[discord.abc.GuildChannel],
     ):
         role_options = []
+        role_snowflakes = set()
         database_factory: DatabaseFactory = DatabaseFactory(self.__model)
         for guild in available_guilds:
             for channel in available_channels:
-                if channel in guild.channels:
-                    records = await database_factory.select(
-                        channel_snowflake=channel.id,
-                        guild_snowflake=guild.id,
-                        singular=False,
+                if channel not in guild.channels:
+                    continue
+                records = await database_factory.select(
+                    channel_snowflake=channel.id,
+                    guild_snowflake=guild.id,
+                    singular=False,
+                )
+                for record in records:
+                    if record.role_snowflake in role_snowflakes:
+                        continue
+                    role = guild.get_role(record.role_snowflake)
+                    if role is None:
+                        raise RoleNotFound(str(record.role_snowflake))
+                    role_options.extend(
+                        [discord.SelectOption(label=role.name, value=str(role.id))]
                     )
-                    for record in records:
-                        role = guild.get_role(record.role_snowflake)
-                        if role is None:
-                            raise RoleNotFound(str(record.role_snowflake))
-                        role_options.extend(
-                            [discord.SelectOption(label=role.name, value=str(role.id))]
-                        )
+                    role_snowflakes.add(record.role_snowflake)
         if role_options:
             self.role_select.placeholder = "Select a role."
             self.role_select.options = role_options
