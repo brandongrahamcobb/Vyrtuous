@@ -36,9 +36,8 @@ class CheckFailure(commands.CheckFailure, app_commands.CheckFailure):
 
 class HasEqualOrLowerRole(app_commands.CheckFailure, commands.CheckFailure):
     def __init__(self, target_rank: str):
-        super().__init__(
-            message=f"You may not execute this command on this `{target_rank}` because they have an equal or higher role than you in this channel/server."
-        )
+        message = f"You may not execute this command on this `{target_rank}` because they have an equal or higher role than you in this channel/server."
+        commands.CheckFailure.__init__(self, message)
 
 
 class ExtensionError(app_commands.AppCommandError, commands.ExtensionError):
