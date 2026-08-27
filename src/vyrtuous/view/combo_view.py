@@ -177,7 +177,7 @@ class ComboView(discord.ui.View):
                     if cap:
                         caps.append(cap.duration_seconds)
                 if caps:
-                    cap_seconds = max(caps)
+                    cap_seconds = min(caps)
                     available_durations = self.limit_available_to_cap(
                         duration_seconds=cap_seconds
                     )
