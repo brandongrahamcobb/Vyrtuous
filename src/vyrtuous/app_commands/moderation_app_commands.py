@@ -42,6 +42,7 @@ from vyrtuous.utils.moderation import (
     voice_mute_service,
 )
 from vyrtuous.view.clear_view import ClearView
+from vyrtuous.view.combo_view import ComboView
 from vyrtuous.view.infraction_view import InfractionView
 from vyrtuous.view.modify_view import ModifyView
 
@@ -275,6 +276,83 @@ class ModerationAppCommands(commands.Cog):
         except CheckFailure as e:
             return await tick.end(warning=str(e))
         await tick.end(success="Specify what to clear.", view=view, ephemeral=True)
+
+    @metadata(permission="command.moderation.combo")
+    @app_commands.command(name="combo", description="Create a flag, text-mute and voice-mute all in one.")
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def create_combo_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: app_commands.Transform[TargetObject, AppTarget],
+        channel: app_commands.Transform[TargetObject | None, AppTarget] = None,
+    ):
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        if channel is None:
+            if interaction.guild is None:
+                return await tick.end(
+                    warning="This command must be used in a server.", ephemeral=True
+                )
+            if interaction.channel is None:
+                return await tick.end(
+                    warning="This command must be used in a server channel.",
+                    ephemeral=True,
+                )
+            channel_snowflake = interaction.channel.id
+            guild_snowflake = interaction.guild.id
+        else:
+            if isinstance(channel.target, discord.abc.GuildChannel):
+                if interaction.guild is None:
+                    return await tick.end(
+                        warning="This command must be used in a server.", ephemeral=True
+                    )
+                if channel.target.guild.id != interaction.guild.id:
+                    await permission_service.has_permissions(
+                        permission_state=permission_state,
+                        member_snowflake=interaction.user.id,
+                        requested=["other_guilds"],
+                    )
+                channel_snowflake = channel.target.id
+                guild_snowflake = channel.target.guild.id
+            else:
+                return await tick.end(
+                    warning="This command must target a valid channel.", ephemeral=True
+                )
+        if isinstance(member.target, int):
+            member_snowflake = member.target
+        elif isinstance(member.target, discord.Member):
+            member_snowflake = member.target.id
+        else:
+            return await tick.end(
+                warning=f"This command must target a valid member.", ephemeral=True
+            )
+        if invincible := bot.registry.get(MemberState).invincible.get(
+            guild_snowflake, None
+        ):
+            if member_snowflake in invincible:
+                return
+        await tick.defer(ephemeral=True)
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.moderation.combo", "command.moderation.flag", "command.moderation.text-mute", "command.moderation.voice-mute"],
+        )
+        ctx = SnowflakeContext(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
+        view = ComboView(
+            author_snowflake=interaction.user.id,
+            ctx=ctx,
+            interaction=interaction,
+            tick=tick,
+        )
+        await view.setup()
+        await tick.end(success="Specify the combo", view=view, ephemeral=True)
+
+
 
     @metadata(permission="command.moderation.duration")
     @app_commands.command(name="duration", description="Modify a duration.")

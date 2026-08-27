@@ -76,6 +76,7 @@ groups:
     default: false
     permissions:
     - command.moderation.ban
+    - command.moderation.combo
     - command.moderation.duration
     - command.moderation.flag
     - command.moderation.reason

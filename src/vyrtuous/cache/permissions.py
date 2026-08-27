@@ -75,6 +75,7 @@ PERMISSION_TREE = {
         "moderation": {
             "ban": [],
             "blacklist": [],
+            "combo": [],
             "duration": [],
             "flag": [],
             "reason": [],
