@@ -468,21 +468,19 @@ class ModifyView(discord.ui.View):
                 content="Please select a scope.", ephemeral=True
             )
         self.stop()
-        modify_records = self._visible_records(exclude=None)
-        modify_record = modify_records[0]
-        database_factory: DatabaseFactory = DatabaseFactory(modify_record.model)
+        database_factory: DatabaseFactory = DatabaseFactory(self.selected_model)
         select_kwargs: dict[str, Any] = {
-            "guild_snowflake": modify_record.guild_snowflake
+            "guild_snowflake": self.selected_guild
         }
-        if modify_record.channel_snowflake is not None:
-            select_kwargs["channel_snowflake"] = modify_record.channel_snowflake
-        if modify_record.scope is not None:
-            select_kwargs["target"] = modify_record.scope.lower()
+        if self.selected_channel is not None:
+            select_kwargs["channel_snowflake"] = self.selected_channel
+        if self.selected_scope is not None:
+            select_kwargs["target"] = self.selected_scope 
         record = await database_factory.select(singular=True, **select_kwargs)
         if self.__modal == ReasonModal:
             modal = ReasonModal(
                 author_snowflake=self.__author_snowflake,
-                model=modify_record.model,
+                model=self.selected_model,
                 record=record,
                 tick=self.__tick,
             )
@@ -491,7 +489,7 @@ class ModifyView(discord.ui.View):
         elif self.__modal == DurationModal:
             modal = DurationModal(
                 author_snowflake=self.__author_snowflake,
-                model=modify_record.model,
+                model=self.selected_model,
                 record=record,
                 tick=self.__tick,
             )
