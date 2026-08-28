@@ -470,12 +470,15 @@ class ModifyView(discord.ui.View):
         self.stop()
         database_factory: DatabaseFactory = DatabaseFactory(self.selected_model)
         select_kwargs: dict[str, Any] = {
-            "guild_snowflake": self.selected_guild
+            "guild_snowflake": self.selected_guild,
+            "member_snowflake": self.__ctx.member_snowflake
         }
         if self.selected_channel is not None:
             select_kwargs["channel_snowflake"] = self.selected_channel
         if self.selected_scope is not None:
             select_kwargs["target"] = self.selected_scope 
+        bot: DiscordBot = DiscordBot.get_instance()
+        bot.logger.info(select_kwargs)
         record = await database_factory.select(singular=True, **select_kwargs)
         if self.__modal == ReasonModal:
             modal = ReasonModal(
