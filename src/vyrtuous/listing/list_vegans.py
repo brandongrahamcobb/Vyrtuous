@@ -122,9 +122,6 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                         )
                 else:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
-                    lines.append(
-                        f"**Notes:** {vegan_dictionary.get("vegans", {}).get("notes")}"
-                    )
             else:
                 simplified_member = bot.registry.get(MemberState).active.get(
                     member_snowflake, None
