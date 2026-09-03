@@ -63,10 +63,11 @@ class ChannelEventListeners(commands.Cog):
         await ban_service.is_banned_then_kick_and_reset_cooldown(
             channel=after.channel, member=member
         )
-        if video_channel_service.is_active_video_channel(channel=after.channel):
-            await video_channel_service.update_video_channel_tasks(
-                after=after, before=before, member=member
-            )
+        if after.channel:
+            if video_channel_service.is_active_video_channel(channel=after.channel):
+                await video_channel_service.update_video_channel_tasks(
+                    after=after, before=before, member=member
+                )
         if invincible := self.__bot.registry.get(MemberState).invincible.get(
             after.channel.guild.id, None
         ):
