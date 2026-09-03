@@ -634,20 +634,21 @@ class InfoAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
-        await tick.defer(ephemeral=True)
-        await permission_service.has_permissions_at_all(
-            permission_state=permission_state,
-            member_snowflake=interaction.user.id,
-            requested=["command.info.groups"],
-        )
         if target is None:
-            channel_snowflake = interaction.channel.id
-            member_snowflake = None
-        elif isinstance(target.target, (int, discord.Member)):
+            await tick.defer(ephemeral=True)
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
-                requested=["command.info.scope.member", "other_channels"],
+                requested=["command.info.groups"],
+            )
+            channel_snowflake = interaction.channel.id
+            member_snowflake = None
+        elif isinstance(target.target, (int, discord.Member)):
+            await tick.defer()
+            await permission_service.has_permissions_at_all(
+                permission_state=permission_state,
+                member_snowflake=interaction.user.id,
+                requested=["command.info.groups", "command.info.scope.member", "other_channels"],
             )
             if isinstance(target.target, int):
                 member_snowflake = target.target
@@ -662,12 +663,13 @@ class InfoAppCommands(commands.Cog):
             pages = await list_groups.build_summary_pages(author_snowflake=interaction.user.id, display_name=display_name, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
             return await tick.end(success=pages)
         elif isinstance(target.target, discord.abc.GuildChannel):
+            await tick.defer(ephemeral=True)
             channel_snowflake = target.target.id
             member_snowflake = None 
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
-                requested=["command.info.scope.channel"],
+                requested=["command.info.scope.channel", "command.info.groups"],
             )
         else:
             return await tick.end(warning=f"This command must target a valid channel or member.", ephemeral=True)
@@ -680,8 +682,8 @@ class InfoAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the group", view=view
+        await tick.end(
+            success="Specify the group", view=view
         )
 
     @metadata(permission="command.info.heroes")
