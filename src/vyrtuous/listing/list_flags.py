@@ -151,6 +151,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     )
                     embed = list_service.flush_page(embed, pages, title, guild.name)
                     lines = []
+                    field_count = 0
         if lines:
             embed.add_field(name="Information", value="\n".join(lines), inline=False)
         original_description = embed.description or ""
