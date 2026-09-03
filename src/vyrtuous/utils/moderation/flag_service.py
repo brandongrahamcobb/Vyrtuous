@@ -83,31 +83,27 @@ async def warn(
     if member is None:
         return
     flags = bot.registry.get(MemberState).flagged
-    for flag_member_snowflake, flag_data in flags[guild_snowflake].items():
-        if (
-            flag_data[0] == channel.id
-            and flag_member_snowflake == member.id
-            and "Vegan" in channel.name
-        ):
-            if isinstance(channel, discord.channel.VocalGuildChannel):
-                if bot.registry.get(ChannelState).should_notify(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                    timeout=300.0,
-                ):
-                    embed = discord.Embed(
-                        title=f"\u26a0\ufe0f {member.display_name} is flagged",
-                        description=f"**Channel:** {channel.mention}\n**Reason:** {flag_data[1]}",
-                        color=discord.Color.red(),
-                    )
-                    embed.set_thumbnail(url=member.display_avatar.url)
-                    await channel.send(embed=embed)
-            bot.registry.get(ChannelState).record(
+    flag_reason = flags[guild_snowflake].get(member.id, {}).get(channel.id, None)
+    if flag_reason is not None and "Vegan" in channel.name:
+        if isinstance(channel, discord.channel.VocalGuildChannel):
+            if bot.registry.get(ChannelState).should_notify(
                 channel_snowflake=channel_snowflake,
                 guild_snowflake=guild_snowflake,
                 member_snowflake=member_snowflake,
-            )
+                timeout=300.0,
+            ):
+                embed = discord.Embed(
+                    title=f"\u26a0\ufe0f {member.display_name} is flagged",
+                    description=f"**Channel:** {channel.mention}\n**Reason:** {flag_reason}",
+                    color=discord.Color.red(),
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                await channel.send(embed=embed)
+        bot.registry.get(ChannelState).record(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            member_snowflake=member_snowflake,
+        )
 
 
 async def populate() -> None:
@@ -117,5 +113,6 @@ async def populate() -> None:
     flags = await database_factory.select(singular=False)
     for flag in flags:
         original_dict[flag.guild_snowflake].setdefault(
-            flag.member_snowflake, (flag.channel_snowflake, flag.reason)
-        )
+            flag.member_snowflake,
+            {}
+        )[flag.channel_snowflake] = flag.reason

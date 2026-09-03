@@ -102,7 +102,7 @@ async def disable(
         ):
             is_channel_scope = True
     original_set = bot.registry.get(MemberState).flagged
-    del original_set[guild_snowflake][member_snowflake]
+    original_set.get(guild_snowflake, {}).get(member_snowflake, {}).pop(channel_snowflake, None)
     return is_channel_scope
 
 

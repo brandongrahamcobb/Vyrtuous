@@ -111,8 +111,8 @@ async def enable(
             is_channel_scope = True
     original_set = bot.registry.get(MemberState).flagged
     original_set[guild_snowflake].setdefault(
-        member_snowflake, (channel_snowflake, reason)
-    )
+        member_snowflake, {}
+    )[channel_snowflake] = reason
     return is_channel_scope
 
 
