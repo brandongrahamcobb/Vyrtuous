@@ -87,7 +87,7 @@ async def warn(
         if (
             flag_data[0] == channel.id
             and flag_member_snowflake == member.id
-            and (channel.id == 1347284829305311273 or channel.id == 1222056499959042108)
+            and "Vegan" in channel.name
         ):
             if isinstance(channel, discord.channel.VocalGuildChannel):
                 if bot.registry.get(ChannelState).should_notify(
