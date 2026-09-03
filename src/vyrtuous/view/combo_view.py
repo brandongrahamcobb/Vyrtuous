@@ -41,6 +41,16 @@ DURATIONS = {"1hour", "8hour", "1day", "1week", "30day"}
 
 MODELS = [Flag, TextMute, VoiceMute]
 
+class ToggleButton(discord.ui.Button):
+    def __init__(self, label: str, attribute: str, view: 'ComboView'):
+        super().__init__(label=label, style=discord.ButtonStyle.success)
+        self.__attribute = attribute
+        self.__view = view
+
+    async def callback(self, interaction: discord.Interaction):
+        enabled = await getattr(self.__view, self.__attribute)()
+        self.style = discord.ButtonStyle.success if enabled else discord.ButtonStyle.danger
+        await interaction.response.edit_message(view=self.view)
 
 class ComboView(discord.ui.View):
     def __init__(
@@ -62,6 +72,12 @@ class ComboView(discord.ui.View):
         self.__interaction = interaction
         self.__records = []
         self.__tick = tick
+        self.__flag_enabled = True
+        self.__text_mute_enabled = True
+        self.__voice_mute_enabled = True
+        self.add_item(ToggleButton('Flag', 'toggle_flag', self))
+        self.add_item(ToggleButton('Text-Mute', 'toggle_text_mute', self))
+        self.add_item(ToggleButton('Voice-Mute', 'toggle_voice_mute', self))
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.__author_snowflake
@@ -312,6 +328,18 @@ class ComboView(discord.ui.View):
         )
         self.guild_select.options = guild_options
 
+    async def toggle_flag(self):
+        self.__flag_enabled = not self.__flag_enabled
+        return self.__flag_enabled
+
+    async def toggle_text_mute(self):
+        self.__text_mute_enabled = not self.__text_mute_enabled
+        return self.__text_mute_enabled
+
+    async def toggle_voice_mute(self):
+        self.__voice_mute_enabled = not self.__voice_mute_enabled
+        return self.__voice_mute_enabled
+
     @discord.ui.select(
         placeholder="Select a server",
         options=[],
@@ -373,6 +401,7 @@ class ComboView(discord.ui.View):
         self.__duration = duration_builder.parse(duration_value).build()
         await interaction.edit_original_response(view=self)
 
+
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
         if (
@@ -384,8 +413,15 @@ class ComboView(discord.ui.View):
                 content=f"Please select all fields.",
                 ephemeral=True,
             )
-        self.stop()
         self.__tick.update_source(interaction=interaction)
+        if (
+            not self.__flag_enabled and not self.__text_mute_enabled and not self.__voice_mute_enabled
+        ):
+            return await interaction.response.send_message(
+                content=f"None of the available actions were selected.",
+                ephemeral=True,
+            )
+        self.stop()
         bot: DiscordBot = DiscordBot.get_instance()
         permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_equal_or_lower_role(
@@ -399,24 +435,36 @@ class ComboView(discord.ui.View):
         for model in MODELS:
             database_factory: DatabaseFactory = DatabaseFactory(model)
             if model == VoiceMute:
-                command_record = await database_factory.select(
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    target="command",
-                    singular=True,
-                )
-                if command_record:
-                    self.__records.append(command_record)
-            else:
-                to_add = await database_factory.select(
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__ctx.member_snowflake,
-                    singular=True,
-                )
-                if to_add:
-                    self.__records.append(to_add)
+                if self.__voice_mute_enabled:
+                    command_record = await database_factory.select(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__ctx.member_snowflake,
+                        target="command",
+                        singular=True,
+                    )
+                    if command_record:
+                        self.__records.append(command_record)
+            if model == Flag:
+                if self.__flag_enabled:
+                    to_add = await database_factory.select(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__ctx.member_snowflake,
+                        singular=True,
+                    )
+                    if to_add:
+                        self.__records.append(to_add)
+            if model == TextMute:
+                if self.__text_mute_enabled:
+                    to_add = await database_factory.select(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__ctx.member_snowflake,
+                        singular=True,
+                    )
+                    if to_add:
+                        self.__records.append(to_add)
         if self.__records:
             for record in self.__records:
                 if hasattr(record, "expires_in"):
@@ -447,9 +495,12 @@ class ComboView(discord.ui.View):
             channel_snowflake=self.__channel_snowflake,
             duration=self.__duration,
             guild_snowflake=self.__guild_snowflake,
+            flag_enabled=self.__flag_enabled,
             member_snowflake=self.__ctx.member_snowflake,
             records=self.__records,
+            text_mute_enabled=self.__text_mute_enabled,
             tick=self.__tick,
+            voice_mute_enabled=self.__voice_mute_enabled
         )
         await modal.setup()
         await interaction.response.send_modal(modal)

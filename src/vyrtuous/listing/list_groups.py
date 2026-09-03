@@ -21,10 +21,12 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.cache.permissions import PermissionGroup, PermissionScope
-from vyrtuous.cache.registry import MemberState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.permission_entry import PermissionEntry
 from vyrtuous.listing import list_service
+from vyrtuous.permissions import permission_service
+from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging import emojis
 
 MODEL = PermissionEntry
@@ -183,3 +185,118 @@ async def build_pages(
     if not pages:
         return f"No {group.name}s found."
     return pages
+
+async def build_summary_pages(author_snowflake: int, display_name: str, guild_snowflake: int, member_snowflake: int):
+    bot: DiscordBot = DiscordBot.get_instance()
+    permission_state: PermissionState = bot.registry.get(PermissionState)
+    all_assigned_groups = await permission_service.resolve_all_assigned_groups(permission_state=permission_state, member_snowflake=member_snowflake)
+    lines = []
+    global_groups = []
+    guild_groups = {}
+    channel_groups = {}
+    for group, group_guild_snowflake, group_channel_snowflake in all_assigned_groups: 
+        match group.scope:
+            case PermissionScope.GLOBAL:
+                try:
+                     await permission_service.has_permissions_at_all(
+                        permission_state=permission_state,
+                        member_snowflake=author_snowflake,
+                        requested=["command.info.scope.global"],
+                    )
+                except CheckFailure:
+                    continue
+                global_groups.append(group)
+            case PermissionScope.GUILD:
+                if group_guild_snowflake:
+                    try:
+                        await permission_service.has_permissions_at_all(
+                            permission_state=permission_state,
+                            member_snowflake=author_snowflake,
+                            requested=["command.info.scope.guild"],
+                        )
+                    except CheckFailure:
+                        continue
+                    if guild_snowflake != group_guild_snowflake:
+                        try:
+                            await permission_service.has_permissions_at_all(
+                                permission_state=permission_state,
+                                member_snowflake=author_snowflake,
+                                requested=["other_guilds"],
+                            )
+                        except CheckFailure:
+                            continue
+                else:
+                    bot.logger.debug("Unexpected group with scope 'GUILD' for /groups command.")
+                    return
+                guild = bot.get_guild(group_guild_snowflake)
+                if guild:
+                    guild_groups.setdefault(guild.name, []).append(group)
+                else:
+                    continue
+            case PermissionScope.CHANNEL:
+                if group_channel_snowflake is not None and group_guild_snowflake is not None:
+                    guild = bot.get_guild(group_guild_snowflake)
+                    if guild is None:
+                        continue
+                    channel = guild.get_channel(group_channel_snowflake)
+                    if channel is None:
+                        continue
+                    channel_groups.setdefault((guild.name, channel.name), []).append(group)
+                else:
+                    bot.logger.debug("Unexpected group with scope 'CHANNEL' for /groups command.")
+                    return
+    group_entries = []
+    for group in global_groups:
+        group_entries.append(('🌐 Global', None, f'• {group.name}'))
+    for guild_name, groups in guild_groups.items():
+        for group in groups:
+            group_entries.append(('🏠 Server', guild_name, f'• {group.name}'))
+    for (guild_name, channel_name), groups in channel_groups.items():
+        for group in groups:
+            group_entries.append(('💬 Channel', f'{guild_name} → #{channel_name}', f'• {group.name}'))
+    pages = []
+    embed = discord.Embed(color=discord.Color.blurple(), title=f'Groups for {display_name}')
+    field_count = 0
+    sections = {'🌐 Global': [], '🏠 Server': [], '💬 Channel': []}
+    for section, parent, line in group_entries:
+        sections[section].append((parent, line))
+        field_count += 1
+        if field_count >= list_service.CHUNK_SIZE:
+            for section_name, entries in sections.items():
+                if entries:
+                    grouped = {}
+                    for parent, entry in entries:
+                        grouped.setdefault(parent, []).append(entry)
+                    value = '\n'.join(
+                        f'**{parent}**\n' + '\n'.join(values)
+                        for parent, values in grouped.items()
+                        if parent is not None
+                    )
+                    if section_name == '🌐 Global':
+                        value = '\n'.join(values for _, values in entries)
+                    embed.add_field(name=section_name, value=value or 'N/A', inline=False)
+                else:
+                    embed.add_field(name=section_name, value='N/A', inline=False)
+            embed = list_service.flush_page(embed, pages, f'Groups for {display_name}', display_name)
+            embed = discord.Embed(color=discord.Color.blurple(), title=f'Groups for {display_name}')
+            sections = {'🌐 Global': [], '🏠 Server': [], '💬 Channel': []}
+            field_count = 0
+    if field_count:
+        for section_name, entries in sections.items():
+            if entries:
+                grouped = {}
+                for parent, entry in entries:
+                    grouped.setdefault(parent, []).append(entry)
+                value = '\n'.join(
+                    f'**{parent}**\n' + '\n'.join(values)
+                    for parent, values in grouped.items()
+                    if parent is not None
+                )
+                if section_name == '🌐 Global':
+                    value = '\n'.join(values for _, values in entries)
+                embed.add_field(name=section_name, value=value or 'N/A', inline=False)
+            else:
+                embed.add_field(name=section_name, value='N/A', inline=False)
+        pages.append(embed)
+    return pages
+

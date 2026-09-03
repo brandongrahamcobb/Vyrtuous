@@ -128,10 +128,14 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                 )
                 if simplified_member:
                     display_name = simplified_member[0]
-                    lines.append(f"**User:** {display_name} ({member_snowflake})")
-                    lines.append(
-                        f"**Notes:** {vegan_dictionary.get("vegans", {}).get("notes")}"
-                    )
+                    if obj != member_snowflake:
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
+                    else:
+                        lines.append(
+                            f"**Notes:** {vegan_dictionary.get("vegans", {}).get("notes")}"
+                        )
+                else:
+                    continue
             vegan_n += 1
             field_count += 1
             if field_count >= list_service.CHUNK_SIZE:

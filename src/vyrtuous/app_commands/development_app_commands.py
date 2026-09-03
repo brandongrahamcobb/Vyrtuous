@@ -30,6 +30,7 @@ from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import AppModule, ModuleObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
+from vyrtuous.upload import upload_service
 from vyrtuous.utils.errors.error import CheckFailure, ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
 
@@ -219,9 +220,9 @@ class DevelopmentAppCommands(commands.Cog):
                 ret += 1
         return await tick.end(success=f"Synced the tree to {ret}.")
 
-    # @app_commands.command(name="upload", description="Create the upload document.")
-    # async def uploads_app_command(self, interaction: discord.Interaction) -> None:
-    #     return await upload_service.build_latex_document()
+    @app_commands.command(name="upload", description="Create the upload document.")
+    async def uploads_app_command(self, interaction: discord.Interaction) -> None:
+        return await upload_service.build_latex_document()
 
     @metadata(permission="command.dev.unload")
     @app_commands.command(name="unload", description="Unloads a cog.")

@@ -83,15 +83,24 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
         )
         for member_snowflake, _ in guild_data.get("members", {}).items():
             member = guild.get_member(member_snowflake)
-            if member is None:
-                continue
+            if member:
+                if not isinstance(obj, discord.Member):
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                    field_count += 1
+                elif not thumbnail_set:
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    thumbnail_set = True
+            else:
+                simplified_member = bot.registry.get(MemberState).active.get(
+                    member_snowflake, None
+                )
+                if simplified_member:
+                    display_name = simplified_member[0]
+                    if obj != member_snowflake:
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
+                else:
+                    continue
             hero_n += 1
-            if not isinstance(obj, discord.Member):
-                lines.append(f"**User:** {member.display_name} {member.mention}")
-                field_count += 1
-            elif not thumbnail_set:
-                embed.set_thumbnail(url=member.display_avatar.url)
-                thumbnail_set = True
             field_count += 1
             if field_count >= list_service.CHUNK_SIZE:
                 embed.add_field(

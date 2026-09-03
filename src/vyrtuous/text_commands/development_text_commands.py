@@ -28,6 +28,7 @@ from vyrtuous.db.database import Database
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.module import Module, ModuleObject
 from vyrtuous.permissions import permission_service
+from vyrtuous.upload import upload_service
 from vyrtuous.utils.errors.error import ExtensionError
 from vyrtuous.utils.messaging.tick import Tick
 
@@ -222,14 +223,14 @@ class DevelopmentTextCommands(commands.Cog):
             )
         return await tick.end(success=f"Successfully unloaded {module}.")
 
-    # @commands.command(name="upload", help="Create the upload document.")
-    # async def uploads_text_command(
-    #     self,
-    #     ctx: commands.Context,
-    # ) -> discord.Message:
-    #     tick = Tick(bot=self.__bot, ctx=ctx)
-    #     await upload_service.build_latex_document()
-    #     return await tick.end(success="Success!")
+    @commands.command(name="upload", help="Create the upload document.")
+    async def uploads_text_command(
+        self,
+        ctx: commands.Context,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, ctx=ctx)
+        await upload_service.build_latex_document()
+        return await tick.end(success="Success!")
 
 
 async def setup(bot: DiscordBot):

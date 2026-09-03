@@ -81,11 +81,11 @@ async def build_pages(obj) -> str | list[discord.Embed]:
             if channel is None:
                 continue
             lines.append(f"Channel: {channel.mention}")
+            vc_n += 1
             field_count += 1
             for category, alias_names in channel_data.items():
                 lines.append(f"{category}")
                 field_count += 1
-                vc_n += 1
                 for name in alias_names:
                     lines.append(f"  ↳ {name}")
                     field_count += 1

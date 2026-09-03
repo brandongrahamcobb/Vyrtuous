@@ -275,7 +275,7 @@ class ModerationAppCommands(commands.Cog):
             await view.setup()
         except CheckFailure as e:
             return await tick.end(warning=str(e))
-        await tick.end(success="Specify what to clear.", view=view, ephemeral=True)
+        await tick.end(success="Specify what to clear.", view=view)
 
     @metadata(permission="command.moderation.combo")
     @app_commands.command(name="combo", description="Create a flag, text-mute and voice-mute all in one.")
@@ -424,7 +424,7 @@ class ModerationAppCommands(commands.Cog):
         )
         await view.setup()
         await tick.end(
-            success="Select a channel and a category", view=view, ephemeral=True
+            success="Select a channel and a category", view=view
         )
 
     @metadata(permission="command.moderation.flag")
@@ -571,7 +571,7 @@ class ModerationAppCommands(commands.Cog):
             member_snowflake=member_snowflake,
             targets=["server"],
         ):
-            return
+            return await tick.end(warning="This member is server muted.", ephemeral=True)
         ctx = SnowflakeContext(
             channel_snowflake=channel_snowflake,
             guild_snowflake=guild_snowflake,
@@ -657,7 +657,7 @@ class ModerationAppCommands(commands.Cog):
         )
         await view.setup()
         await tick.end(
-            success="Select a channel and a category", view=view, ephemeral=True
+            success="Select a channel and a category", view=view
         )
 
     @metadata(permission="command.moderation.voice-mute.channel_mute")
@@ -902,7 +902,7 @@ class ModerationAppCommands(commands.Cog):
             return await tick.end(
                 warning="This command must target a valid channel.", ephemeral=True
             )
-        await tick.defer(ephemeral=True)
+        await tick.defer()
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,

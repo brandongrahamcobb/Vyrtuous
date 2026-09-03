@@ -34,7 +34,8 @@ async def clean_inactive_members() -> int:
     saved_members = await database_factory.select(singular=False)
     for member in saved_members:
         if datetime.now(timezone.utc) - member.last_active > timedelta(days=7):
-            del bot.registry.get(MemberState).active[member.member_snowflake]
+            bot.registry.get(MemberState).active.pop(member.member_snowflake)
+            await database_factory.delete_by_obj(member)
             count += 1
             bot.logger.debug(
                 f"Deleted inactive member {member.display_name} from the active members database table."

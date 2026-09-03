@@ -64,7 +64,7 @@ TABLE_NAME = Ban.__tablename__
             ["command.info.scope.channel", "other_guilds"],
         ),
         ("{guild_snowflake}", None, ["command.info.scope.guild", "other_channels"]),
-        ("{other_guild_snowflake}", None, ["command.info.scope.guild", "other_guilds"]),
+        ("{other_guild_snowflake}", None, ["command.info.scope.guild", "other_guilds", "other_channels"]),
         ("{member_snowflake}", None, ["command.info.scope.member", "other_channels"]),
         (
             "<@{member_snowflake}>",
@@ -182,7 +182,7 @@ async def test_bans_text_command(
             ["command.info.scope.channel", "other_guilds"],
         ),
         ("{guild_snowflake}", None, ["command.info.scope.guild", "other_channels"]),
-        ("{other_guild_snowflake}", None, ["command.info.scope.guild", "other_guilds"]),
+        ("{other_guild_snowflake}", None, ["command.info.scope.guild", "other_guilds", "other_channels"]),
         ("{member_snowflake}", None, ["command.info.scope.member", "other_channels"]),
         (
             "<@{member_snowflake}>",

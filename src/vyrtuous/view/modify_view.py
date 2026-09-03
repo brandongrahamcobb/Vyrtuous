@@ -478,7 +478,6 @@ class ModifyView(discord.ui.View):
         if self.selected_scope is not None:
             select_kwargs["target"] = self.selected_scope 
         bot: DiscordBot = DiscordBot.get_instance()
-        bot.logger.info(select_kwargs)
         record = await database_factory.select(singular=True, **select_kwargs)
         if self.__modal == ReasonModal:
             modal = ReasonModal(

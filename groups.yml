@@ -15,6 +15,7 @@ groups:
     - command.dev.*
     - command.info.cogs
     - command.info.debug
+    - command.info.scope.global
     - command.info.stats
     - command.utility.*
     - other_guilds
@@ -107,6 +108,7 @@ groups:
     - command.info.voice-mutes.auto
     - command.info.voice-mutes.click
     - command.info.voice-mutes.command
+    - command.info.where
     - command.utility.delete
     - command.users.vegan
     - other_channels

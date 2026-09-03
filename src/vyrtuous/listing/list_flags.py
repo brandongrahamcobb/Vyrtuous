@@ -127,7 +127,8 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                 )
                 if simplified_member:
                     display_name = simplified_member[0]
-                    lines.append(f"**User:** {display_name} ({member_snowflake})")
+                    if obj != member_snowflake:
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
                 else:
                     continue
             flag_n += 1
@@ -139,7 +140,7 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                     continue
                 if not isinstance(obj, discord.abc.GuildChannel):
                     lines.append(f"**Channel:** {channel.mention}")
-                if isinstance(obj, discord.Member):
+                if not isinstance(obj, (discord.Guild, discord.abc.GuildChannel)):
                     lines.append(f"**Reason:** {channel_dictionary['reason']}")
                 field_count += 1
                 if field_count >= list_service.CHUNK_SIZE:

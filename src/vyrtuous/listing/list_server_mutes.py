@@ -119,7 +119,12 @@ async def build_pages(guild_snowflake: int, obj) -> str | list[discord.Embed]:
                 )
                 if simplified_member:
                     display_name = simplified_member[0]
-                    lines.append(f"**User:** {display_name} {member_snowflake}")
+                    if obj != member_snowflake:
+                        lines.append(f"**User:** {display_name} {member_snowflake}")
+                    else:
+                        lines.append(
+                            f"**Reason:** {dictionary.get("server_mutes", {}).get('reason', None)}"
+                        )
                 else:
                     continue
             smute_n += 1

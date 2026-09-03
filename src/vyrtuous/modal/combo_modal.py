@@ -38,7 +38,6 @@ from vyrtuous.utils.tracking import stream_service
 
 MODELS = [Flag, TextMute, VoiceMute]
 
-
 class ComboModal(discord.ui.Modal):
     def __init__(
         self,
@@ -46,18 +45,24 @@ class ComboModal(discord.ui.Modal):
         channel_snowflake: int,
         duration: DurationObject | None,
         guild_snowflake: int,
+        flag_enabled: bool,
         member_snowflake: int,
         records: list[Flag | TextMute | VoiceMute],
+        text_mute_enabled: bool,
         tick: Tick,
+        voice_mute_enabled: bool
     ):
         super().__init__(title="Reason", timeout=120)
         self.__author_snowflake = author_snowflake
         self.__channel_snowflake = channel_snowflake
         self.__duration = duration
+        self.__flag_enabled = flag_enabled
         self.__guild_snowflake = guild_snowflake
         self.__member_snowflake = member_snowflake
         self.__records = records
+        self.__text_mute_enabled = text_mute_enabled
         self.__tick = tick
+        self.__voice_mute_enabled = voice_mute_enabled
 
     async def setup(self):
         self.reason_selection = discord.ui.TextInput(
@@ -144,50 +149,53 @@ class ComboModal(discord.ui.Modal):
         for model in MODELS:
             database_factory: DatabaseFactory = DatabaseFactory(model)
             if model == Flag and not flag_updated:
-                flag = Flag(
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__member_snowflake,
-                    reason=reason,
-                )
-                await database_factory.create(flag)
-                is_channel_scope = await flag_alias_service.enable(
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__member_snowflake,
-                    reason=reason,
-                )
+                if self.__flag_enabled:
+                    flag = Flag(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__member_snowflake,
+                        reason=reason,
+                    )
+                    await database_factory.create(flag)
+                    is_channel_scope = await flag_alias_service.enable(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__member_snowflake,
+                        reason=reason,
+                    )
             elif model == TextMute and not text_mute_updated:
-                tmute = TextMute(
-                    channel_snowflake=self.__channel_snowflake,
-                    expires_in=expires_in,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__member_snowflake,
-                    reason=reason,
-                )
-                await database_factory.create(tmute)
-                is_channel_scope = await text_mute_alias_service.enable(
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__member_snowflake,
-                    reason=reason,
-                )
+                if self.__text_mute_enabled:
+                    tmute = TextMute(
+                        channel_snowflake=self.__channel_snowflake,
+                        expires_in=expires_in,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__member_snowflake,
+                        reason=reason,
+                    )
+                    await database_factory.create(tmute)
+                    is_channel_scope = await text_mute_alias_service.enable(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__member_snowflake,
+                        reason=reason,
+                    )
             elif model == VoiceMute and not voice_mute_updated:
-                vmute = VoiceMute(
-                    channel_snowflake=self.__channel_snowflake,
-                    expires_in=expires_in,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__member_snowflake,
-                    reason=reason,
-                    target=target,
-                )
-                await database_factory.create(vmute)
-                is_channel_scope = await voice_mute_alias_service.enable(
-                    channel_snowflake=self.__channel_snowflake,
-                    guild_snowflake=self.__guild_snowflake,
-                    member_snowflake=self.__member_snowflake,
-                    reason=reason,
-                )
+                if self.__voice_mute_enabled:
+                    vmute = VoiceMute(
+                        channel_snowflake=self.__channel_snowflake,
+                        expires_in=expires_in,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__member_snowflake,
+                        reason=reason,
+                        target=target,
+                    )
+                    await database_factory.create(vmute)
+                    is_channel_scope = await voice_mute_alias_service.enable(
+                        channel_snowflake=self.__channel_snowflake,
+                        guild_snowflake=self.__guild_snowflake,
+                        member_snowflake=self.__member_snowflake,
+                        reason=reason,
+                    )
         await stream_service.log(
             author_snowflake=self.__author_snowflake,
             channel_snowflake=self.__channel_snowflake,
@@ -206,11 +214,14 @@ class ComboModal(discord.ui.Modal):
         embed = build_combo_embed(
             channel_snowflake=self.__channel_snowflake,
             duration=self.__duration,
+            flag_enabled=self.__flag_enabled,
             flag_updated=flag_updated,
             guild_snowflake=self.__guild_snowflake,
             member_snowflake=self.__member_snowflake,
             reason=reason,
+            text_mute_enabled=self.__text_mute_enabled,
             text_mute_updated=text_mute_updated,
+            voice_mute_enabled=self.__voice_mute_enabled,
             voice_mute_updated=voice_mute_updated,
         )
         await self.__tick.end(success=embed)
@@ -226,13 +237,23 @@ class ComboModal(discord.ui.Modal):
 def build_combo_embed(
     channel_snowflake: int,
     duration: DurationObject,
+    flag_enabled: bool,
     flag_updated: bool,
     guild_snowflake: int,
     member_snowflake: int,
     reason: str,
+    text_mute_enabled: bool,
     text_mute_updated: bool,
+    voice_mute_enabled: bool,
     voice_mute_updated: bool,
 ) -> discord.Embed:
+    fields = []
+    if flag_enabled:
+        fields.append("flagged")
+    if text_mute_enabled:
+        fields.append("text-muted")
+    if voice_mute_enabled:
+        fields.append("voice-muted")
     bot: DiscordBot = DiscordBot.get_instance()
     duration_builder = DurationBuilder()
     guild = bot.get_guild(guild_snowflake)
@@ -252,7 +273,7 @@ def build_combo_embed(
         display_name = simplified_member[0]
         member_str = display_name
     embed = discord.Embed(
-        title=f"{emojis.get_random_emoji()} {display_name} was flagged, text-muted and voice-muted",
+        title=f"{emojis.get_random_emoji()} {display_name} was {", ".join(fields)}",
         description=(
             f"**User:** {member_str}\n"
             f"**Channel:** {channel.mention}\n"

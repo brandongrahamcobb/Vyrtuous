@@ -191,7 +191,10 @@ async def build_pages(
                 )
                 if simplified_member:
                     display_name = simplified_member[0]
-                    lines.append(f"**User:** {display_name} ({member_snowflake})")
+                    if obj != member_snowflake:
+                        lines.append(f"**User:** {display_name} ({member_snowflake})")
+                else:
+                    continue
             for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                 "voice_mutes", {}
             ).items():
@@ -200,7 +203,7 @@ async def build_pages(
                     continue
                 if not isinstance(obj, discord.abc.GuildChannel):
                     lines.append(f"**Channel:** {channel.mention}")
-                if isinstance(obj, discord.Member):
+                if not isinstance(obj, (discord.Guild, discord.abc.GuildChannel)):
                     lines.append(
                         f"**Expires:** {duration_builder.from_timestamp(channel_dictionary['expires_in']).to_unix_ts()}"
                     )

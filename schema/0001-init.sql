@@ -199,11 +199,34 @@ CREATE TABLE public.active_voice_mutes (
     member_snowflake bigint NOT NULL,
     reason text NOT NULL,
     target text NOT NULL,
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    id integer NOT NULL
 );
 
 
 ALTER TABLE public.active_voice_mutes OWNER TO vyrtuous;
+
+--
+-- Name: active_voice_mutes_id_seq; Type: SEQUENCE; Schema: public; Owner: vyrtuous
+--
+
+CREATE SEQUENCE public.active_voice_mutes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.active_voice_mutes_id_seq OWNER TO vyrtuous;
+
+--
+-- Name: active_voice_mutes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: vyrtuous
+--
+
+ALTER SEQUENCE public.active_voice_mutes_id_seq OWNED BY public.active_voice_mutes.id;
+
 
 --
 -- Name: autoassign_roles; Type: TABLE; Schema: public; Owner: vyrtuous
@@ -412,6 +435,13 @@ CREATE TABLE public.vegans (
 ALTER TABLE public.vegans OWNER TO vyrtuous;
 
 --
+-- Name: active_voice_mutes id; Type: DEFAULT; Schema: public; Owner: vyrtuous
+--
+
+ALTER TABLE ONLY public.active_voice_mutes ALTER COLUMN id SET DEFAULT nextval('public.active_voice_mutes_id_seq'::regclass);
+
+
+--
 -- Name: moderation_logs id; Type: DEFAULT; Schema: public; Owner: vyrtuous
 --
 
@@ -480,6 +510,12 @@ ALTER TABLE ONLY public.active_text_mutes
 ALTER TABLE ONLY public.active_video_only_channels
     ADD CONSTRAINT active_video_only_channels_pkey PRIMARY KEY (channel_snowflake, guild_snowflake);
 
+--
+-- Name: active_video_only_channels active_video_only_channels_pkey; Type: CONSTRAINT; Schema: public; Owner: vyrtuous
+--
+
+ALTER TABLE ONLY public.active_voice_mutes
+    ADD CONSTRAINT active_voice_mutes_pkey PRIMARY KEY (id);
 
 --
 -- Name: autoassign_roles autoassign_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: vyrtuous

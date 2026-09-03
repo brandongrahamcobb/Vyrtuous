@@ -48,7 +48,7 @@ PERMISSION_TREE = {
             "members": [],
             "overwrites": [],
             "roleid": [],
-            "scope": ["channel", "guild", "member", "role"],
+            "scope": ["channel", "global", "guild", "member", "role"],
             "stats": [],
             "summary": [],
             "survey": [],
@@ -57,6 +57,7 @@ PERMISSION_TREE = {
             "vegans": [],
             "video-channels": [],
             "voice-mutes": ["auto", "click", "command", "server"],
+            "where": []
         },
         "clear": {
             "category": [

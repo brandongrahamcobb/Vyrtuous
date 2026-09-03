@@ -192,6 +192,7 @@ class UserManagementAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -211,8 +212,8 @@ class UserManagementAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the group", view=view, ephemeral=True
+        await tick.end(
+            success="Specify the group", view=view
         )
 
     @metadata(permission="command.users.hero")
@@ -360,6 +361,7 @@ class UserManagementAppCommands(commands.Cog):
             return await tick.end(
                 warning=f"This command must target a valid member.", ephemeral=True
             )
+        await tick.defer(ephemeral=True)
         await permission_service.has_permissions(
             permission_state=permission_state,
             member_snowflake=interaction.user.id,
@@ -379,8 +381,8 @@ class UserManagementAppCommands(commands.Cog):
             tick=tick,
         )
         await view.setup()
-        await interaction.response.send_message(
-            content="Specify the group", view=view, ephemeral=True
+        await tick.end(
+            success="Specify the group", view=view
         )
 
     @metadata(permission="command.moderation.role")

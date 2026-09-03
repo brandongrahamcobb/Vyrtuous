@@ -24,17 +24,19 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.cache.permissions import PermissionScope
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES, PATH_LOG
 from vyrtuous.listing import (list_autoassign_roles, list_automute_channels,
-                              list_bans, list_caps, list_flags, list_heroes,
-                              list_intents, list_overwrites, list_streams,
+                              list_bans, list_caps, list_flags, list_groups, list_heroes,
+                              list_intents, list_overwrites, list_service, list_streams,
                               list_text_mutes, list_vegans,
                               list_video_channels, list_voice_mutes)
 from vyrtuous.models.metadata import metadata
 from vyrtuous.models.scope import AppScope, ScopeObject
 from vyrtuous.models.target import AppTarget, TargetObject
 from vyrtuous.permissions import permission_service
+from vyrtuous.utils.errors.error import CheckFailure
 from vyrtuous.utils.messaging import emojis
 from vyrtuous.utils.messaging.tick import Tick
 from vyrtuous.utils.statistics import system_monitoring_service
@@ -632,19 +634,33 @@ class InfoAppCommands(commands.Cog):
             )
         else:
             channel_snowflake = interaction.channel.id
+        await tick.defer(ephemeral=True)
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.info.groups"],
+        )
         if target is None:
             channel_snowflake = interaction.channel.id
             member_snowflake = None
-        elif isinstance(target.target, int):
-            channel_snowflake = interaction.channel.id
-            member_snowflake = target.target
-        elif isinstance(target.target, discord.Member):
-            member_snowflake = target.target.id
+        elif isinstance(target.target, (int, discord.Member)):
             await permission_service.has_permissions_at_all(
                 permission_state=permission_state,
                 member_snowflake=interaction.user.id,
                 requested=["command.info.scope.member", "other_channels"],
             )
+            if isinstance(target.target, int):
+                member_snowflake = target.target
+                simplified_member = bot.registry.get(MemberState).active.get(member_snowflake, None)
+                if simplified_member:
+                    display_name = simplified_member[0]
+                else:
+                    return
+            else:
+                member_snowflake = target.target.id
+                display_name = target.target.display_name
+            pages = await list_groups.build_summary_pages(author_snowflake=interaction.user.id, display_name=display_name, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+            return await tick.end(success=pages)
         elif isinstance(target.target, discord.abc.GuildChannel):
             channel_snowflake = target.target.id
             member_snowflake = None 
@@ -655,11 +671,6 @@ class InfoAppCommands(commands.Cog):
             )
         else:
             return await tick.end(warning=f"This command must target a valid channel or member.", ephemeral=True)
-        await permission_service.has_permissions_at_all(
-            permission_state=permission_state,
-            member_snowflake=interaction.user.id,
-            requested=["command.info.groups"],
-        )
         view = GroupsView(
             author_snowflake=interaction.user.id,
             channel_snowflake=channel_snowflake,
@@ -670,7 +681,7 @@ class InfoAppCommands(commands.Cog):
         )
         await view.setup()
         await interaction.response.send_message(
-            content="Specify the group", view=view, ephemeral=True
+            content="Specify the group", view=view
         )
 
     @metadata(permission="command.info.heroes")
@@ -1784,6 +1795,35 @@ class InfoAppCommands(commands.Cog):
                 )
         pages = await list_video_channels.build_pages(obj=obj)
         return await tick.end(success=pages)
+
+    @metadata(permission="command.info.where")
+    @app_commands.command(
+        name="where",
+        description="Find a member.",
+    )
+    @app_commands.describe(member="Specify a member ID/mention.")
+    async def find_member_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+    ) -> discord.Message:
+        tick = Tick(bot=self.__bot, interaction=interaction)
+        bot: DiscordBot = DiscordBot.get_instance()
+        permission_state = bot.registry.get(PermissionState)
+        await tick.defer()
+        await permission_service.has_permissions_at_all(
+            permission_state=permission_state,
+            member_snowflake=interaction.user.id,
+            requested=["command.info.where", "command.info.scope.member", "other_channels"],
+        )
+        if member.voice:
+            channel = member.voice.channel
+            if channel is not None:
+                return await tick.end(success=f"{member.mention} is in {channel.guild.name} in channel {channel.mention}.")
+        return await tick.end(warning=f"Could not find {member.mention}.")
+ 
+ 
+
 
 
 async def setup(bot: DiscordBot):

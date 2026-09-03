@@ -65,6 +65,8 @@ class ScheduledTasks(commands.Cog):
             self.notify_loop.start()
         if not self.check_expired_video_only_channels.is_running():
             self.check_expired_video_only_channels.start()
+        if not self.clean_inactive_members.is_running():
+            self.clean_inactive_members.start()
 
     @tasks.loop(hours=1)
     async def clean_inactive_members(self) -> None:
@@ -171,7 +173,6 @@ class ScheduledTasks(commands.Cog):
             self.__bot.logger.error(
                 f"Error during database backup: {str(e).capitalize()}"
             )
-
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(ScheduledTasks(bot))
