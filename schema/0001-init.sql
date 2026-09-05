@@ -238,11 +238,34 @@ CREATE TABLE public.autoassign_roles (
     role_snowflake bigint NOT NULL,
     updated_at timestamp with time zone DEFAULT now(),
     group_alias text NOT NULL,
-    channel_snowflake bigint
+    channel_snowflake bigint,
+    id integer NOT NULL
 );
 
 
 ALTER TABLE public.autoassign_roles OWNER TO vyrtuous;
+
+--
+-- Name: autoassign_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: vyrtuous
+--
+
+CREATE SEQUENCE public.autoassign_roles_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.autoassign_roles_id_seq OWNER TO vyrtuous;
+
+--
+-- Name: autoassign_roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: vyrtuous
+--
+
+ALTER SEQUENCE public.autoassign_roles_id_seq OWNED BY public.autoassign_roles.id;
+
 
 --
 -- Name: bug_tracking; Type: TABLE; Schema: public; Owner: vyrtuous
@@ -442,6 +465,13 @@ ALTER TABLE ONLY public.active_voice_mutes ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: autoassign_roles id; Type: DEFAULT; Schema: public; Owner: vyrtuous
+--
+
+ALTER TABLE ONLY public.autoassign_roles ALTER COLUMN id SET DEFAULT nextval('public.autoassign_roles_id_seq'::regclass);
+
+
+--
 -- Name: moderation_logs id; Type: DEFAULT; Schema: public; Owner: vyrtuous
 --
 
@@ -522,7 +552,7 @@ ALTER TABLE ONLY public.active_voice_mutes
 --
 
 ALTER TABLE ONLY public.autoassign_roles
-    ADD CONSTRAINT autoassign_roles_pkey PRIMARY KEY (guild_snowflake, role_snowflake);
+    ADD CONSTRAINT autoassign_roles_pkey PRIMARY KEY (id);
 
 
 --

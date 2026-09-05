@@ -200,6 +200,7 @@ COLUMNS = [
     ("role_snowflake", "bigint", False),
     ("created_at", "timestamp with time zone", True),
     ("updated_at", "timestamp with time zone", True),
+    ("id", "integer", False)
 ]
 
 

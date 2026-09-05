@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Self
+from typing import Literal, Self
 
 import discord
 from discord import app_commands
@@ -213,6 +213,14 @@ class DurationBuilder:
 
     def as_str(self) -> str:
         return f"{self.__duration.prefix}{self.__duration.number}{self.__duration.unit}"
+
+    def pretty_print(self, unit: str) -> str:
+        mapped_unit = UNIT_MAP.get(unit.lower().strip())
+        if mapped_unit is None:
+            raise ValueError(f"Invalid duration unit: {unit}")
+        unit_seconds = UNIT_SECONDS[mapped_unit]
+        number = round(self.to_seconds() / unit_seconds)
+        return f"{number}{unit}"
 
     def build(self) -> DurationObject:
         return self.__duration

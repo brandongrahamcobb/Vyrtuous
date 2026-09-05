@@ -53,6 +53,7 @@ class InfractionView(discord.ui.View):
         self,
         author_snowflake: int,
         ctx: SnowflakeContext,
+        duration: DurationObject | None,
         interaction: discord.Interaction,
         model: type,
         tick: Tick,
@@ -62,13 +63,16 @@ class InfractionView(discord.ui.View):
         self.available_guilds = set()
         self.__all_available_channels = set()
         self.__author_snowflake = author_snowflake
+        self.__bot: DiscordBot = DiscordBot.get_instance()
         self.__channel_snowflake = ctx.channel_snowflake
         self.__ctx = ctx
-        self.__duration = None
+        self.__duration = duration
+        self.__duration_builder = DurationBuilder()
         self.__guild_snowflake = ctx.guild_snowflake
         self.__interaction = interaction
-        self.__tick = tick
         self.__model = model
+        self.__permission_state: PermissionState = self.__bot.registry.get(PermissionState)
+        self.__tick = tick
         if self.__model == Flag:
             self.remove_item(self.duration_select)
 
@@ -78,23 +82,21 @@ class InfractionView(discord.ui.View):
     async def setup(self):
         available_channels: set[discord.abc.GuildChannel] = set()
         available_guilds: set[discord.Guild] = set()
-        bot: DiscordBot = DiscordBot.get_instance()
-        permission_state: PermissionState = bot.registry.get(PermissionState)
         all_assigned_groups = await permission_service.resolve_all_assigned_groups(
-            permission_state=permission_state, member_snowflake=self.__author_snowflake
+            permission_state=self.__permission_state, member_snowflake=self.__author_snowflake
         )
         for group, assigned_guild_snowflake, _ in all_assigned_groups:
             if group.scope == PermissionScope.GLOBAL:
-                for guild in bot.guilds:
+                for guild in self.__bot.guilds:
                     for channel in guild.channels:
                         available_channels.add(channel)
                     available_guilds.add(guild)
             elif group.scope == PermissionScope.GUILD:
-                for guild in bot.guilds:
+                for guild in self.__bot.guilds:
                     if guild.id != assigned_guild_snowflake:
                         try:
                             await permission_service.has_permissions(
-                                permission_state=permission_state,
+                                permission_state=self.__permission_state,
                                 member_snowflake=self.__author_snowflake,
                                 requested=["other_guilds"],
                             )
@@ -104,11 +106,11 @@ class InfractionView(discord.ui.View):
                         available_channels.add(channel)
                     available_guilds.add(guild)
             elif group.scope == PermissionScope.CHANNEL:
-                for guild in bot.guilds:
+                for guild in self.__bot.guilds:
                     for channel in guild.channels:
                         effective_group = (
                             await permission_service.resolve_effective_group(
-                                permission_state=permission_state,
+                                permission_state=self.__permission_state,
                                 member_snowflake=self.__author_snowflake,
                                 channel_snowflake=channel.id,
                                 guild_snowflake=guild.id,
@@ -165,7 +167,7 @@ class InfractionView(discord.ui.View):
         self._build_channel_options(
             limited_channels=limited_channels, default=True, types=types
         )
-        await self.build_duration_options()
+        await self.build_duration_options(default=True)
         if records:
             self.remove_item(self.duration_select)
         if (
@@ -196,7 +198,7 @@ class InfractionView(discord.ui.View):
         elif is_shown:
             self.remove_item(self.duration_select)
 
-    async def build_duration_options(self, available_durations: set[str] | None = None):
+    async def build_duration_options(self, available_durations: set[str] | None = None, default: bool = False):
         def _format_duration_label(duration: str):
             if duration == "0":
                 return "Permanent"
@@ -206,20 +208,28 @@ class InfractionView(discord.ui.View):
             amount, unit = match.groups()
             return f"{amount} {unit}"
 
+        duration_options = []
+
         if available_durations is None:
-            bot: DiscordBot = DiscordBot.get_instance()
             cap = None
-            duration_builder: DurationBuilder = DurationBuilder()
             database_factory: DatabaseFactory = DatabaseFactory(Cap)
-            permission_state: PermissionState = bot.registry.get(PermissionState)
             try:
                 await permission_service.has_permissions(
-                    permission_state=permission_state,
+                    permission_state=self.__permission_state,
                     channel_snowflake=self.__channel_snowflake,
                     guild_snowflake=self.__guild_snowflake,
                     member_snowflake=self.__author_snowflake,
                     requested=["command.moderation.uncapped"],
                 )
+                if self.__duration is not None:
+                    duration = self.__duration_builder.load(self.__duration)
+                    duration_options.append(
+                        discord.SelectOption(
+                            label=duration.pretty_print(self.__duration.unit),
+                            value=f"{self.__duration.number}{self.__duration.unit}",
+                            default=default
+                        )
+                    )
             except CheckFailure:
                 cap = await database_factory.select(
                     category=self.__model.identifier,
@@ -228,45 +238,76 @@ class InfractionView(discord.ui.View):
                     singular=True,
                 )
                 if cap:
+                    if self.__duration is not None:
+                        duration = self.__duration_builder.load(self.__duration)
+                        duration_seconds = duration.to_seconds()
+                        if duration_seconds <= cap.duration_seconds:
+                            duration_options.append(
+                                discord.SelectOption(
+                                    label=self.__duration_builder.load(self.__duration).pretty_print(self.__duration.unit),
+                                    value=f"{self.__duration.number}{self.__duration.unit}",
+                                    default=default
+                                )
+                            )
                     available_durations = self.limit_available_to_cap(
                         duration_seconds=cap.duration_seconds
                     )
                 else:
-                    duration_seconds = duration_builder.load(
+                    seconds = self.__duration_builder.load(
                         DurationObject(number=8, prefix="", sign=1, unit="")
                     ).to_seconds()
+                    if self.__duration is not None:
+                        duration = self.__duration_builder.load(self.__duration)
+                        duration_seconds = duration.to_seconds()
+                        if duration_seconds <= seconds:
+                            duration_options.append(
+                                discord.SelectOption(
+                                    label=self.__duration_builder.load(self.__duration).pretty_print(self.__duration.unit),
+                                    value=f"{self.__duration.number}{self.__duration.unit}",
+                                    default=default
+                                )
+                            )
                     available_durations = self.limit_available_to_cap(
-                        duration_seconds=duration_seconds
+                        duration_seconds=seconds
                     )
-                duration_options = [
+                duration_options.extend([
                     discord.SelectOption(
                         label=_format_duration_label(d),
                         value=d,
                     )
                     for d in available_durations
-                ]
+                ])
                 self.duration_select.options = duration_options
             else:
                 durations = set(DURATIONS)
                 durations.add("0")
-                duration_options = [
+                duration_options.extend([
                     discord.SelectOption(
                         label=_format_duration_label(d),
                         value=d,
                     )
                     for d in durations
-                ]
+                ])
                 self.duration_select.options = duration_options
         else:
-            duration_options = [
+            duration_options.extend([
                 discord.SelectOption(
                     label=_format_duration_label(d),
                     value=d,
                 )
                 for d in available_durations
-            ]
+            ])
+            if self.__duration is not None:
+                duration = self.__duration_builder.load(self.__duration)
+                duration_options.append(
+                    discord.SelectOption(
+                        label=self.__duration_builder.load(self.__duration).pretty_print(self.__duration.unit),
+                        value=f"{self.__duration.number}{self.__duration.unit}",
+                        default=default
+                    )
+                )
             self.duration_select.options = duration_options
-
+ 
     def limit_channels_to_top_24(self, available: set[discord.abc.GuildChannel]):
         relevant = [
             c
@@ -312,8 +353,7 @@ class InfractionView(discord.ui.View):
         default: bool = False,
     ):
         channel_options = []
-        bot: DiscordBot = DiscordBot.get_instance()
-        channel = bot.get_channel(self.__ctx.channel_snowflake)
+        channel = self.__bot.get_channel(self.__ctx.channel_snowflake)
         if (
             channel
             and isinstance(channel, types)
@@ -340,8 +380,7 @@ class InfractionView(discord.ui.View):
         self, available_guilds: set[discord.Guild], default: bool = False
     ):
         guild_options = []
-        bot: DiscordBot = DiscordBot.get_instance()
-        guild = bot.get_guild(self.__ctx.guild_snowflake)
+        guild = self.__bot.get_guild(self.__ctx.guild_snowflake)
         if guild:
             guild_options.append(
                 discord.SelectOption(
@@ -368,8 +407,7 @@ class InfractionView(discord.ui.View):
     )
     async def guild_select(self, interaction, select):
         await interaction.response.defer()
-        bot: DiscordBot = DiscordBot.get_instance()
-        guild = bot.get_guild(int(select.values[0]))
+        guild = self.__bot.get_guild(int(select.values[0]))
         if guild is None:
             raise GuildNotFound(str(select.values[0]))
         for option in self.guild_select.options:
@@ -403,14 +441,15 @@ class InfractionView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         await interaction.response.defer()
-        bot: DiscordBot = DiscordBot.get_instance()
         for option in self.channel_select.options:
             option.default = False
-        channel = bot.get_channel(int(select.values[0]))
+        guild = self.__bot.get_guild(self.__guild_snowflake)
+        if guild is None:
+            raise GuildNotFound(str(self.__guild_snowflake))
+        channel = guild.get_channel(int(select.values[0]))
         if isinstance(channel, discord.abc.GuildChannel):
             self.channel_select.placeholder = channel.name
             self.__channel_snowflake = channel.id
-            self.__guild_snowflake = channel.guild.id
         await self._sync_duration_select(rebuild_options=True)
         await interaction.edit_original_response(view=self)
 
@@ -424,8 +463,7 @@ class InfractionView(discord.ui.View):
         )
         duration_value = select.values[0]
         self.duration_select.placeholder = duration_name
-        duration_builder = DurationBuilder()
-        self.__duration = duration_builder.parse(duration_value).build()
+        self.__duration = self.__duration_builder.parse(duration_value).build()
         await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
@@ -437,10 +475,8 @@ class InfractionView(discord.ui.View):
             )
         self.stop()
         self.__tick.update_source(interaction=interaction)
-        bot: DiscordBot = DiscordBot.get_instance()
-        permission_state: PermissionState = bot.registry.get(PermissionState)
         await permission_service.has_equal_or_lower_role(
-            permission_state=permission_state,
+            permission_state=self.__permission_state,
             channel_snowflake=self.__channel_snowflake,
             guild_snowflake=self.__guild_snowflake,
             author_snowflake=self.__author_snowflake,
@@ -472,7 +508,7 @@ class InfractionView(discord.ui.View):
                     ):
                         try:
                             await permission_service.has_permissions(
-                                permission_state=permission_state,
+                                permission_state=self.__permission_state,
                                 channel_snowflake=self.__channel_snowflake,
                                 guild_snowflake=self.__guild_snowflake,
                                 member_snowflake=self.__author_snowflake,
@@ -579,12 +615,8 @@ class InfractionView(discord.ui.View):
                     guild_snowflake=self.__guild_snowflake,
                 ):
                     try:
-                        bot: DiscordBot = DiscordBot.get_instance()
-                        permission_state: PermissionState = bot.registry.get(
-                            PermissionState
-                        )
                         await permission_service.has_permissions(
-                            permission_state=permission_state,
+                            permission_state=self.__permission_state,
                             channel_snowflake=self.__channel_snowflake,
                             guild_snowflake=self.__guild_snowflake,
                             member_snowflake=self.__author_snowflake,
