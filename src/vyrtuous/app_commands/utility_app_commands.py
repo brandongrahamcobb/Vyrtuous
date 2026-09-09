@@ -218,7 +218,7 @@ class UtilityAppCommands(commands.Cog):
         return await tick.end(success=message)
 
     @metadata(permission="command.utility.move")
-    @app_commands.command(name="rmove", description="VC move.")
+    @app_commands.command(name="rmv", description="VC move.")
     @app_commands.describe(
         target_channel="Specify a `to` channel ID/mention.",
         source_channel="Specify a `from` channel ID/mention.",
