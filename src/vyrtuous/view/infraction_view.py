@@ -595,7 +595,7 @@ class InfractionView(discord.ui.View):
                     display=True,
                     duration=DurationObject(number=0, prefix="", sign=1, unit=""),
                     guild_snowflake=self.__guild_snowflake,
-                    identifier=record.identifier,
+                    identifier="un" + record.identifier,
                     is_channel_scope=is_channel_scope,
                     member_snowflake=self.__ctx.member_snowflake,
                     message_snowflake=None,
