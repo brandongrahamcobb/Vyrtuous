@@ -54,6 +54,7 @@ class ComboModal(discord.ui.Modal):
     ):
         super().__init__(title="Reason", timeout=120)
         self.__author_snowflake = author_snowflake
+        self.__bot: DiscordBot = DiscordBot.get_instance()
         self.__channel_snowflake = channel_snowflake
         self.__duration = duration
         self.__flag_enabled = flag_enabled
@@ -104,6 +105,10 @@ class ComboModal(discord.ui.Modal):
                         set_kwargs=set_kwargs, where_kwargs=where_kwargs
                     )
                     flag_updated = True
+                    original_set = self.__bot.registry.get(MemberState).flagged
+                    original_set[self.__guild_snowflake].setdefault(
+                        self.__member_snowflake, {}
+                    )[self.__channel_snowflake] = reason
                 case TextMute() as tmute:
                     expires_in = duration_builder.load(self.__duration).to_expires_in()
                     database_factory: DatabaseFactory = DatabaseFactory(TextMute)
@@ -163,6 +168,10 @@ class ComboModal(discord.ui.Modal):
                         member_snowflake=self.__member_snowflake,
                         reason=reason,
                     )
+                    original_set = self.__bot.registry.get(MemberState).flagged
+                    original_set[self.__guild_snowflake].setdefault(
+                        self.__member_snowflake, {}
+                    )[self.__channel_snowflake] = reason
             elif model == TextMute and not text_mute_updated:
                 if self.__text_mute_enabled:
                     tmute = TextMute(

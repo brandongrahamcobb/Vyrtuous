@@ -26,7 +26,7 @@ from vyrtuous.aliases import (
     voice_mute_alias_service,
 )
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.cache.registry import PermissionState
+from vyrtuous.cache.registry import MemberState, PermissionState
 from vyrtuous.db.automute import AutoMute
 from vyrtuous.db.ban import Ban
 from vyrtuous.db.database_factory import DatabaseFactory
@@ -144,6 +144,10 @@ class InfractionModal(discord.ui.Modal):
                     member_snowflake=self.__member_snowflake,
                     reason=reason,
                 )
+                original_set = bot.registry.get(MemberState).flagged
+                original_set[self.__guild_snowflake].setdefault(
+                    self.__member_snowflake, {}
+                )[self.__channel_snowflake] = reason
             case "tmute":
                 if self.__duration is None:
                     return
