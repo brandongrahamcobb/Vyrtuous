@@ -84,8 +84,8 @@ async def toggle_autoassign_role(
                 if member.voice and member.voice.channel:
                     is_channel_scope = True
                 member_snowflake = member.id
-            await removed_role(
-                channel_snowflake=channel_snowflake,
+            await removed_role_helper(
+                autoassign_role=autoassign_role,
                 guild_snowflake=role.guild.id,
                 member_snowflake=member_snowflake,
                 role_snowflake=role_snowflake,
@@ -126,8 +126,8 @@ async def toggle_autoassign_role(
         )
         await autoassign_database_factory.create(autoassign_role)
         for member in role.members:
-            await added_role(
-                channel_snowflake=channel_snowflake if channel_snowflake else None,
+            await added_role_helper(
+                autoassign_role=autoassign_role,
                 guild_snowflake=role.guild.id,
                 member_snowflake=member.id,
                 role_snowflake=role_snowflake,
@@ -272,6 +272,95 @@ async def get_autoassign_roles(guild_snowflake=None) -> list[int]:
         role_snowflakes.append(role.role_snowflake)
     return role_snowflakes
 
+async def added_role_helper(
+    autoassign_role: AutoAssignRole,
+    guild_snowflake: int,
+    member_snowflake: int,
+    role_snowflake: int,
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
+    group_member = await group_database_factory.select(
+        channel_snowflake=autoassign_role.channel_snowflake if autoassign_role.channel_snowflake else None,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+        group_alias=autoassign_role.group_alias,
+        singular=True,
+    )
+    permission_state = bot.registry.get(PermissionState)
+    group = permission_state.groups.get(autoassign_role.group_alias, None)
+    name = group.name if group else "Unknown"
+    if not group_member:
+        permission_entry = PermissionEntry(
+            channel_snowflake=int(autoassign_role.channel_snowflake) if autoassign_role.channel_snowflake else None,
+            guild_snowflake=int(guild_snowflake),
+            group_alias=autoassign_role.group_alias,
+            member_snowflake=int(member_snowflake),
+            role_snowflakes=[int(role_snowflake)],
+        )
+        await group_database_factory.create(permission_entry)
+        bot.logger.debug(
+            f"Granted permission group ({name}) to member ({member_snowflake}) in guild ({guild_snowflake})."
+        )
+        return
+    roles = group_member.role_snowflakes
+    if role_snowflake not in roles:
+        roles.append(role_snowflake)
+        where_kwargs = {
+            "group_alias": autoassign_role.group_alias,
+            "guild_snowflake": int(guild_snowflake),
+            "member_snowflake": member_snowflake,
+        }
+        if autoassign_role.channel_snowflake:
+            where_kwargs["channel_snowflake"] = int(autoassign_role.channel_snowflake)
+        await group_database_factory.update(
+            set_kwargs={"role_snowflakes": roles}, where_kwargs=where_kwargs
+        )
+        bot.logger.debug(
+            f"Granted permission group ({name}) to member ({member_snowflake}) in guild ({guild_snowflake})."
+        )
+
+
+async def removed_role_helper(
+    autoassign_role: AutoAssignRole,
+    guild_snowflake: int,
+    member_snowflake: int,
+    role_snowflake: int,
+) -> None:
+    bot: DiscordBot = DiscordBot.get_instance()
+    group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
+    group_member = await group_database_factory.select(
+        channel_snowflake=autoassign_role.channel_snowflake if autoassign_role.channel_snowflake else None,
+        group_alias=autoassign_role.group_alias,
+        guild_snowflake=guild_snowflake,
+        member_snowflake=member_snowflake,
+        role_snowflakes=role_snowflake,
+        inside_fields=["role_snowflakes"],
+        singular=True,
+    )
+    if not group_member:
+        return
+    permission_state = bot.registry.get(PermissionState)
+    group = permission_state.groups.get(autoassign_role.group_alias, None)
+    name = group.name if group else "Unknown"
+    roles = group_member.role_snowflakes.copy()
+    roles.remove(role_snowflake)
+    if not roles:
+        await group_database_factory.delete_by_obj(group_member)
+    else:
+        where_kwargs = {
+            "group_alias": autoassign_role.group_alias,
+            "guild_snowflake": int(guild_snowflake),
+            "member_snowflake": member_snowflake,
+        }
+        if autoassign_role.channel_snowflake:
+            where_kwargs["channel_snowflake"] = int(autoassign_role.channel_snowflake)
+        await group_database_factory.update(
+            set_kwargs={"role_snowflakes": roles}, where_kwargs=where_kwargs
+        )
+    bot.logger.debug(
+        f"Revoked permission group ({name}) to member ({member_snowflake}) in guild ({guild_snowflake})."
+    )
 
 async def added_role(
     guild_snowflake: int,
@@ -287,7 +376,6 @@ async def added_role(
     autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     autoassign_roles = await autoassign_database_factory.select(
-        channel_snowflake=channel_snowflake if channel_snowflake else None,
         guild_snowflake=guild_snowflake,
         role_snowflake=role_snowflake,
         singular=False,
@@ -295,47 +383,7 @@ async def added_role(
     if not autoassign_roles:
         return
     for autoassign_role in autoassign_roles:
-        group_member = await group_database_factory.select(
-            channel_snowflake=channel_snowflake if channel_snowflake else None,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-            group_alias=autoassign_role.group_alias,
-            singular=True,
-        )
-        if not group_member:
-            permission_entry = PermissionEntry(
-                channel_snowflake=int(channel_snowflake) if channel_snowflake else None,
-                guild_snowflake=int(guild_snowflake),
-                group_alias=autoassign_role.group_alias,
-                member_snowflake=int(member_snowflake),
-                role_snowflakes=[int(role_snowflake)],
-            )
-            await group_database_factory.create(permission_entry)
-            return
-        permission_state = bot.registry.get(PermissionState)
-        group = permission_state.groups.get(autoassign_role.group_alias, None)
-        if group is None:
-            name = "Unknown"
-        else:
-            name = group.name
-        autoassign_role_snowflakes = group_member.role_snowflakes
-        if role_snowflake not in autoassign_role_snowflakes:
-            autoassign_role_snowflakes.append(role_snowflake)
-            where_kwargs = {
-                "group_alias": autoassign_role.group_alias,
-                "guild_snowflake": int(guild_snowflake),
-                "member_snowflake": member_snowflake,
-            }
-            if channel_snowflake:
-                where_kwargs["channel_snowflake"] = int(channel_snowflake)
-            set_kwargs = {"role_snowflakes": autoassign_role_snowflakes}
-            await group_database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-        bot.logger.debug(
-            f"Granted permission group ({name}) to member ({member_snowflake}) in guild ({guild_snowflake})."
-        )
-
+        await added_role_helper(autoassign_role=autoassign_role, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, role_snowflake=role_snowflake)
 
 async def removed_role(
     guild_snowflake: int,
@@ -347,7 +395,6 @@ async def removed_role(
     autoassign_database_factory: DatabaseFactory = DatabaseFactory(MODEL)
     group_database_factory: DatabaseFactory = DatabaseFactory(PermissionEntry)
     autoassign_roles = await autoassign_database_factory.select(
-        channel_snowflake=channel_snowflake if channel_snowflake else None,
         guild_snowflake=guild_snowflake,
         role_snowflake=role_snowflake,
         singular=False,
@@ -355,39 +402,4 @@ async def removed_role(
     if not autoassign_roles:
         return
     for autoassign_role in autoassign_roles:
-        group_member = await group_database_factory.select(
-            channel_snowflake=channel_snowflake if channel_snowflake else None,
-            group_alias=autoassign_role.group_alias,
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-            role_snowflakes=role_snowflake,
-            inside_fields=["role_snowflakes"],
-            singular=True,
-        )
-        if not group_member:
-            return
-        permission_state = bot.registry.get(PermissionState)
-        group = permission_state.groups.get(autoassign_role.group_alias, None)
-        if group is None:
-            name = "Unknown"
-        else:
-            name = group.name
-        autoassign_role_snowflakes = group_member.role_snowflakes.copy()
-        autoassign_role_snowflakes.remove(role_snowflake)
-        if not autoassign_role_snowflakes:
-            await group_database_factory.delete_by_obj(group_member)
-        else:
-            where_kwargs = {
-                "group_alias": autoassign_role.group_alias,
-                "guild_snowflake": int(guild_snowflake),
-                "member_snowflake": member_snowflake,
-            }
-            if channel_snowflake:
-                where_kwargs["channel_snowflake"] = int(channel_snowflake)
-            set_kwargs = {"role_snowflakes": autoassign_role_snowflakes}
-            await group_database_factory.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-            bot.logger.debug(
-                f"Revoked permission group ({name}) to member ({member_snowflake}) in guild ({guild_snowflake})."
-            )
+        await removed_role_helper(autoassign_role=autoassign_role, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, role_snowflake=role_snowflake)
